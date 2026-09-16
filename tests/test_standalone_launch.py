@@ -168,7 +168,7 @@ class StandaloneLaunchTests(unittest.TestCase):
     def test_invalid_ports_fail_before_starting(self):
         for args in [[], ['0'], ['65536'], ['-1'], ['abc'], ['--share']]:
             with self.subTest(args=args):
-                result = run_bash([str(ROOT / 'start_local.sh'), '--port', *args], capture_output=True, text=True)
+                result = run_bash([str(ROOT / 'start.sh'), '--port', *args], capture_output=True, text=True)
                 self.assertEqual(result.returncode, 2)
                 self.assertIn('ERRO:', result.stderr)
 
@@ -177,7 +177,7 @@ class StandaloneLaunchTests(unittest.TestCase):
         for share in [False, True]:
             with self.subTest(share=share), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                for script in ['start_local.sh', 'stop_local.sh']:
+                for script in ['start.sh', 'stop.sh']:
                     shutil.copy(ROOT / script, root / script)
                 (root / 'app/env/bin').mkdir(parents=True)
                 create_python_link(root / 'app/env/bin/python')
@@ -193,14 +193,14 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                     port = probe.getsockname()[1]
                 env = dict(os.environ, PINOKIO_SHARE_LOCAL='false' if share else 'true', http_proxy='http://127.0.0.1:1', ALL_PROXY='http://127.0.0.1:1')
                 try:
-                    result = run_bash([str(root / 'start_local.sh'), '--port', str(port), *(['--share'] if share else [])], env=env, capture_output=True, text=True, timeout=30)
+                    result = run_bash([str(root / 'start.sh'), '--port', str(port), *(['--share'] if share else [])], env=env, capture_output=True, text=True, timeout=30)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertEqual((root / 'app/host.txt').read_text(), '0.0.0.0' if share else '127.0.0.1')
                     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
                     with opener.open(f'http://127.0.0.1:{port}/', timeout=2) as response:
                         self.assertEqual(response.status, 200)
                 finally:
-                    stopped = run_bash([str(root / 'stop_local.sh')], capture_output=True, text=True, timeout=15)
+                    stopped = run_bash([str(root / 'stop.sh')], capture_output=True, text=True, timeout=15)
                 self.assertEqual(stopped.returncode, 0, stopped.stdout + stopped.stderr)
                 self.assertFalse((root / 'app/.launcher.pid').exists())
                 with socket.socket() as probe:
@@ -210,10 +210,10 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
     @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
     def test_ensure_service_skips_when_version_matches(self):
         """If a Maestro with the same VERSION is already on the port,
-        start_local.sh must print (skipped) and exit 0 without relaunching."""
+        start.sh must print (skipped) and exit 0 without relaunching."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for script in ['start_local.sh', 'stop_local.sh']:
+            for script in ['start.sh', 'stop.sh']:
                 shutil.copy(ROOT / script, root / script)
             # Pin the expected version to whatever the running backend reports.
             (root / 'VERSION').write_text('9.9.9-test')
@@ -235,7 +235,7 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                 # --no-build so the script never touches ui/dist; --force would
                 # defeat the probe (we explicitly want the probe path).
                 result = run_bash(
-                    [str(root / 'start_local.sh'), '--port', str(port), '--no-build'],
+                    [str(root / 'start.sh'), '--port', str(port), '--no-build'],
                     capture_output=True, text=True, timeout=15,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -252,14 +252,14 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
         for version, flags in [('0.0.0-stale', []), ('9.9.9-test', ['--force'])]:
             with self.subTest(version=version), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                shutil.copy(ROOT / 'start_local.sh', root / 'start_local.sh')
+                shutil.copy(ROOT / 'start.sh', root / 'start.sh')
                 (root / 'VERSION').write_text('9.9.9-test')
                 (root / 'app/env/bin').mkdir(parents=True)
                 create_python_link(root / 'app/env/bin/python')
                 proc, port = _spin_versioned_backend(version)
                 try:
                     result = run_bash(
-                        [str(root / 'start_local.sh'), '--no-build', '--no-open',
+                        [str(root / 'start.sh'), '--no-build', '--no-open',
                          '--port', str(port), *flags], capture_output=True, text=True, timeout=15)
                     self.assertEqual(result.returncode, 6, result.stdout + result.stderr)
                     self.assertIn('preservado', result.stderr)
@@ -273,7 +273,7 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
     def test_fallback_preserves_env_and_managed_restart(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for script in ['start_local.sh', 'stop_local.sh']:
+            for script in ['start.sh', 'stop.sh']:
                 shutil.copy(ROOT / script, root / script)
             (root / 'app/env/bin').mkdir(parents=True)
             create_python_link(root / 'app/env/bin/python')
@@ -290,7 +290,7 @@ server.serve_forever()
             try:
                 for flags in [[], ['--force']]:
                     result = run_bash(
-                        [str(root / 'start_local.sh'), '--no-build', '--no-open',
+                        [str(root / 'start.sh'), '--no-build', '--no-open',
                          '--port', str(port), *flags], capture_output=True, text=True, timeout=20)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     env = (root / 'ui/.env.local').read_text()
@@ -300,7 +300,7 @@ server.serve_forever()
                     with urllib.request.urlopen(f'http://127.0.0.1:{effective}/', timeout=2) as response:
                         self.assertEqual(response.status, 200)
             finally:
-                run_bash([str(root / 'stop_local.sh')], capture_output=True, timeout=15)
+                run_bash([str(root / 'stop.sh')], capture_output=True, timeout=15)
 
     @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
     def test_ensure_service_reports_correct_version(self):
@@ -309,7 +309,7 @@ server.serve_forever()
         confirm what version is actually running."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            for script in ['start_local.sh', 'stop_local.sh']:
+            for script in ['start.sh', 'stop.sh']:
                 shutil.copy(ROOT / script, root / script)
             (root / 'VERSION').write_text('7.7.7-test')
             (root / 'app/env/bin').mkdir(parents=True)
@@ -326,13 +326,13 @@ server.serve_forever()
                     probe.bind(('127.0.0.1', 0))
                     port = probe.getsockname()[1]
                 result = run_bash(
-                    [str(root / 'start_local.sh'), '--port', str(port), '--no-build'],
+                    [str(root / 'start.sh'), '--port', str(port), '--no-build'],
                     capture_output=True, text=True, timeout=30,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn('7.7.7-test', result.stdout)
             finally:
-                run_bash([str(root / 'stop_local.sh')], capture_output=True, text=True, timeout=10)
+                run_bash([str(root / 'stop.sh')], capture_output=True, text=True, timeout=10)
 
 
 if __name__ == '__main__':

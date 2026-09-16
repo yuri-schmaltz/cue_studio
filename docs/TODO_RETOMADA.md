@@ -274,7 +274,7 @@ terminam com código zero, seguidos de uma verificação visual do Director.
 
 ## P1 — Corrigir launcher e proxy
 
-- [x] Corrigir a extração da porta em `start_local.sh:281`.
+- [x] Corrigir a extração da porta em `start.sh:281`.
   Para `Port 7860 was busy — using 7861 instead.`, o pipeline atual com
   `awk '{print $NF}'` retorna `instead`. Isso gera uma URL inválida e pode
   levar a timeout/encerramento do backend. Validar número e intervalo.
@@ -374,7 +374,7 @@ Executar da raiz, separadamente, preservando os códigos de saída:
 app/env/bin/python -m pytest tests/ -q
 app/env/bin/python -m pytest tests/test_smoke_imports.py -m smoke -v
 python3 scripts/verify_clean_repo.py
-bash -n start_local.sh stop_local.sh
+bash -n start.sh stop.sh
 git diff --check
 ```
 

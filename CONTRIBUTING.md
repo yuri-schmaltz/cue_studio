@@ -11,7 +11,7 @@ Maestro is a standalone (fork) release, so the easiest dev loop is:
 1. Follow [Install in README.md](README.md#install) from the repository root.
    It includes the pinned PyTorch CUDA runtime and the UI build.
 2. Edit the source in place. The layout:
-   - **Launcher scripts** (`start_local.sh`, `stop_local.sh`) live at the repo
+   - **Launcher scripts** (`start.sh`, `stop.sh`) live at the repo
      root.
    - **Backend** — `app/`: FastAPI endpoints in `app/launch.py`, the generation
      pipeline in `app/wgp.py`, and services (LLM, Director, recipes, etc.) in
@@ -20,7 +20,7 @@ Maestro is a standalone (fork) release, so the easiest dev loop is:
      `ui/src/stores/useStore.ts`.
 3. Start the backend (auto-builds the UI on first run if needed):
    ```bash
-   ./start_local.sh
+   ./start.sh
    ```
 4. After changing the UI, rebuild it:
    ```
@@ -28,7 +28,7 @@ Maestro is a standalone (fork) release, so the easiest dev loop is:
    npm install
    npm run build
    ```
-   `start_local.sh` rebuilds automatically when `ui/dist/` is missing.
+   `start.sh` rebuilds automatically when `ui/dist/` is missing.
 
 ## Before you open a PR
 

@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 # Repo root is the parent of this package directory; the standalone
-# launcher (start_local.sh) `cd`s into app/ and runs launch.py, which
+# launcher (start.sh) `cd`s into app/ and runs launch.py, which
 # requires absolute imports like ``from services import ...`` to resolve
 # relative to app/. We mirror that here by adding the repo root to
 # sys.path so ``app`` becomes importable as a top-level package.

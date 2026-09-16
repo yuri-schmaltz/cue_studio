@@ -730,7 +730,7 @@ cd ../ui
 npm install
 npm run build
 cd ..
-./start_local.sh
+./start.sh
 ```
 
 The launcher selects `app/env-sol`, then `app/env-rtx50`, then `app/env` if
@@ -744,14 +744,14 @@ Stop Maestro, update your checkout, install dependencies in the environment
 used by the launcher, and rebuild the UI. For the `app/env` setup above:
 
 ```bash
-./stop_local.sh
+./stop.sh
 git pull --ff-only
 app/env/bin/pip install -r app/requirements.txt
 cd ui
 npm install
 npm run build
 cd ..
-./start_local.sh
+./start.sh
 ```
 
 If using `env-sol` or `env-rtx50`, use that environment's pip instead.
@@ -764,8 +764,8 @@ dependencies. There is no Reset menu in this fork. Keep `app/ckpts/`,
 
 ## Usage
 
-Run `./start_local.sh` and open the printed URL (default
-`http://127.0.0.1:7860/`). Stop with `./stop_local.sh`.
+Run `./start.sh` and open the printed URL (default
+`http://127.0.0.1:7860/`). Stop with `./stop.sh`.
 
 - **Projects** — create and open production workspaces; this is the home page.
 - **Director** — plan Music Videos and Short Films, review productions, or use
@@ -775,15 +775,15 @@ Run `./start_local.sh` and open the printed URL (default
 - **Configurations** — manage performance, integrations and notifications.
 - **Status bar** — switch workspaces, check media counts and view live GPU,
   CPU, RAM and model status across all sections. Expand it for details.
-- **Custom port** — `./start_local.sh --port 7900`.
-- **Compilation** — `./start_local.sh --compile`.
+- **Custom port** — `./start.sh --port 7900`.
+- **Compilation** — `./start.sh --compile`.
 
 The launcher builds the UI only when `ui/dist/index.html` is missing; rebuild
 manually after frontend changes.
 
 ## Sharing on the local network
 
-Use `./start_local.sh --share` to listen on `0.0.0.0`; the default listens on
+Use `./start.sh --share` to listen on `0.0.0.0`; the default listens on
 `127.0.0.1`. Open `http://<computer-LAN-IP>:7860/` from another device.
 For direct `launch.py` launches, `SERVER_NAME` takes priority. The legacy
 `PINOKIO_SHARE_LOCAL=true` setting enables LAN access only when `SERVER_NAME`

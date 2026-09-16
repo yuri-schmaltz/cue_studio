@@ -68,11 +68,11 @@ Siga [README — Install](README.md#install) para criar `app/env` com Python 3.1
 PyTorch 2.7.1/CUDA 12.8 e dependências, e construir a UI.
 
 ```bash
-./start_local.sh                 # 127.0.0.1:7860
-./start_local.sh --port 7900     # porta explícita
-./start_local.sh --share         # 0.0.0.0, acesso LAN
-./start_local.sh --compile       # encaminha --compile ao backend
-./stop_local.sh
+./start.sh                       # 127.0.0.1:7860
+./start.sh --port 7900           # porta explícita
+./start.sh --share               # 0.0.0.0, acesso LAN
+./start.sh --compile             # encaminha --compile ao backend
+./stop.sh
 ```
 
 O script seleciona `env-sol` → `env-rtx50` → `env`, informa GPU/driver,
@@ -82,7 +82,7 @@ ambiente, inclusive com `--share`. Portas inválidas são rejeitadas antes do
 lançamento. PID e log ficam em `app/.launcher.pid` e `app/.launcher.log`.
 
 `SERVER_NAME` explícito agora prevalece sobre `PINOKIO_SHARE_LOCAL`. Assim,
-a variável legada não inverte o comportamento de `start_local.sh`. Em execução
+a variável legada não inverte o comportamento de `start.sh`. Em execução
 direta de `launch.py`, ela continua servindo de fallback sem `SERVER_NAME`.
 
 Rebuild após mudanças de frontend: `cd ui && npm run build`. O script não
@@ -148,7 +148,7 @@ passaram. Para repetir sem carregar modelos:
 
 ```bash
 python3 tests/test_standalone_launch.py
-bash -n start_local.sh stop_local.sh
+bash -n start.sh stop.sh
 python3 -m py_compile app/launch.py
 (cd ui && npm run test:control)
 git diff --check

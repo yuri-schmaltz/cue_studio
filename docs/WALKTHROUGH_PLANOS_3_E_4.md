@@ -7,11 +7,11 @@ Implementamos e validamos as melhorias de ciclo de vida de jobs, fila de backgro
 ## 1. O que foi implementado
 
 ### 1.1 Scripts Nativos para Windows (`start_local.ps1` e `stop_local.ps1`)
-- **Problema anterior:** A inicialização e parada do Maestro/Cue Studio dependiam exclusivamente de scripts Bash (`start_local.sh` e `stop_local.sh`), exigindo ambientes POSIX/Git Bash e dificultando a automação em ambientes Windows locais.
+- **Problema anterior:** A inicialização e parada do Maestro/Cue Studio dependiam exclusivamente de scripts Bash (`start.sh` e `stop.sh`), exigindo ambientes POSIX/Git Bash e dificultando a automação em ambientes Windows locais.
 - **Solução implementada:**
   - Criado `start_local.ps1` nativo em PowerShell com detecção automática de virtualenvs (`env-sol`, `env-rtx50`, `env`), validação de build da UI, encerramento de processos órfãos anteriores via PID e inicialização desacoplada do processo FastAPI.
   - Criado `stop_local.ps1` nativo para ler `.launcher.pid` e realizar encerramento limpo via `Stop-Process -Force`.
-  - Atualizado `stop_local.sh` para detectar de forma inteligente o interpretador Python ativo em ambientes heterogêneos (`env/bin/python`, `python3`, `python`).
+  - Atualizado `stop.sh` para detectar de forma inteligente o interpretador Python ativo em ambientes heterogêneos (`env/bin/python`, `python3`, `python`).
 
 ### 1.2 Compatibilidade Multiplataforma nos Testes de Launch (`tests/test_standalone_launch.py`)
 - **Problema anterior:** A suíte de testes de inicialização falhava no Windows devido a:
@@ -38,7 +38,7 @@ Implementamos e validamos as melhorias de ciclo de vida de jobs, fila de backgro
 - `stop_local.ps1` (Novo)
 - `tests/test_job_lifecycle.py` (Novo)
 - `app/launch.py` (Ajustado)
-- `stop_local.sh` (Ajustado)
+- `stop.sh` (Ajustado)
 - `tests/test_standalone_launch.py` (Ajustado)
 - `docs/WALKTHROUGH_PLANOS_3_E_4.md` (Novo)
 

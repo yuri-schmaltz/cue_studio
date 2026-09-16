@@ -8,7 +8,7 @@ is too late to influence collection of tests/ siblings. By sitting
 at the repo root, this conftest hooks the sys.path before any test
 module gets imported.
 
-Maestro's standalone launcher (start_local.sh) `cd`s into app/
+Maestro's standalone launcher (start.sh) `cd`s into app/
 and runs `python launch.py`, so its absolute imports (e.g. `from
 services import safe_download`) resolve relative to that cwd. We
 mirror that behaviour here: any test that needs `launch.py` (or

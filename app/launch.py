@@ -500,7 +500,7 @@ api = FastAPI(title="Cue Studio API", version=CUE_STUDIO_VERSION)
 @api.get("/health/version", include_in_schema=False)
 def _health_version() -> JSONResponse:
     """Lightweight endpoint used by the version-aware bootstrapper
-    (start_local.sh) to detect stale builds. Returns the Cue Studio release
+    (start.sh) to detect stale builds. Returns the Cue Studio release
     version declared in the top-level VERSION file. Safe to hit from the
     browser — no side effects, no auth required (mirrors Directo's
     /api/version contract)."""
@@ -29300,7 +29300,7 @@ async def editor_export(request: Request):
 # plugin instantiation), (b) frees the /classic route so a future
 # surface can use it, and (c) keeps the message bundle small. If you
 # still need the classic surface, restore the block below and the
-# matching line in start_local.sh's summary.
+# matching line in start.sh's summary.
 #
 # Old block (kept for reference, commented out — gradio + WanGPApplication
 # are heavy imports and aren't worth paying the cost for an unused path):
@@ -29419,7 +29419,7 @@ if __name__ == "__main__":
             f"\n[Cue Studio] ERROR: could not find a free port in "
             f"{port}-{port + 20}. Another app (or a stale Cue Studio instance) "
             f"is holding them.\n"
-            f"  • Close the other program, or run ./stop_local.sh from the "
+            f"  • Close the other program, or run ./stop.sh from the "
             f"project root, then start Cue Studio again.\n"
             f"  • On Windows you can see what holds a port with: "
             f"netstat -ano | findstr :{port}\n",

@@ -938,7 +938,7 @@ export function DirectorChat() {
           <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5 border border-red-500/20" role="alert">
             <span className="flex-1">
               {error === 'Failed to fetch'
-                ? 'Could not reach the Maestro backend. Check that start_local.sh is still running and try again.'
+                ? 'Could not reach the Maestro backend. Check that start.sh is still running and try again.'
                 : error}
             </span>
             <button

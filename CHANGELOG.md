@@ -222,7 +222,7 @@ bind.
   deselected.
 - **Port resolution end-to-end.** `vite.config.ts` reads
   `MAESTRO_BACKEND_PORT` (falling back to `VITE_BACKEND_PORT` and
-  `7860`). `start_local.sh` writes `ui/.env.local` before the
+  `7860`). `start.sh` writes `ui/.env.local` before the
   Vite build, and detects launch.py's "Port N was busy — using M"
   auto-fallback in the log so a future rebuild tracks the real
   bind (instead of silently proxying to the preferred-but-busy
@@ -282,7 +282,7 @@ Stage; "Director" reopens it. An explicit `0` in
 
 - The gallery and Maestro headers now both use `h-14` and `px-4`.
 - Explicit `SERVER_NAME` takes precedence over the legacy
-  `PINOKIO_SHARE_LOCAL` variable, including when using `start_local.sh`.
+  `PINOKIO_SHARE_LOCAL` variable, including when using `start.sh`.
 - Standalone installation and update instructions replace
   references to removed launcher actions.
 
@@ -1329,6 +1329,6 @@ built on the [Wan2GP](https://github.com/deepbeepmeep/Wan2GP) pipeline.
 ### Requirements
 
 NVIDIA GPU (6GB+ VRAM; 24GB recommended for the full experience), Windows or
-Linux, installed via `git clone` (or equivalent) and `start_local.sh`. Models download on
+Linux, installed via `git clone` (or equivalent) and `start.sh`. Models download on
 first use per model (the default set is ~30GB; the full collection exceeds
 300GB).
