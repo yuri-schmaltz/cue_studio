@@ -213,7 +213,7 @@ def main() -> None:
     cue-studio console script).
 
     This function assumes the repo root is already on sys.path.
-    The actual pip-installed wrapper at cue_studio_cli/__init__.py
+    The actual pip-installed wrapper at cli/__init__.py
     handles that — we keep this function side-effect-free for ease
     of testing."""
     cli()

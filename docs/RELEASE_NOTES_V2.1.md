@@ -179,7 +179,7 @@ The rebrand preserves all backwards-compatibility entry points so
 existing installs and integrations don't break:
 
 - **Console scripts:** `cue-studio` and `cue` both delegate to the
-  same entry point (`cue_studio_cli:main`). No `maestro` shim is
+  same entry point (`cli:main`). No `maestro` shim is
   shipped — the rebrand is final.
 - **PWA manifest:** the installable app's `name` and `short_name`
   are "Cue Studio" / "Cue". The `id` stays `/` so existing

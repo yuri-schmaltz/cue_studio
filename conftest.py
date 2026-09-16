@@ -15,7 +15,7 @@ mirror that behaviour here: any test that needs `launch.py` (or
 modules that import it directly) gets `app/` on sys.path so the
 same absolute imports keep working.
 
-We also prepend the repo root so `import cue_studio_cli` (the
+We also prepend the repo root so `import cli` (the
 pip-installed console-script shim package) is importable from the
 test-suite.
 """

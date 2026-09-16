@@ -1,13 +1,13 @@
 """Cue Studio console entry — loaded as ``cue-studio`` / ``cue`` scripts.
 
-Lives as ``cue_studio_cli/__init__.py`` so the pyproject
-``[project.scripts]`` table can resolve ``cue_studio_cli:main`` after a
+Lives as ``cli/__init__.py`` so the pyproject
+``[project.scripts]`` table can resolve ``cli:main`` after a
 pip ``-e`` install without copying ``app.cli``. The setuptools
 ``[tool.setuptools]`` ``packages`` entry picks up this directory and
 installs it next to ``app``; ``app.cli.main`` does the real work and
 this module just adds the repo root to ``sys.path`` and delegates.
 
-Run directly from a dev checkout: ``python -m cue_studio_cli status``
+Run directly from a dev checkout: ``python -m cli status``
 Via pip console script: ``cue-studio status`` (after `pip install -e .`)
 """
 from __future__ import annotations
