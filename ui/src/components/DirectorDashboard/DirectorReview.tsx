@@ -17,7 +17,7 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
   const [plans, setPlans] = useState(() => structuredClone(status.clip_plans))
   const [locks, setLocks] = useState<Record<string, string[]>>(status.creative_locks || {})
   const [approved, setApproved] = useState<number[]>([])
-  const rejectionKey = `maestro-scene-rejections:${pid}:${status.pause_reason}:${status.review_digest || ''}`
+  const rejectionKey = `cue-studio-scene-rejections:${pid}:${status.pause_reason}:${status.review_digest || ''}`
   const [rejected, setRejected] = useState<Record<number, string>>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(rejectionKey) || '{}')

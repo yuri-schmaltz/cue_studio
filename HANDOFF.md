@@ -1,4 +1,4 @@
-# Handoff — Maestro fork standalone (2026-09-14)
+# Handoff — Cue Studio fork standalone (2026-09-15)
 
 ## Atualização de retomada — 2026-09-14
 

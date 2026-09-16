@@ -1,8 +1,10 @@
-# Maestro
+# Cue Studio
 
-A one-click local AI **creative studio, director, and video editor** for creators. Maestro combines a modern interface with powerful image, video, and audio generation, an LLM-directed production workflow, and a non-destructive multi-track editor. Optimized for LTX-2.5, MiniMax H3, and the latest local creative models and LoRAs.
+A one-click local AI **creative studio, director, and video editor** for creators. Cue Studio combines a modern interface with powerful image, video, and audio generation, an LLM-directed production workflow, and a non-destructive multi-track editor. Optimized for LTX-2.5, MiniMax H3, and the latest local creative models and LoRAs.
 
-![Maestro UI](Maestro_UI_02.jpg)
+> **Note:** Cue Studio is the renamed continuation of the Maestro project. The product identity (Director / Studio / Editor modes, the warm-cinematic theme family, and the local-first pipeline) is unchanged. See [docs/RELEASE_NOTES_V2.1.md](docs/RELEASE_NOTES_V2.1.md) for the v2.1 rebrand details.
+
+![Cue Studio UI](Maestro_UI_02.jpg)
 
 ## What it does
 
@@ -34,7 +36,7 @@ Direct access to every model and every knob:
 - **Spatial upsampling, film grain, codec selection** as post-processing options
 
 ### 🤖 Local LLM — built-in, no setup
-Maestro auto-downloads `llama-server` (~600 MB one-time) and your chosen GGUF model on first use. Defaults to **Gemma 4 4B (Recommended)** — fast, capable, and runs comfortably on smaller GPUs. Auto-detects CUDA and binds the LLM to GPU when available.
+Cue Studio auto-downloads `llama-server` (~600 MB one-time) and your chosen GGUF model on first use. Defaults to **Gemma 4 4B (Recommended)** — fast, capable, and runs comfortably on smaller GPUs. Auto-detects CUDA and binds the LLM to GPU when available.
 
 - Pre-curated registry: Gemma 4 (2B / 4B / 26B MoE / 31B), Qwen3.6 27B, and **Qwen3.8 27B Uncensored** with model-aware deep thinking for creative writing and prompt enhancement
 - **External providers** also supported: OpenAI, Anthropic, custom OpenAI-compatible endpoints (currently experimental)
@@ -42,7 +44,7 @@ Maestro auto-downloads `llama-server` (~600 MB one-time) and your chosen GGUF mo
 - Auto-unloads after 60s idle to free VRAM for video gen
 
 ### 🛒 Built-in CivitAI LoRA browser
-- Search, filter, and one-click install any LoRA from CivitAI without leaving Maestro
+- Search, filter, and one-click install any LoRA from CivitAI without leaving Cue Studio
 - **LoRA update detection** — Check button refreshes from CivitAI, shows update badges on outdated LoRAs
 - **My LoRAs view** with filters for Updates and direct uninstall
 - **AI-generated LoRA prompting guides** Helps remove the guesswork from LoRAs. AI generates LoRA guides when LoRA is downloaded based on CIVITAI and HuggingFace repos. The guides explain what each LoRA does and how to use it, provide prompt examples, and recommend weight settings that are automatically applied when LoRA is selected. 
@@ -60,7 +62,7 @@ Appearance mode is **Dark / Light / Auto** — Auto follows your system's appear
 ### ✂️ Editor Mode — finish the story on a timeline
 - Arrange video, audio, and title layers on a non-destructive multi-track timeline with snapping, trim, split, duplicate, undo/redo, transitions, speed, opacity, volume, and canvas transforms.
 - Browse outputs across workspaces, uploads, favorites, and complete Director productions; import Director shots as individual clips with their original soundtrack.
-- Send a selected clip back through Maestro AI, then return the generated take to the same timeline position without rebuilding the edit.
+- Send a selected clip back through Cue Studio AI, then return the generated take to the same timeline position without rebuilding the edit.
 - Export H.264, H.265, or AV1 at project or delivery resolutions with automatic hardware-encoder selection and export history.
 - Responsive desktop and mobile layouts keep core editing controls usable from a phone or tablet.
 
@@ -69,7 +71,7 @@ Multiple isolated output directories with a quick switcher in the sidebar. Usefu
 
 ### 🔔 Completion alerts
 - In-app alerts, optional browser notifications, per-device chimes, and a host-computer completion sound are available under **Settings → Notifications**.
-- Encrypted Web Push can notify an installed iPhone/iPad Home Screen app or supported desktop browser even after Maestro is closed.
+- Encrypted Web Push can notify an installed iPhone/iPad Home Screen app or supported desktop browser even after Cue Studio is closed.
 
 ### 🔒 Mature mode + experimental gate
 - **NSFW mode** is opt-in with a disclaimer step. Disabled by default. Gates uncensored model variants, NSFW LoRAs in the CivitAI browser, and the Settings → Services NSFW toggle.
@@ -80,7 +82,7 @@ View all past Director runs with their full state — clip plans, generated imag
 
 ## Updates
 
-The version you are running is shown next to the Maestro title in the UI. For standalone update commands, see [Updating](#updating).
+The version you are running is shown next to the Cue Studio title in the UI. For standalone update commands, see [Updating](#updating).
 
 ### v2.0.1 (2026-09-04)
 
@@ -99,7 +101,7 @@ See the [complete v2.0.1 release notes](docs/RELEASE_NOTES_V2.0.1.md).
 
 **A complete create-to-edit workflow**
 - Added the new full-screen **Editor Mode** with multi-track video, audio, and title editing; 21:9 canvases; canvas transforms and snap guides; transitions, speed, opacity, volume, fonts, undo/redo, project history, and hardware-aware export.
-- Director productions can be opened as editable timelines with separate shot clips and the complete soundtrack, while any timeline clip can make a round trip through Maestro AI and return as a new take.
+- Director productions can be opened as editable timelines with separate shot clips and the complete soundtrack, while any timeline clip can make a round trip through Cue Studio AI and return as a new take.
 - Reorganized Studio into clear Video, Image, and Audio workflows. Video editing tools now live beside generation, Image adds dedicated New/Edit/Upscale/Outpaint modes, Audio includes Revoice, and Finish adds reusable film grain.
 - Added unified long-form planning up to 60 minutes with duration presets, exact timecodes, direct window counts, media/story-aware Auto duration, and Faithful or Creative AI window prompts. Frequently used Studio modes, models, planning choices, and H3 optimizations now survive restarts.
 
@@ -111,7 +113,7 @@ See the [complete v2.0.1 release notes](docs/RELEASE_NOTES_V2.0.1.md).
 - Added Qwen3.8 27B Uncensored with creative thinking controls, prompt-enhancement telemetry, and non-thinking structured-output paths.
 
 **Remote workflow and release polish**
-- Added completion alerts, optional chimes, encrypted closed-app Web Push, and an installable Maestro web app.
+- Added completion alerts, optional chimes, encrypted closed-app Web Push, and an installable Cue Studio web app.
 - Added per-clip, multi-window, and full Director completion estimates, including cache-aware calibration for First Block Cache and private local timing history for more accurate future estimates.
 - Expanded gallery details and search across model, resolution, LoRAs, H3 optimizations, prompts, window counts, and generation timing, while making the viewed or playing clip the reliable active Studio target.
 - Updated Maestro's orange app icon, unified the responsive Director / Studio / Editor header and version display, added Director first-frame thumbnails and full-rate iOS Editor preview playback, simplified the launcher menu, and preserved the v1.9.1 llama.cpp nightly-download hotfix.

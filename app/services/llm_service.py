@@ -236,7 +236,7 @@ def _estimate_kv_gb(arch_key: str, extra_flags: list) -> float:
 # knows it fits, vs. seeing "9.96 GB" and having to do mental math about
 # headroom.
 #
-# Headroom note: the bucket is the recommended *minimum*. Maestro's
+# Headroom note: the bucket is the recommended *minimum*. Cue Studio's
 # generation pipelines also need VRAM concurrently if you're running an
 # LLM during video gen — in that case, pick a card with the LLM's bucket
 # size PLUS your video model's footprint, or run the LLM on a remote
@@ -332,7 +332,7 @@ MODEL_REGISTRY = {
         "enable_thinking_for_prompt_enhancement": True,
         "prompt_enhancement_thinking_budget": 8192,
         # Official Qwen3.8 thinking-mode sampling. For non-thinking structured
-        # work we retain Maestro's pass-specific frequency/presence penalties,
+        # work we retain Cue Studio's pass-specific frequency/presence penalties,
         # but use Qwen's temperature/nucleus/top-k recommendations.
         "sampling_defaults_thinking": {
             "temperature": 1.0, "top_p": 0.95, "top_k": 20,
@@ -720,7 +720,7 @@ _OPENAI_CHAT_FIELDS = frozenset({
 
 
 def _finalize_payload(payload: dict) -> dict:
-    """Translate Maestro's llama.cpp request into OpenAI-compatible form.
+    """Translate Cue Studio's llama.cpp request into OpenAI-compatible form.
 
     Local llama-server accepts additional sampler controls and serves only one
     model, so its native payload remains untouched. Hosted and third-party
@@ -1019,7 +1019,7 @@ def _apply_reasoning_controls(
 
     ``reasoning_effort`` selects how thoroughly Qwen3.8 reasons. The
     separate ``thinking_budget_tokens`` llama.cpp extension is a hard
-    per-request ceiling; Maestro's existing ``max_tokens`` allowance remains
+    per-request ceiling; Cue Studio's existing ``max_tokens`` allowance remains
     large enough to hold both the reasoning and the requested answer.
 
     Structured-output callers force ``enable_thinking=False`` before reaching
@@ -1205,7 +1205,7 @@ MIN_LLAMA_BUILD = 10450
 # asset set, so it is the offline/API-rate-limit fallback.
 FALLBACK_LLAMA_TAG = "b10453"
 
-_LLAMA_RUNTIME_RECEIPT = ".maestro_llama_runtime.json"
+_LLAMA_RUNTIME_RECEIPT = ".cue_studio_llama_runtime.json"
 _WINDOWS_LLAMA_CUDA_FILES = (
     "cudart64_12.dll",
     "cublas64_12.dll",

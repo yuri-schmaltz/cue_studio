@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
 import {
-  subscribeMaestroAlerts,
-  type MaestroAlert,
+  subscribeCueStudioAlerts,
+  type CueStudioAlert,
 } from '../lib/notifications'
 
 const TOAST_LIFETIME_MS = 6500
 
 export function NotificationToastHost() {
-  const [alerts, setAlerts] = useState<MaestroAlert[]>([])
+  const [alerts, setAlerts] = useState<CueStudioAlert[]>([])
 
-  useEffect(() => subscribeMaestroAlerts(alert => {
+  useEffect(() => subscribeCueStudioAlerts(alert => {
     setAlerts(current => [...current.slice(-3), alert])
     window.setTimeout(() => {
       setAlerts(current => current.filter(item => item.id !== alert.id))

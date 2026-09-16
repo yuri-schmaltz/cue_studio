@@ -2695,9 +2695,9 @@ if not Path(config_load_filename).is_file():
         # Mark the config as auto-tuned so the UI shows the auto card
         # by default. User can flip it off in Settings later.
         server_config.setdefault("services", {})["auto_performance"] = True
-        print(f"[Maestro] Auto-tuned for {_hw.get('gpu_name', 'CPU')}: {_rec.get('_recommendation_label', 'fallback profile')}")
+        print(f"[Cue Studio] Auto-tuned for {_hw.get('gpu_name', 'CPU')}: {_rec.get('_recommendation_label', 'fallback profile')}")
     except Exception as _e:
-        print(f"[Maestro] Auto-tune failed, using conservative defaults: {_e}")
+        print(f"[Cue Studio] Auto-tune failed, using conservative defaults: {_e}")
 
     with open(server_config_filename, "w", encoding="utf-8") as writer:
         writer.write(json.dumps(server_config))
@@ -4448,7 +4448,7 @@ def load_models(model_type, override_profile = -1, output_type="video", **model_
                 local_model_file_list, model_type, base_model_type, model_def, quantizeTransformer = quantizeTransformer, text_encoder_quantization = text_encoder_quantization,
                 dtype = transformer_dtype, VAE_dtype = VAE_dtype, mixed_precision_transformer = mixed_precision_transformer, save_quantized = save_quantized, submodel_no_list   = model_submodel_no_list, text_encoder_filename = text_encoder_filename, profile=profile, lm_decoder_engine=lm_decoder_engine_obtained, **model_kwargs )
 
-    # LTX-2.5 ships against Transformers 5.x while Maestro's established
+    # LTX-2.5 ships against Transformers 5.x while Cue Studio's established
     # model families still share Transformers 4.x. Its handler therefore owns
     # an isolated official subprocess runtime instead of exposing PyTorch
     # modules to MMGP. Keep the normal model lifecycle contract through a
@@ -7526,7 +7526,7 @@ def generate_video(
     # Official Lightricks masked workflow. It decodes and Laplacian-blends the
     # first pass in pixel space before target-resolution refinement.
     outpaint_full_resolution_refine=False,
-    # Use Maestro's managed In/Outpaint IC-LoRA stack.
+    # Use Cue Studio's managed In/Outpaint IC-LoRA stack.
     outpaint_official_stack=False,
     # MiniMax H3 Ref2VA's ordered image/video/audio manifest and reference
     # preparation policy. Other model runtimes ignore these kwargs.
@@ -7545,7 +7545,7 @@ def generate_video(
     # diffusion decoder is model state and therefore triggers a model reload
     # when changed in Advanced settings.
     ltx25_video_vae="fast",
-    # Exact per-pass prompts from Maestro's H3 planner or manual sequence UI.
+    # Exact per-pass prompts from Cue Studio's H3 planner or manual sequence UI.
     # Kept as a real list so semantic newlines inside an automatic Context-IR
     # prompt are never mistaken for prompt boundaries.
     h3_window_prompts=None,

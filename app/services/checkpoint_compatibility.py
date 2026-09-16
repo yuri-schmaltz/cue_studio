@@ -479,7 +479,7 @@ def quarantine_incompatible_checkpoint_definitions(app_dir: str) -> list[dict]:
 
         if not changed:
             continue
-        temporary = f"{path}.maestro-{os.getpid()}.tmp"
+        temporary = f"{path}.cue-studio-{os.getpid()}.tmp"
         try:
             with open(temporary, "w", encoding="utf-8") as handle:
                 json.dump(definition, handle, indent=4)

@@ -15,6 +15,7 @@ import os.path as osp
 import json
 import numpy as np
 import soundfile as sf
+from typing import Any, Mapping
 
 def rand_name(length=8, suffix=''):
     name = binascii.b2a_hex(os.urandom(length)).decode('utf-8')
@@ -512,87 +513,103 @@ def save_video(tensor,
                 normalize=True,
                 value_range=(-1, 1),
                 retry=5):
-    """Save tensor as video with configurable codec and container options."""
-        
+    """Save tensor as video with configurable codec and container options.
+
+    Hardware-accelerated codecs (``h264_nvenc``, ``hevc_qsv``, ``av1_vaapi``
+    etc.) degrade gracefully: when every retry fails the function drops
+    back to ``libx264_8`` exactly once before raising. The retry budget
+    applies to each attempt separately, so transient ffmpeg hiccups keep
+    the original semantics.
+    """
+
     if torch.is_tensor(tensor) and len(tensor.shape) == 4:
         tensor = tensor.unsqueeze(0)
-        
+
     suffix = f'.{container}'
     cache_file = osp.join('/tmp', rand_name(suffix=suffix)) if save_file is None else save_file
     if not cache_file.endswith(suffix):
         cache_file = osp.splitext(cache_file)[0] + suffix
-    
-    # Configure codec parameters
-    codec_params = _get_codec_params(codec_type, container)
-    
-    # Process and save
-    error = None
-    for _ in range(retry):
-        try:
-            # Write video (silence ffmpeg logs)
-            writer = imageio.get_writer(cache_file, fps=fps, ffmpeg_log_level='error', **codec_params)
+
+    # Hardware path is opt-in: classify once based on the alias so the
+    # fallback doesn't run when the user already asked for software.
+    is_hw_codec = codec_type in _hw_video_encoders_table()
+
+    def _attempt(active_codec: str) -> str | None:
+        codec_params = _get_codec_params(active_codec, container)
+        # Bind the source tensor to a local so the in-place cast below
+        # doesn't shadow the enclosing function parameter across retries.
+        frames_input = tensor
+        if torch.is_tensor(frames_input) and frames_input.dtype == torch.uint8:
+            frames_input = frames_input.float().div_(127.5).sub_(1.0)
+        for _ in range(retry):
             try:
-                if torch.is_tensor(tensor):
-                    # Stream frames to avoid materializing the full video on CPU.
-                    if tensor.dtype == torch.uint8 and tensor.ndim == 5 and tensor.shape[0] == 1 and nrow == 1:
-                        frames = tensor[0].permute(1, 2, 3, 0)
-                        for frame in frames:
-                            writer.append_data(frame.cpu().numpy())
-                    else:
-                        if tensor.dtype == torch.uint8:
-                            tensor = tensor.float().div_(127.5).sub_(1.0)
-                        for u in tensor.unbind(2):
-                            u = u.clamp(min(value_range), max(value_range))
-                            grid = torchvision.utils.make_grid(
-                                u, nrow=nrow, normalize=normalize, value_range=value_range
-                            )
-                            frame = grid.mul(255).type(torch.uint8).permute(1, 2, 0).cpu().numpy()
-                            writer.append_data(frame)
-                elif isinstance(tensor, (list, tuple)) and tensor and torch.is_tensor(tensor[0]):
-                    # Frames are streamed one-by-one to imageio here. Unlike the
-                    # make_grid tensor path above, FLOAT frames were handed to
-                    # imageio un-normalized, so it auto-scaled each frame from its
-                    # own min/max (per-frame, lossy, and one log warning per frame:
-                    # "Lossy conversion from float32 to uint8. Range [-1.0, 1.0]").
-                    # Convert floats to uint8 ourselves with a FIXED value_range
-                    # affine so the result matches the make_grid path, stays
-                    # flicker-free, and silences the warning. uint8 frames are
-                    # passed through unchanged.
-                    lo, hi = float(min(value_range)), float(max(value_range))
-                    for chunk in tensor:
-                        if chunk is None:
-                            continue
-                        if chunk.ndim == 4:
-                            if chunk.shape[-1] in (1, 3, 4):
-                                frames = chunk
-                            else:
-                                frames = chunk.permute(1, 2, 3, 0)
+                writer = imageio.get_writer(
+                    cache_file, fps=fps, ffmpeg_log_level='error', **codec_params
+                )
+                try:
+                    if torch.is_tensor(frames_input):
+                        if frames_input.dtype == torch.uint8 and frames_input.ndim == 5 and frames_input.shape[0] == 1 and nrow == 1:
+                            frames = frames_input[0].permute(1, 2, 3, 0)
                             for frame in frames:
-                                frame = frame.cpu()
-                                if frame.dtype != torch.uint8:
-                                    # OUT-OF-PLACE ops only. FlashVSR frames are
-                                    # inference tensors (created under
-                                    # torch.inference_mode), and for an already-
-                                    # float frame .float() is a no-op that returns
-                                    # the SAME tensor — so in-place ops (clamp_/
-                                    # sub_/...) raise "Inplace update to inference
-                                    # tensor outside InferenceMode is not allowed".
-                                    # Out-of-place ops yield a fresh normal tensor.
-                                    frame = frame.float().clamp(lo, hi).sub(lo).div(hi - lo).mul(255.0).round().clamp(0.0, 255.0).to(torch.uint8)
-                                writer.append_data(frame.numpy())
+                                writer.append_data(frame.cpu().numpy())
                         else:
-                            writer.append_data(chunk)
-                else:
-                    for frame in tensor:
-                        writer.append_data(frame)
-            finally:
-                writer.close()
+                            for u in frames_input.unbind(2):
+                                u = u.clamp(min(value_range), max(value_range))
+                                grid = torchvision.utils.make_grid(
+                                    u, nrow=nrow, normalize=normalize, value_range=value_range
+                                )
+                                frame = grid.mul(255).type(torch.uint8).permute(1, 2, 0).cpu().numpy()
+                                writer.append_data(frame)
+                    elif isinstance(frames_input, (list, tuple)) and frames_input and torch.is_tensor(frames_input[0]):
+                        lo, hi = float(min(value_range)), float(max(value_range))
+                        for chunk in frames_input:
+                            if chunk is None:
+                                continue
+                            if chunk.ndim == 4:
+                                if chunk.shape[-1] in (1, 3, 4):
+                                    frames = chunk
+                                else:
+                                    frames = chunk.permute(1, 2, 3, 0)
+                                for frame in frames:
+                                    frame = frame.cpu()
+                                    if frame.dtype != torch.uint8:
+                                        frame = frame.float().clamp(lo, hi).sub(lo).div(hi - lo).mul(255.0).round().clamp(0.0, 255.0).to(torch.uint8)
+                                    writer.append_data(frame.numpy())
+                            else:
+                                writer.append_data(chunk)
+                    else:
+                        for frame in frames_input:
+                            writer.append_data(frame)
+                finally:
+                    writer.close()
+                return cache_file
+            except Exception as e:
+                print(f"error saving {save_file}: {e}")
+        return None
 
-            return cache_file
+    saved = _attempt(codec_type)
+    if saved is not None:
+        return saved
 
-        except Exception as e:
-            error = e
-            print(f"error saving {save_file}: {e}")
+    if is_hw_codec:
+        print(
+            f"[save_video] hardware codec '{codec_type}' failed; "
+            f"falling back to libx264_8 for {save_file}"
+        )
+        # imageio/ffmpeg may have left a stub file behind; let the CPU
+        # path overwrite cleanly.
+        try:
+            if os.path.isfile(cache_file):
+                os.remove(cache_file)
+        except OSError:
+            pass
+        saved = _attempt("libx264_8")
+        if saved is not None:
+            return saved
+
+    raise RuntimeError(
+        f"save_video could not write {save_file} (codec={codec_type})"
+    )
 
 
 @functools.lru_cache(maxsize=4)
@@ -603,8 +620,10 @@ def _hw_video_encoders(ffmpeg: str = "ffmpeg") -> dict[str, dict[str, str]]:
     via ``output_params``. The probe is cached and shared with the Editor
     export path, so a single ``ffmpeg -encoders`` call covers both.
 
-    Keys present only when the corresponding backend is available for the
-    matched codec (H.264). If nothing is HW-capable the dict is empty.
+    Keys present only when the corresponding backend advertises the encoder
+    AND, for VAAPI, a render node is reachable. AV1 entries are only added
+    when the per-codec probe (``encoders_by_codec``) reports the family is
+    available — some FFmpeg builds ship H.264/HEVC hardware but not AV1.
     """
     try:
         from services.editor_projects import editor_export_capabilities
@@ -612,59 +631,92 @@ def _hw_video_encoders(ffmpeg: str = "ffmpeg") -> dict[str, dict[str, str]]:
     except Exception:
         return {}
     enc = caps.get("encoders", {}) if isinstance(caps, Mapping) else {}
-    result: dict[str, dict[str, str]] = {}
-    # NVENC
-    if enc.get("nvidia"):
-        result["h264_nvenc"] = {
-            "codec": "h264_nvenc",
-            "pixelformat": "yuv420p",
+    by_codec = (
+        caps.get("encoders_by_codec")
+        if isinstance(caps, Mapping) and isinstance(caps.get("encoders_by_codec"), Mapping)
+        else {}
+    )
+
+    def _avail(backend: str, codec: str) -> bool:
+        # AV1 uses the structured per-codec table when present, else
+        # the flat flag (older callers). H.264/HEVC are gated on the
+        # flat flag (the editor probe only sets it when both families
+        # are present).
+        table = by_codec.get(backend) if isinstance(by_codec.get(backend), Mapping) else None
+        if table is not None and codec == "av1":
+            return bool(table.get("av1"))
+        return bool(enc.get(backend))
+
+    def _nvenc(codec: str, family: str) -> dict[str, Any]:
+        cq = {"h264": "19", "hevc": "22", "av1": "26"}[family]
+        params: list[str] = [
+            "-preset", "p5", "-cq", cq, "-b:v", "0",
+            "-hide_banner", "-nostats",
+        ]
+        if family in {"h264", "hevc"}:
+            params = ["-preset", "p5", "-rc", "vbr"] + params
+        return {"codec": codec, "pixelformat": "yuv420p", "output_params": params}
+
+    def _amf(codec: str, family: str) -> dict[str, Any]:
+        qp = {"h264": "20", "hevc": "22", "av1": "26"}[family]
+        params = ["-rc", "vbr", "-qp", qp]
+        if family in {"h264", "hevc"}:
+            params += ["-usage", "lowlatency"]
+        params += ["-hide_banner", "-nostats"]
+        return {"codec": codec, "pixelformat": "yuv420p", "output_params": params}
+
+    def _qsv(codec: str, family: str) -> dict[str, Any]:
+        q = {"h264": "22", "hevc": "24", "av1": "28"}[family]
+        return {
+            "codec": codec, "pixelformat": "yuv420p",
             "output_params": [
-                "-preset", "p5", "-rc", "vbr", "-cq", "19", "-b:v", "0",
+                "-preset", "medium", "-global_quality", q,
                 "-hide_banner", "-nostats",
             ],
         }
-        result["hevc_nvenc"] = {
-            "codec": "hevc_nvenc",
-            "pixelformat": "yuv420p",
-            "output_params": [
-                "-preset", "p5", "-rc", "vbr", "-cq", "22", "-b:v", "0",
-                "-hide_banner", "-nostats",
-            ],
-        }
-    if enc.get("amd"):
-        result["h264_amf"] = {
-            "codec": "h264_amf",
-            "pixelformat": "yuv420p",
-            "output_params": [
-                "-rc", "vbr", "-qp", "20", "-usage", "lowlatency",
-                "-hide_banner", "-nostats",
-            ],
-        }
-    if enc.get("intel"):
-        result["h264_qsv"] = {
-            "codec": "h264_qsv",
-            "pixelformat": "yuv420p",
-            "output_params": [
-                "-preset", "medium", "-global_quality", "22",
-                "-hide_banner", "-nostats",
-            ],
-        }
-    if enc.get("apple"):
-        result["h264_videotoolbox"] = {
-            "codec": "h264_videotoolbox",
-            "pixelformat": "yuv420p",
-            "output_params": ["-b:v", "8M", "-realtime", "true"],
-        }
-    if enc.get("vaapi"):
+
+    def _vt(codec: str, family: str) -> dict[str, Any]:
+        bitrate = {"h264": "8M", "hevc": "6M", "av1": "4M"}[family]
+        params = ["-b:v", bitrate]
+        if family in {"h264", "hevc"}:
+            params += ["-realtime", "true"]
+        return {"codec": codec, "pixelformat": "yuv420p", "output_params": params}
+
+    def _vaapi(codec: str, family: str) -> dict[str, Any]:
         device = os.environ.get("MAESTRO_VAAPI_DEVICE", "/dev/dri/renderD128")
-        result["h264_vaapi"] = {
-            "codec": "h264_vaapi",
-            "pixelformat": "yuv420p",
+        qp = {"h264": "22", "hevc": "24", "av1": "28"}[family]
+        return {
+            "codec": codec, "pixelformat": "yuv420p",
             "output_params": [
-                "-vaapi_device", device, "-rc_mode", "VBR", "-qp", "22",
+                "-vaapi_device", device, "-rc_mode", "VBR", "-qp", qp,
                 "-hide_banner", "-nostats",
             ],
         }
+
+    result: dict[str, dict[str, str]] = {}
+    # FFmpeg uses different infixes than the editor probe's flat flag
+    # name — ``nvidia`` → ``nvenc``, ``apple`` → ``videotoolbox``,
+    # everything else passes through. Mapping it explicitly keeps the
+    # alias names stable for callers that persisted a specific encoder.
+    _ENCODER_SUFFIX = {
+        "nvidia": "nvenc",
+        "amd": "amf",
+        "intel": "qsv",
+        "apple": "videotoolbox",
+        "vaapi": "vaapi",
+    }
+    for backend, family_builder in (
+        ("nvidia", _nvenc),
+        ("amd", _amf),
+        ("intel", _qsv),
+        ("apple", _vt),
+        ("vaapi", _vaapi),
+    ):
+        suffix = _ENCODER_SUFFIX[backend]
+        for family in ("h264", "hevc", "av1"):
+            encoder = f"{family}_{suffix}"
+            if _avail(backend, family):
+                result[encoder] = family_builder(encoder, family)
     return result
 
 

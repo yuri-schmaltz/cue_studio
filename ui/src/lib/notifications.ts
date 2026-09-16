@@ -1,6 +1,6 @@
 import * as api from '../api/client'
 
-export type MaestroNotificationCategory =
+export type CueStudioNotificationCategory =
   | 'completion'
   | 'failure'
   | 'queue'
@@ -17,23 +17,23 @@ export interface DeviceNotificationPreferences {
   notifyQueue: boolean
 }
 
-export interface MaestroAlert {
+export interface CueStudioAlert {
   id: string
   key: string
-  category: MaestroNotificationCategory
+  category: CueStudioNotificationCategory
   title: string
   body: string
   createdAt: number
 }
 
-export interface MaestroNotificationEvent {
+export interface CueStudioNotificationEvent {
   key: string
-  category: MaestroNotificationCategory
+  category: CueStudioNotificationCategory
   title: string
   body: string
   /** Keep the in-app toast but suppress the OS/browser notification. */
   system?: boolean
-  /** Keep the in-app toast but suppress Maestro's device chime. */
+  /** Keep the in-app toast but suppress Cue Studio's device chime. */
   sound?: boolean
   /** Test controls bypass event-category and hidden-tab preferences. */
   force?: boolean
@@ -57,8 +57,8 @@ export interface BackgroundPushState {
   reason: string | null
 }
 
-const PREFS_KEY = 'maestro-notification-preferences-v1'
-const SEEN_KEY = 'maestro-notification-seen-v1'
+const PREFS_KEY = 'cue-studio-notification-preferences-v1'
+const SEEN_KEY = 'cue-studio-notification-seen-v1'
 const MAX_SEEN_KEYS = 240
 
 const DEFAULT_PREFERENCES: DeviceNotificationPreferences = {
@@ -72,7 +72,7 @@ const DEFAULT_PREFERENCES: DeviceNotificationPreferences = {
 }
 
 type PreferenceListener = (preferences: DeviceNotificationPreferences) => void
-type AlertListener = (alert: MaestroAlert) => void
+type AlertListener = (alert: CueStudioAlert) => void
 
 const preferenceListeners = new Set<PreferenceListener>()
 const alertListeners = new Set<AlertListener>()
@@ -121,7 +121,7 @@ export function updateDeviceNotificationPreferences(
     localStorage.setItem(PREFS_KEY, JSON.stringify(preferences))
   } catch {
     // Private browsing and locked-down browsers can deny localStorage.
-    // The preference still applies for the current Maestro session.
+    // The preference still applies for the current Cue Studio session.
   }
   preferenceListeners.forEach(listener => listener(preferences))
   return preferences
@@ -134,7 +134,7 @@ export function subscribeDeviceNotificationPreferences(
   return () => preferenceListeners.delete(listener)
 }
 
-export function subscribeMaestroAlerts(listener: AlertListener): () => void {
+export function subscribeCueStudioAlerts(listener: AlertListener): () => void {
   alertListeners.add(listener)
   return () => alertListeners.delete(listener)
 }
@@ -172,7 +172,7 @@ export function getBrowserNotificationAvailability(): BrowserNotificationAvailab
       ios,
       standalone,
       serviceWorker,
-      reason: 'On iPhone and iPad, open Maestro from an installed Home Screen app—not a Safari or Chrome tab.',
+      reason: 'On iPhone and iPad, open Cue Studio from an installed Home Screen app—not a Safari or Chrome tab.',
     }
   }
 
@@ -184,7 +184,7 @@ export function getBrowserNotificationAvailability(): BrowserNotificationAvailab
       ios,
       standalone,
       serviceWorker,
-      reason: 'System notifications require HTTPS. A phone opening Maestro through a local http:// address is not a secure browser context.',
+      reason: 'System notifications require HTTPS. A phone opening Cue Studio through a local http:// address is not a secure browser context.',
     }
   }
 
@@ -198,7 +198,7 @@ export function getBrowserNotificationAvailability(): BrowserNotificationAvailab
       serviceWorker,
       reason: !serviceWorker
         ? 'This browser does not support the service worker required for mobile notifications.'
-        : 'This browser does not expose notification permission to Maestro.',
+        : 'This browser does not expose notification permission to Cue Studio.',
     }
   }
 
@@ -257,7 +257,7 @@ export async function prepareDeviceNotificationAudio(): Promise<boolean> {
 }
 
 export async function playDeviceNotificationChime(
-  category: MaestroNotificationCategory = 'completion',
+  category: CueStudioNotificationCategory = 'completion',
   volume = preferences.deviceSoundVolume,
 ): Promise<boolean> {
   const context = getAudioContext()
@@ -317,14 +317,14 @@ function markSeen(key: string): boolean {
   return true
 }
 
-let originalTitle = 'Maestro'
+let originalTitle = 'Cue Studio'
 let unseenAlertCount = 0
 let visibilityListenerInstalled = false
 
 function installVisibilityListener() {
   if (visibilityListenerInstalled || typeof document === 'undefined') return
   visibilityListenerInstalled = true
-  originalTitle = document.title || 'Maestro'
+  originalTitle = document.title || 'Cue Studio'
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
       unseenAlertCount = 0
@@ -333,7 +333,7 @@ function installVisibilityListener() {
   })
 }
 
-function updateHiddenTabTitle(category: MaestroNotificationCategory) {
+function updateHiddenTabTitle(category: CueStudioNotificationCategory) {
   if (typeof document === 'undefined' || !document.hidden || category === 'test') return
   installVisibilityListener()
   unseenAlertCount += 1
@@ -341,15 +341,15 @@ function updateHiddenTabTitle(category: MaestroNotificationCategory) {
   document.title = `${marker} ${unseenAlertCount} · ${originalTitle}`
 }
 
-function eventEnabled(category: MaestroNotificationCategory): boolean {
+function eventEnabled(category: CueStudioNotificationCategory): boolean {
   if (category === 'completion') return preferences.notifyCompleted
   if (category === 'failure') return preferences.notifyFailed
   if (category === 'queue') return preferences.notifyQueue
   return category === 'test'
 }
 
-function emitToast(event: MaestroNotificationEvent) {
-  const alert: MaestroAlert = {
+function emitToast(event: CueStudioNotificationEvent) {
+  const alert: CueStudioAlert = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     key: event.key,
     category: event.category,
@@ -368,7 +368,7 @@ async function readyServiceWorker(
     // Registration also happens during app startup. Repeating it here makes
     // the notification test resilient if that first registration was
     // interrupted while the page was loading or updating.
-    await navigator.serviceWorker.register('/maestro-sw.js', { scope: '/' })
+    await navigator.serviceWorker.register('/cue-studio-sw.js', { scope: '/' })
     return await Promise.race([
       navigator.serviceWorker.ready,
       new Promise<null>(resolve => window.setTimeout(() => resolve(null), timeoutMs)),
@@ -446,7 +446,7 @@ export async function enableBackgroundPush(
   }
   const host = await api.fetchWebPushStatus()
   if (!host.supported) {
-    throw new Error(host.reason || 'Background Web Push is unavailable on this Maestro host.')
+    throw new Error(host.reason || 'Background Web Push is unavailable on this Cue Studio host.')
   }
   const registration = await readyServiceWorker()
   if (!registration || !('pushManager' in registration)) {
@@ -526,7 +526,7 @@ export async function testBackgroundPush(): Promise<boolean> {
   return result.delivered > 0
 }
 
-async function showBrowserNotification(event: MaestroNotificationEvent): Promise<boolean> {
+async function showBrowserNotification(event: CueStudioNotificationEvent): Promise<boolean> {
   const availability = getBrowserNotificationAvailability()
   if (
     !availability.supported
@@ -542,8 +542,8 @@ async function showBrowserNotification(event: MaestroNotificationEvent): Promise
     try {
       await registration.showNotification(event.title, {
         body: event.body,
-        icon: '/maestro-icon.png',
-        badge: '/maestro-icon.png',
+        icon: '/cue-studio-icon-192.png',
+        badge: '/cue-studio-icon-192.png',
         tag: event.key,
         silent: true,
         data: { url: window.location.href },
@@ -558,7 +558,7 @@ async function showBrowserNotification(event: MaestroNotificationEvent): Promise
   try {
     const notification = new Notification(event.title, {
       body: event.body,
-      icon: '/maestro-icon.png',
+      icon: '/cue-studio-icon-192.png',
       tag: event.key,
       silent: true,
     })
@@ -576,7 +576,7 @@ async function showBrowserNotification(event: MaestroNotificationEvent): Promise
  * Publish one user-facing terminal event. The key makes polling reconnects,
  * React Strict Mode, and Director/queue views idempotent.
  */
-export function announceMaestroEvent(event: MaestroNotificationEvent): boolean {
+export function announceCueStudioEvent(event: CueStudioNotificationEvent): boolean {
   if (!event.force && !markSeen(event.key)) return false
   if (event.force) markSeen(event.key)
 
@@ -604,15 +604,15 @@ export async function testBrowserNotification(): Promise<boolean> {
   const permission = await requestBrowserNotificationPermission()
   if (permission !== 'granted') return false
   updateDeviceNotificationPreferences({ browserNotifications: true })
-  const event: MaestroNotificationEvent = {
+  const event: CueStudioNotificationEvent = {
     key: `test-browser-${Date.now()}`,
     category: 'test',
-    title: 'Maestro notifications are ready',
+    title: 'Cue Studio notifications are ready',
     body: 'Completion and failure alerts will appear on this device.',
     system: false,
     sound: false,
     force: true,
   }
-  announceMaestroEvent(event)
+  announceCueStudioEvent(event)
   return await showBrowserNotification(event)
 }

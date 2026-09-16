@@ -1,5 +1,13 @@
 # Maestro v2.1
 
+> **Update — 2026-09-15.** This document was originally written when
+> the project was still named Maestro. As of the v2.1 patch release
+> on 2026-09-15, the project has been renamed to **Cue Studio**. The
+> product identity (Director / Studio / Editor modes, theme family,
+> backend pipeline) is unchanged. See the [Rebrand](#rebrand)
+> section below for the visual identity refresh and compatibility
+> shims. The historical release notes below are preserved verbatim.
+
 The v2.1 patch promotes the technical "Project Setup" choices from a
 per-pipeline sidebar to a per-project configuration. Every project now
 bakes in its own aspect ratio, resolution, workflow mode, video + image
@@ -102,3 +110,102 @@ Field semantics:
   preserves whatever aspect ratio + resolution the user had when
   the pipeline ran. The new Project Setup applies only on the next
   fresh planning session.
+
+## Rebrand
+
+Cue Studio v2.1 also renames the project from **Maestro** to **Cue
+Studio**. The product identity, feature set, theme family, and
+backend pipeline are unchanged. This is a visual and naming refresh
+that repositions the product as a cinematography-first local AI
+studio.
+
+### Why the rename
+
+"Maestro" was evocative but generic — there are dozens of products in
+finance, education, and music called Maestro. The product's actual
+identity is **a cinematography-first local AI studio**: it plans
+shots (Director Mode), writes screenplays, syncs generation to
+musical beats, edits on a multi-track timeline, and ships a
+warm-cinematic default theme called Golden Hour. The new name,
+**Cue Studio**, signals that identity directly:
+
+- **Cue** — the universal film/TV/audio signal for "this is your
+  starting point". In the Director music-video workflow the LLM
+  literally plans shots against musical cues; in the Short Film
+  workflow it plans against story beats. The word is short, ownable,
+  and immediately legible to anyone who has been on a film set or
+  spent ten minutes in a DAW.
+- **Studio** — the promise of a complete creation surface, not just a
+  generator. The app already is a studio (Director + Studio + Editor
+  modes), and the name makes that explicit.
+
+### Visual identity
+
+**Logo — Direction B (monogram + take marker).** The new glyph is a
+rounded square with two primitives inside: an open circle bisected by
+a horizontal bar. That shape reads as a **take marker** — the
+universal symbol on a clapperboard for "this is the take we're
+rolling". It is visually distinct from a play button (the circle is
+open, not filled) and from a record dot (the bar is inside, not
+above). The glyph scales cleanly from 16×16 (favicon) to 1024×1024
+(PWA home icon) because it has no fine detail.
+
+**Wordmark.** `Cue` is set in warm amber (`#f59e0b`) at bold weight,
+paired with `Studio` in muted cream (`#9898a8`) at regular weight.
+The two-color treatment keeps the brand readable when scaled down
+and makes the "Cue" portion the recognizable element when the
+wordmark is truncated.
+
+### Default palette migration
+
+The Classic theme now ships with **amber/gold accents** instead of
+cool blue. This aligns the default theme with the warm-cinematic
+identity already established by Golden Hour, eliminates the prior
+tension between the blue accent and the warm Golden Hour default,
+and creates a coherent brand color that runs through every theme:
+
+| Theme | Accent family | Notes |
+|---|---|---|
+| Classic (default, dark) | Amber → gold | New brand default |
+| Golden Hour | Red → orange → amber (sunset) | Unchanged |
+| Daylight (Classic light) | Burnt orange → amber | Updated to match |
+| Ivory (Golden Hour light) | Burnt orange → deep amber | Unchanged |
+| Onyx | Monochrome | Unchanged |
+| Pearl | Monochrome | Unchanged |
+
+### Compatibility shims
+
+The rebrand preserves all backwards-compatibility entry points so
+existing installs and integrations don't break:
+
+- **Console scripts:** `cue-studio`, `cue`, and `maestro` all
+  delegate to the same entry point (`maestro_cli:main`).
+- **PWA manifest:** the installable app's `name` and `short_name`
+  are "Cue Studio" / "Cue". The `id` stays `/` so existing
+  installations are recognized as the same app rather than as a new
+  install.
+- **localStorage theme keys:** legacy `maestro-theme*` keys continue
+  to resolve. New writes go to `cue-theme*` keys. The boot script
+  migrates them transparently.
+- **API routes:** `/api/v1/*` paths are unchanged. The app-name
+  reported in `/api/v1/settings` is now `Cue Studio`.
+- **Window/document.title:** updated to "Cue Studio".
+- **Favicon:** served from `/cue-studio-icon.svg` (the SVG is the
+  canonical asset; the previous `maestro.svg` is preserved on disk
+  as a legacy alias during the transition period).
+
+### New assets
+
+- `ui/public/cue-studio.svg` — wordmark (220×64).
+- `ui/public/cue-studio-icon.svg` — favicon / PWA icon (64×64,
+  vector, scales to any size).
+
+### Validation
+
+The rebrand was validated against:
+
+- `npm run build` — clean build of the UI (TypeScript + Vite).
+- `npm run lint` — clean ESLint pass.
+- `node scripts/store-gauntlet.mjs` — six store suites pass.
+- `node scripts/control-gauntlet.mjs` — two control phases pass.
+- `pytest` — full Python test suite passes.

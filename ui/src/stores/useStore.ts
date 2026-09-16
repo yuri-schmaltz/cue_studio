@@ -81,7 +81,7 @@ let _directorPipelineAttachToken = 0
 let _directorPipelineReconnectAttempted = false
 let _directorPipelinePollToken = 0
 let _h3WindowOverrideSaveTask: Promise<void> = Promise.resolve()
-const STUDIO_VIDEO_CREATE_ROUTE_KEY = 'maestro_studio_video_create_route_v1'
+const STUDIO_VIDEO_CREATE_ROUTE_KEY = 'cue-studio_studio_video_create_route_v1'
 
 type StudioVideoRoutePreferences = {
   route: StudioVideoCreateRoute
@@ -682,7 +682,7 @@ const DEFAULTS_ADDED_IN: Record<number, string[]> = {
   // Experimental MATLOWAI fused four-step H3 Frames + References variants.
   11: ['minimax_h3_fused_turbo', 'minimax_h3_ref2va_fused_turbo'],
 }
-const DEFAULTS_VERSION_KEY = 'maestro_defaults_version'
+const DEFAULTS_VERSION_KEY = 'cue-studio_defaults_version'
 
 /* The music default changed in v1.2.0 (Turbo LM_4B -> SFT LM_4B).
  * A saved selection equal to the OLD default means the user was riding
@@ -692,7 +692,7 @@ const DEFAULTS_VERSION_KEY = 'maestro_defaults_version'
 const OLD_MUSIC_DEFAULT = 'ace_step_v1_5_xl_turbo_lm_4b'
 const NEW_MUSIC_DEFAULT = 'ace_step_v1_5_xl_sft_lm_4b'
 
-const ENABLED_MODELS_KEY = 'maestro_enabled_models'
+const ENABLED_MODELS_KEY = 'cue-studio_enabled_models'
 let _modelVisibilitySaveTask: Promise<void> = Promise.resolve()
 
 function _saveEnabledModels(models: Set<string>) {
@@ -4458,7 +4458,7 @@ export const useStore = create<AppState>((set, get, store) => ({
 
   restoreGenerationReview: async () => {
     if (get().reviewBusy || get().reviewPlan) return
-    const id = localStorage.getItem('maestro-pending-generation-review')
+    const id = localStorage.getItem('cue-studio-pending-generation-review')
     if (!id) return
     const token = ++_reviewRequestToken
     set({ reviewBusy: true })
@@ -4473,7 +4473,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (result.status === 'ready' && result.prepared) {
         set({ reviewPlan: resolvedGenerationPlan(get(), { id: result.id, prepared: result.prepared }), reviewAction: 'generate' })
       } else {
-        localStorage.removeItem('maestro-pending-generation-review')
+        localStorage.removeItem('cue-studio-pending-generation-review')
         if (result.status === 'failed') set({ promptEnhanceError: result.error || 'Planning was interrupted. Prepare a new review.' })
       }
     } catch (error) {
@@ -4492,7 +4492,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (plan.reviewId) {
         await api.submitGenerationReview(plan.reviewId, target === 'queue')
         await get().reconnectJobs()
-        localStorage.removeItem('maestro-pending-generation-review')
+        localStorage.removeItem('cue-studio-pending-generation-review')
       } else if (snapshot) {
         await get().startGeneration(target === 'queue' ? 'queue' : 'now', snapshot)
       }
@@ -4509,7 +4509,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     if (get().reviewBusy && get().reviewPlan) return
     ++_reviewRequestToken
     _reviewSnapshot = null
-    localStorage.removeItem('maestro-pending-generation-review')
+    localStorage.removeItem('cue-studio-pending-generation-review')
     set({ reviewBusy: false, reviewPlan: null, reviewAction: null })
   },
 
@@ -6496,7 +6496,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       params._review_original_prompt = state.params._h3_original_prompt || state.params._ltx_original_prompt || state.params.prompt
       const created = await api.prepareGenerationReview(params)
       if (token !== _reviewRequestToken) return
-      localStorage.setItem('maestro-pending-generation-review', created.id)
+      localStorage.setItem('cue-studio-pending-generation-review', created.id)
       let resolved = created
       while (resolved.status === 'planning') {
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -6957,8 +6957,15 @@ export const useStore = create<AppState>((set, get, store) => ({
   },
 
   // Settings tab
-  settingsTab: 'performance' as SettingsTab,
+  settingsTab: 'appearance' as SettingsTab,
   setSettingsTab: (tab) => set({ settingsTab: tab }),
+
+  // Model visibility focus — opens Settings on the Performance tab and
+  // remembers which mode the ModelSelector "+N more" hint came from.
+  // Implementation lives next to other settings actions above.
+  modelVisibilityFocus: null,
+  openModelVisibility: (mode) => set({ settingsOpen: true, settingsTab: 'performance', modelVisibilityFocus: mode }),
+  clearModelVisibilityFocus: () => set({ modelVisibilityFocus: null }),
 
   // Services config
   servicesConfig: null,
@@ -7060,10 +7067,10 @@ export const useStore = create<AppState>((set, get, store) => ({
   reviewAction: null,
   reviewBusy: false,
   reviewBeforeGenerate: (() => {
-    try { return localStorage.getItem('maestro-review-before-generate') !== '0' } catch { return false }
+    try { return localStorage.getItem('cue-studio-review-before-generate') !== '0' } catch { return false }
   })(),
   setReviewBeforeGenerate: (enabled) => {
-    try { localStorage.setItem('maestro-review-before-generate', enabled ? '1' : '0') } catch { /* private mode */ }
+    try { localStorage.setItem('cue-studio-review-before-generate', enabled ? '1' : '0') } catch { /* private mode */ }
     set({ reviewBeforeGenerate: enabled })
   },
   updateH3WindowPrompt: (index, prompt) => set(s => {
@@ -7608,7 +7615,7 @@ export const useStore = create<AppState>((set, get, store) => ({
   workspaceUnifiedDirector: (() => {
     try {
       if (typeof window === 'undefined' || !window.localStorage) return true
-      const raw = window.localStorage.getItem('maestro.workspaceUnifiedDirector')
+      const raw = window.localStorage.getItem('cue-studio.workspaceUnifiedDirector')
       if (raw === null || raw === undefined) return true
       return raw === '1'
     } catch {
@@ -8015,7 +8022,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.setItem(
-          'maestro.workspaceUnifiedDirector',
+          'cue-studio.workspaceUnifiedDirector',
           enabled ? '1' : '0',
         )
       }
@@ -9553,10 +9560,10 @@ export const useStore = create<AppState>((set, get, store) => ({
   setStorageDashboardOpen: (open) => set({ storageDashboardOpen: open }),
 
   loraPickerSort: (() => {
-    try { return localStorage.getItem('maestro_lora_picker_sort') === 'newest' ? 'newest' as const : 'name' as const } catch { return 'name' as const }
+    try { return localStorage.getItem('cue-studio_lora_picker_sort') === 'newest' ? 'newest' as const : 'name' as const } catch { return 'name' as const }
   })(),
   setLoraPickerSort: (sort) => {
-    try { localStorage.setItem('maestro_lora_picker_sort', sort) } catch { /* private mode */ }
+    try { localStorage.setItem('cue-studio_lora_picker_sort', sort) } catch { /* private mode */ }
     set({ loraPickerSort: sort })
   },
 

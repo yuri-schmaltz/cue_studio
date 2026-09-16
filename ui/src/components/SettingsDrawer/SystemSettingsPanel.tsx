@@ -4,7 +4,6 @@ import type { ModelFolderCandidate } from '../../types'
 import { useStore, getFamiliesForMode, getModelsForFamily } from '../../stores/useStore'
 import * as api from '../../api/client'
 import type { GenerationMode } from '../../types'
-import { FAMILIES, resolveVariant, onOsThemeChange, type FamilyId, type ThemeMode } from '../../lib/theme'
 
 const profileLabels: Record<string, string> = {
   '1': 'Profile 1: High RAM + High VRAM',
@@ -67,7 +66,7 @@ const MODE_LABELS: { mode: GenerationMode; label: string }[] = [
 // Family collapse state persists so "collapse the families I never use"
 // (issue #14) sticks across sessions — unlike the mode groups, which are
 // navigational and reset each visit.
-const COLLAPSED_FAMILIES_KEY = 'maestro-collapsed-model-families'
+const COLLAPSED_FAMILIES_KEY = 'cue-studio-collapsed-model-families'
 
 function ModelVisibilitySection() {
   const models = useStore(s => s.models)
@@ -143,11 +142,12 @@ function ModelVisibilitySection() {
     }
   }, [])
 
-  // When the ModelSelector "+N more" hint fires, open this section, expand
-  // the requested mode, and scroll it into view — then clear the request.
+  // When the ModelSelector "+N more" hint fires, expand the requested
+  // mode and scroll it into view — then clear the request. The section
+  // is always visible now (the parent .settings-group-header owns the
+  // collapse affordance for "Enabled Models" as a whole).
   useEffect(() => {
     if (!modelVisibilityFocus) return
-    setOpen(true)
     setExpandedModes(prev => new Set(prev).add(modelVisibilityFocus))
     requestAnimationFrame(() => sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
     clearModelVisibilityFocus()
@@ -224,24 +224,29 @@ function ModelVisibilitySection() {
 
   return (
     <div ref={sectionRef} className="scroll-mt-2">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs text-text-secondary uppercase tracking-wider font-medium hover:text-text-primary transition-colors w-full"
-      >
-        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span className="flex-1 text-left">Enabled Models</span>
-        <span className="text-2xs text-text-muted font-normal normal-case flex items-center gap-1.5">
-          {enabledCount}/{totalCount}
-          <span className="text-text-muted">|</span>
-          <span className="flex items-center gap-0.5">
-            <Download size={9} />
-            {downloadedCount}
+      {/* Compact summary bar — counts only. The full "Enabled Models"
+          heading lives in the parent's .settings-group-header (rendered
+          once). Hide/Show collapse stays here because the model list is
+          genuinely long. */}
+      <div className="flex items-center justify-between mb-3 text-2xs text-text-muted">
+        <span className="flex items-center gap-1.5">
+          <span className="tabular-nums">{enabledCount}/{totalCount} enabled</span>
+          <span className="text-text-muted">·</span>
+          <span className="flex items-center gap-0.5 tabular-nums">
+            <Download size={9} /> {downloadedCount} downloaded
           </span>
         </span>
-      </button>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-2xs text-text-secondary hover:text-text-primary transition-colors"
+          aria-label={open ? 'Hide enabled models' : 'Show enabled models'}
+        >
+          {open ? 'Hide' : 'Show'}
+        </button>
+      </div>
 
       {open && (
-      <div className="mt-3 space-y-3">
+      <div className="space-y-3">
       <div className="flex gap-2">
         <button
           onClick={resetEnabledModels}
@@ -464,17 +469,23 @@ function LinkedModelFoldersSection() {
 
   return (
     <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs text-text-secondary uppercase tracking-wider font-medium hover:text-text-primary transition-colors w-full"
-      >
-        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span className="flex-1 text-left">Linked Model Folders</span>
-        <span className="text-2xs text-text-muted font-normal normal-case">{folders.length} linked</span>
-      </button>
+      {/* Compact summary — counts only. The full "Linked Model Folders"
+          heading lives in the parent's .settings-group-header (rendered
+          once). Hide/Show collapse stays here because the linked list
+          can grow long. */}
+      <div className="flex items-center justify-between mb-3 text-2xs text-text-muted">
+        <span className="tabular-nums">{folders.length} linked</span>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-2xs text-text-secondary hover:text-text-primary transition-colors"
+          aria-label={open ? 'Hide linked folders' : 'Show linked folders'}
+        >
+          {open ? 'Hide' : 'Show'}
+        </button>
+      </div>
 
       {open && (
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
           <p className="text-2xs text-text-muted leading-relaxed">
             Search other apps&apos; model folders for checkpoints you already have — e.g. an existing
             Wan2GP install — instead of re-downloading them. Linked folders are read-only:
@@ -579,85 +590,6 @@ function SelectField({ label, value, options, onChange }: {
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
-    </div>
-  )
-}
-
-function ThemeSection() {
-  const prefs = useStore(s => s.themePrefs)
-  const setThemeMode = useStore(s => s.setThemeMode)
-  const setThemeFamily = useStore(s => s.setThemeFamily)
-  // Re-render when the OS flips its scheme while in auto mode so the
-  // swatch and hint track the effective variant.
-  const [, setOsTick] = useState(0)
-  useEffect(() => onOsThemeChange(() => setOsTick(n => n + 1)), [])
-
-  const family = FAMILIES.find(f => f.id === prefs.family) ?? FAMILIES[0]
-  const variant = resolveVariant(prefs)
-  // Swatch previews the variant the mode currently resolves to, so
-  // toggling Dark/Light/Auto updates the preview immediately.
-  const swatch = family[variant].swatch
-  const modes: { value: ThemeMode; label: string }[] = [
-    { value: 'dark', label: 'Dark' },
-    { value: 'light', label: 'Light' },
-    { value: 'auto', label: 'Auto' },
-  ]
-
-  return (
-    <div className="space-y-3">
-      <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Appearance</h3>
-      <div>
-        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-          Mode
-        </label>
-        <div className="flex rounded-lg border border-border overflow-hidden">
-          {modes.map(m => (
-            <button
-              key={m.value}
-              onClick={() => setThemeMode(m.value)}
-              className={`flex-1 px-3 py-1.5 text-xs transition-colors ${
-                prefs.mode === m.value
-                  ? 'bg-accent-blue text-white'
-                  : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-        {prefs.mode === 'auto' && (
-          <p className="text-2xs text-text-muted mt-1.5">
-            Follows your system's appearance — currently {variant}.
-          </p>
-        )}
-      </div>
-      <div>
-        <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-          Theme
-        </label>
-        <div className="flex items-center gap-2">
-          {/* Swatch — three colors stacked horizontally for a quick
-              preview of the bg / surface / accent palette of the
-              variant currently in effect. */}
-          <div className="flex shrink-0 rounded-md overflow-hidden border border-border">
-            <div className="w-3 h-7" style={{ background: swatch.bg }} />
-            <div className="w-3 h-7" style={{ background: swatch.surface }} />
-            <div className="w-3 h-7" style={{ background: swatch.accent }} />
-          </div>
-          <select
-            value={family.id}
-            onChange={e => setThemeFamily(e.target.value as FamilyId)}
-            className="flex-1 bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-          >
-            {FAMILIES.map(f => (
-              <option key={f.id} value={f.id}>{f.label}</option>
-            ))}
-          </select>
-        </div>
-        <p className="text-2xs text-text-muted mt-1.5">
-          {family.description}
-        </p>
-      </div>
     </div>
   )
 }
@@ -783,11 +715,8 @@ function AutoPerformanceCard() {
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
-        <div className="rounded-lg bg-bg-tertiary border border-border p-3 text-xs text-text-muted flex items-center gap-2">
-          <Loader2 size={12} className="animate-spin" /> Detecting hardware...
-        </div>
+      <div className="settings-card text-xs text-text-muted flex items-center gap-2">
+        <Loader2 size={12} className="animate-spin" /> Detecting hardware...
       </div>
     )
   }
@@ -797,10 +726,7 @@ function AutoPerformanceCard() {
   const cudaOK = !!hw?.cuda_available
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
-
-      <div className="rounded-lg bg-bg-tertiary border border-border p-3 space-y-2.5">
+    <div className="settings-card">
         {/* Hardware readout — GPU name, VRAM, RAM */}
         <div className="flex items-start gap-2">
           <Cpu size={16} className="text-text-secondary shrink-0 mt-0.5" />
@@ -866,7 +792,6 @@ function AutoPerformanceCard() {
           </div>
         )}
       </div>
-    </div>
   )
 }
 
@@ -919,13 +844,12 @@ export function SystemSettingsPanel() {
 
   // Render the Performance + Profiles fields. Used both inside the
   // advanced expander (when auto is on) and inline (when auto is off).
+  // Sub-section labels are smaller than the group's own h3 to avoid
+  // competing visually with "Advanced" in the settings-group-header.
   const renderAdvancedFields = () => (
     <>
-      {/* Performance */}
       <div className="space-y-4">
-        {!autoOn && (
-          <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Performance</h3>
-        )}
+        <div className="text-2xs uppercase tracking-wider text-text-muted font-semibold">Performance</div>
 
         <SelectField
           label="Attention Mode"
@@ -975,9 +899,8 @@ export function SystemSettingsPanel() {
 
       <hr className="border-border" />
 
-      {/* Profiles */}
       <div className="space-y-4">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Profiles</h3>
+        <div className="text-2xs uppercase tracking-wider text-text-muted font-semibold">Profiles</div>
 
         <SelectField
           label="Video Profile"
@@ -1045,14 +968,10 @@ export function SystemSettingsPanel() {
           advanced cards stay collapsed when Auto is on.</p>
       </header>
 
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Appearance</h3>
-          <p>Theme family and dark/light/auto switch.</p>
-        </div>
-        <ThemeSection />
-      </div>
-
+      {/* Enabled Models is the only full-width group in Performance —
+          the model list is genuinely long, and a 2-col layout would
+          leave one column mostly empty. The other four groups are
+          short cards that pair well side by side. */}
       <div className="settings-group">
         <div className="settings-group-header">
           <h3>Enabled Models</h3>
@@ -1062,65 +981,72 @@ export function SystemSettingsPanel() {
         <ModelVisibilitySection />
       </div>
 
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Linked Model Folders</h3>
-          <p>Reuse checkpoints from other installs without re-downloading.</p>
-        </div>
-        <LinkedModelFoldersSection />
-      </div>
-
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Hardware & Auto-Tune</h3>
-          <p>Detected GPU and the recommended profile. Auto applies
-            the safest defaults on first launch.</p>
-        </div>
-        <AutoPerformanceCard />
-      </div>
-
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Advanced</h3>
-          <p>Attention mode, quantization, profile and VRAM headroom.
-            Only visible when Auto-Tune is off, or when explicitly
-            expanded.</p>
-        </div>
-        {autoOn ? (
-          <div className="settings-card">
-            <button
-              onClick={() => setAdvancedOpen(o => !o)}
-              className="settings-button settings-button-ghost"
-              style={{ width: '100%', justifyContent: 'flex-start' }}
-            >
-              {advancedOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-              {advancedOpen ? 'Hide' : 'Show'} advanced settings
-            </button>
-            {advancedOpen && renderAdvancedFields()}
+      {/* Two-column zone. Column A groups the "static / read-mostly"
+          controls (linked folders, codecs); Column B groups the
+          "interactive / write-mostly" controls (auto-tune, advanced).
+          The vertical split follows the natural reading order: scan
+          what's installed first, then tune what's running. */}
+      <div className="settings-columns">
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>Linked Model Folders</h3>
+            <p>Reuse checkpoints from other installs without re-downloading.</p>
           </div>
-        ) : (
-          <div className="settings-card">{renderAdvancedFields()}</div>
-        )}
-      </div>
-
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Output Codecs</h3>
-          <p>Container and pixel format for finished renders.</p>
+          <LinkedModelFoldersSection />
         </div>
-        <div className="settings-card">
-          <SelectField
-            label="Video Codec"
-            value={systemConfig.video_output_codec}
-            options={videoCodecOptions}
-            onChange={val => updateConfig({ video_output_codec: val })}
-          />
-          <SelectField
-            label="Image Codec"
-            value={systemConfig.image_output_codec}
-            options={imageCodecOptions}
-            onChange={val => updateConfig({ image_output_codec: val })}
-          />
+
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>Hardware & Auto-Tune</h3>
+            <p>Detected GPU and the recommended profile. Auto applies
+              the safest defaults on first launch.</p>
+          </div>
+          <AutoPerformanceCard />
+        </div>
+
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>Advanced</h3>
+            <p>Attention mode, quantization, profile and VRAM headroom.
+              Only visible when Auto-Tune is off, or when explicitly
+              expanded.</p>
+          </div>
+          {autoOn ? (
+            <div className="settings-card">
+              <button
+                onClick={() => setAdvancedOpen(o => !o)}
+                className="settings-button settings-button-ghost"
+                style={{ width: '100%', justifyContent: 'flex-start' }}
+              >
+                {advancedOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                {advancedOpen ? 'Hide' : 'Show'} advanced settings
+              </button>
+              {advancedOpen && renderAdvancedFields()}
+            </div>
+          ) : (
+            <div className="settings-card">{renderAdvancedFields()}</div>
+          )}
+        </div>
+
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>Output Codecs</h3>
+            <p>Container and pixel format for finished renders.</p>
+          </div>
+          <div className="settings-card">
+            <SelectField
+              label="Video Codec"
+              value={systemConfig.video_output_codec}
+              options={videoCodecOptions}
+              onChange={val => updateConfig({ video_output_codec: val })}
+            />
+            <SelectField
+              label="Image Codec"
+              value={systemConfig.image_output_codec}
+              options={imageCodecOptions}
+              onChange={val => updateConfig({ image_output_codec: val })}
+            />
+          </div>
         </div>
       </div>
     </section>

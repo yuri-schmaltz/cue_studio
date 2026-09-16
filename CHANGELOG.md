@@ -1,4 +1,15 @@
-# Maestro Changelog
+# Cue Studio Changelog
+
+> **Rebrand — 2026-09-15.** Maestro is now **Cue Studio**. The product
+> identity, feature set, theme family, and backend pipeline are
+> unchanged. The rebrand refreshes the visual identity (warm-cinematic
+> monogram with a "take marker" glyph, amber-on-charcoal default
+> palette) and updates the public-facing name from "Maestro" to "Cue
+> Studio" to better signal the cinematography-first positioning. The
+> `maestro` console command and `maestro-*` legacy localStorage keys
+> remain as compatibility shims; new installs use `cue-studio` and
+> `cue-*`. See [docs/RELEASE_NOTES_V2.1.md](docs/RELEASE_NOTES_V2.1.md)
+> for the full rebrand notes.
 
 ## Refactor — 2026-09-14 (configurations layout primitives)
 

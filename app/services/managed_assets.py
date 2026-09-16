@@ -9,7 +9,7 @@ import uuid
 
 
 _RECEIPT_SCHEMA_VERSION = 1
-_RECEIPT_SUFFIX = ".maestro-managed.json"
+_RECEIPT_SUFFIX = ".cue-studio-managed.json"
 
 
 def managed_asset_receipt_path(path: str) -> str:

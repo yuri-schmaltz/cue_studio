@@ -67,15 +67,15 @@ def test_default_projects_root_falls_back_to_movies(monkeypatch, _no_xdg):
 
 
 def test_default_projects_root_creates_fallback_when_no_videos(monkeypatch, _no_xdg):
-    """With neither Videos nor Movies present, we create ~/MaestroProjects."""
+    """With neither Videos nor Movies present, we create ~/CueStudioProjects."""
     from launch import _default_projects_root
 
     with tempfile.TemporaryDirectory() as tmp:
         home = Path(tmp)
         monkeypatch.setattr(Path, "home", lambda: home)
         result = _default_projects_root()
-        assert result == str((home / "MaestroProjects").resolve())
-        assert (home / "MaestroProjects").is_dir()
+        assert result == str((home / "CueStudioProjects").resolve())
+        assert (home / "CueStudioProjects").is_dir()
 
 
 # ── XDG user-dirs (locale-aware videos folder) ─────────────────────────

@@ -26,7 +26,7 @@ from typing import Any, Callable, Mapping, Optional
 
 
 EDITOR_SCHEMA_VERSION = 5
-EDITOR_PROJECT_DIR = ".maestro_editor"
+EDITOR_PROJECT_DIR = ".cue_studio_editor"
 EDITOR_MEDIA_CACHE_DIR = "media_cache"
 EDITOR_MEDIA_PREVIEW_VERSION = 3
 _PROJECT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")

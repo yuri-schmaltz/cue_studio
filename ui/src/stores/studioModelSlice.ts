@@ -99,7 +99,7 @@ export function createStudioModelSlice(
   modelVisibilityFocus: null,
   openModelVisibility: (mode) => set({
     settingsOpen: true,
-    settingsTab: 'performance',
+    settingsTab: 'appearance',
     modelVisibilityFocus: mode,
   }),
   clearModelVisibilityFocus: () => set({ modelVisibilityFocus: null }),

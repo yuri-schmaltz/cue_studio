@@ -61,11 +61,11 @@ export function LoraBrowser() {
   // Sticky across sessions (localStorage) — the master nsfw_mode gate below
   // still applies, so a persisted "on" is inert until Mature Mode is enabled.
   const [nsfw, setNsfw] = useState(() => {
-    try { return localStorage.getItem('maestro_civitai_nsfw') === '1' } catch { return false }
+    try { return localStorage.getItem('cue-studio_civitai_nsfw') === '1' } catch { return false }
   })
   const setNsfwSticky = (v: boolean) => {
     setNsfw(v)
-    try { localStorage.setItem('maestro_civitai_nsfw', v ? '1' : '0') } catch { /* private mode */ }
+    try { localStorage.setItem('cue-studio_civitai_nsfw', v ? '1' : '0') } catch { /* private mode */ }
   }
   // Master gate from Settings → Services. NSFW filter UI + data flow
   // is only honored when the user has enabled NSFW mode (which itself

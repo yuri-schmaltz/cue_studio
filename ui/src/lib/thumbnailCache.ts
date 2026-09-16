@@ -1,4 +1,4 @@
-const DB_NAME = 'maestro-thumbnails'
+const DB_NAME = 'cue-studio-thumbnails'
 const STORE_NAME = 'thumbnails'
 const DB_VERSION = 1
 

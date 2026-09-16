@@ -204,8 +204,7 @@ function NsfwToggleSection() {
 
   return (
     <>
-      <div className="space-y-3">
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium">Content Settings</h3>
+      <div className="settings-card">
         <div
           className={`flex items-center justify-between ${isPublicProvider ? '' : 'cursor-pointer'} group`}
           onClick={handleToggle}
@@ -301,11 +300,11 @@ export function ServicesSettingsPanel() {
           what you don't use and Maestro will skip it.</p>
       </header>
 
-      {/* Beta-features toggle moved to the bottom of this panel. See
-          the "BETA FEATURES" section near the end of the return for
-          rationale on the demotion + restyle. */}
-
-      {/* LLM Provider */}
+      {/* LLM Configuration is the most-decision-heavy block in this
+          panel — provider, model, URL, key, device. It sits full-width
+          at the top so the user can scan and edit all of it on one
+          horizontal row before scrolling. The remaining groups are
+          short toggles/selects that pair well side by side. */}
       <div className="settings-group">
         <div className="settings-group-header">
           <h3>LLM Configuration</h3>
@@ -457,339 +456,349 @@ export function ServicesSettingsPanel() {
         </div>
       </div>
 
-      {/* Studio Prompt Enhancer — experimental gate. Default UI uses
-          the Director LLM for the sparkle button without exposing the
-          full enhancer/Wan2GP-alternative config; advanced users opt
-          in via the Experimental toggle to reach this. */}
-      {servicesConfig.show_experimental && <>
-      <hr className="border-border" />
-
-      {/* Prompt Enhancer */}
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Studio Prompt Enhancer</h3>
-          <p>The sparkle button in Studio mode. Uses model-specific
-            prompt guides for best results. Set a separate LLM here
-            or leave empty to use the Director LLM above.</p>
-        </div>
-        <div className="settings-card">
-        <div>
-          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-            Enhance LLM Model
+      {/* Two-column zone. Column A groups the engine/runtime knobs
+          (Director, Enhancer, Beta gate). Column B isolates the two
+          content/safety controls (NSFW + FlashVSR) — per the user's
+          request, NSFW stays isolated on the right so it reads as a
+          separate "what is allowed to be generated" concern. The
+          Beta Features toggle lives in column A near the Enhancer
+          it gates. */}
+      <div className="settings-columns">
+        {/* ── Column A ── */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>Director Architecture</h3>
+            <p>v2 is the default engine. Toggle off to fall back to v1
+              if you hit regressions.</p>
+          </div>
+          <div className="settings-card">
+          {/* Director v2 Engine toggle. v2 became the default 2026-05-03
+              after weeks of real-world validation showed it's more
+              reliable than v1 (v1 had a polish-pass failure mode where
+              smaller LLMs would hallucinate dialogue into image_prompts).
+              No longer behind the experimental gate — toggle is always
+              visible so users who hit issues with v2 can revert to v1
+              without first enabling experimental mode. */}
+          <label className="flex items-center justify-between cursor-pointer group">
+            <div className="flex-1 mr-3">
+              <div className="text-sm text-text-primary group-hover:text-accent-blue transition-colors">
+                Director v2 Engine <span className="text-2xs text-text-muted font-normal">(default)</span>
+              </div>
+              <div className="text-2xs text-text-muted mt-0.5">
+                Layered architecture with structured shot planning, mode-specific renderers, and prompt validation.
+                Supports Podcast and Viral Video skills. Turn off to use the legacy v1 engine.
+              </div>
+            </div>
+            <div
+              onClick={() => updateConfig({ use_director_v2: !servicesConfig.use_director_v2 })}
+              className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
+                servicesConfig.use_director_v2 ? 'bg-accent-blue' : 'bg-bg-tertiary border border-border'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border border-border shadow transition-transform ${
+                servicesConfig.use_director_v2 ? 'translate-x-4' : 'translate-x-0.5'
+              }`} />
+            </div>
           </label>
-          <select
-            value={servicesConfig.enhance_llm_model_id || ''}
-            onChange={e => updateConfig({ enhance_llm_model_id: e.target.value })}
-            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-          >
-            <option value="">Same as Director LLM</option>
-            {llmModels.map(m => (
-              <option key={m.id} value={m.id}>
-                {m.label} ({m.size_hint})
-              </option>
-            ))}
-          </select>
-          <p className="text-2xs text-text-muted mt-1">
-            {servicesConfig.enhance_llm_model_id
-              ? 'Separate LLM for Studio enhancement — lighter/faster than Director.'
-              : 'Using the Director LLM for enhancement (may be slower but more capable).'
-            }
-          </p>
-        </div>
 
-        {servicesConfig.enhance_llm_model_id && (
+          {/* Prompt Polish Mode */}
           <div>
             <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-              Enhance LLM Device
+              Director Prompt Polish
             </label>
             <select
-              value={servicesConfig.enhance_llm_device || 'cuda'}
-              onChange={e => updateConfig({ enhance_llm_device: e.target.value })}
+              value={servicesConfig.director_prompt_polish || 'third_pass'}
+              onChange={e => updateConfig({ director_prompt_polish: e.target.value as 'off' | 'full_guide' | 'light_guide' | 'third_pass' })}
               className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
             >
-              <option value="cpu">CPU</option>
-              <option value="cuda">CUDA</option>
+              <option value="third_pass">Third Pass (Model-aware) — recommended</option>
+              <option value="light_guide">Lightweight Guide Inject (legacy)</option>
+              <option value="full_guide">Full Guide Inject (legacy)</option>
+              <option value="off">Off</option>
             </select>
-          </div>
-        )}
-
-        <hr className="border-border/50" />
-
-        <div>
-          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-            Wan2GP Enhancer (Alternative)
-          </label>
-          <select
-            value={systemConfig?.enhancer_enabled ?? 0}
-            onChange={e => updateSystemConfig({ enhancer_enabled: Number(e.target.value) })}
-            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-          >
-            <option value={0}>Disabled (use LLM above)</option>
-            <option value={4}>Qwen3.5 9B Abliterated</option>
-            <option value={3}>Qwen3.5 4B Abliterated</option>
-            <option value={1}>Llama 3.2 + Florence2</option>
-            <option value={2}>LlamaJoy + Florence2</option>
-          </select>
-          <p className="text-2xs text-text-muted mt-1">
-            When enabled, overrides the LLM enhancer above. Uses Wan2GP's built-in pipeline
-            (does NOT use our model-specific prompt guides).
-          </p>
-        </div>
-        </div>
-      </div>
-      </>}
-
-      <hr className="border-border" />
-
-      {/* Content Mode */}
-      <NsfwToggleSection />
-
-      <hr className="border-border" />
-
-      {/* Director Architecture */}
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Director Architecture</h3>
-          <p>v2 is the default engine. Toggle off to fall back to v1
-            if you hit regressions.</p>
-        </div>
-        <div className="settings-card">
-        {/* Director v2 Engine toggle. v2 became the default 2026-05-03
-            after weeks of real-world validation showed it's more
-            reliable than v1 (v1 had a polish-pass failure mode where
-            smaller LLMs would hallucinate dialogue into image_prompts).
-            No longer behind the experimental gate — toggle is always
-            visible so users who hit issues with v2 can revert to v1
-            without first enabling experimental mode. */}
-        <label className="flex items-center justify-between cursor-pointer group">
-          <div className="flex-1 mr-3">
-            <div className="text-sm text-text-primary group-hover:text-accent-blue transition-colors">
-              Director v2 Engine <span className="text-2xs text-text-muted font-normal">(default)</span>
-            </div>
-            <div className="text-2xs text-text-muted mt-0.5">
-              Layered architecture with structured shot planning, mode-specific renderers, and prompt validation.
-              Supports Podcast and Viral Video skills. Turn off to use the legacy v1 engine.
-            </div>
-          </div>
-          <div
-            onClick={() => updateConfig({ use_director_v2: !servicesConfig.use_director_v2 })}
-            className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
-              servicesConfig.use_director_v2 ? 'bg-accent-blue' : 'bg-bg-tertiary border border-border'
-            }`}
-          >
-            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border border-border shadow transition-transform ${
-              servicesConfig.use_director_v2 ? 'translate-x-4' : 'translate-x-0.5'
-            }`} />
-          </div>
-        </label>
-
-        {/* Prompt Polish Mode */}
-        <div>
-          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-            Director Prompt Polish
-          </label>
-          <select
-            value={servicesConfig.director_prompt_polish || 'third_pass'}
-            onChange={e => updateConfig({ director_prompt_polish: e.target.value as 'off' | 'full_guide' | 'light_guide' | 'third_pass' })}
-            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-          >
-            <option value="third_pass">Third Pass (Model-aware) — recommended</option>
-            <option value="light_guide">Lightweight Guide Inject (legacy)</option>
-            <option value="full_guide">Full Guide Inject (legacy)</option>
-            <option value="off">Off</option>
-          </select>
-          <p className="text-2xs text-text-muted mt-1">
-            {servicesConfig.director_prompt_polish === 'full_guide'
-              ? 'Legacy: injects the complete model-specific prompt guide into the Director planner\'s system prompt.'
-              : servicesConfig.director_prompt_polish === 'light_guide'
-              ? 'Legacy: injects a lightweight dialect cheat sheet (~200 tokens) into the Director planner.'
-              : servicesConfig.director_prompt_polish === 'off'
-              ? 'Director uses its built-in prompting rules only. No model-specific optimization.'
-              : 'Default and model-aware. H3 keeps its native video prompts while generated image prompts may still be polished; other models use their dialect-specific enhance pipeline.'}
-          </p>
-        </div>
-
-        </div>
-      </div>
-
-      <hr className="border-border" />
-
-      {/* FlashVSR Upscaling — DiT super-resolution spatial upsampling.
-          Selected per-generation in Post Processing → Spatial Upsampling
-          ("FlashVSR 2x", "FlashVSR Two Pass 2x", ...). These control the
-          model variant, sparse-attention density, and backend. */}
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>FlashVSR Upscaling</h3>
-          <p>DiT super-resolution. Pick it per generation in Post
-            Processing → Spatial Upsampling. First use downloads
-            ~4 GB of weights.</p>
-        </div>
-        <div className="settings-card">
-
-        <div>
-          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Model Variant</label>
-          <select
-            value={servicesConfig.flashvsr_mode ?? 1}
-            onChange={e => updateConfig({ flashvsr_mode: Number(e.target.value) })}
-            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-          >
-            <option value={1}>Tiny — fast, low VRAM (default)</option>
-            <option value={2}>Full — best quality, more VRAM</option>
-            <option value={3}>Tiny-Long — for long videos</option>
-          </select>
-          <p className="text-2xs text-text-muted mt-1">
-            {servicesConfig.flashvsr_mode === 2
-              ? 'Full uses the complete Wan2.1 VAE — sharpest detail and best temporal fidelity, highest VRAM.'
-              : servicesConfig.flashvsr_mode === 3
-              ? 'Tiny decoder tuned for long clips.'
-              : 'Lightweight decoder — fastest, lowest VRAM. Good default alongside the main model on a 24 GB card.'}
-          </p>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs text-text-muted uppercase tracking-wider">Sparse Attention Top-K</label>
-            <span className="text-xs text-text-secondary">{(servicesConfig.flashvsr_topk_ratio ?? 0).toFixed(2)}</span>
-          </div>
-          <input
-            type="range"
-            min={0}
-            max={4}
-            step={0.25}
-            value={servicesConfig.flashvsr_topk_ratio ?? 0}
-            onChange={e => updateConfig({ flashvsr_topk_ratio: parseFloat(e.target.value) })}
-          />
-          <p className="text-2xs text-text-muted mt-1">
-            Higher computes more attention → better motion fidelity, slower. 0 = sparsest (fastest).
-          </p>
-        </div>
-
-        <div>
-          <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Sparse Attention Backend</label>
-          <select
-            value={servicesConfig.flashvsr_backend || 'auto'}
-            onChange={e => updateConfig({ flashvsr_backend: e.target.value })}
-            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-          >
-            <option value="auto">Auto (SpargeAttn if installed, else Triton)</option>
-            <option value="triton_sparse">Triton Sparse (bundled)</option>
-            <option value="sparge">SpargeAttn (best with motion — requires install)</option>
-          </select>
-          <p className="text-2xs text-text-muted mt-1">
-            SpargeAttn gives the best quality when there's motion but needs a separate install. Auto uses the bundled Triton kernels otherwise.
-          </p>
-        </div>
-        </div>
-      </div>
-
-      <hr className="border-border" />
-
-      {/* API Keys.
-          The three external-AI provider keys (Google / OpenAI /
-          Anthropic) are gated by the experimental toggle — non-power
-          users running the local LLM exclusively never need them, and
-          surfacing them in the default UI invites confused calls about
-          "do I need these to use Maestro?"
-          The CivitAI key stays visible always since LoRA download
-          rate-limit relief is broadly useful, not a power-user feature. */}
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>API Keys</h3>
-          <p>External AI provider credentials. The CivitAI key is
-            always visible for LoRA downloads; the others surface
-            only when experimental mode is on.</p>
-        </div>
-        <div className="settings-card">
-
-        {servicesConfig.show_experimental && (
-          <>
-            <p className="text-2xs text-text-muted">
-              Required for their respective providers. Also used for external AI services in Director mode.
+            <p className="text-2xs text-text-muted mt-1">
+              {servicesConfig.director_prompt_polish === 'full_guide'
+                ? 'Legacy: injects the complete model-specific prompt guide into the Director planner\'s system prompt.'
+                : servicesConfig.director_prompt_polish === 'light_guide'
+                ? 'Legacy: injects a lightweight dialect cheat sheet (~200 tokens) into the Director planner.'
+                : servicesConfig.director_prompt_polish === 'off'
+                ? 'Director uses its built-in prompting rules only. No model-specific optimization.'
+                : 'Default and model-aware. H3 keeps its native video prompts while generated image prompts may still be polished; other models use their dialect-specific enhance pipeline.'}
             </p>
+          </div>
 
-            <ApiKeyField
-              label="Google AI API Key"
-              maskedValue={servicesConfig.google_api_key}
-              isSet={servicesConfig.google_api_key_set}
-              onSave={val => updateConfig({ google_api_key: val })}
-            />
+          </div>
+        </div>
 
-            <ApiKeyField
-              label="OpenAI API Key"
-              maskedValue={servicesConfig.openai_api_key}
-              isSet={servicesConfig.openai_api_key_set}
-              onSave={val => updateConfig({ openai_api_key: val })}
-            />
+        {/* ── Column B ── */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>Content Mode</h3>
+            <p>Controls what the language model is allowed to generate.</p>
+          </div>
+          <NsfwToggleSection />
+        </div>
 
-            <ApiKeyField
-              label="Anthropic API Key"
-              maskedValue={servicesConfig.anthropic_api_key}
-              isSet={servicesConfig.anthropic_api_key_set}
-              onSave={val => updateConfig({ anthropic_api_key: val })}
-            />
+        {/* ── Column A (continued) ── */}
+        {/* Studio Prompt Enhancer — experimental gate. Default UI uses
+            the Director LLM for the sparkle button without exposing the
+            full enhancer/Wan2GP-alternative config; advanced users opt
+            in via the Experimental toggle to reach this. */}
+        {servicesConfig.show_experimental && (
+          <div className="settings-group">
+            <div className="settings-group-header">
+              <h3>Studio Prompt Enhancer</h3>
+              <p>The sparkle button in Studio mode. Uses model-specific
+                prompt guides for best results. Set a separate LLM here
+                or leave empty to use the Director LLM above.</p>
+            </div>
+            <div className="settings-card">
+            <div>
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
+                Enhance LLM Model
+              </label>
+              <select
+                value={servicesConfig.enhance_llm_model_id || ''}
+                onChange={e => updateConfig({ enhance_llm_model_id: e.target.value })}
+                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+              >
+                <option value="">Same as Director LLM</option>
+                {llmModels.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.label} ({m.size_hint})
+                  </option>
+                ))}
+              </select>
+              <p className="text-2xs text-text-muted mt-1">
+                {servicesConfig.enhance_llm_model_id
+                  ? 'Separate LLM for Studio enhancement — lighter/faster than Director.'
+                  : 'Using the Director LLM for enhancement (may be slower but more capable).'
+                }
+              </p>
+            </div>
 
-            <ApiKeyField
-              label="MiniMax API Key"
-              maskedValue={servicesConfig.minimax_api_key}
-              isSet={servicesConfig.minimax_api_key_set}
-              onSave={val => updateConfig({ minimax_api_key: val })}
-            />
-          </>
+            {servicesConfig.enhance_llm_model_id && (
+              <div>
+                <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
+                  Enhance LLM Device
+                </label>
+                <select
+                  value={servicesConfig.enhance_llm_device || 'cuda'}
+                  onChange={e => updateConfig({ enhance_llm_device: e.target.value })}
+                  className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+                >
+                  <option value="cpu">CPU</option>
+                  <option value="cuda">CUDA</option>
+                </select>
+              </div>
+            )}
+
+            <hr className="border-border/50" />
+
+            <div>
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
+                Wan2GP Enhancer (Alternative)
+              </label>
+              <select
+                value={systemConfig?.enhancer_enabled ?? 0}
+                onChange={e => updateSystemConfig({ enhancer_enabled: Number(e.target.value) })}
+                className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+              >
+                <option value={0}>Disabled (use LLM above)</option>
+                <option value={4}>Qwen3.5 9B Abliterated</option>
+                <option value={3}>Qwen3.5 4B Abliterated</option>
+                <option value={1}>Llama 3.2 + Florence2</option>
+                <option value={2}>LlamaJoy + Florence2</option>
+              </select>
+              <p className="text-2xs text-text-muted mt-1">
+                When enabled, overrides the LLM enhancer above. Uses Wan2GP's built-in pipeline
+                (does NOT use our model-specific prompt guides).
+              </p>
+            </div>
+            </div>
+          </div>
         )}
 
-        <ApiKeyField
-          label="CivitAI API Key"
-          maskedValue={servicesConfig.civitai_api_key}
-          isSet={servicesConfig.civitai_api_key_set}
-          onSave={val => updateConfig({ civitai_api_key: val })}
-        />
-        <p className="text-2xs text-text-muted -mt-2">
-          Optional. Increases rate limits and enables access to restricted models.
-        </p>
-      </div>
-
-      {/* ───────────────────────────── BETA FEATURES ─────────────────────────
-          Originally lived at the top of this panel with amber styling and a
-          "Power Users" badge — visually framed as a featured upgrade. In
-          practice the toggle hides in-progress / unstable work, and turning
-          it on gave new users a more cluttered UI plus features explicitly
-          warned to be unstable. The framing was inverted from intent.
-
-          Moved to the BOTTOM of the panel, neutral styling (no amber, no
-          badge), descriptive copy that leads with the warning. Power users
-          who want it can find it; new users don't get nudged toward it. */}
-      <hr className="border-border" />
-      <div>
-        <h3 className="text-xs text-text-secondary uppercase tracking-wider font-medium mb-3">
-          Beta Features
-        </h3>
-        <label className="flex items-center justify-between cursor-pointer group">
-          <div className="flex-1 mr-3">
-            <div className="text-sm text-text-primary">
-              Show in-development features
-            </div>
-            <div className="text-2xs text-text-muted mt-0.5 leading-relaxed">
-              Reveals features still under development. Some are incomplete,
-              unstable, or require additional setup. Default off keeps the UI
-              focused on features known to work well.
-            </div>
-            <div className="text-2xs text-text-muted mt-1 leading-relaxed">
-              Currently gates: external LLM APIs (Google / OpenAI / Anthropic),
-              Studio Prompt Enhancer config, and the Inpaint edit mode.
-            </div>
+        {/* ── Column B (continued) ── */}
+        {/* FlashVSR Upscaling — DiT super-resolution spatial upsampling.
+            Selected per-generation in Post Processing → Spatial Upsampling
+            ("FlashVSR 2x", "FlashVSR Two Pass 2x", ...). These control the
+            model variant, sparse-attention density, and backend. */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>FlashVSR Upscaling</h3>
+            <p>DiT super-resolution. Pick it per generation in Post
+              Processing → Spatial Upsampling. First use downloads
+              ~4 GB of weights.</p>
           </div>
-          <div
-            onClick={() => updateConfig({ show_experimental: !servicesConfig.show_experimental })}
-            className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
-              servicesConfig.show_experimental ? 'bg-accent-blue' : 'bg-bg-tertiary border border-border'
-            }`}
-          >
-            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border border-border shadow transition-transform ${
-              servicesConfig.show_experimental ? 'translate-x-4' : 'translate-x-0.5'
-            }`} />
+          <div className="settings-card">
+
+          <div>
+            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Model Variant</label>
+            <select
+              value={servicesConfig.flashvsr_mode ?? 1}
+              onChange={e => updateConfig({ flashvsr_mode: Number(e.target.value) })}
+              className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+            >
+              <option value={1}>Tiny — fast, low VRAM (default)</option>
+              <option value={2}>Full — best quality, more VRAM</option>
+              <option value={3}>Tiny-Long — for long videos</option>
+            </select>
+            <p className="text-2xs text-text-muted mt-1">
+              {servicesConfig.flashvsr_mode === 2
+                ? 'Full uses the complete Wan2.1 VAE — sharpest detail and best temporal fidelity, highest VRAM.'
+                : servicesConfig.flashvsr_mode === 3
+                ? 'Tiny decoder tuned for long clips.'
+                : 'Lightweight decoder — fastest, lowest VRAM. Good default alongside the main model on a 24 GB card.'}
+            </p>
           </div>
-        </label>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs text-text-muted uppercase tracking-wider">Sparse Attention Top-K</label>
+              <span className="text-xs text-text-secondary">{(servicesConfig.flashvsr_topk_ratio ?? 0).toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={4}
+              step={0.25}
+              value={servicesConfig.flashvsr_topk_ratio ?? 0}
+              onChange={e => updateConfig({ flashvsr_topk_ratio: parseFloat(e.target.value) })}
+            />
+            <p className="text-2xs text-text-muted mt-1">
+              Higher computes more attention → better motion fidelity, slower. 0 = sparsest (fastest).
+            </p>
+          </div>
+
+          <div>
+            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Sparse Attention Backend</label>
+            <select
+              value={servicesConfig.flashvsr_backend || 'auto'}
+              onChange={e => updateConfig({ flashvsr_backend: e.target.value })}
+              className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+            >
+              <option value="auto">Auto (SpargeAttn if installed, else Triton)</option>
+              <option value="triton_sparse">Triton Sparse (bundled)</option>
+              <option value="sparge">SpargeAttn (best with motion — requires install)</option>
+            </select>
+            <p className="text-2xs text-text-muted mt-1">
+              SpargeAttn gives the best quality when there's motion but needs a separate install. Auto uses the bundled Triton kernels otherwise.
+            </p>
+          </div>
+          </div>
+        </div>
+
+        {/* ── Column A (continued) ── */}
+        {/* API Keys.
+            The three external-AI provider keys (Google / OpenAI /
+            Anthropic) are gated by the experimental toggle — non-power
+            users running the local LLM exclusively never need them, and
+            surfacing them in the default UI invites confused calls about
+            "do I need these to use Maestro?"
+            The CivitAI key stays visible always since LoRA download
+            rate-limit relief is broadly useful, not a power-user feature. */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>API Keys</h3>
+            <p>External AI provider credentials. The CivitAI key is
+              always visible for LoRA downloads; the others surface
+              only when experimental mode is on.</p>
+          </div>
+          <div className="settings-card">
+
+          {servicesConfig.show_experimental && (
+            <>
+              <p className="text-2xs text-text-muted">
+                Required for their respective providers. Also used for external AI services in Director mode.
+              </p>
+
+              <ApiKeyField
+                label="Google AI API Key"
+                maskedValue={servicesConfig.google_api_key}
+                isSet={servicesConfig.google_api_key_set}
+                onSave={val => updateConfig({ google_api_key: val })}
+              />
+
+              <ApiKeyField
+                label="OpenAI API Key"
+                maskedValue={servicesConfig.openai_api_key}
+                isSet={servicesConfig.openai_api_key_set}
+                onSave={val => updateConfig({ openai_api_key: val })}
+              />
+
+              <ApiKeyField
+                label="Anthropic API Key"
+                maskedValue={servicesConfig.anthropic_api_key}
+                isSet={servicesConfig.anthropic_api_key_set}
+                onSave={val => updateConfig({ anthropic_api_key: val })}
+              />
+
+              <ApiKeyField
+                label="MiniMax API Key"
+                maskedValue={servicesConfig.minimax_api_key}
+                isSet={servicesConfig.minimax_api_key_set}
+                onSave={val => updateConfig({ minimax_api_key: val })}
+              />
+            </>
+          )}
+
+          <ApiKeyField
+            label="CivitAI API Key"
+            maskedValue={servicesConfig.civitai_api_key}
+            isSet={servicesConfig.civitai_api_key_set}
+            onSave={val => updateConfig({ civitai_api_key: val })}
+          />
+          <p className="text-2xs text-text-muted -mt-2">
+            Optional. Increases rate limits and enables access to restricted models.
+          </p>
+          </div>
+        </div>
+
+        {/* ───────────────────────────── BETA FEATURES ─────────────────────────
+            Originally lived at the top of this panel with amber styling and a
+            "Power Users" badge — visually framed as a featured upgrade. In
+            practice the toggle hides in-progress / unstable work, and turning
+            it on gave new users a more cluttered UI plus features explicitly
+            warned to be unstable. The framing was inverted from intent.
+
+            Moved to the BOTTOM of the panel, neutral styling (no amber, no
+            badge), descriptive copy that leads with the warning. Power users
+            who want it can find it; new users don't get nudged toward it. */}
+        <div className="settings-group">
+          <div className="settings-group-header">
+            <h3>Beta Features</h3>
+            <p>Show in-development features. Off by default to keep
+              the UI focused on features known to work well.</p>
+          </div>
+          <div className="settings-card">
+          <label className="flex items-center justify-between cursor-pointer group">
+            <div className="flex-1 mr-3">
+              <div className="text-sm text-text-primary">
+                Show in-development features
+              </div>
+              <div className="text-2xs text-text-muted mt-0.5 leading-relaxed">
+                Reveals features still under development. Some are incomplete,
+                unstable, or require additional setup. Default off keeps the UI
+                focused on features known to work well.
+              </div>
+              <div className="text-2xs text-text-muted mt-1 leading-relaxed">
+                Currently gates: external LLM APIs (Google / OpenAI / Anthropic),
+                Studio Prompt Enhancer config, and the Inpaint edit mode.
+              </div>
+            </div>
+            <div
+              onClick={() => updateConfig({ show_experimental: !servicesConfig.show_experimental })}
+              className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
+                servicesConfig.show_experimental ? 'bg-accent-blue' : 'bg-bg-tertiary border border-border'
+              }`}
+            >
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white border border-border shadow transition-transform ${
+                servicesConfig.show_experimental ? 'translate-x-4' : 'translate-x-0.5'
+              }`} />
+            </div>
+          </label>
+          </div>
         </div>
       </div>
     </section>

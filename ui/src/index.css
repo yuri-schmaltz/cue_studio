@@ -6,11 +6,12 @@
  * runtime. That means a runtime override on `html[data-theme="..."]`
  * cascades into every utility class without recompilation.
  *
- * The default values below are the original Maestro palette (cool
- * charcoal). The Golden Hour theme overrides each variable to a warm
- * cinematic palette. To add a new theme, add another `[data-theme="..."]`
- * block below — no code changes elsewhere are required for elements
- * that use semantic tokens.
+ * Default theme (Classic) is the Cue Studio brand palette: warm
+ * cinematic tones (amber/gold) on cool charcoal. The Golden Hour
+ * theme overrides to a deeper warm palette with sunset gradients.
+ * To add a new theme, add another `[data-theme="..."]` block below —
+ * no code changes elsewhere are required for elements that use
+ * semantic tokens.
  *
  * Special tokens (cta-gradient, accent-cool, shadow vars) exist so
  * components can opt into theme-aware gradients and glow effects with
@@ -66,9 +67,16 @@
   --color-text-secondary: #9898a8;
   --color-text-muted: #8c8ca0;  /* was #5a5a6a (2.9:1) — raised for WCAG-legible muted text, issue #7 */
 
-  /* Semantic accents — repointed per theme */
-  --color-accent-green: #22c55e;
-  --color-accent-green-hover: #16a34a;
+  /* Semantic accents — repointed per theme. The Cue Studio brand
+   * identity is warm (amber/gold). In the default Classic theme we
+   * carry that: accent-blue stays a saturated cool-blue for "action"
+   * affordances where hue contrast against the warm surround helps
+   * the eye find primary buttons (Generate, Save), but accent-green
+   * (success/progress) and accent-warm (selection rings) are amber.
+   * This keeps Golden Hour the "max warm" family and avoids forcing
+   * every theme into the same palette. */
+  --color-accent-green: #f59e0b;
+  --color-accent-green-hover: #fbbf24;
   --color-accent-blue: #3b82f6;
   --color-accent-blue-hover: #2563eb;
 
@@ -116,8 +124,7 @@
   --color-media-canvas: #1a1a25;
 
   /* Warm accent (selection rings, "TAKES" label, active highlights).
-     In default theme this is amber too — the cool palette uses
-     accent-blue for those affordances, so warm is mostly unused. */
+     Carries the Cue Studio brand hue across themes. */
   --color-accent-warm: #f59e0b;
   --color-accent-warm-hover: #fbbf24;
 
@@ -129,35 +136,32 @@
   --color-accent-cool-to: #6366f1;
 
   /* CTA gradient — primary action buttons (e.g. Generate).
-     In default theme both stops equal accent-green so the gradient
-     renders as the original flat green (preserves the default look).
-     In Golden Hour both stops shift to red/orange for a sunset
+     Default theme uses Cue Studio's warm amber gradient (brand
+     identity). Golden Hour deepens to red→orange for a sunset
      gradient. Components using `bg-cta` adapt automatically. */
-  --color-gradient-cta-from: #22c55e;
-  --color-gradient-cta-to: #22c55e;
+  --color-gradient-cta-from: #f59e0b;
+  --color-gradient-cta-to: #fbbf24;
 
   /* Toggle-active gradient — used for active states on mode toggles
-     (Director/Studio pill, similar). Default theme: both stops equal
-     accent-blue so the active button renders as the original flat
-     blue. Golden Hour: shifts to the warm red→orange gradient. Kept
-     separate from the CTA gradient so a future theme can choose
-     different colors for primary actions vs active toggles. */
-  --color-gradient-toggle-from: #3b82f6;
-  --color-gradient-toggle-to: #3b82f6;
+     (Director/Studio pill, similar). Default theme uses amber too;
+     Golden Hour shifts to red→orange. Kept separate from the CTA
+     gradient so a future theme can choose different colors for
+     primary actions vs active toggles. */
+  --color-gradient-toggle-from: #f59e0b;
+  --color-gradient-toggle-to: #fbbf24;
 
   /* Active-frame gradient — used as a 2px diagonal-gradient ring
      around the currently-selected media asset in the gallery.
-     Default theme: both stops equal accent-blue, so the active frame
-     reads as a flat blue ring (matches the prior border-accent-blue
-     behaviour). Golden Hour: warm red→orange diagonal gradient that
-     reads like stage-light spill across the asset's edge. */
-  --color-gradient-active-frame-from: #3b82f6;
-  --color-gradient-active-frame-to: #3b82f6;
+     Default theme: warm amber→gold diagonal. Golden Hour: warm
+     red→orange gradient that reads like stage-light spill across the
+     asset's edge. */
+  --color-gradient-active-frame-from: #f59e0b;
+  --color-gradient-active-frame-to: #fbbf24;
 
-  /* Theme-aware glow shadows. Empty in default theme (no glow);
-     set to a warm bloom in Golden Hour for active rings. */
-  --shadow-accent-glow: 0 0 0 transparent;
-  --shadow-active-ring: 0 0 0 2px var(--color-accent-blue);
+  /* Theme-aware glow shadows. Default theme gets a subtle warm bloom
+     that matches the brand; Golden Hour intensifies. */
+  --shadow-accent-glow: 0 0 12px rgba(245, 158, 11, 0.3);
+  --shadow-active-ring: 0 0 0 2px var(--color-accent-warm);
 }
 
 /* Native UI (select popups, checkboxes, Firefox scrollbars, form
@@ -1074,6 +1078,18 @@ input[type="range"]::-webkit-slider-thumb {
   gap: 16px;
 }
 .settings-grid > .settings-card { margin: 0; }
+/* Two-column layout for sibling .settings-group elements. Same breakpoint
+   collapse as .settings-grid so 1100px is the universal "side-by-side"
+   cutoff across the Settings drawer. align-items: start keeps each
+   column's height independent — a tall card on one side must not stretch
+   the short card on the other. */
+.settings-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.settings-columns > .settings-group { margin: 0; min-width: 0; }
 .settings-row {
   display: grid;
   grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
@@ -1190,6 +1206,7 @@ input[type="range"]::-webkit-slider-thumb {
    the Settings drawer stays usable on tablets and small windows. */
 @media (max-width: 1100px) {
   .settings-grid { grid-template-columns: 1fr; }
+  .settings-columns { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
   .settings-row { grid-template-columns: 1fr; }

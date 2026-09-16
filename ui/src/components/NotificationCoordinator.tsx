@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useStore } from '../stores/useStore'
 import {
-  announceMaestroEvent,
+  announceCueStudioEvent,
   getDeviceNotificationPreferences,
   prepareDeviceNotificationAudio,
   syncBackgroundPush,
@@ -123,7 +123,7 @@ export function NotificationCoordinator() {
         && session.armed
         && session.maxActive > 1
 
-      announceMaestroEvent({
+      announceCueStudioEvent({
         key: `${identity}:${status}`,
         category: status === 'failed'
           ? 'failure'
@@ -237,7 +237,7 @@ export function NotificationCoordinator() {
       if (session.armed && previousActive > 0 && nextActive === 0) {
         const terminalCount = session.completed + session.failed + session.cancelled
         if (session.maxActive > 1 && terminalCount > 0) {
-          announceMaestroEvent({
+          announceCueStudioEvent({
             key: `queue:${session.id}:finished`,
             category: 'queue',
             title: session.failed > 0 ? 'Queue finished with errors' : 'Queue complete',

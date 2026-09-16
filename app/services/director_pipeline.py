@@ -1328,7 +1328,7 @@ def _normalize_interrupted_repair(state: dict, pid: str) -> bool:
     """Mark a persisted active repair interrupted when its worker is gone.
 
     Browser reloads leave the non-daemon worker registered, so they continue
-    normally.  A Maestro process restart removes the registry; changing the
+    normally.  A Cue Studio process restart removes the registry; changing the
     saved status makes that distinction visible and leaves Repair available as
     an idempotent resume-from-disk operation.
     """
@@ -1352,8 +1352,8 @@ def _normalize_interrupted_repair(state: dict, pid: str) -> bool:
         "status": "interrupted",
         "phase": "interrupted",
         "clip_index": None,
-        "message": "Repair was interrupted when Maestro stopped. Start Repair again to continue.",
-        "error": "Maestro stopped before the repair finished.",
+        "message": "Repair was interrupted when Cue Studio stopped. Start Repair again to continue.",
+        "error": "Cue Studio stopped before the repair finished.",
         "updated_at": now,
         "completed_at": now,
     })
@@ -1464,7 +1464,7 @@ def build_pipeline_first_frame_thumbnail(
     if not source_path:
         return None
 
-    cache_dir = os.path.join(pipeline_dir, ".maestro-editor", "director-thumbnails")
+    cache_dir = os.path.join(pipeline_dir, "py/.cache/.cue-studio-editor", "director-thumbnails")
     thumbnail_path = os.path.join(cache_dir, f"{pid}.jpg")
     try:
         if (
@@ -3214,7 +3214,7 @@ def _load_director_queue_locked(base_out_dir: str) -> dict:
     for entry in entries:
         if isinstance(entry, dict) and entry.get("status") == "running":
             entry["status"] = "held"
-            entry["message"] = "Interrupted when Maestro stopped; ready to resume"
+            entry["message"] = "Interrupted when Cue Studio stopped; ready to resume"
             entry["pipeline_id"] = None
             interrupted = True
     state["entries"] = entries
@@ -3547,7 +3547,7 @@ def start_director_queue(base_out_dir: str) -> dict:
                 target=_run_director_queue,
                 args=(base_out_dir,),
                 daemon=False,
-                name="maestro-director-queue",
+                name="cue-studio-director-queue",
             )
             _director_queue_worker.start()
         return _public_director_queue_state(state)
@@ -4830,7 +4830,7 @@ def get_pipeline(pid: str) -> Optional[dict]:
 def get_pipeline_status(pid: str, out_dir: str) -> Optional[dict]:
     """Return live status or a terminal disk snapshot after a UI reconnect.
 
-    Browser tabs can survive a Maestro restart while the in-memory registry
+    Browser tabs can survive a Cue Studio restart while the in-memory registry
     cannot. Returning the saved terminal/crashed state lets the frontend stop
     polling instead of issuing a 404 every two seconds forever.
     """
@@ -4866,7 +4866,7 @@ def get_pipeline_status(pid: str, out_dir: str) -> Optional[dict]:
         "completed": "Director generation completed",
         "cancelled": "Director generation cancelled",
         "failed": "Director generation failed",
-        "crashed": "Director generation was interrupted when Maestro stopped",
+        "crashed": "Director generation was interrupted when Cue Studio stopped",
     }.get(saved_status, "Saved Director generation")
     saved_progress = saved.get("progress")
     if not isinstance(saved_progress, dict):
@@ -4931,7 +4931,7 @@ def get_pipeline_status(pid: str, out_dir: str) -> Optional[dict]:
         ],
         "output_files": saved.get("output_files", []) or [],
         "error": saved.get("error") or (
-            "Maestro no longer has a live worker for this Director run."
+            "Cue Studio no longer has a live worker for this Director run."
             if saved_status == "crashed" else None
         ),
         "pause_reason": saved.get("pause_reason"),
@@ -5383,17 +5383,11 @@ def stop_pipeline(pid: str) -> bool:
         }
     _abort_pipeline_jobs(pid)
     persisted = _save_pipeline_state(pid)
-    try:
-        from shared.utils.gpu_cleanup import force_cuda_cleanup
-        force_cuda_cleanup()
-    except Exception:
-        pass
     with _pipeline_lock:
         current = _pipelines.get(pid)
         if current is not None:
             current["_state_persisted"] = persisted
     return True
-
 
 
 def _run_pipeline(pid: str, resume: bool = False):
@@ -5435,29 +5429,22 @@ def _run_pipeline(pid: str, resume: bool = False):
         pipeline_type = params.get("pipeline_type", "music_video")  # music_video | short_film_audio | short_film_story
         auto_mode = params.get("auto_mode", True)
 
-        # ── Disk preflight (Dynamic sizing based on clips & resolution) ──
+        # ── Disk preflight ─────────────────────────────────────────────
         # A Director run writes gigabytes (per-clip images + video + the
-        # final concat). Fail fast with an accurate estimate instead of dying
+        # final concat). Fail fast with a clear message instead of dying
         # halfway through with a truncated "No space left on device" write.
         try:
-            from shared.utils.gpu_cleanup import estimate_required_disk_gb, check_disk_space, force_cuda_cleanup
-            planned_count = len(params.get("planned_clips") or params.get("prepared_clip_plans") or [1])
-            resolution_preset = str(params.get("director_resolution_preset") or "720p")
-            required_space_gb = estimate_required_disk_gb(planned_count, resolution_preset=resolution_preset)
-            has_space, free_gb, needed_gb = check_disk_space(pipeline_out_dir, required_space_gb)
-            if not has_space:
+            import shutil as _shutil
+            free_gb = _shutil.disk_usage(pipeline_out_dir).free / (1024 ** 3)
+            if free_gb < 3:
                 raise RuntimeError(
-                    f"Only {free_gb:.1f} GB free on output drive — estimated {needed_gb:.1f} GB "
-                    f"needed for this {planned_count}-shot ({resolution_preset}) Director run. "
-                    f"Free up disk space and try again."
+                    f"Only {free_gb:.1f} GB free on the output drive — not "
+                    f"enough for a Director run. Free up space and try again."
                 )
-            # Limpeza preventiva de VRAM no início
-            force_cuda_cleanup()
         except RuntimeError:
             raise
         except Exception:
             pass  # disk_usage can fail on odd mounts; don't block on the check itself
-
 
         # ── Wait for GPU if jobs are running ────────────────────────────
         # LLM needs GPU (CUDA), so we must wait for generation queue to drain.
@@ -5772,11 +5759,8 @@ def _run_pipeline(pid: str, resume: bool = False):
         try:
             if llm_service.is_loaded():
                 llm_service.unload_model()
-            from shared.utils.gpu_cleanup import force_cuda_cleanup
-            force_cuda_cleanup()
         except Exception as e:
             print(f"[Pipeline] LLM unload warning (non-fatal): {e}")
-
 
         # On resume, reuse the start images that already generated before the
         # crash — but only if every file still exists (a wiped/half-written
@@ -5854,17 +5838,10 @@ def _run_pipeline(pid: str, resume: bool = False):
             return
 
         # ── Phase 3: Generate Video ─────────────────────────────────────
-        try:
-            from shared.utils.gpu_cleanup import force_cuda_cleanup
-            force_cuda_cleanup()
-        except Exception:
-            pass
-
         _update_pipeline(pid, phase="generating_video",
                          progress={"current": 0, "total": 1, "message": "Generating video...", "step": 0, "total_steps": 0})
 
         output_files = _run_video_generation(pid, params, clip_plans, planned_clips, clip_images, clip_keyframes, out_dir=pipeline_out_dir, workspace=pipeline_workspace)
-
 
         # A Stop during the video phase lands here after the abort. Record
         # whatever clips finished (the Dashboard can rerun/rejoin them),
@@ -7694,7 +7671,7 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
             "shot manifest(s) with explicitly mapped visual and audio roles."
         )
         if has_exact_target_audio:
-            # ``D`` is Maestro's internal exact-drive marker. ``A`` keeps
+            # ``D`` is Cue Studio's internal exact-drive marker. ``A`` keeps
             # WGP's source-audio slicing active; ``D`` tells Ref2VA to place
             # that slice on the target audio timeline (and mux the pristine
             # source) instead of treating it as a creative audio reference.

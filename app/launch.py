@@ -1,4 +1,4 @@
-"""Maestro Launch Server
+"""Cue Studio Launch Server
 
 FastAPI wrapper around WanGP (wgp.py) that:
 - Serves the new React UI at /
@@ -51,7 +51,7 @@ sys.argv = _wgp_argv
 # instead of hanging indefinitely; HF's resumable-download retry
 # layer picks up from the partial file. Also hooks tqdm to track
 # download progress for the UI's downloads-in-progress banner.
-print("[Maestro] Installing download stall protection...")
+print("[Cue Studio] Installing download stall protection...")
 from services import safe_download  # noqa: F401 (side-effect import)
 from services.checkpoint_compatibility import (
     CheckpointCompatibilityError,
@@ -95,7 +95,7 @@ from services.editor_projects import (
 )
 
 # Protect upgraded installations before WanGP builds its model registry.  Old
-# CivitAI imports could pair any checkpoint with any Maestro architecture; hide
+# CivitAI imports could pair any checkpoint with any Cue Studio architecture; hide
 # those invalid definitions without deleting the user's downloaded weights.
 try:
     _checkpoint_quarantine_changes = (
@@ -128,7 +128,7 @@ for _checkpoint_change in _checkpoint_quarantine_changes:
 # that path but only catches FileNotFoundError — if the path exists in an
 # unreadable state (e.g. a directory placeholder before any login), the
 # read raises PermissionError and crashes the very first model download,
-# even though ALL of Maestro's default models live on PUBLIC repos that
+# even though ALL of Cue Studio's default models live on PUBLIC repos that
 # need no auth. Neutralize a broken token path so downloads fall back to
 # anonymous; a real token (user ran Pinokio's hf.login) stays untouched,
 # so gated models + higher HF rate limits keep working.
@@ -140,7 +140,7 @@ if _hf_token_path:
     except FileNotFoundError:
         pass  # absent → huggingface_hub handles this gracefully (anonymous)
     except OSError as _hf_err:
-        print(f"[Maestro] HF_TOKEN_PATH is set but unreadable "
+        print(f"[Cue Studio] HF_TOKEN_PATH is set but unreadable "
               f"({type(_hf_err).__name__}) — using anonymous HuggingFace "
               "access for public models.")
         os.environ.pop("HF_TOKEN_PATH", None)
@@ -156,13 +156,13 @@ if _hf_token_path:
             _hf_const.HF_TOKEN_PATH = os.path.join(tempfile.gettempdir(), "maestro_no_hf_token")
 
 # Now safe to import wgp - all module-level code will run with patched argv
-print("[Maestro] Importing WanGP engine...")
+print("[Cue Studio] Importing WanGP engine...")
 import wgp
 from models.minimax_h3.turbo import (
     MINIMAX_H3_TURBO_MANIFEST,
     MINIMAX_H3_TURBO_PRESETS,
 )
-print(f"[Maestro] WanGP loaded: {len(wgp.displayed_model_types)} models available")
+print(f"[Cue Studio] WanGP loaded: {len(wgp.displayed_model_types)} models available")
 
 # Closed-app notification state remains local under app/settings.
 _maestro_settings_dir = os.path.join(_app_dir, "settings")
@@ -170,15 +170,15 @@ _web_push = WebPushService(_maestro_settings_dir)
 
 # WanGP's legacy notifier fires at low-level output boundaries, which means a
 # multi-window generation or Director project can chime once per internal
-# clip. Maestro owns the top-level Studio/Director lifecycle instead. Migrate
+# clip. Cue Studio owns the top-level Studio/Director lifecycle instead. Migrate
 # an existing preference, then keep the legacy switch off in this process so
 # the listeners below emit exactly one host-computer chime per finished item.
 wgp.server_config.setdefault(
-    "maestro_host_notification_sound_enabled",
+    "cue_studio_host_notification_sound_enabled",
     bool(wgp.server_config.get("notification_sound_enabled", 0)),
 )
 wgp.server_config.setdefault(
-    "maestro_host_notification_sound_volume",
+    "cue_studio_host_notification_sound_volume",
     int(wgp.server_config.get("notification_sound_volume", 50)),
 )
 wgp.server_config["notification_sound_enabled"] = 0
@@ -261,11 +261,11 @@ def _xdg_video_dir(home: Path) -> Optional[Path]:
 
 
 def _default_projects_root() -> str:
-    """Return the OS-default location for Maestro project workspaces.
+    """Return the OS-default location for Cue Studio project workspaces.
 
     The default lives under the user's Videos folder (``$HOME/Videos``
     on Linux/macOS, ``%USERPROFILE%\\Videos`` on Windows). This is where
-    most local tools already expect user-created media; keeping Maestro
+    most local tools already expect user-created media; keeping Cue Studio
     projects there means the user's file manager, gallery apps and
     backup pipelines find them without further config.
 
@@ -273,7 +273,7 @@ def _default_projects_root() -> str:
     ``~/.config/user-dirs.dirs``) so localized folder names like pt_BR
     ``~/Vídeos`` are picked up correctly. We fall back to ``~/Videos``
     and then ``~/Movies`` for hosts without XDG, and finally create
-    ``$HOME/MaestroProjects`` when no video folder exists yet. We never
+    ``$HOME/CueStudioProjects`` when no video folder exists yet. We never
     fall back to a relative ``outputs`` path because the user
     explicitly opted into per-user storage by selecting the field in
     Configurations.
@@ -307,10 +307,10 @@ def _default_projects_root() -> str:
         except OSError:
             continue
 
-    # Nothing usable exists yet: create $HOME/MaestroProjects as a
+    # Nothing usable exists yet: create $HOME/CueStudioProjects as a
     # last-resort default that doesn't depend on the OS video folder
     # being present.
-    fallback = home / "MaestroProjects"
+    fallback = home / "CueStudioProjects"
     try:
         fallback.mkdir(parents=True, exist_ok=True)
         return str(fallback.resolve())
@@ -343,9 +343,9 @@ if __name__ == "__main__":
             try:
                 with open(wgp.server_config_filename, "w", encoding="utf-8") as _f:
                     _f.write(json.dumps(wgp.server_config, indent=4))
-                print(f"[Maestro] Migration: projects root set to {_default_root}")
+                print(f"[Cue Studio] Migration: projects root set to {_default_root}")
             except Exception as _e:
-                print(f"[Maestro] Migration: failed to persist projects root: {_e}")
+                print(f"[Cue Studio] Migration: failed to persist projects root: {_e}")
 
 # Stale-value healing: users who booted at least once with the old
 # hardcoded ``home / "Videos"`` chain have ``projects_root_path`` pointing
@@ -406,11 +406,11 @@ def _run_projects_root_heal(services: dict, *, _persist=None) -> None:
         try:
             _persist()
             print(
-                f"[Maestro] Heal: stale ASCII projects root replaced with "
+                f"[Cue Studio] Heal: stale ASCII projects root replaced with "
                 f"XDG folder {_xdg.resolve()}"
             )
         except Exception as _e:
-            print(f"[Maestro] Heal: failed to persist projects root: {_e}")
+            print(f"[Cue Studio] Heal: failed to persist projects root: {_e}")
     else:
         # Mark the heal as done so we don't re-check on every boot
         # even when no action was needed.
@@ -433,9 +433,9 @@ if "auto_performance" not in _services:
     try:
         with open(wgp.server_config_filename, "w", encoding="utf-8") as _f:
             _f.write(json.dumps(wgp.server_config, indent=4))
-        print("[Maestro] Migration: existing config detected, auto_performance set to False (manual mode preserved)")
+        print("[Cue Studio] Migration: existing config detected, auto_performance set to False (manual mode preserved)")
     except Exception as _e:
-        print(f"[Maestro] Migration: failed to persist auto_performance default: {_e}")
+        print(f"[Cue Studio] Migration: failed to persist auto_performance default: {_e}")
 
 # First-boot auto-tune: a fresh install has auto_performance=True but the
 # recommended profile was only ever WRITTEN when the user opened Settings and
@@ -458,12 +458,12 @@ if _services.get("auto_performance") and not _services.get("auto_performance_app
             _services["auto_performance_applied"] = True
             with open(wgp.server_config_filename, "w", encoding="utf-8") as _f:
                 _f.write(json.dumps(wgp.server_config, indent=4))
-            print(f"[Maestro] First-boot auto-tune applied: {_rec.get('_recommendation_label', 'recommended profile')} "
+            print(f"[Cue Studio] First-boot auto-tune applied: {_rec.get('_recommendation_label', 'recommended profile')} "
                   f"(video_profile={_rec.get('video_profile')}, vram_safety_coefficient={_rec.get('vram_safety_coefficient')})")
         else:
-            print("[Maestro] First-boot auto-tune skipped: no CUDA GPU detected.")
+            print("[Cue Studio] First-boot auto-tune skipped: no CUDA GPU detected.")
     except Exception as _e:
-        print(f"[Maestro] First-boot auto-tune skipped ({_e}); using defaults until Settings → Performance is applied.")
+        print(f"[Cue Studio] First-boot auto-tune skipped ({_e}); using defaults until Settings → Performance is applied.")
 
 # Restore argv
 sys.argv = _original_argv
@@ -480,7 +480,7 @@ from services.access_log_filter import install_quiet_access_filter
 # filters. Install early, then idempotently confirm it again before startup.
 install_quiet_access_filter()
 
-# Read the Maestro release version from VERSION at the repo root (one level
+# Read the Cue Studio release version from VERSION at the repo root (one level
 # above app/). Falls back to "0.0.0+unknown" if the file is missing so the
 # /health/version endpoint is always reachable even on broken checkouts.
 _MAESTRO_VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
@@ -495,13 +495,13 @@ def _load_maestro_version() -> str:
 
 MAESTRO_VERSION = _load_maestro_version()
 
-api = FastAPI(title="Maestro API", version=MAESTRO_VERSION)
+api = FastAPI(title="Cue Studio API", version=MAESTRO_VERSION)
 
 
 @api.get("/health/version", include_in_schema=False)
 def _health_version() -> JSONResponse:
     """Lightweight endpoint used by the version-aware bootstrapper
-    (start_local.sh) to detect stale builds. Returns the Maestro release
+    (start_local.sh) to detect stale builds. Returns the Cue Studio release
     version declared in the top-level VERSION file. Safe to hit from the
     browser — no side effects, no auth required (mirrors Directo's
     /api/version contract)."""
@@ -525,14 +525,20 @@ def _safe_join(base: str, *parts: str) -> str | None:
     paths, symlinks escaping the base, etc.). Use for any endpoint that
     accepts a user-supplied filename."""
     try:
-        from shared.utils.path_safety import is_safe_subpath
-        target = os.path.join(base, *parts)
-        if not is_safe_subpath(target, base):
-            return None
-        return os.path.realpath(target)
+        base_real = os.path.realpath(base)
+        joined = os.path.realpath(os.path.join(base_real, *parts))
+        # On Windows, realpath is case-insensitive at the FS layer but
+        # commonpath is case-sensitive — normalize both sides.
+        if os.name == "nt":
+            if os.path.normcase(joined) != os.path.normcase(base_real) and \
+               not os.path.normcase(joined).startswith(os.path.normcase(base_real) + os.sep):
+                return None
+        else:
+            if joined != base_real and not joined.startswith(base_real + os.sep):
+                return None
+        return joined
     except (ValueError, OSError):
         return None
-
 
 # CORS — restricted to localhost (the Vite dev server + the bundled UI
 # served from the same FastAPI process + Pinokio's HTTPS proxy at
@@ -545,23 +551,6 @@ api.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# API Security & Authentication Middleware
-from services.security import verify_api_key
-
-@api.middleware("http")
-async def security_authentication_middleware(request: Request, call_next):
-    from fastapi.responses import JSONResponse
-    try:
-        await verify_api_key(request)
-    except HTTPException as exc:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": exc.detail},
-            headers=exc.headers or {},
-        )
-    return await call_next(request)
-
 
 # --- Generation job tracking ---
 from services.job_lifecycle import (
@@ -587,11 +576,11 @@ _gen_lock = threading.Lock()
 
 
 def _play_host_completion_sound() -> None:
-    """Play one asynchronous chime on the computer running Maestro."""
-    if not wgp.server_config.get("maestro_host_notification_sound_enabled", False):
+    """Play one asynchronous chime on the computer running Cue Studio."""
+    if not wgp.server_config.get("cue_studio_host_notification_sound_enabled", False):
         return
     try:
-        volume = int(wgp.server_config.get("maestro_host_notification_sound_volume", 50))
+        volume = int(wgp.server_config.get("cue_studio_host_notification_sound_volume", 50))
         wgp.notification_sound.notify_video_completion(
             volume=max(0, min(100, volume)),
         )
@@ -613,9 +602,9 @@ def _on_generation_job_terminal(job: dict, status: str) -> None:
             category="completion",
             title=f"{surface} {'export' if is_editor else 'generation'} complete",
             body=(
-                "Your Maestro edit is ready."
+                "Your Cue Studio edit is ready."
                 if is_editor
-                else "Your Maestro generation is ready."
+                else "Your Cue Studio generation is ready."
             ),
             tag=f"{surface.lower()}:{job_id}:completed",
         )
@@ -623,7 +612,7 @@ def _on_generation_job_terminal(job: dict, status: str) -> None:
         _web_push.dispatch(
             category="failure",
             title=f"{surface} {'export' if is_editor else 'generation'} failed",
-            body=str(job.get("error") or "Open Maestro for details."),
+            body=str(job.get("error") or "Open Cue Studio for details."),
             tag=f"{surface.lower()}:{job_id}:failed",
         )
 
@@ -635,14 +624,14 @@ def _on_director_pipeline_terminal(pipeline: dict, status: str) -> None:
         _web_push.dispatch(
             category="completion",
             title="Director project complete",
-            body="Your finished Maestro Director project is ready.",
+            body="Your finished Cue Studio Director project is ready.",
             tag=f"director:{pipeline_id}:completed",
         )
     elif status == "failed":
         _web_push.dispatch(
             category="failure",
             title="Director project failed",
-            body=str(pipeline.get("error") or "Open Maestro for details."),
+            body=str(pipeline.get("error") or "Open Cue Studio for details."),
             tag=f"director:{pipeline_id}:failed",
         )
 
@@ -847,7 +836,7 @@ def _variant_group_filenames(urls, model_type: str | None = None) -> list:
 
     Some linked WanGP installs contain a different supported serialization of
     the same architecture (for example H3 Pruned INT8 ConvRot versus
-    Maestro's legacy scaled-FP8 file). Generation already resolves those
+    Cue Studio's legacy scaled-FP8 file). Generation already resolves those
     aliases; model readiness, deletion, and storage accounting must use the
     same view or the UI can claim a usable linked model is missing.
     """
@@ -1262,7 +1251,7 @@ def _model_visibility_response():
 
 
 def _persist_server_config():
-    """Atomically persist Maestro UI preferences across changing ports."""
+    """Atomically persist Cue Studio UI preferences across changing ports."""
     config_path = os.path.abspath(wgp.server_config_filename)
     temp_path = (
         f"{config_path}.{os.getpid()}.{threading.get_ident()}.tmp"
@@ -1349,7 +1338,7 @@ async def update_h3_window_overrides(request: Request):
 
 @api.get("/api/v1/studio-preferences")
 def get_studio_preferences():
-    """Return workflow preferences that should survive Maestro restarts."""
+    """Return workflow preferences that should survive Cue Studio restarts."""
     return _studio_preferences_response()
 
 
@@ -1777,7 +1766,7 @@ def _is_system_managed_lora(filename: str) -> bool:
 
 
 # ── video_prompt_type normalization ─────────────────────────────────
-# Maestro's video_prompt_type is a string of single-letter mode flags
+# Cue Studio's video_prompt_type is a string of single-letter mode flags
 # the wgp.py pipeline uses to decide what optional inputs are needed
 # (e.g. "I" → image_refs required, "V" → video/image guide required).
 # wgp.py rejects the job with a friendly UI error if a flag is set but
@@ -1838,7 +1827,7 @@ def _prepare_studio_image_outpaint_mask(body: dict, model_def: dict) -> None:
     WanGP's image in/outpainting contract consumes a source image plus a mask.
     Its Gradio ImageEditor silently supplies an empty (black) mask when the
     user only asks to expand the canvas; preprocessing then pads that mask
-    with white in the new margins. Maestro's simpler Outpaint UI deliberately
+    with white in the new margins. Cue Studio's simpler Outpaint UI deliberately
     asks only for the source and expansion amounts, so reproduce that exact
     contract here before validation instead of making users upload a pointless
     all-black file themselves.
@@ -1935,7 +1924,7 @@ def _h3_injected_keyframes_from_body(body: dict) -> list[dict]:
 # I2V (image-to-video) start/end frames are expected. When "S" is set
 # but no image_start is attached, wgp rejects the job with "You must
 # provide a Start Image" instead of falling back to T2V — even though
-# Maestro's UX promises "no start image → T2V automatically."
+# Cue Studio's UX promises "no start image → T2V automatically."
 #
 # Stale UI state is the usual cause: model defaults, sidecar metadata
 # from a previous re-roll, or the user clearing the start-image
@@ -1956,7 +1945,7 @@ def _normalize_image_prompt_type(body: dict) -> None:
 
     Effect: a body with image_prompt_type='S' but no image_start gets
     its prompt_type rewritten to '' (or stripped of just 'S' if other
-    flags survive), turning the job into T2V — matching Maestro's
+    flags survive), turning the job into T2V — matching Cue Studio's
     documented behavior of auto-falling-back to T2V when no start
     image is provided.
     """
@@ -2358,7 +2347,7 @@ def delete_lora_file(directory: str, filename: str):
     extras = [
         base + ".civitai.json",
         base + ".guide.md",
-        target + ".maestro-managed.json",
+        target + ".cue-studio-managed.json",
     ]
     extras += [base + f"_preview1{ext}" for ext in (".mp4", ".png", ".jpg", ".webp")]
     for extra in extras:
@@ -2375,7 +2364,7 @@ def delete_lora_file(directory: str, filename: str):
 def _lora_is_compatible_with_model(model_def: dict, path: str) -> bool:
     """Keep special adapters out of model selectors that cannot run them."""
 
-    # Most MiniMax H3 adapters can cross Full/Pruned through Maestro's AdaLN
+    # Most MiniMax H3 adapters can cross Full/Pruned through Cue Studio's AdaLN
     # conversion. Presets may still opt out explicitly when an upstream
     # adapter is tied to one checkpoint shape.
     architecture = str((model_def or {}).get("architecture") or "")
@@ -2458,11 +2447,11 @@ def _minimax_h3_turbo_option(model_def: dict) -> dict | None:
         "upstream_url": str(upstream.get("model_card_url") or ""),
         "guide": (
             "Experimental MiniMax H3 accelerators filtered for this "
-            f"{workflow.upper()} checkpoint. Standard LoRAs use Maestro's "
+            f"{workflow.upper()} checkpoint. Standard LoRAs use Cue Studio's "
             "normal low-step schedule; Alibaba PAI Acc presets use their "
             "required Parallel Decoding Distillation heads and eight-step "
             "schedule. Alibaba's official Ref2VA PDD recipe recommends "
-            "high-detail references, while Maestro also honors the faster "
+            "high-detail references, while Cue Studio also honors the faster "
             "Match output setting. Mutable Hugging Face main is never loaded silently."
         ),
     }
@@ -2578,10 +2567,10 @@ def list_loras_details(model_type: str):
             "released_at": None,
             "lora_id": f"local:{basename}",  # overwritten below if sidecar has modelId
         }
-        # Guides and sidecars for LINKED loras are stored in Maestro's own
+        # Guides and sidecars for LINKED loras are stored in Cue Studio's own
         # lora dir keyed by the same basename — check there first, then
         # fall back to a sidecar sitting next to the file itself (read-only,
-        # e.g. when the linked install is another Maestro/Wan2GP).
+        # e.g. when the linked install is another Cue Studio/Wan2GP).
         _primary_base = os.path.join(lora_dir, os.path.splitext(basename)[0])
         _own_base = os.path.splitext(f)[0]
         guide_file = next(
@@ -2989,7 +2978,7 @@ def get_lora_update_manifest():
 
 CIVITAI_BASE_URL = "https://civitai.com/api/v1"
 CIVITAI_IMAGE_CDN = "https://imagecache.civitai.com/xG1nkqKTMzGDvpLrqFT7WA"
-CIVITAI_USER_AGENT = "Maestro/1.0 (CivitAI LoRA Browser)"
+CIVITAI_USER_AGENT = "CueStudio/2.1 (CivitAI LoRA Browser)"
 
 
 def _fix_civitai_image_url(url: str, width: int = 450, is_video: bool = False) -> str:
@@ -3247,7 +3236,7 @@ def _ckpt_family_for_arch(arch: str, model_type: str) -> str:
 def _list_checkpoint_architectures(base_model: str) -> list:
     """Return only verified targets for this exact CivitAI base model.
 
-    The old picker exposed every Maestro architecture and defaulted unknown
+    The old picker exposed every Cue Studio architecture and defaulted unknown
     checkpoints to the first one.  That let Flux 1 and SDXL weights be
     registered as Flux 2 models.  Keep this list as an explicit allowlist and
     verify that every mapped template still describes the expected pipeline.
@@ -3321,7 +3310,7 @@ def _register_checkpoint_finetune(save_path: str, sidecar_data: dict,
     )
     if not template_model_type:
         raise CheckpointCompatibilityError(
-            f"No verified Maestro template exists for CivitAI base "
+            f"No verified Cue Studio template exists for CivitAI base "
             f"'{base_model}' and architecture '{target_architecture}'."
         )
     template_path = os.path.join(_DEFAULTS_DIR, f"{template_model_type}.json")
@@ -3381,7 +3370,7 @@ def _register_checkpoint_finetune(save_path: str, sidecar_data: dict,
     base_slug = _ckpt_slugify(f"civitai_{model_id}_{name}") if model_id else _ckpt_slugify(name)
     slug = base_slug[:80].strip("_") or "checkpoint"
     out_path = os.path.join(_FINETUNES_DIR, f"{slug}.json")
-    temporary_path = f"{out_path}.maestro-{os.getpid()}.tmp"
+    temporary_path = f"{out_path}.cue-studio-{os.getpid()}.tmp"
     try:
         with open(temporary_path, "w", encoding="utf-8") as f:
             json.dump(finetune_def, f, indent=4)
@@ -3666,7 +3655,7 @@ def _release_download_target(download_id: str, target_path: str):
 
 
 def _validate_safetensors_payload(path: str):
-    """Apply Maestro's minimum-size and header checks to a safetensors file."""
+    """Apply Cue Studio's minimum-size and header checks to a safetensors file."""
     file_size = os.path.getsize(path)
     if file_size < 100 * 1024:
         raise ValueError(
@@ -4054,9 +4043,9 @@ def civitai_checkpoint_architectures(base_model: str = ""):
         reason = None
     elif checkpoint_targets_for_base(base_model):
         reason = (
-            "Maestro recognizes this checkpoint family, but its required "
+            "Cue Studio recognizes this checkpoint family, but its required "
             "pipeline definition is unavailable in this installation. Update "
-            "Maestro and try again."
+            "Cue Studio and try again."
         )
     else:
         reason = unsupported_checkpoint_reason(base_model)
@@ -4387,7 +4376,7 @@ async def civitai_download(request: Request):
                 status_code=400,
                 detail=(
                     "The verified pipeline definition for this checkpoint is "
-                    "not available. Update Maestro and try again."
+                    "not available. Update Cue Studio and try again."
                 ),
             )
         if os.path.splitext(filename)[1].casefold() not in {".safetensors", ".sft"}:
@@ -4576,7 +4565,7 @@ def _run_civitai_download(download_id: str):
         if is_checkpoint and file_extension not in {".safetensors", ".sft"}:
             raise RuntimeError(
                 "CivitAI returned an archive or non-SafeTensor checkpoint. "
-                "Maestro can import only an individual .safetensors file."
+                "Cue Studio can import only an individual .safetensors file."
             )
         if file_extension in {".safetensors", ".sft"}:
             try:
@@ -4630,7 +4619,7 @@ def _run_civitai_download(download_id: str):
         # LoRAs intentionally remain metadata-routed because adapter formats
         # vary. Full checkpoints are stricter: the header-only verification
         # above matches several architecture-specific tensor shapes before the
-        # multi-GB file is published or added to Maestro's model registry.
+        # multi-GB file is published or added to Cue Studio's model registry.
 
         sidecar_data = {
             "modelId": dl["_model_id"],
@@ -5755,7 +5744,7 @@ async def generate_lora_guide(request: Request):
         raise HTTPException(status_code=404, detail="Unknown model type")
 
     # The lora binary may live in a linked (read-only) folder; the guide and
-    # sidecar ALWAYS live in Maestro's own lora dir keyed by the basename,
+    # sidecar ALWAYS live in Cue Studio's own lora dir keyed by the basename,
     # so linked installs are never written to.
     lora_path = wgp.resolve_lora_path(model_type, filename)
     if not os.path.isfile(lora_path):
@@ -5765,7 +5754,7 @@ async def generate_lora_guide(request: Request):
     sidecar_path = os.path.splitext(primary_path)[0] + ".civitai.json"
     if not os.path.isfile(sidecar_path):
         # A linked install may carry its own sidecar next to the file —
-        # adopt a copy into Maestro's dir so guide + weight updates have a
+        # adopt a copy into Cue Studio's dir so guide + weight updates have a
         # writable home.
         linked_sidecar = os.path.splitext(lora_path)[0] + ".civitai.json"
         if os.path.isfile(linked_sidecar):
@@ -5921,7 +5910,7 @@ async def scan_and_generate_guides(request: Request):
     # Walk the primary loras root plus each linked install's loras root
     # (derived from Linked Model Folders). For linked files, all writes
     # (sidecars, guides) target the PRIMARY MIRROR path — same family
-    # subfolder and filename under Maestro's own loras root — so linked
+    # subfolder and filename under Cue Studio's own loras root — so linked
     # installs stay read-only while their LoRAs still get guides.
     walk_roots = [(lora_root, lora_root)]
     for _linked_ckpts in _get_linked_model_folders():
@@ -5946,7 +5935,7 @@ async def scan_and_generate_guides(request: Request):
                 mirror_dir = os.path.normpath(os.path.join(mirror_root, rel_dir))
                 write_base = os.path.join(mirror_dir, os.path.splitext(f)[0])
                 # Guides live at the write target; sidecars may exist at the
-                # write target (Maestro's) or beside a linked file.
+                # write target (Cue Studio's) or beside a linked file.
                 sidecar_read = next(
                     (p for p in (write_base + ".civitai.json", own_base + ".civitai.json") if os.path.isfile(p)),
                     None,
@@ -6679,7 +6668,7 @@ def delete_preset(preset_id: str):
 
 
 def _read_app_version() -> str:
-    """Maestro release version from the repo-root VERSION file."""
+    """Cue Studio release version from the repo-root VERSION file."""
     try:
         vpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "VERSION")
         with open(vpath, "r", encoding="utf-8") as f:
@@ -6710,10 +6699,10 @@ def get_system_config():
         "prompt_enhancer_quantization": cfg.get("prompt_enhancer_quantization", "quanto_int8"),
         "attention_modes_available": list(wgp.attention_modes_supported),
         "host_notification_sound_enabled": bool(
-            cfg.get("maestro_host_notification_sound_enabled", False)
+            cfg.get("cue_studio_host_notification_sound_enabled", False)
         ),
         "host_notification_sound_volume": int(
-            cfg.get("maestro_host_notification_sound_volume", 50)
+            cfg.get("cue_studio_host_notification_sound_volume", 50)
         ),
         # Read from server_config (persisted) rather than wgp.args, which
         # only reflects the CLI default until wgp.py applies the saved
@@ -6763,7 +6752,7 @@ def _apply_linked_model_folders(folders):
         if not os.path.isdir(ap):
             raise HTTPException(status_code=400, detail=f"Folder does not exist: {ap}")
         if not is_external_root(ap):
-            raise HTTPException(status_code=400, detail=f"Folder is inside the Maestro install (already searched): {ap}")
+            raise HTTPException(status_code=400, detail=f"Folder is inside the Cue Studio install (already searched): {ap}")
         ap_n = os.path.normcase(ap)
         if ap_n == primary_n:
             raise HTTPException(status_code=400, detail=f"Folder is the primary download root: {ap}")
@@ -6800,7 +6789,7 @@ async def update_system_config(request: Request):
 
     # These public API names intentionally do not reuse WanGP's legacy
     # notification keys. WanGP rings those keys at every low-level clip and
-    # sliding-window boundary; Maestro rings once at the top-level Studio or
+    # sliding-window boundary; Cue Studio rings once at the top-level Studio or
     # Director lifecycle boundary instead.
     if "host_notification_sound_enabled" in body:
         raw_enabled = body["host_notification_sound_enabled"]
@@ -6810,7 +6799,7 @@ async def update_system_config(request: Request):
                 detail="host_notification_sound_enabled must be true or false",
             )
         enabled = raw_enabled
-        wgp.server_config["maestro_host_notification_sound_enabled"] = enabled
+        wgp.server_config["cue_studio_host_notification_sound_enabled"] = enabled
         updated["host_notification_sound_enabled"] = enabled
     if "host_notification_sound_volume" in body:
         try:
@@ -6820,7 +6809,7 @@ async def update_system_config(request: Request):
                 status_code=400,
                 detail="host_notification_sound_volume must be between 0 and 100",
             )
-        wgp.server_config["maestro_host_notification_sound_volume"] = volume
+        wgp.server_config["cue_studio_host_notification_sound_volume"] = volume
         updated["host_notification_sound_volume"] = volume
 
     for key, value in body.items():
@@ -6850,7 +6839,7 @@ async def update_system_config(request: Request):
 
 @api.post("/api/v1/notification-sound/test")
 async def test_host_notification_sound(request: Request):
-    """Play a one-off test chime on the computer running Maestro."""
+    """Play a one-off test chime on the computer running Cue Studio."""
     try:
         body = await request.json()
     except Exception:
@@ -6858,7 +6847,7 @@ async def test_host_notification_sound(request: Request):
     try:
         volume = int(body.get(
             "volume",
-            wgp.server_config.get("maestro_host_notification_sound_volume", 50),
+            wgp.server_config.get("cue_studio_host_notification_sound_volume", 50),
         ))
     except (TypeError, ValueError):
         raise HTTPException(status_code=400, detail="volume must be between 0 and 100")
@@ -6948,7 +6937,7 @@ async def test_web_push(request: Request):
 def scan_model_folders():
     """Discover sibling Pinokio apps with a Wan2GP-style ckpts folder.
 
-    Maestro lives at <pinokio>/api/<name>/app, so sibling installs (e.g. an
+    Cue Studio lives at <pinokio>/api/<name>/app, so sibling installs (e.g. an
     existing Wan2GP) are <pinokio>/api/*/app/ckpts. Returns lightweight
     candidates for the Settings -> Linked Model Folders UI; size stats are
     top-level-files-only so scanning stays instant on multi-hundred-GB
@@ -7376,7 +7365,7 @@ def system_preflight():
             "id": "ffmpeg",
             "level": "error",
             "message": "ffmpeg was not found on PATH. Video and audio "
-                       "export will fail. Install ffmpeg and restart Maestro.",
+                       "export will fail. Install ffmpeg and restart Cue Studio.",
         })
 
     # CUDA — the generation pipeline is NVIDIA-only.
@@ -7386,7 +7375,7 @@ def system_preflight():
             checks.append({
                 "id": "cuda",
                 "level": "error",
-                "message": "No CUDA GPU detected. Maestro's generation "
+                "message": "No CUDA GPU detected. Cue Studio's generation "
                            "pipeline requires an NVIDIA GPU; generation will "
                            "not work on this machine.",
             })
@@ -8131,13 +8120,13 @@ async def storage_reclaim(request: Request):
 
 @api.post("/api/v1/storage/duplicates/remove-linked")
 async def storage_remove_linked(request: Request):
-    """The inverse of reclaim: keep Maestro's copy, remove the LINKED
+    """The inverse of reclaim: keep Cue Studio's copy, remove the LINKED
     install's duplicate — to the Recycle Bin, never a hard delete.
 
     Gated on the opt-in services.storage_allow_linked_removal flag:
     deleting from another install is the one sanctioned exception to the
     is_protected_path rule, and only with an identical different-physical
-    copy verified in Maestro's primary root at this exact moment."""
+    copy verified in Cue Studio's primary root at this exact moment."""
     services = wgp.server_config.get("services", {})
     if not services.get("storage_allow_linked_removal", False):
         raise HTTPException(status_code=403, detail="Removing files from linked installs is disabled. Enable it in the Storage Manager first.")
@@ -8147,7 +8136,7 @@ async def storage_remove_linked(request: Request):
         raise HTTPException(status_code=404, detail="File not found.")
     target = os.path.abspath(path)
     if not wgp.fl.is_protected_path(target):
-        raise HTTPException(status_code=400, detail="That file is not in a linked install — use Reclaim for Maestro's own copies.")
+        raise HTTPException(status_code=400, detail="That file is not in a linked install — use Reclaim for Cue Studio's own copies.")
     target_real = os.path.realpath(target)
     try:
         psize = os.path.getsize(target_real)
@@ -8177,11 +8166,11 @@ async def storage_remove_linked(request: Request):
         if surviving:
             break
     if not surviving:
-        raise HTTPException(status_code=409, detail="Maestro does not hold an identical copy of that file — refusing to remove the linked install's only version.")
+        raise HTTPException(status_code=409, detail="Cue Studio does not hold an identical copy of that file — refusing to remove the linked install's only version.")
     from services.win_safe_files import recycle_file
     if not recycle_file(target):
         raise HTTPException(status_code=423, detail="Could not move the file to the Recycle Bin (it may be locked, or too large for the Bin). Nothing was deleted.")
-    print(f"[Storage] Removed linked duplicate to Recycle Bin: {target} ({psize} bytes; Maestro's copy: {surviving})")
+    print(f"[Storage] Removed linked duplicate to Recycle Bin: {target} ({psize} bytes; Cue Studio's copy: {surviving})")
     return {"status": "ok", "freed_bytes": psize, "recycled": True, "surviving_copy": surviving}
 
 
@@ -8429,7 +8418,7 @@ def _guard_interactive_llm_against_generation() -> None:
             detail=(
                 "A generation is already using or waiting for the GPU. "
                 "AI prompt planning has not started. Add this setup to the "
-                "queue and Maestro will run its planner safely when the job "
+                "queue and Cue Studio will run its planner safely when the job "
                 "reaches the front."
             ),
         )
@@ -9060,7 +9049,7 @@ async def _llm_enhance_prompt_payload(body: dict):
 
     # The generic Wan2GP cinematic enhancer cannot produce MiniMax H3's
     # required Context-IR fields, speaker IDs, or <d> dialogue tags. Route H3
-    # through Maestro's model-specific guide even when the legacy enhancer is
+    # through Cue Studio's model-specific guide even when the legacy enhancer is
     # enabled; all other model families retain the configured behavior.
     if (
         enhancer_enabled > 0
@@ -9078,11 +9067,11 @@ async def _llm_enhance_prompt_payload(body: dict):
             # Fall through to LLM
     elif enhancer_enabled > 0:
         if needs_h3_context_ir:
-            print("[Enhance] MiniMax H3 requires structured Context-IR; using Maestro's model-specific LLM guide")
+            print("[Enhance] MiniMax H3 requires structured Context-IR; using Cue Studio's model-specific LLM guide")
         elif needs_ltx_window_plan:
             print(
                 "[Enhance] LTX multi-window planning requires standalone "
-                "window prompts; using Maestro's model-specific LLM guide"
+                "window prompts; using Cue Studio's model-specific LLM guide"
             )
 
     # Use our local LLM service
@@ -9522,7 +9511,7 @@ def list_saved_characters():
 
 @api.post("/api/v1/characters")
 async def create_saved_character(request: Request):
-    """Copy temporary uploads into Maestro's persistent character library."""
+    """Copy temporary uploads into Cue Studio's persistent character library."""
     from services.character_library import create_character
 
     body = await request.json()
@@ -11291,7 +11280,7 @@ async def _prepare_generation_submission(
         # Omni Reference Sequence can now use Ref2VA's native continuation:
         # every pass keeps the canonical manifest while carrying recent
         # generated motion and matching stereo audio. Turning scene continuity
-        # off deliberately retains Maestro's independent hard-cut clip path.
+        # off deliberately retains Cue Studio's independent hard-cut clip path.
         h3_reference_sequence_active = False
         h3_sequence_enabled = (
             bool(_generation_model_def.get("omni_reference"))
@@ -11987,7 +11976,7 @@ async def _prepare_generation_submission(
             body.pop("h3_window_plan", None)
 
     # LTX 0.9 / 2.x / 2.5 all use WanGP's native rolling-window engine, but
-    # Maestro now makes that behavior explicit.  A disabled toggle means one
+    # Cue Studio now makes that behavior explicit.  A disabled toggle means one
     # native pass; Manual requires one exact line per computed window; Auto
     # expands one overall idea through the configured prompt-enhancer LLM.
     if _generation_model_def.get("multi_window_sequence_controls"):
@@ -12201,7 +12190,7 @@ async def _prepare_generation_submission(
     # where image_prompt_type='S' persisted after the user cleared the
     # start-image preview (or never set one), causing wgp to reject T2V
     # generations with "You must provide a Start Image" instead of
-    # falling back to T2V as Maestro's UX promises.
+    # falling back to T2V as Cue Studio's UX promises.
     _normalize_image_prompt_type(body)
 
     # ── SCAIL-2 operating guards ────────────────────────────────────
@@ -12578,7 +12567,7 @@ EDIT_ANYTHING_LORA_HF_URL = "https://huggingface.co/Alissonerdx/LTX-LoRAs"
 EDIT_ANYTHING_LORA_FILENAME = "ltx23_edit_anything_global_rank128_v1_9000steps_adamw.safetensors"
 
 # Official replacement-specific SCAIL-2 Relighting LoRA. Upstream publishes a
-# SAT/PyTorch checkpoint, so Maestro downloads the immutable revision, verifies
+# SAT/PyTorch checkpoint, so Cue Studio downloads the immutable revision, verifies
 # its official hash, and converts it once to Wan safetensors on first use.
 _RECAST_RELIGHTING_LORA_FILENAME = "scail2_relighting_lora.safetensors"
 _RECAST_RELIGHTING_LORA_REVISION = "150cc0ca4e98e50e60b9295dacde39442fdccab2"
@@ -12659,7 +12648,7 @@ def _normalize_recast_lora_settings(
 
 
 # ── Managed auto-download LoRAs ──────────────────────────────────────────
-# LoRAs that Maestro fetches on first use so a fresh install doesn't error
+# LoRAs that Cue Studio fetches on first use so a fresh install doesn't error
 # out with "file not found" when the user triggers a feature that requires
 # one (these are multi-hundred-MB files we don't ship in the repo). The
 # frontend pre-downloads them when the relevant panel mounts; this registry
@@ -12910,9 +12899,9 @@ def _ensure_managed_loras_present(activated_loras, model_type, progress=None):
             if integrity_failure:
                 raise RuntimeError(
                     f"Could not verify the {label} model automatically: {e}. "
-                    "Maestro rejected the download before installation because "
+                    "Cue Studio rejected the download before installation because "
                     "its bytes did not match the pinned release metadata. Update "
-                    "Maestro and retry; if the error remains, report it so the "
+                    "Cue Studio and retry; if the error remains, report it so the "
                     f"manifest can be reviewed. Source: {support_url}."
                 ) from e
             if spec.get("converter"):
@@ -13151,7 +13140,7 @@ _RECAST_MASK_COLORS = [
 # Extra SAM3 tracking colors used by native bystander mapping and the adaptive
 # protection fallback. SCAIL-2 can condition at most five people, but the
 # source or generated scene may contain additional people that must remain
-# distinguishable while Maestro selects the relevant tracks.
+# distinguishable while Cue Studio selects the relevant tracks.
 _RECAST_PROTECTION_COLORS = _RECAST_MASK_COLORS + [
     (255, 255, 0),
     (255, 128, 0),
@@ -20571,7 +20560,7 @@ def _resolve_outpaint_video_timing(
     The short-form Diffusers LTX-2.3 Outpaint demo resamples every source to
     24 fps.  ``reference_fps`` remains available for reproducing that narrow
     demo contract and rounds *up* to the next complete latent group so the
-    source tail is not discarded. Maestro's production video path omits it:
+    source tail is not discarded. Cue Studio's production video path omits it:
     preserving source timing produced materially better long-form continuity
     and lets the normal sliding-window path carry clips beyond one window.
     """
@@ -20718,7 +20707,7 @@ _OUTPAINT_PIXEL_BUDGETS = {
 }
 
 # A 257-frame 704x1280 two-stage Outpaint is the largest composition verified
-# to fit a 24 GB card with Maestro's normal streaming profile.
+# to fit a 24 GB card with Cue Studio's normal streaming profile.
 # Keep larger canvases within the same approximate pixel-frame activation
 # budget by shortening each diffusion window. This affects peak VRAM, not the
 # total clip length; the existing sliding-window path covers the remainder.
@@ -23196,7 +23185,7 @@ def _apply_per_job_coefficient(job: dict) -> None:
 
         stage_count = _stage_count_from_params(params)
         resolution = params.get("resolution")
-        # video_length is in frames (Maestro convention). For images
+        # video_length is in frames (Cue Studio convention). For images
         # video_length is typically 1 — the helper handles both.
         video_length = params.get("video_length")
         try:
@@ -24328,7 +24317,7 @@ def _run_tool_upscale(job_id: str):
 
 
 def _run_tool_film_grain(job_id: str):
-    """Apply Maestro's film-grain finish to a NEW copy of any video."""
+    """Apply Cue Studio's film-grain finish to a NEW copy of any video."""
     import shutil
 
     job = _jobs[job_id]
@@ -24586,7 +24575,7 @@ async def tools_upscale(request: Request):
 
     Body: { media_path: str, media_type?: "image"|"video",
             method?: str (default "flashvsr2"), seed?: int, workspace?: str }
-    `video_path` remains accepted for older Maestro clients.
+    `video_path` remains accepted for older Cue Studio clients.
     """
     body = await request.json()
     media_path = body.get("media_path") or body.get("video_path")
@@ -26406,7 +26395,7 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
                                                 list(future_params.get("minimax_h3_references") or []),
                                                 omni_sequence_look_path,
                                                 role=(
-                                                    "Maestro project-look reference from the first "
+                                                    "Cue Studio project-look reference from the first "
                                                     "generated clip; scene, wardrobe, lighting, and "
                                                     "color only"
                                                 ),
@@ -26442,7 +26431,7 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
                                         next_refs,
                                         continuity_path,
                                         role=(
-                                            "Maestro rolling continuity reference from the "
+                                            "Cue Studio rolling continuity reference from the "
                                             "preceding generated clip; blocking, environment "
                                             "state, lighting, and screen direction only"
                                         ),
@@ -28241,7 +28230,7 @@ def list_outputs(limit: int = 0, offset: int = 0, favorites_only: bool = False, 
             "edit_sub_mode": params.get("edit_sub_mode"),
             "multi_clip_info": params.get("multi_clip_info"),
             # A media file can become visible while a multi-window job is
-            # still writing it, before Maestro publishes the authoritative
+            # still writing it, before Cue Studio publishes the authoritative
             # sidecar.  Surface this transition so an already-mounted gallery
             # card can replace temporary embedded generation metadata with the
             # final source-prompt/window-plan provenance.
@@ -28849,7 +28838,7 @@ def serve_upload(filename: str):
 
 
 # ============================================================================
-# Maestro Editor — non-destructive project persistence and queued export
+# Cue Studio Editor — non-destructive project persistence and queued export
 # ============================================================================
 
 def _editor_save_root() -> str:
@@ -29291,7 +29280,7 @@ async def editor_export(request: Request):
             target=_run_editor_export,
             args=(job_id,),
             daemon=False,
-            name=f"maestro_editor_export_{job_id}",
+            name=f"cue_studio_editor_export_{job_id}",
         ).start()
     return {"job_id": job_id, "status": "held" if hold_for_queue else "queued"}
 
@@ -29342,18 +29331,30 @@ _mimetypes.add_type("text/javascript", ".mjs")
 _mimetypes.add_type("text/css", ".css")
 _mimetypes.add_type("image/svg+xml", ".svg")
 
-# Keep the installable web-app icon sourced from Maestro's canonical tracked
+# Keep the installable web-app icon sourced from Cue Studio's canonical tracked
 # artwork instead of maintaining a second binary copy under ui/public. This
 # route is registered before the root StaticFiles mount so the manifest and
 # iOS apple-touch-icon link can both use the same stable URL.
-_maestro_web_icon = os.path.normpath(
-    os.path.join(_app_dir, "..", "maestro_simplified_icon_alpha.png")
+# (Legacy /maestro-icon.png route kept as an alias for a couple of minor
+# releases so installs that cached the old URL don't 404.)
+_cue_studio_web_icon = os.path.normpath(
+    os.path.join(_app_dir, "..", "ui", "public", "cue-studio-icon-1254.png")
 )
-if os.path.isfile(_maestro_web_icon):
-    @api.get("/maestro-icon.png", include_in_schema=False)
-    def maestro_web_icon():
+if os.path.isfile(_cue_studio_web_icon):
+    @api.get("/cue-studio-icon.png", include_in_schema=False)
+    def cue_studio_web_icon():
         return FileResponse(
-            _maestro_web_icon,
+            _cue_studio_web_icon,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    @api.get("/maestro-icon.png", include_in_schema=False)
+    def maestro_web_icon_alias():
+        # Legacy alias — kept so installs that bookmarked or cached the
+        # old URL still get a valid PNG. Safe to drop in a future release.
+        return FileResponse(
+            _cue_studio_web_icon,
             media_type="image/png",
             headers={"Cache-Control": "public, max-age=86400"},
         )
@@ -29361,12 +29362,12 @@ if os.path.isfile(_maestro_web_icon):
 _ui_dist = os.path.normpath(os.path.join(_app_dir, "..", "ui", "dist"))
 if os.path.isdir(_ui_dist):
     api.mount("/", StaticFiles(directory=_ui_dist, html=True))
-    print(f"[Maestro] React UI serving from {_ui_dist}")
+    print(f"[Cue Studio] React UI serving from {_ui_dist}")
 else:
     @api.get("/")
     def index():
         return {"message": "React UI not built. Run: cd ui && npm install && npm run build"}
-    print(f"[Maestro] React UI not found at {_ui_dist} - serving API only")
+    print(f"[Cue Studio] React UI not found at {_ui_dist} - serving API only")
 
 
 # ============================================================================
@@ -29408,11 +29409,11 @@ if __name__ == "__main__":
     resolved_port = _first_bindable_port(host, port)
     if resolved_port is None:
         print(
-            f"\n[Maestro] ERROR: could not find a free port in "
-            f"{port}-{port + 20}. Another app (or a stale Maestro instance) "
+            f"\n[Cue Studio] ERROR: could not find a free port in "
+            f"{port}-{port + 20}. Another app (or a stale Cue Studio instance) "
             f"is holding them.\n"
             f"  • Close the other program, or run ./stop_local.sh from the "
-            f"project root, then start Maestro again.\n"
+            f"project root, then start Cue Studio again.\n"
             f"  • On Windows you can see what holds a port with: "
             f"netstat -ano | findstr :{port}\n",
             flush=True,
@@ -29420,27 +29421,10 @@ if __name__ == "__main__":
         sys.exit(1)
     if resolved_port != port:
         print(
-            f"[Maestro] Port {port} was busy — using {resolved_port} instead.",
+            f"[Cue Studio] Port {port} was busy — using {resolved_port} instead.",
             flush=True,
         )
         port = resolved_port
-
-    # Configure security based on flags, environment and network binding
-    from services.security import configure_security
-    import argparse
-    parser = argparse.ArgumentParser(description="Cue Studio / Maestro Server")
-    parser.add_argument("--api-key", type=str, default=None, help="Secret API Bearer token for authentication")
-    parser.add_argument("--require-auth", action="store_true", help="Force API token authentication even for local loopback")
-    known_args, _ = parser.parse_known_args()
-
-    # Em modo --share / 0.0.0.0, a autenticação por token é ativada por padrão para segurança na rede
-    is_shared = (host == "0.0.0.0")
-    should_require_auth = known_args.require_auth or is_shared
-    active_token = configure_security(
-        api_key=known_args.api_key,
-        require_auth=should_require_auth,
-        allow_unauthenticated_local=not known_args.require_auth,
-    )
 
     # Browsers can't navigate to 0.0.0.0 (it's a non-routable bind
     # address), so when binding wider we still SURFACE the loopback
@@ -29450,18 +29434,14 @@ if __name__ == "__main__":
     display_host = "127.0.0.1" if host == "0.0.0.0" else host
 
     print(f"\n{'='*50}")
-    print(f"  Maestro UI:    http://{display_host}:{port}/")
+    print(f"  Cue Studio UI:    http://{display_host}:{port}/")
+    # The Classic UI entry used to live here too — the Gradio mount was
+    # removed earlier, so the `/classic` route now 404s. Keep the banner
+    # clean so users don't try to open a URL that no longer exists.
     print(f"  API docs:      http://{display_host}:{port}/docs")
     if host == "0.0.0.0":
         print(f"  (Bound to {host} — LAN-accessible via this machine's IP)")
-    if should_require_auth:
-        print(f"  Security:      AUTH REQUIRED (Bearer Token)")
-        if active_token:
-            print(f"  Token:         {active_token}")
-    else:
-        print(f"  Security:      Local loopback (Unauthenticated)")
     print(f"{'='*50}\n")
-
 
     # Confirm the polling filter immediately before Uvicorn configures logging.
     install_quiet_access_filter()
@@ -29473,7 +29453,7 @@ if __name__ == "__main__":
         # window between probe and uvicorn's own bind). Still fail loudly and
         # actionably rather than dumping a bare traceback into the launcher.
         print(
-            f"\n[Maestro] ERROR: failed to bind {host}:{port} ({e}). "
+            f"\n[Cue Studio] ERROR: failed to bind {host}:{port} ({e}). "
             f"The port was taken just after we checked it — Start again to "
             f"pick a fresh port.\n",
             flush=True,

@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "maestro"
+name = "cue-studio"
 version = "2.1.0"
-description = "Maestro — local creative AI studio, director, and video editor (fork of Blizaine/Maestro)."
+description = "Cue Studio — local creative AI studio, director, and video editor."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "WanGP Non-Commercial Evaluation License 1.1" }
@@ -18,7 +18,8 @@ keywords = [
     "audio-generation",
     "ai-director",
     "wan2gp",
-    "maestro",
+    "cue-studio",
+    "creative-studio",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -34,17 +35,21 @@ classifiers = [
     "Topic :: Multimedia :: Graphics",
 ]
 
-# The maestro console script is the only entry point declared here.
-# It points at maestro_cli.py (at the repo root) instead of app.cli
+# The cue-studio console script is the only entry point declared here.
+# It points at cue_studio_cli.py (at the repo root) instead of app.cli
 # directly, because pip-generated console scripts do
 # `from <module> import <attr>` and `app.cli` isn't importable without
-# the repo root on sys.path. maestro_cli.py is a 30-line shim that
+# the repo root on sys.path. cue_studio_cli.py is a 30-line shim that
 # adds the repo root to sys.path and then delegates to app.cli.main.
-# See maestro_cli.py for the rationale.
+# The legacy `maestro` script entry is preserved so existing installs
+# keep working during the rebrand.
+# See cue_studio_cli.py for the rationale.
 [project.scripts]
-maestro = "maestro_cli:main"
+cue-studio = "cue_studio_cli:main"
+cue = "cue_studio_cli:main"
+maestro = "cue_studio_cli:main"
 
-# Maestro is a fork of Blizaine/Maestro and inherits the upstream
+# Cue Studio is a fork of Blizaine/Maestro and inherits the upstream
 # WanGP Non-Commercial Evaluation License 1.1. Commercial use of the
 # SOFTWARE ITSELF (not the outputs you generate with it) requires a
 # separate commercial license from the WanGP licensor. See LICENSE.
@@ -66,7 +71,7 @@ yaml = ["PyYAML>=6.0"]
 # tool.setuptools config in newer setuptools). We deliberately do
 # NOT add app/ to the package list: it contains 15k+ LOC of model
 # code, vendored code, and is mixed license.
-packages = ["maestro_cli"]
+packages = ["cue_studio_cli"]
 
 # Default suite excludes browser and smoke tests. Opt in with -m browser / -m smoke.
 [tool.pytest.ini_options]

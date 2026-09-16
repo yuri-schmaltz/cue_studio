@@ -1146,7 +1146,7 @@ export interface MultiClip {
   durationFrames?: number
 }
 
-export type SettingsTab = 'performance' | 'integrations' | 'storage' | 'notifications'
+export type SettingsTab = 'appearance' | 'performance' | 'integrations' | 'storage' | 'notifications'
 
 export interface ServicesConfig {
   llm_model_id: string

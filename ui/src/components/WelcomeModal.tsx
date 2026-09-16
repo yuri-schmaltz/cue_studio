@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Sparkles, Download, Cpu, ShieldAlert, X } from 'lucide-react'
 
-const SEEN_KEY = 'maestro_welcome_seen_v1'
+const SEEN_KEY = 'cue-studio_welcome_seen_v1'
 
 /**
  * WelcomeModal — a one-time first-run intro. Sets the expectations that

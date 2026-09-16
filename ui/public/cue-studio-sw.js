@@ -24,8 +24,8 @@ self.addEventListener('push', event => {
     }
     await self.registration.showNotification(title, {
       body: payload.body || 'Your Maestro generation has finished.',
-      icon: '/maestro-icon.png',
-      badge: '/maestro-icon.png',
+      icon: '/cue-studio-icon-192.png',
+      badge: '/cue-studio-icon-192.png',
       tag: payload.tag || 'maestro-generation',
       data: { url: payload.url || '/' },
     })

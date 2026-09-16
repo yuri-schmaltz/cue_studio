@@ -16,7 +16,7 @@ import {
   type StudioPreferenceState,
 } from './studioPreferences'
 
-export const STORAGE_KEY = 'maestro_mode_settings'
+export const STORAGE_KEY = 'cue-studio_mode_settings'
 
 // Persistence schema version. Bump when changing the LoRA-key strategy or
 // adding fields that need migration. Currently:

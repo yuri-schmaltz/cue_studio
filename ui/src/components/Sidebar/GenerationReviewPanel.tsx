@@ -74,7 +74,7 @@ export function GenerationReviewPanel() {
       if (!result.prepared) throw new Error('Missing prepared revision')
       const params = result.prepared.params
       useStore.setState({ reviewPlan: { ...plan, reviewId: result.id, resolvedParams: params, prompt: String(params.prompt), windowPrompts: draft.windows } })
-      localStorage.setItem('maestro-pending-generation-review', result.id)
+      localStorage.setItem('cue-studio-pending-generation-review', result.id)
       setDraft(null)
     } catch (e) { setEditError(e instanceof Error ? e.message : 'Unable to save') }
     finally { setSaving(false) }
