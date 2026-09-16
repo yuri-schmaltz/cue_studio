@@ -41,7 +41,7 @@ import { DirectorReview } from '../DirectorDashboard/DirectorReview'
 // leaves the existing skill untouched.
 
 import { useEffect, useState } from 'react'
-import { BookOpen, Check, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useDirectorSlice } from '../../stores/directorSelectors'
 import {
@@ -49,7 +49,6 @@ import {
   DirectorGenerationOptions,
 } from '../Sidebar/DirectorChat'
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
-import { StyleBiblesModal } from '../StyleBibles/StyleBiblesModal'
 
 /**
  * Mounts the Director planning UI as a Stage inside the Workspace.
@@ -414,10 +413,6 @@ export function DirectorStage() {
   const pipelineId = useStore(s => s.pipelineId)
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const directorStep = useStore(s => s.directorStep)
-  // Style Bibles are global templates, not per-project data, so
-  // management lives wherever the Director is — surfaced from the
-  // header strip instead of buried in Configurations.
-  const [biblesOpen, setBiblesOpen] = useState(false)
   // The right column is now strictly per-take (changes land in the
   // per-pipeline snapshot at submit time) and stays editable throughout.
 
@@ -442,21 +437,6 @@ export function DirectorStage() {
       data-testid="director-stage"
       data-pipeline-status={pipelineStatus?.status ?? 'idle'}
     >
-      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border bg-bg-secondary/80">
-        <div className="text-2xs uppercase tracking-wider text-text-muted">
-          Director
-        </div>
-        <button
-          type="button"
-          onClick={() => setBiblesOpen(true)}
-          className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1.5 text-text-secondary"
-          aria-label="Manage Style Bibles"
-          data-testid="director-stage-style-bibles"
-        >
-          <BookOpen size={12} className="text-accent-blue" aria-hidden="true" />
-          Style Bibles
-        </button>
-      </div>
       <div className="director-stage-columns">
         <aside className="director-stage-chat" aria-label="Director chat & decisions">
           <DirectorChat />
@@ -481,7 +461,6 @@ export function DirectorStage() {
           )}
         </aside>
       </div>
-      {biblesOpen && <StyleBiblesModal onClose={() => setBiblesOpen(false)} />}
     </div>
   )
 }
