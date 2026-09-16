@@ -55,7 +55,7 @@ export function DirectorPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* Sub-header de navegação proeminente de workflow */}
-      <div className="flex items-center justify-between px-4 py-2 bg-bg-secondary/90 border-b border-border/80 backdrop-blur-sm z-10 select-none">
+      <div className="flex items-center justify-between px-4 py-2 bg-bg-secondary/90 backdrop-blur-sm z-10 select-none">
         <div className="flex items-center gap-2">
           <div className="inline-flex p-0.5 rounded-lg bg-bg-tertiary border border-border/60">
             <button
@@ -85,9 +85,6 @@ export function DirectorPage() {
               <span>Laboratório Manual (Studio)</span>
             </button>
           </div>
-        </div>
-        <div className="text-2xs text-text-muted hidden sm:block">
-          {stage === 'director' ? 'Planejamento autônomo com IA e geração de cenas' : 'Controles granulares e geração cirúrgica de takes'}
         </div>
       </div>
 
