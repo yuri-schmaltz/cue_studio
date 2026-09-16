@@ -13,12 +13,13 @@
  * pearl) are internal CSS ids, not user-facing names.
  *
  * Persistence: localStorage under "cue-studio-theme-mode" and
- * "cue-studio-theme-family". Legacy keys are migrated on first load so
- * nobody's chosen look changes: the original single-theme key
- * ("maestro-theme", may hold a light variant id) and the short-lived
- * per-variant key ("cue-studio-theme-dark") both seed the family. An
- * inline script in index.html applies the resolved theme to <html>
- * before React mounts so there's no flash of the default theme.
+ * "cue-studio-theme-family". Legacy keys are migrated on first load
+ * via legacyKeys.ts so nobody's chosen look changes: the original
+ * single-theme key ("maestro-theme", may hold a light variant id)
+ * and the short-lived per-variant key ("cue-studio-theme-dark") both
+ * seed the family. An inline script in index.html applies the
+ * resolved theme to <html> before React mounts so there's no flash
+ * of the default theme.
  *
  * Adding a new family: add `[data-theme]` blocks for both variants in
  * index.css, add the family to FAMILIES below, and extend the maps in
@@ -96,9 +97,11 @@ const MODE_KEY = 'cue-studio-theme-mode'
 const FAMILY_KEY = 'cue-studio-theme-family'
 /** Short-lived key from the interim two-picker build; holds a dark id. */
 const INTERIM_DARK_KEY = 'cue-studio-theme-dark'
-/** Original single-theme key; may hold either variant. Still written
- * with the resolved theme so downgrades show something sensible. */
-const LEGACY_KEY = 'maestro-theme'
+/** Pre-rebrand single-theme key; legacy reads still consult it on
+ * first access (see legacyKeys.ts) before writing the new
+ * cue-studio-theme key. The new key is always the source of truth
+ * once migration runs. */
+const LEGACY_KEY = 'cue-studio-theme'
 
 const DEFAULT_PREFS: ThemePrefs = { mode: 'dark', family: 'golden-hour' }
 

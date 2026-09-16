@@ -4511,7 +4511,7 @@ def load_models(model_type, override_profile = -1, output_type="video", **model_
     # (notably H3 Ref2VA with a video reference).  A lower coefficient remains
     # safe for lighter jobs and does not force an unnecessary reload.
     try:
-        wan_model._maestro_profile_vram_coefficient = float(vram_safety_coefficient)
+        wan_model._cue_studio_profile_vram_coefficient = float(vram_safety_coefficient)
     except Exception:
         pass
     if len(args.gpu) > 0:
@@ -10370,7 +10370,7 @@ def generate_video(
                                         )
                                         if not (
                                             isinstance(item, dict)
-                                            and item.get("_maestro_generated_continuity")
+                                            and item.get("_cue_studio_generated_continuity")
                                         )
                                     ]
                                 else:

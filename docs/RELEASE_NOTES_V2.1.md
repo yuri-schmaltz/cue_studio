@@ -178,21 +178,23 @@ and creates a coherent brand color that runs through every theme:
 The rebrand preserves all backwards-compatibility entry points so
 existing installs and integrations don't break:
 
-- **Console scripts:** `cue-studio`, `cue`, and `maestro` all
-  delegate to the same entry point (`maestro_cli:main`).
+- **Console scripts:** `cue-studio` and `cue` both delegate to the
+  same entry point (`cue_studio_cli:main`). No `maestro` shim is
+  shipped — the rebrand is final.
 - **PWA manifest:** the installable app's `name` and `short_name`
   are "Cue Studio" / "Cue". The `id` stays `/` so existing
   installations are recognized as the same app rather than as a new
   install.
 - **localStorage theme keys:** legacy `maestro-theme*` keys continue
-  to resolve. New writes go to `cue-theme*` keys. The boot script
+  to resolve via the `legacyKeys.ts` chokepoint on first access.
+  New writes go to `cue-studio-theme*` keys. The boot script
   migrates them transparently.
 - **API routes:** `/api/v1/*` paths are unchanged. The app-name
   reported in `/api/v1/settings` is now `Cue Studio`.
 - **Window/document.title:** updated to "Cue Studio".
 - **Favicon:** served from `/cue-studio-icon.svg` (the SVG is the
-  canonical asset; the previous `maestro.svg` is preserved on disk
-  as a legacy alias during the transition period).
+  canonical asset; the previous `maestro.svg` was removed during
+  the rebrand).
 
 ### New assets
 

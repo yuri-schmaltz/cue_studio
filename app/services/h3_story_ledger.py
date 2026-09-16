@@ -939,7 +939,7 @@ def extract_h3_source_intent(prompt: str) -> dict[str, Any]:
         name = " ".join(parts)
         if name.casefold() in {
             "a", "an", "and", "both", "make", "the", "then", "extremely", "epic",
-            "friends", "maestro",
+            "friends", "cue-studio",
         } | _NON_CAST_PROPER_NAMES or (name.isupper() and len(name) <= 3):
             continue
         if name not in proper_names:

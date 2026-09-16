@@ -9,7 +9,7 @@ const IMAGE_RE = /\.(png|jpe?g|webp|bmp|tiff?)$/i
 const VIDEO_RE = /\.(mp4|mov|mkv|webm|avi|m4v)$/i
 const AUDIO_RE = /\.(wav|mp3|flac|ogg|m4a|aac)$/i
 const EMPTY_REFERENCES: MiniMaxH3Reference[] = []
-const CHARACTER_LIBRARY_EXPANDED_KEY = 'maestro-omni-characters-expanded'
+const CHARACTER_LIBRARY_EXPANDED_KEY = 'cue-studio-omni-characters-expanded'
 
 function mediaType(file: File): MiniMaxH3ReferenceType | null {
   // Prefer a recognized extension. Some iOS document providers expose M4A

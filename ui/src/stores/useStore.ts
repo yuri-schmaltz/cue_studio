@@ -10138,8 +10138,8 @@ export const useStore = create<AppState>((set, get, store) => ({
       minimax_h3_references: Array.isArray(p.minimax_h3_references)
         ? (p.minimax_h3_references as GenerateParams['minimax_h3_references'])?.filter(
             reference => !(
-              reference as { _maestro_generated_continuity?: boolean }
-            )._maestro_generated_continuity,
+              reference as { _cue_studio_generated_continuity?: boolean }
+            )._cue_studio_generated_continuity,
           )
         : undefined,
       minimax_h3_reference_detail: (

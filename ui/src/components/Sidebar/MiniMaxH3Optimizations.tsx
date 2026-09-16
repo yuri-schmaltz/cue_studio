@@ -4,7 +4,7 @@ import { useStore } from '../../stores/useStore'
 import { InfoTooltip } from './InfoTooltip'
 import { readPersistentDisclosure, writePersistentDisclosure } from '../../lib/persistentDisclosure'
 
-const H3_OPTIMIZATIONS_EXPANDED_KEY = 'maestro-h3-optimizations-expanded'
+const H3_OPTIMIZATIONS_EXPANDED_KEY = 'cue-studio-h3-optimizations-expanded'
 
 /** Main-sidecar controls for H3's independent speed optimizations. */
 export function MiniMaxH3Optimizations() {

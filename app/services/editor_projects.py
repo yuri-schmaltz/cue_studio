@@ -1665,7 +1665,7 @@ def render_editor_project(
     while os.path.exists(output_path):
         output_path = os.path.join(output_dir, f"{stem}({suffix}).mp4")
         suffix += 1
-    temporary_dir = tempfile.mkdtemp(prefix="maestro-editor-render-", dir=output_dir)
+    temporary_dir = tempfile.mkdtemp(prefix="cue-studio-editor-render-", dir=output_dir)
     # Render the unpublished part file directly inside the workspace. On
     # Windows, a file moved out of a Python-created private temp directory can
     # retain that directory's restrictive ACL and become unreadable to the

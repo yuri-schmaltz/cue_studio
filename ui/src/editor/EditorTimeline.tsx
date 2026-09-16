@@ -430,11 +430,11 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
   const dropAsset = (event: React.DragEvent<HTMLElement>, trackId: string) => {
     event.preventDefault()
     try {
-      let payload = event.dataTransfer.getData('application/x-maestro-editor-asset')
+      let payload = event.dataTransfer.getData('application/x-cue-studio-editor-asset')
       if (!payload) {
         const plainText = event.dataTransfer.getData('text/plain')
-        if (plainText.startsWith('maestro-editor-asset:')) {
-          payload = plainText.slice('maestro-editor-asset:'.length)
+        if (plainText.startsWith('cue-studio-editor-asset:')) {
+          payload = plainText.slice('cue-studio-editor-asset:'.length)
         }
       }
       if (!payload) return

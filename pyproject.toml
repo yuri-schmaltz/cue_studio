@@ -36,18 +36,15 @@ classifiers = [
 ]
 
 # The cue-studio console script is the only entry point declared here.
-# It points at cue_studio_cli.py (at the repo root) instead of app.cli
-# directly, because pip-generated console scripts do
-# `from <module> import <attr>` and `app.cli` isn't importable without
-# the repo root on sys.path. cue_studio_cli.py is a 30-line shim that
-# adds the repo root to sys.path and then delegates to app.cli.main.
-# The legacy `maestro` script entry is preserved so existing installs
-# keep working during the rebrand.
-# See cue_studio_cli.py for the rationale.
+# It points at the cue_studio_cli package (cue_studio_cli/__init__.py)
+# instead of app.cli directly, because pip-generated console scripts
+# do `from <module> import <attr>` and `app.cli` isn't importable
+# without the repo root on sys.path. cue_studio_cli adds the repo
+# root to sys.path and then delegates to app.cli.main.
+# See cue_studio_cli/__init__.py for the rationale.
 [project.scripts]
 cue-studio = "cue_studio_cli:main"
 cue = "cue_studio_cli:main"
-maestro = "cue_studio_cli:main"
 
 # Cue Studio is a fork of Blizaine/Maestro and inherits the upstream
 # WanGP Non-Commercial Evaluation License 1.1. Commercial use of the
@@ -65,12 +62,13 @@ maestro = "cue_studio_cli:main"
 yaml = ["PyYAML>=6.0"]
 
 [tool.setuptools]
-# maestro_cli is the pip console-script shim — a single module at the
-# repo root that adds the repo to sys.path and delegates to app.cli.
-# We list it dynamically (py_modules is not allowed in static
-# tool.setuptools config in newer setuptools). We deliberately do
-# NOT add app/ to the package list: it contains 15k+ LOC of model
-# code, vendored code, and is mixed license.
+# cue_studio_cli is the pip console-script shim — a tiny package at
+# the repo root whose __init__.py adds the repo to sys.path and
+# delegates to app.cli. We list it as a static package here because
+# py_modules is not allowed in static tool.setuptools config in
+# newer setuptools. We deliberately do NOT add app/ to the package
+# list: it contains 15k+ LOC of model code, vendored code, and is
+# mixed license.
 packages = ["cue_studio_cli"]
 
 # Default suite excludes browser and smoke tests. Opt in with -m browser / -m smoke.

@@ -33,7 +33,7 @@ import { invalidateEditorMediaPreview } from './editorMediaPreview'
 
 const HISTORY_LIMIT = 60
 const MIN_ITEM_DURATION = 1 / 30
-const ROUND_TRIP_STORAGE_KEY = 'maestro-editor-ai-round-trip-v1'
+const ROUND_TRIP_STORAGE_KEY = 'cue-studio-editor-ai-round-trip-v1'
 const DIRECTOR_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mkv', '.mov']
 let initializeSequence = 0
 

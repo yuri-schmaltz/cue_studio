@@ -152,7 +152,7 @@ if _hf_token_path:
         _hf_const = sys.modules.get("huggingface_hub.constants")
         if _hf_const is not None:
             import tempfile
-            _hf_const.HF_TOKEN_PATH = os.path.join(tempfile.gettempdir(), "maestro_no_hf_token")
+            _hf_const.HF_TOKEN_PATH = os.path.join(tempfile.gettempdir(), "cue_studio_no_hf_token")
 
 # Now safe to import wgp - all module-level code will run with patched argv
 print("[Cue Studio] Importing WanGP engine...")
@@ -164,8 +164,8 @@ from models.minimax_h3.turbo import (
 print(f"[Cue Studio] WanGP loaded: {len(wgp.displayed_model_types)} models available")
 
 # Closed-app notification state remains local under app/settings.
-_maestro_settings_dir = os.path.join(_app_dir, "settings")
-_web_push = WebPushService(_maestro_settings_dir)
+_cue_studio_settings_dir = os.path.join(_app_dir, "settings")
+_web_push = WebPushService(_cue_studio_settings_dir)
 
 # WanGP's legacy notifier fires at low-level output boundaries, which means a
 # multi-window generation or Director project can chime once per internal
@@ -248,7 +248,7 @@ def _xdg_video_dir(home: Path) -> Optional[Path]:
     # ~/.config/user-dirs.dirs and applies the same locale-aware naming.
     try:
         from platformdirs import PlatformDirs  # type: ignore
-        candidate = Path(PlatformDirs("maestro", "maestro").user_videos_dir)
+        candidate = Path(PlatformDirs("cue-studio", "cue-studio").user_videos_dir)
         # platformdirs returns ``PosixPath('.')`` when the spec isn't
         # installed (e.g. headless server). Reject empty/relative
         # paths so we fall through to the ASCII chain below.
@@ -482,19 +482,19 @@ install_quiet_access_filter()
 # Read the Cue Studio release version from VERSION at the repo root (one level
 # above app/). Falls back to "0.0.0+unknown" if the file is missing so the
 # /health/version endpoint is always reachable even on broken checkouts.
-_MAESTRO_VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
+_CUE_STUDIO_VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
 
 
-def _load_maestro_version() -> str:
+def _load_cue_studio_version() -> str:
     try:
-        return _MAESTRO_VERSION_FILE.read_text(encoding="utf-8").strip() or "0.0.0+unknown"
+        return _CUE_STUDIO_VERSION_FILE.read_text(encoding="utf-8").strip() or "0.0.0+unknown"
     except OSError:
         return "0.0.0+unknown"
 
 
-MAESTRO_VERSION = _load_maestro_version()
+CUE_STUDIO_VERSION = _load_cue_studio_version()
 
-api = FastAPI(title="Cue Studio API", version=MAESTRO_VERSION)
+api = FastAPI(title="Cue Studio API", version=CUE_STUDIO_VERSION)
 
 
 @api.get("/health/version", include_in_schema=False)
@@ -504,7 +504,7 @@ def _health_version() -> JSONResponse:
     version declared in the top-level VERSION file. Safe to hit from the
     browser — no side effects, no auth required (mirrors Directo's
     /api/version contract)."""
-    return JSONResponse({"name": "maestro", "version": MAESTRO_VERSION})
+    return JSONResponse({"name": "cue-studio", "version": CUE_STUDIO_VERSION})
 
 
 # Upload size caps — enforced in upload handlers. Tuned for real-world
@@ -645,7 +645,7 @@ def _on_director_queue_terminal(summary: dict) -> None:
             f"{total} queued project{'s' if total != 1 else ''} finished"
             + (f" with {failed} failure{'s' if failed != 1 else ''}." if failed else ".")
         ),
-        tag="maestro-director-queue",
+        tag="cue-studio-director-queue",
     )
 
 
@@ -1041,10 +1041,10 @@ def list_models():
     return {"families": families, "models": models}
 
 
-_MODEL_VISIBILITY_CONFIG_KEY = "maestro_model_visibility"
+_MODEL_VISIBILITY_CONFIG_KEY = "cue_studio_model_visibility"
 _MODEL_VISIBILITY_WRITE_LOCK = threading.RLock()
-_H3_WINDOW_OVERRIDES_CONFIG_KEY = "maestro_h3_window_overrides"
-_STUDIO_PREFERENCES_CONFIG_KEY = "maestro_studio_preferences"
+_H3_WINDOW_OVERRIDES_CONFIG_KEY = "cue_studio_h3_window_overrides"
+_STUDIO_PREFERENCES_CONFIG_KEY = "cue_studio_studio_preferences"
 
 
 def _normalize_studio_model_map(values, *, field_name):
@@ -10949,7 +10949,7 @@ async def prepare_generation_review(request: Request):
     store = _generation_review_store()
     review = store.create(body)
     threading.Thread(target=store.prepare, args=(review["id"], _prepare_review_request),
-                     daemon=False, name="maestro-generation-review").start()
+                     daemon=False, name="cue-studio-generation-review").start()
     return {"id": review["id"], "status": review["status"]}
 
 
@@ -18945,7 +18945,7 @@ async def repaint_endpoint(request: Request):
                     minimum_frames, latent_size = 5, 4
 
                 shot_temp_dir = tempfile.mkdtemp(
-                    prefix="maestro-repaint-shots-",
+                    prefix="cue-studio-repaint-shots-",
                 )
                 try:
                     shot_manifest = _build_repaint_shot_manifest(
@@ -19349,7 +19349,7 @@ async def recast_preview_endpoint(request: Request):
                 body, workspace,
             )
             with tempfile.TemporaryDirectory(
-                prefix="maestro-recast-preview-",
+                prefix="cue-studio-recast-preview-",
             ) as preview_dir:
                 prepared = _prepare_recast_reference_conditioning(
                     resolved_mappings,
@@ -20359,7 +20359,7 @@ async def recast_endpoint(request: Request):
                         minimum_frames, latent_size = 5, 4
 
                     shot_temp_dir = tempfile.mkdtemp(
-                        prefix="maestro-recast-shots-",
+                        prefix="cue-studio-recast-shots-",
                     )
                     try:
                         shot_manifest = _build_recast_shot_manifest(
@@ -21221,7 +21221,7 @@ def _prepare_and_run_outpaint(job_id):
                     minimum_frames, latent_size = 17, 8
 
                 shot_temp_dir = tempfile.mkdtemp(
-                    prefix="maestro-outpaint-shots-",
+                    prefix="cue-studio-outpaint-shots-",
                 )
 
                 def _preparation_progress(index, total):
@@ -23482,7 +23482,7 @@ def _apply_per_job_coefficient(job: dict) -> None:
             ):
                 loaded_coefficient = getattr(
                     wgp.wan_model,
-                    "_maestro_profile_vram_coefficient",
+                    "_cue_studio_profile_vram_coefficient",
                     None,
                 )
                 if (
@@ -26823,7 +26823,7 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
 
                             import tempfile
                             adaptive_mask_dir = tempfile.mkdtemp(
-                                prefix="maestro-recast-protect-",
+                                prefix="cue-studio-recast-protect-",
                             )
                             protection_progress = {"bucket": -1}
 
@@ -27350,7 +27350,7 @@ def _run_recast_shot_generation(job_id):
             job["params"].pop("_defer_output_publication", None)
         if temp_dir and os.path.isdir(temp_dir):
             resolved_temp = os.path.realpath(temp_dir)
-            expected_prefix = "maestro-recast-shots-"
+            expected_prefix = "cue-studio-recast-shots-"
             if os.path.basename(resolved_temp).startswith(expected_prefix):
                 shutil.rmtree(resolved_temp, ignore_errors=True)
 
@@ -27605,7 +27605,7 @@ def _run_repaint_shot_generation(job_id):
             job["params"].pop("_defer_output_publication", None)
         if temp_dir and os.path.isdir(temp_dir):
             resolved_temp = os.path.realpath(temp_dir)
-            expected_prefix = "maestro-repaint-shots-"
+            expected_prefix = "cue-studio-repaint-shots-"
             if os.path.basename(resolved_temp).startswith(expected_prefix):
                 shutil.rmtree(resolved_temp, ignore_errors=True)
 
@@ -27888,7 +27888,7 @@ def _run_outpaint_shot_generation(job_id):
                 job["params"].pop(key, None)
         if temp_dir and os.path.isdir(temp_dir):
             resolved_temp = os.path.realpath(temp_dir)
-            expected_prefix = "maestro-outpaint-shots-"
+            expected_prefix = "cue-studio-outpaint-shots-"
             if os.path.basename(resolved_temp).startswith(expected_prefix):
                 shutil.rmtree(resolved_temp, ignore_errors=True)
 
@@ -28018,7 +28018,7 @@ def _run_held_studio_jobs(job_ids: list[str]) -> None:
                 f"{len(job_ids)} queued generation"
                 f"{'s are' if len(job_ids) != 1 else ' is'} finished."
             ),
-            tag="maestro-studio-queue",
+            tag="cue-studio-studio-queue",
         )
 
 
@@ -28041,7 +28041,7 @@ def _start_held_studio_queue() -> list[str]:
             target=_run_held_studio_jobs,
             args=(released,),
             daemon=False,
-            name="maestro_studio_queue",
+            name="cue_studio_studio_queue",
         ).start()
     return released
 
@@ -29356,9 +29356,10 @@ if os.path.isfile(_cue_studio_web_icon):
         )
 
     @api.get("/maestro-icon.png", include_in_schema=False)
-    def maestro_web_icon_alias():
+    def _legacy_maestro_icon_alias():
         # Legacy alias — kept so installs that bookmarked or cached the
-        # old URL still get a valid PNG. Safe to drop in a future release.
+        # old URL still get a valid PNG. Safe to drop in a future release
+        # once telemetry confirms no callers remain.
         return FileResponse(
             _cue_studio_web_icon,
             media_type="image/png",

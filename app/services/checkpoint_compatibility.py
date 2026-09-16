@@ -389,7 +389,7 @@ def validate_checkpoint_file(
     }
 
 
-_QUARANTINE_KEY = "maestro_checkpoint_quarantine"
+_QUARANTINE_KEY = "cue_studio_checkpoint_quarantine"
 
 
 def _definition_compatibility(

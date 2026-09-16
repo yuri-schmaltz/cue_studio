@@ -165,7 +165,7 @@ def call_with_sticky_interrupt(
     relay = threading.Thread(
         target=_relay,
         daemon=True,
-        name="maestro_abort_relay",
+        name="cue_studio_abort_relay",
     )
     relay.start()
     try:

@@ -1,18 +1,19 @@
-"""Tests for the maestro CLI.
+"""Tests for the Cue Studio CLI.
 
 We use Click's CliRunner to test the in-process CLI directly. This
 avoids spawning subprocesses for every assertion and gives us clean
 isolation of the tempdir we use for the Style Bible registry.
 
 The tests cover:
-  - `maestro status` returns version + paths.
-  - `maestro style-bible list` lists Bibles in the registry dir.
-  - `maestro style-bible show ID` prints the full Bible JSON.
-  - `maestro style-bible delete ID` removes the file (with -y to skip
-    the confirm prompt).
-  - `maestro style-bible validate PATH` accepts a valid Bible and
+  - `cue-studio status` returns version + paths.
+  - `cue-studio style-bible list` lists Bibles in the registry dir.
+  - `cue-studio style-bible show ID` prints the full Bible JSON.
+  - `cue-studio style-bible delete ID` removes the file (with -y to
+    skip the confirm prompt).
+  - `cue-studio style-bible validate PATH` accepts a valid Bible and
     rejects an invalid one.
-  - `maestro style-bible delete __default__` is refused (reserved id).
+  - `cue-studio style-bible delete __default__` is refused (reserved
+    id).
 """
 from __future__ import annotations
 
@@ -56,7 +57,7 @@ class StatusCommandTests(unittest.TestCase):
         runner = CliRunner()
         result = runner.invoke(cli, ["status"])
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("Maestro v", result.output)
+        self.assertIn("Cue Studio v", result.output)
         self.assertIn("Repo root:", result.output)
         self.assertIn("App root:", result.output)
 
@@ -199,7 +200,7 @@ class VersionFlagTests(unittest.TestCase):
         runner = CliRunner()
         result = runner.invoke(cli, ["--version"])
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("maestro, version", result.output)
+        self.assertIn("cue-studio, version", result.output)
 
     def test_help_prints_subcommands(self):
         runner = CliRunner()

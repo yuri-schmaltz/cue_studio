@@ -1,10 +1,11 @@
-"""Maestro CLI — small companion to the GUI for status / inspection tasks.
+"""Cue Studio CLI — small companion to the GUI for status / inspection tasks.
 
 Pattern lifted from directo_studio v1.1.5: a `directo` console script
 exposes a Click group with subcommands like `directo status`,
 `directo gallery list`, `directo backup queue`. We mirror the shape
-here for the Maestro side: a `maestro` console script with subcommands
-for the things that are useful from a terminal.
+here for the Cue Studio side: a `cue-studio` console script (with
+`cue` as a shorter alias) with subcommands for the things that are
+useful from a terminal.
 
 The CLI deliberately stays small. Anything that needs the running
 backend (generation, Director, Editor) lives in the FastAPI app; the
@@ -12,17 +13,17 @@ CLI is for read-only inspection and local config management that
 doesn't need the model stack loaded.
 
 Subcommands:
-  - maestro status                : print Maestro version + env summary
-  - maestro gallery list [--limit]: list recent generated media
-  - maestro style-bible list      : list saved Style Bibles
-  - maestro style-bible show ID   : print a Bible's full JSON
-  - maestro style-bible delete ID : delete a Bible (refuses reserved ids)
-  - maestro style-bible validate PATH: validate a Bible file (JSON or YAML)
+  - cue-studio status                : print Cue Studio version + env summary
+  - cue-studio gallery list [--limit]: list recent generated media
+  - cue-studio style-bible list      : list saved Style Bibles
+  - cue-studio style-bible show ID   : print a Bible's full JSON
+  - cue-studio style-bible delete ID : delete a Bible (refuses reserved ids)
+  - cue-studio style-bible validate PATH: validate a Bible file (JSON or YAML)
 
 Why Click: the project's existing deps already include Click (used by
 setup.py for the env manager). No new dependency is required.
 
-Run ``maestro --help`` or ``maestro SUBCOMMAND --help`` for usage.
+Run ``cue-studio --help`` or ``cue-studio SUBCOMMAND --help`` for usage.
 """
 from __future__ import annotations
 
@@ -33,7 +34,7 @@ from typing import Optional
 
 import click
 
-# Maestro root paths — same convention used by app/launch.py and
+# Cue Studio root paths — same convention used by app/launch.py and
 # app/setup.py. We resolve them once at import time so every
 # subcommand gets the same view of "where the data lives".
 APP_ROOT = Path(__file__).resolve().parent  # .../app/
@@ -48,22 +49,22 @@ def _read_version() -> str:
         return "0.0.0+unknown"
 
 
-# Lazy imports inside subcommand handlers — we don't want `maestro
+# Lazy imports inside subcommand handlers — we don't want `cue-studio
 # status` to require importing torch / diffusers / etc. The CLI is
 # a lightweight entry point and should stay fast.
 
 
 @click.group()
-@click.version_option(_read_version(), prog_name="maestro")
+@click.version_option(_read_version(), prog_name="cue-studio")
 def cli() -> None:
-    """Maestro — companion CLI for status, gallery, and Style Bible tasks."""
+    """Cue Studio — companion CLI for status, gallery, and Style Bible tasks."""
 
 
 @cli.command()
 def status() -> None:
-    """Print Maestro version, repo root, and a few key paths."""
+    """Print Cue Studio version, repo root, and a few key paths."""
     version = _read_version()
-    click.echo(f"Maestro v{version}")
+    click.echo(f"Cue Studio v{version}")
     click.echo(f"Repo root:  {REPO_ROOT}")
     click.echo(f"App root:   {APP_ROOT}")
     click.echo(f"Settings:   {APP_ROOT / 'settings'}")
@@ -209,11 +210,12 @@ def main() -> None:
     """Console-script entry point. Defined separately so the function
     is importable for tests (we can call it directly with a
     Click.testing.CliRunner instead of going through the
-    maestro console script).
+    cue-studio console script).
 
     This function assumes the repo root is already on sys.path.
-    The actual pip-installed wrapper at maestro_cli.py handles that
-    — we keep this function side-effect-free for ease of testing."""
+    The actual pip-installed wrapper at cue_studio_cli/__init__.py
+    handles that — we keep this function side-effect-free for ease
+    of testing."""
     cli()
 
 

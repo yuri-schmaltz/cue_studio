@@ -62,7 +62,7 @@ class _VersionedHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/health/version":
             payload = json.dumps({
-                "name": "maestro",
+                "name": "cue-studio",
                 "version": getattr(self.server, "reported_version", "0.0.0+unknown"),
             }).encode("utf-8")
             self.send_response(200)
@@ -88,7 +88,7 @@ class H(http.server.BaseHTTPRequestHandler):
         pass
     def do_GET(self):
         if self.path == "/health/version":
-            payload = json.dumps({"name": "maestro", "version": _VERSION}).encode("utf-8")
+            payload = json.dumps({"name": "cue-studio", "version": _VERSION}).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))

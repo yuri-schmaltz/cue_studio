@@ -267,8 +267,8 @@ class family_handler:
             dtype or torch.bfloat16,
             lm_decoder_engine=lm_decoder_engine,
         )
-        pipeline._maestro_mmgp_profile = profile
-        pipeline._maestro_music3_engine = lm_decoder_engine
+        pipeline._cue_studio_mmgp_profile = profile
+        pipeline._cue_studio_music3_engine = lm_decoder_engine
         if accelerated:
             # CUDA-graph semantic decoding requires Qwen and the RVQ decoder
             # to remain resident together. Their ConvRot checkpoints fit the

@@ -34,13 +34,13 @@ def append_generated_reference(
         1 for item in next_references if item.get("type") == "image"
     )
     next_references.append({
-        "id": f"maestro-continuity-{picture_number}-{os.path.basename(path)}",
+        "id": f"cue-studio-continuity-{picture_number}-{os.path.basename(path)}",
         "type": "image",
         "path": path,
         "filename": os.path.basename(path),
         "role": role,
         "image_intent": "composition",
-        "_maestro_generated_continuity": True,
+        "_cue_studio_generated_continuity": True,
     })
     return next_references, picture_number
 

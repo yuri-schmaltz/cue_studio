@@ -44,7 +44,7 @@ def test_create_edit_and_reopen_project_setup():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={'width': 1440, 'height': 960})
         page.on('pageerror', lambda error: errors.append(str(error)))
-        page.add_init_script("localStorage.setItem('maestro_welcome_seen_v1','1')")
+        page.add_init_script("localStorage.setItem('cue_studio_welcome_seen_v1','1')")
         page.route('**/api/v1/**', api)
         page.goto(os.environ.get('SHELL_TEST_URL', 'http://127.0.0.1:3000'), wait_until='networkidle')
         page.get_by_role('tab', name='Projects', exact=True).click()

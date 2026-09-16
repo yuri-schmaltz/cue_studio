@@ -179,7 +179,7 @@ def _extract_named_candidates(story: str) -> list[str]:
     result: list[str] = []
     rejected = {
         "a", "an", "and", "chapter", "director", "each", "every", "film",
-        "first", "last", "many", "maestro", "scene", "the", "then", "tv",
+        "first", "last", "many", "cue-studio", "scene", "the", "then", "tv",
         "video",
     }
     for match in re.finditer(

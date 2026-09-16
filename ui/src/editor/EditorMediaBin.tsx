@@ -128,7 +128,7 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
   const importDirectorRun = useEditorStore(state => state.importDirectorRun)
   const addTitle = useEditorStore(state => state.addTitle)
   const removeLibraryAsset = useEditorStore(state => state.removeLibraryAsset)
-  const filterStorageKey = `maestro-editor-media-filters:${projectWorkspace}`
+  const filterStorageKey = `cue-studio-editor-media-filters:${projectWorkspace}`
   const filtersLoaded = useRef(false)
   // Per-card delete confirmation — first click arms, second click commits.
   // Lives in local state so accidental hovers don't fire destructive calls.
@@ -330,10 +330,10 @@ export function EditorMediaBin({ compact = false }: { compact?: boolean }) {
             onDragStart={event => {
               event.dataTransfer.effectAllowed = 'copy'
               const payload = JSON.stringify(asset)
-              event.dataTransfer.setData('application/x-maestro-editor-asset', payload)
+              event.dataTransfer.setData('application/x-cue-studio-editor-asset', payload)
               // Safari may omit custom MIME payloads across complex drag targets.
               // Keep an identifiable plain-text fallback for remote Mac sessions.
-              event.dataTransfer.setData('text/plain', `maestro-editor-asset:${payload}`)
+              event.dataTransfer.setData('text/plain', `cue-studio-editor-asset:${payload}`)
             }}
             onDoubleClick={() => void addMedia(asset, undefined, selectedTrackId || undefined)}
             className={`group relative overflow-hidden rounded-xl border border-border bg-bg-tertiary transition-all hover:border-border-light hover:bg-bg-hover ${compact ? 'shadow-sm' : 'flex items-center gap-2 p-1.5'}`}

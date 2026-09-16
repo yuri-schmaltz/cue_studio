@@ -89,13 +89,13 @@ def _install_request_timeouts() -> None:
         import requests
     except ImportError:
         # `requests` not installed — should never happen in the
-        # Maestro venv (it's a transitive dep) but bail gracefully
+        # Cue Studio venv (it's a transitive dep) but bail gracefully
         # if it does. Env var still applies.
         return
 
     # 2. Patch the Session class. Most HTTP libraries route through
     #    Session.request, including hf-hub's _request_wrapper.
-    if not getattr(requests.Session.request, "_maestro_timeout_patched", False):
+    if not getattr(requests.Session.request, "_cue_studio_timeout_patched", False):
         _original_session_request = requests.Session.request
 
         def _session_request(self, method, url, **kwargs):
@@ -105,11 +105,11 @@ def _install_request_timeouts() -> None:
                 )
             return _original_session_request(self, method, url, **kwargs)
 
-        _session_request._maestro_timeout_patched = True
+        _session_request._cue_studio_timeout_patched = True
         requests.Session.request = _session_request
 
     # 3. Patch the module-level requests.request too, for direct callers.
-    if not getattr(requests.request, "_maestro_timeout_patched", False):
+    if not getattr(requests.request, "_cue_studio_timeout_patched", False):
         _original_module_request = requests.request
 
         def _module_request(method, url, **kwargs):
@@ -119,7 +119,7 @@ def _install_request_timeouts() -> None:
                 )
             return _original_module_request(method, url, **kwargs)
 
-        _module_request._maestro_timeout_patched = True
+        _module_request._cue_studio_timeout_patched = True
         requests.request = _module_request
 
 
@@ -273,7 +273,7 @@ def _install_tqdm_hook() -> None:
     Tqdm = getattr(tqdm_module, "tqdm", None)
     if Tqdm is None or not isinstance(Tqdm, type):
         return
-    if getattr(Tqdm, "_maestro_progress_patched", False):
+    if getattr(Tqdm, "_cue_studio_progress_patched", False):
         return
 
     try:
@@ -285,32 +285,32 @@ def _install_tqdm_hook() -> None:
             _original_init(self, *args, **kwargs)
             try:
                 if not _is_download_tqdm(self):
-                    self._maestro_file_id = None
+                    self._cue_studio_file_id = None
                     return
                 desc = kwargs.get("desc", "") or getattr(self, "desc", "") or ""
                 # tqdm sometimes prefixes desc with "(...)" timing or
                 # writes "Fetching N files: ..." for HF group bars.
                 # Strip the meaningless padding/whitespace for display.
                 desc = str(desc).strip(": ()") or f"download-{id(self)}"
-                self._maestro_file_id = desc
-                self._maestro_filename = desc
+                self._cue_studio_file_id = desc
+                self._cue_studio_filename = desc
                 _record_download_progress(
-                    self._maestro_file_id,
-                    self._maestro_filename,
+                    self._cue_studio_file_id,
+                    self._cue_studio_filename,
                     downloaded=int(getattr(self, "n", 0) or 0),
                     total=int(self.total) if getattr(self, "total", None) else None,
                 )
             except Exception:
-                self._maestro_file_id = None
+                self._cue_studio_file_id = None
 
         def _patched_update(self, n=1):
             result = _original_update(self, n)
             try:
-                file_id = getattr(self, "_maestro_file_id", None)
+                file_id = getattr(self, "_cue_studio_file_id", None)
                 if file_id:
                     _record_download_progress(
                         file_id,
-                        getattr(self, "_maestro_filename", file_id),
+                        getattr(self, "_cue_studio_filename", file_id),
                         downloaded=int(getattr(self, "n", 0) or 0),
                         total=int(self.total) if getattr(self, "total", None) else None,
                     )
@@ -320,7 +320,7 @@ def _install_tqdm_hook() -> None:
 
         def _patched_close(self, *args, **kwargs):
             try:
-                file_id = getattr(self, "_maestro_file_id", None)
+                file_id = getattr(self, "_cue_studio_file_id", None)
                 if file_id:
                     _record_download_done(
                         file_id,
@@ -334,7 +334,7 @@ def _install_tqdm_hook() -> None:
         Tqdm.__init__ = _patched_init
         Tqdm.update = _patched_update
         Tqdm.close = _patched_close
-        Tqdm._maestro_progress_patched = True
+        Tqdm._cue_studio_progress_patched = True
         print("[safe_download] tqdm download hook installed")
     except Exception as e:
         print(f"[safe_download] tqdm hook install skipped: {e}")

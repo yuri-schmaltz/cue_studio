@@ -590,7 +590,7 @@ class DramaBoxAudioPipeline(LTXAudioTTSPipelineBase):
         # declare above; ours has additional fields. Silently ignoring
         # unknown kwargs is the cleanest way to keep DramaBox usable here
         # without touching the shared generation pipeline.
-        **_maestro_extra_kwargs,
+        **_cue_studio_extra_kwargs,
     ) -> Optional[dict]:
         self._interrupt = False
         self._early_stop = False

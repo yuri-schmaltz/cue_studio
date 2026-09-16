@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 pytestmark = pytest.mark.browser
 
 URL = os.environ.get('SHELL_TEST_URL', 'http://127.0.0.1:3000')
-ARTIFACTS = Path(os.environ.get('SHELL_TEST_ARTIFACTS', '/tmp/maestro-overhaul'))
+ARTIFACTS = Path(os.environ.get('SHELL_TEST_ARTIFACTS', '/tmp/cue-studio-overhaul'))
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
 SECTIONS = ['Projects', 'Director', 'Editor', 'Dashboard', 'Medias', 'Queue', 'Configurations']
 
@@ -30,7 +30,7 @@ def test_application_shell():
         page = browser.new_page(viewport={'width': 1440, 'height': 960})
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
-        page.add_init_script("localStorage.setItem('maestro_welcome_seen_v1','1'); localStorage.setItem('hwbar_collapsed','1')")
+        page.add_init_script("localStorage.setItem('cue_studio_welcome_seen_v1','1'); localStorage.setItem('hwbar_collapsed','1')")
         # Install write interception before the first application request.
         page.route('**/api/v1/**', lambda route: route.continue_()
                    if route.request.method == 'GET' else route.fulfill(json={}))
@@ -171,7 +171,7 @@ def test_director_opens_without_runtime_errors():
         page = browser.new_page(viewport={"width": 1440, "height": 960})
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
-        page.add_init_script("localStorage.setItem('maestro_welcome_seen_v1','1')")
+        page.add_init_script("localStorage.setItem('cue_studio_welcome_seen_v1','1')")
         # Read the real API, but prevent all writes to user projects/settings.
         page.route('**/api/v1/**', lambda route: route.continue_()
                    if route.request.method == 'GET' else route.fulfill(json={}))
