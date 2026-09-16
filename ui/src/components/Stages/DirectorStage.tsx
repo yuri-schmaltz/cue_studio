@@ -40,8 +40,8 @@ import { DirectorReview } from '../DirectorDashboard/DirectorReview'
 // the chat picks up at the new skill's "upload" step. Cancelling
 // leaves the existing skill untouched.
 
-import { useEffect, useState } from 'react'
-import { Check, ChevronDown, ChevronRight, Loader2, X } from 'lucide-react'
+import { useEffect } from 'react'
+import { Check, Loader2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useDirectorSlice } from '../../stores/directorSelectors'
 import {
@@ -152,7 +152,6 @@ function DirectorStatusPanel() {
   const plannedClipsCount = useStore(s => s.directorPlannedClips.length)
   const clipImagesCount = useStore(s => s.directorClipImages.length)
   const clipPlansCount = useStore(s => s.directorClipPlans.length)
-  const [expanded, setExpanded] = useState(true)
   // Only mount the strip once the user has progressed past the empty
   // upload prompt, OR if the director is currently processing. Keeps
   // the first-run workspace clean.
@@ -284,36 +283,30 @@ function DirectorStatusPanel() {
 
   return (
     <div
-      className="min-w-0 shrink-0 border-b border-border bg-bg-secondary/60 px-4 py-2.5"
+      className="min-w-0 shrink-0 border-b border-border bg-bg-secondary/40 px-4 py-2"
       data-testid="director-status-panel"
       aria-live="polite"
     >
+      {/* Compact header: step name on the left, glanceable progress
+          chip + cancel on the right. Two-tone progress bar below
+          communicates both global position and current-step intensity. */}
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setExpanded(v => !v)}
-          className="flex items-center gap-1.5 text-2xs uppercase tracking-wider text-text-muted hover:text-text-secondary transition-colors"
-          aria-expanded={expanded}
-          title={expanded ? 'Hide planning steps' : 'Show planning steps'}
-        >
-          {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-          <span>Director status</span>
-        </button>
-        {/* Inline progress chip — always visible so the user has a
-            glanceable signal even when the strip is collapsed. */}
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           {loading ? (
-            <Loader2 size={11} className="animate-spin text-accent-blue shrink-0" />
+            <Loader2 size={12} className="animate-spin text-accent-blue shrink-0" />
           ) : (
-            <Check size={11} className="text-emerald-400 shrink-0" />
+            <Check size={12} className="text-emerald-400 shrink-0" />
           )}
-          <span className="text-2xs text-text-secondary truncate">
-            {loading ? (loadingMessage || activeStep.description(plannedClipsCount)) : `${activeStep.label} complete`}
+          <span className="text-xs font-medium text-text-primary truncate">
+            {activeStep.label}
+          </span>
+          <span className="text-2xs text-text-muted truncate">
+            {loading ? (loadingMessage || activeStep.description(plannedClipsCount)) : 'Complete'}
           </span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-2xs text-text-muted tabular-nums">
-            {Math.min(completedCount + (loading ? 1 : 0), totalSteps)} / {totalSteps} · {pct}%
+          <span className="text-2xs font-medium text-text-secondary tabular-nums px-1.5 py-0.5 rounded bg-bg-tertiary border border-border/60">
+            {Math.min(completedCount + (loading ? 1 : 0), totalSteps)}/{totalSteps}
           </span>
           {loading && (
             <button
@@ -323,83 +316,51 @@ function DirectorStatusPanel() {
               aria-label="Stop planning"
               className="rounded-md p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
             >
-              <X size={11} />
+              <X size={12} />
             </button>
           )}
         </div>
       </div>
-      {/* Progress bar — thin, two-tone (active segment in accent blue,
-          completed in emerald, pending in bg-active). */}
-      <div className="mt-1.5 h-1 rounded-full bg-bg-active overflow-hidden">
+      {/* Single combined progress bar — the outer track shows the
+          pipeline's overall position (emerald when complete), and the
+          inner accent overlay shows where the active step sits within
+          the current step's progress window. Both transitions are 500ms
+          ease-out so the eye can track changes without flicker. */}
+      <div className="mt-1.5 relative h-1 rounded-full bg-bg-active overflow-hidden">
         <div
-          className={`h-full transition-all duration-500 ease-out ${loading ? 'bg-accent-blue' : 'bg-emerald-500'}`}
+          className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${loading ? 'bg-emerald-500/70' : 'bg-emerald-500'}`}
           style={{ width: `${pct}%` }}
         />
+        {loading && subProgress.pct != null && (
+          <div
+            className="absolute inset-y-0 left-0 bg-accent-blue mix-blend-screen transition-all duration-500 ease-out"
+            style={{ width: `${(subProgress.pct / 100) * pct}%` }}
+          />
+        )}
       </div>
-      {/* Sub-progress bar — precise per-step percentage sourced from the
-          backend's pipeline status or the dedicated image-gen counter.
-          Sits just below the global bar so the user can see both "where
-          am I in the 10-step pipeline" and "how much of THIS step is
-          done". Falls back to an indeterminate pulse when the backend
-          hasn't reported numbers yet (LLM streaming, structure
-          segmentation, etc.) so the slot is always alive while the
-          step is active. Hidden when not loading — keeps the strip
-          compact once everything settles. */}
       {loading && (
-        <div className="mt-1 flex items-center gap-2" data-testid="director-status-subprogress">
-          <div className="relative h-0.5 flex-1 rounded-full bg-bg-active overflow-hidden">
-            {subProgress.pct != null ? (
-              <div
-                className="absolute inset-y-0 left-0 bg-accent-blue/70 transition-all duration-500 ease-out"
-                style={{ width: `${subProgress.pct}%` }}
-              />
-            ) : (
-              // Indeterminate: a 30%-wide bar that glides left↔right so
-              // the user sees *something* moving without a number to
-              // trust. Pure CSS animation, no JS interval.
-              <div className="absolute inset-y-0 left-0 w-1/3 bg-accent-blue/60 animate-[indeterminate_1.4s_ease-in-out_infinite]" />
-            )}
-          </div>
-          <span className="text-2xs text-text-muted tabular-nums whitespace-nowrap">
-            {subProgress.pct != null ? `${subProgress.pct}%` : ''}
-          </span>
-        </div>
-      )}
-      {expanded && (
-        <ol className="mt-2.5 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-1.5">
+        <ol className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           {STATUS_STEPS.map((s, i) => {
             const isActive = i === currentIndex && loading
             const isDone = i < currentIndex || (i === currentIndex && !loading)
             return (
               <li
                 key={s.id}
-                className={`flex items-start gap-1.5 text-2xs leading-snug ${
+                className={`flex items-center gap-1 text-2xs ${
                   isActive ? 'text-text-primary' : isDone ? 'text-text-secondary' : 'text-text-muted'
                 }`}
                 data-status={isActive ? 'active' : isDone ? 'done' : 'pending'}
               >
-                <span className="mt-0.5 shrink-0">
+                <span className="shrink-0">
                   {isActive ? (
-                    <Loader2 size={10} className="animate-spin text-accent-blue" />
+                    <Loader2 size={9} className="animate-spin text-accent-blue" />
                   ) : isDone ? (
-                    <Check size={10} className="text-emerald-400" />
+                    <Check size={9} className="text-emerald-400" />
                   ) : (
-                    <span className="block h-2.5 w-2.5 rounded-full border border-border" />
+                    <span className="block h-1.5 w-1.5 rounded-full bg-text-muted/40" />
                   )}
                 </span>
-                <span className="min-w-0">
-                  <span className="font-medium uppercase tracking-wider">{s.label}</span>
-                  {isActive && loadingMessage && (
-                    <span className="block text-text-muted mt-0.5 normal-case tracking-normal">
-                      {loadingMessage}
-                    </span>
-                  )}
-                  {!isActive && (
-                    <span className="block text-text-muted mt-0.5 normal-case tracking-normal">
-                      {s.description(plannedClipsCount)}
-                    </span>
-                  )}
-                </span>
+                <span>{s.label}</span>
               </li>
             )
           })}
