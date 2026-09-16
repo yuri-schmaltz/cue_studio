@@ -26,19 +26,23 @@ export function setApiKey(token: string | null): void {
 }
 
 // Monkey-patch nativo do fetch no escopo do client para garantir que todas as chamadas
-// transparentemente recebam o Bearer token quando configurado.
-const _originalFetch = window.fetch.bind(window)
-window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-  const token = getApiKey()
-  if (!token) return _originalFetch(input, init)
+// transparentemente recebam o Bearer token quando configurado. O patch só roda em
+// ambientes com `window` (browser); em Node (testes unitários que bundleam o store)
+// o fetch do runtime permanece intacto para que bundlers consigam resolver o módulo.
+if (typeof window !== 'undefined') {
+  const _originalFetch = window.fetch.bind(window)
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const token = getApiKey()
+    if (!token) return _originalFetch(input, init)
 
-  const modifiedInit: RequestInit = { ...(init || {}) }
-  const headers = new Headers(modifiedInit.headers || {})
-  if (!headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`)
+    const modifiedInit: RequestInit = { ...(init || {}) }
+    const headers = new Headers(modifiedInit.headers || {})
+    if (!headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+    modifiedInit.headers = headers
+    return _originalFetch(input, modifiedInit)
   }
-  modifiedInit.headers = headers
-  return _originalFetch(input, modifiedInit)
 }
 
 

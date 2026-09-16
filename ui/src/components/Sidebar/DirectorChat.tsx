@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Mic, Send, Users, FileText, ListVideo, Lock, Unlock } from 'lucide-react'
+import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Mic, Send, Users, FileText, ListVideo } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'

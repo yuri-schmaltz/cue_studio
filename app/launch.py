@@ -15,7 +15,6 @@ Environment variables:
 
 import gc
 import sys
-import torch
 import os
 import glob
 import json
@@ -7161,6 +7160,7 @@ def system_release_model():
     for users who want the memory back now — wgp reloads transparently
     on the next job. Refuses while anything is generating.
     """
+    import torch  # lazy: only loaded when GPU release is requested
     for j in _jobs.values():
         if j.get("status") in ("queued", "running"):
             raise HTTPException(status_code=409, detail="A generation is in progress — stop it or wait for it to finish first.")
@@ -7465,6 +7465,7 @@ def _llm_default_device() -> str:
     explicit "cuda".
     """
     try:
+        import torch  # lazy: probes CUDA only when this helper runs
         if torch.cuda.is_available():
             return "cuda"
     except Exception:
@@ -9701,6 +9702,7 @@ async def mix_audio(request: Request):
 @api.post("/api/v1/audio/analyze")
 async def analyze_audio(request: Request):
     """Analyze an audio file: beat detection, sections, optional transcription."""
+    import torch  # lazy: only used to probe CUDA for VRAM release below
     from services import audio_analysis
     body = await request.json()
 
@@ -24035,6 +24037,7 @@ def _write_tool_sidecar(
 
 def _run_tool_upscale(job_id: str):
     """Upscale an existing image or clip with FlashVSR/Lanczos."""
+    import torch  # lazy: only loaded when an upscale job actually runs
     job = _jobs[job_id]
     start_time = time.time()
     abort_state = {"abort": False}
@@ -24849,6 +24852,9 @@ def _apply_deferred_generation_preparation(job: dict) -> None:
 
 def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
     """Build and run a job, optionally deferring success finalization."""
+    import torch  # lazy: full generation pipeline needs CUDA, but the symbol
+    # resolver and lighter callers (e.g. status probes) shouldn't pay the
+    # import cost just to read this function.
     from shared.utils.thread_utils import AsyncStream, async_run
     import inspect
 
