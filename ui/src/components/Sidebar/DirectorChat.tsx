@@ -7,6 +7,8 @@ import { DirectorSongSetup } from './DirectorSongSetup'
 import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
 import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
+import { DirectorActivityBadge } from './DirectorActivityBar'
+import { DirectorErrorBanner } from './DirectorErrorBanner'
 
 import { formatSeconds, recommendedWindowProfile } from './DurationSlider'
 import { DurationPresetControl } from './DurationPresetControl'
@@ -1052,28 +1054,19 @@ export function DirectorChat() {
             rendered above inside the side-by-side audio+reference
             layout, so nothing extra is needed here. */}
 
-        {/* Error — dismissible banner. The text "Failed to fetch" is what
-            fetch() throws when the request never reached the backend (CORS,
-            backend down, network blip). We surface that as a friendlier hint
-            so the user has something actionable to copy/paste instead of a
-            raw browser error string. */}
+        {/* Error — rich dismissible banner. Classifies the error
+            (OOM, VRAM, network, LoRA mismatch, …), shows the failing
+            phase as a badge, lists pre-baked remediation steps, and
+            exposes the raw backend message in a collapsible technical-
+            details panel + copy-to-clipboard button. Accepts both
+            legacy strings and the new typed DirectorError, so this is
+            backwards-compatible with older call sites. */}
         {error && (
-          <div className="flex items-start gap-2 text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5 border border-red-500/20" role="alert">
-            <span className="flex-1">
-              {error === 'Failed to fetch'
-                ? 'Could not reach the Maestro backend. Check that start.sh is still running and try again.'
-                : error}
-            </span>
-            <button
-              type="button"
-              onClick={clearDirectorError}
-              aria-label="Dismiss error"
-              title="Dismiss"
-              className="shrink-0 -mr-1 -mt-0.5 px-1 leading-none text-red-400 hover:text-red-200 transition-colors"
-            >
-              ×
-            </button>
-          </div>
+          <DirectorErrorBanner
+            error={error}
+            pipelineStatus={useStore.getState().pipelineStatus}
+            onDismiss={clearDirectorError}
+          />
         )}
 
         {/* Structure step — the actual StructureView (clip structure,
@@ -1417,6 +1410,10 @@ function UploadZone({
   // Renders a small "Uploaded" badge so the user knows the file is
   // safe to swap or remove without losing the analysis result.
   const audioPathConfirmed = useStore(s => !!s.directorAudioPath)
+  // Store action that clears both the in-memory file and the durable
+  // backend path so the next upload doesn't silently overwrite an old
+  // analysis result on disk. Used by the remove button below.
+  const clearAudio = useStore(s => s.directorSetAudioFile)
   return (
     <div
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -1446,15 +1443,31 @@ function UploadZone({
            glyph + filename sit at the visual middle of the card. The
            "Uploaded" chip in the corner turns green once the backend
            has accepted the file (directorAudioPath is populated). */
-        <div className="flex flex-col items-center gap-1">
-          <Music size={16} className="text-text-muted" />
-          <span className="text-xs text-text-secondary truncate max-w-full">{audioFile.name}</span>
-          {audioPathConfirmed && (
-            <span className="mt-0.5 inline-flex items-center gap-1 text-2xs text-emerald-400">
-              <Check size={9} /> Uploaded
-            </span>
-          )}
-        </div>
+        <>
+          {/* Remove (×) button — anchored to the top-right corner so it
+              doesn't shift the centered filename / icon stack. Same
+              pattern used by ReferenceImageUpload and the script
+              status row, so the affordance is consistent across every
+              uploaded-card surface in the chat. */}
+          <button
+            type="button"
+            onClick={() => clearAudio(null)}
+            aria-label="Remove uploaded audio"
+            title="Remove uploaded audio"
+            className="absolute top-1.5 right-1.5 rounded-md p-1 text-text-muted bg-bg-primary/70 hover:bg-bg-hover hover:text-text-primary transition-colors"
+          >
+            <X size={11} />
+          </button>
+          <div className="flex flex-col items-center gap-1 px-6">
+            <Music size={16} className="text-text-muted" />
+            <span className="text-xs text-text-secondary truncate max-w-full">{audioFile.name}</span>
+            {audioPathConfirmed && (
+              <span className="mt-0.5 inline-flex items-center gap-1 text-2xs text-emerald-400">
+                <Check size={9} /> Uploaded
+              </span>
+            )}
+          </div>
+        </>
       ) : (
         <label className="cursor-pointer flex flex-col items-center gap-1.5">
           <Music size={20} className="text-accent-blue/60" />
@@ -2330,26 +2343,16 @@ export function StructureView({
         </div>
 
         {loading ? (
-          /* Stop button sits on the right so the spinner + label stay
-             left-aligned (matches the layout used in DirectorPanel's
-             "Writing image prompts..." / "Writing video prompts..."
-             overlays — same affordance, same icon). The cancel action
-             goes through useStore.cancelDirectorV2Plan() which aborts
-             the in-flight HTTP request AND tells the backend to short-
-             circuit the worker thread, so the GPU/llama-server stops
-             generating tokens that no one will read. */
-          <div className="relative flex items-center gap-1.5 text-2xs text-text-muted py-1 pr-5">
-            <Loader2 size={10} className="animate-spin" /> Recalculating...
-            <button
-              type="button"
-              onClick={() => useStore.getState().cancelDirectorV2Plan()}
-              title="Stop recalculating"
-              aria-label="Stop recalculating"
-              className="absolute right-0 top-1/2 -translate-y-1/2 bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-            >
-              <X size={10} />
-            </button>
-          </div>
+          /* Live activity badge — replaces the hard-coded
+             "Recalculating..." string that used to sit here. Reads
+             directorActivityLabel from the store (derived from the
+             live pipeline status) so the label reflects the actual
+             phase (Planning with LLM…, Polishing prompts…,
+             Generating start image 3/13…). Cancel button reuses
+             cancelDirectorV2Plan() which aborts the HTTP request
+             AND tells the backend to short-circuit the worker
+             thread. */
+          <DirectorActivityBadge cancelTitle="Stop the Director run" />
         ) : plannedClips.length === 0 ? (
           /* Empty state — shown when the structure step is reached but
              no clips have been generated yet (e.g. the user attached
@@ -3017,6 +3020,70 @@ export function DirectorGenerationOptions() {
         </div>
       )}
       <ReferenceImageStrengthSlider />
+      <DirectorNegativePromptField />
+    </div>
+  )
+}
+
+/** Editable project-scoped "things to avoid" textarea. Auto-populated
+ *  by directorGenerateNegativePrompt when the scene description is
+ *  committed, but always editable so the user can add or remove terms
+ *  before any subsequent generation. Persists on the backend via
+ *  setDirectorNegativePrompt so reopening the project picks up the
+ *  same prompt. */
+function DirectorNegativePromptField() {
+  const negativePrompt = useStore(s => s.directorNegativePrompt)
+  const setNegativePrompt = useStore(s => s.directorSetNegativePrompt)
+  const generateNegativePrompt = useStore(s => s.directorGenerateNegativePrompt)
+  const sceneDescription = useStore(s => s.directorSceneDescription)
+  // Local mirror so typing doesn't trigger a backend round-trip per
+  // keystroke; the slice is updated on blur / regenerate click.
+  const [draft, setDraft] = useState(negativePrompt)
+  const [busy, setBusy] = useState(false)
+  // Sync the local draft if the slice changes externally (project
+  // reopened, automatic generation finished, etc.).
+  useEffect(() => { setDraft(negativePrompt) }, [negativePrompt])
+  const onBlur = () => {
+    if (draft !== negativePrompt) void setNegativePrompt(draft)
+  }
+  const onRegenerate = async () => {
+    if (!sceneDescription.trim()) return
+    setBusy(true)
+    try { await generateNegativePrompt() }
+    finally { setBusy(false) }
+  }
+  return (
+    <div className="pt-2 border-t border-border/50 space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-2xs text-text-muted uppercase tracking-wider font-semibold">
+          Negative prompt
+        </label>
+        <button
+          type="button"
+          onClick={onRegenerate}
+          disabled={busy || !sceneDescription.trim()}
+          title={
+            sceneDescription.trim()
+              ? 'Re-run the LLM to regenerate the project-scoped negative prompt from the current scene description'
+              : 'Write a scene description first to enable regeneration'
+          }
+          className="inline-flex items-center gap-1 text-2xs text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          {busy ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+          <span>{busy ? 'Generating…' : 'Auto from scene'}</span>
+        </button>
+      </div>
+      <textarea
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={onBlur}
+        rows={3}
+        placeholder="Comma-separated list of things the model should avoid — appended to the model's default negatives"
+        className="w-full bg-bg-tertiary border border-border rounded px-2 py-1.5 text-2xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors resize-none scrollbar-visible"
+      />
+      <p className="text-2xs text-text-muted leading-snug">
+        Saved per project and applied to every clip generation. Edit any term to refine what this Director project avoids.
+      </p>
     </div>
   )
 }
@@ -3175,6 +3242,15 @@ export function ImagePromptsReview({
 }) {
   const clipImages = useStore(s => s.directorClipImages)
   const imageGenProgress = useStore(s => s.directorImageGenProgress)
+  const pipelineId = useStore(s => s.pipelineId)
+  const pipelineStatus = useStore(s => s.pipelineStatus)
+  const rerunClipImage = useStore(s => s.rerunClipImage)
+  const clearDirectorError = useStore(s => s.clearDirectorError)
+  // Track which clip is currently being regenerated so the spinner can
+  // sit on the right card instead of next to the batch-level Regenerate
+  // button. Without this, regenerating Clip 7 in a 24-clip plan looks
+  // indistinguishable from regenerating the whole batch.
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
   // Show all clips collapsed by default past the threshold so the
   // column doesn't grow taller than the viewport on big music-video
   // plans (typical 24-32 clips). The user's "Show all" click expands
@@ -3183,6 +3259,23 @@ export function ImagePromptsReview({
   const visibleClipCount = showAllClips
     ? clipPlans.length
     : Math.min(clipPlans.length, CLIP_LIST_PREVIEW_THRESHOLD)
+  // Re-run ONLY this clip via the dashboard backend endpoint. Used by
+  // the per-clip ↻ Regenerate button that appears when a single
+  // clip's image generation failed (e.g. transient CUDA OOM on one
+  // card while the other 12 succeeded).
+  const regenerateClip = async (clipIndex: number) => {
+    if (!pipelineId) return
+    setRegeneratingIndex(clipIndex)
+    clearDirectorError()
+    try {
+      const plan = clipPlans[clipIndex]
+      await rerunClipImage(pipelineId, clipIndex, plan?.image_prompt)
+    } catch (e) {
+      console.error('Per-clip regenerate failed:', e)
+    } finally {
+      setRegeneratingIndex(null)
+    }
+  }
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -3204,13 +3297,30 @@ export function ImagePromptsReview({
         {clipPlans.slice(0, visibleClipCount).map((plan, i) => {
           const clip = plannedClips[i]
           const image = clipImages.find(item => item.clipIndex === i)
-          const status = image
-            ? 'ready'
-            : imageGenProgress?.status === 'error' && imageGenProgress.current === i
-              ? 'failed'
-              : imageGenProgress && imageGenProgress.current === i && imageGenProgress.status !== 'done'
-                ? 'generating'
-                : 'pending'
+          // Per-clip regenerate spinner overrides the global status so
+          // the badge stays accurate even when the user clicks ↻ on a
+          // card whose imageGenProgress row says 'error' for a *different*
+          // clip index. Without this override, regenerating Clip 7 in a
+          // plan where Clip 3 already failed would leave the spinner
+          // sitting on the wrong card.
+          const status: 'pending' | 'generating' | 'ready' | 'failed' = regeneratingIndex === i
+            ? 'generating'
+            : image
+              ? 'ready'
+              : imageGenProgress?.status === 'error' && (imageGenProgress.failed_clip_index === i || imageGenProgress.current === i)
+                ? 'failed'
+                : imageGenProgress && imageGenProgress.current === i && imageGenProgress.status !== 'done'
+                  ? 'generating'
+                  : 'pending'
+          // Per-clip error message captured by the store when the
+          // generation loop's try/catch records the failing index.
+          // Falls back to the global error when only one clip failed
+          // and the store didn't get to stamp failed_clip_index.
+          const clipError = status === 'failed'
+            ? (imageGenProgress?.error_message
+              || (imageGenProgress?.failed_clip_index === i ? imageGenProgress.error_message : null))
+            : null
+          const clipIsRegenerating = regeneratingIndex === i
           return (
             <div key={i} className="bg-bg-tertiary rounded-lg p-3 space-y-2 border border-border/80 hover:border-border transition-colors shadow-xs">
               <div className="flex items-center justify-between gap-1.5 text-2xs text-text-muted">
@@ -3233,7 +3343,40 @@ export function ImagePromptsReview({
                     </>
                   )}
                 </div>
+                {/* Per-clip Regenerate button — appears only when this
+                    card's image generation failed. Saves the user from
+                    having to re-roll the whole batch (and re-burn
+                    VRAM on the 12 working clips) just to fix Clip 1. */}
+                {status === 'failed' && !clipIsRegenerating && (
+                  <button
+                    type="button"
+                    onClick={() => regenerateClip(i)}
+                    className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+                    title={`Re-generate the start image for Clip ${i + 1} only`}
+                    aria-label={`Regenerate Clip ${i + 1}`}
+                  >
+                    <RotateCcw size={10} /> Regenerate this clip
+                  </button>
+                )}
+                {clipIsRegenerating && (
+                  <span className="text-2xs text-text-muted flex items-center gap-1">
+                    <Loader2 size={10} className="animate-spin" /> Regenerating…
+                  </span>
+                )}
               </div>
+              {/* Inline rich error banner for this clip. Shows the
+                  classified error (OOM / LoRA / model / etc.) with
+                  the suggested remediation, without polluting the
+                  global directorError slot for a per-clip failure. */}
+              {status === 'failed' && clipError && (
+                <DirectorErrorBanner
+                  error={clipError}
+                  pipelineStatus={pipelineStatus}
+                  clipIndex={i}
+                  onDismiss={() => clearDirectorError()}
+                  onRegenerateClip={regenerateClip}
+                />
+              )}
               <div className="flex gap-2.5 items-start">
                 {image && (
                   <div className="relative shrink-0 w-16 h-16 rounded overflow-hidden border border-border/80 bg-black/40">
@@ -3371,6 +3514,13 @@ export function ImageGenView({
       )}
 
       {!loading && imageGenProgress?.status === 'error' && (
+        <DirectorErrorBanner
+          error={imageGenProgress.error_message || 'Image generation failed'}
+          pipelineStatus={useStore.getState().pipelineStatus}
+          clipIndex={imageGenProgress.failed_clip_index ?? null}
+        />
+      )}
+      {!loading && imageGenProgress?.status === 'error' && (
         <button
           onClick={() => { useStore.setState({ directorStep: 'review_video' }) }}
           className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5"
@@ -3410,10 +3560,32 @@ export function VideoPromptsReview({
 }) {
   const queueBusy = useStore(s => s.directorQueueLoading)
   const pipelineStatus = useStore(s => s.pipelineStatus)
+  const pipelineId = useStore(s => s.pipelineId)
+  const rerunClipVideo = useStore(s => s.rerunClipVideo)
+  const clearDirectorError = useStore(s => s.clearDirectorError)
   const [queueConfirmation, setQueueConfirmation] = useState<string | null>(null)
   // Same collapse threshold as ImagePromptsReview — past 12 clips,
   // truncate the list to keep the column manageable on big plans.
   const [showAllClips, setShowAllClips] = useState(false)
+  // Which clip is currently being regenerated. Lets the spinner sit on
+  // the correct card even when several clips have failed in sequence.
+  const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
+  // Re-run ONLY this clip's video via the dashboard backend endpoint.
+  // The dashboard already exposes rerunClipVideo, so this is just a
+  // thin wrapper that owns the spinner state + error dismissal.
+  const regenerateClip = async (clipIndex: number) => {
+    if (!pipelineId) return
+    setRegeneratingIndex(clipIndex)
+    clearDirectorError()
+    try {
+      const plan = clipPlans[clipIndex]
+      await rerunClipVideo(pipelineId, clipIndex, plan?.video_prompt)
+    } catch (e) {
+      console.error('Per-clip video regenerate failed:', e)
+    } finally {
+      setRegeneratingIndex(null)
+    }
+  }
   const visibleClipCount = showAllClips
     ? clipPlans.length
     : Math.min(clipPlans.length, CLIP_LIST_PREVIEW_THRESHOLD)
@@ -3489,13 +3661,24 @@ export function VideoPromptsReview({
           const clipImage = clipImages.find(image => image.clipIndex === i)
           const currentClip = pipelineStatus?.progress?.current_clip
           const totalClips = pipelineStatus?.progress?.total_clips
-          const status = pipelineStatus?.status === 'failed' && currentClip === i + 1
-            ? 'failed'
-            : clipImage
-              ? 'ready'
-              : pipelineStatus?.status === 'running' && currentClip === i + 1
-                ? 'generating'
-                : 'pending'
+          const videoError = pipelineStatus?.error || null
+          const failedClipIndex = pipelineStatus?.status === 'failed' && currentClip
+            ? currentClip - 1
+            : null
+          // Per-clip regenerate spinner overrides the global state so
+          // the badge stays accurate even when several clips share the
+          // same failed status. Without this, the spinner would jump
+          // between cards when the user clicks ↻ on different clips.
+          const status: 'pending' | 'generating' | 'ready' | 'failed' = regeneratingIndex === i
+            ? 'generating'
+            : pipelineStatus?.status === 'failed' && (failedClipIndex === i || currentClip === i + 1)
+              ? 'failed'
+              : clipImage
+                ? 'ready'
+                : pipelineStatus?.status === 'running' && currentClip === i + 1
+                  ? 'generating'
+                  : 'pending'
+          const clipIsRegenerating = regeneratingIndex === i
           return (
             <div key={i} className="bg-bg-tertiary rounded-lg p-3 space-y-2 border border-border/80 hover:border-border transition-colors shadow-xs">
               <div className="flex items-center justify-between gap-1.5 text-2xs text-text-muted">
@@ -3517,7 +3700,40 @@ export function VideoPromptsReview({
                     </>
                   )}
                 </div>
+                {/* Per-clip Regenerate button — appears when the
+                    pipeline status is 'failed' AND the failure index
+                    matches this card. Saves the user from re-rolling
+                    the whole batch when only one video failed. */}
+                {status === 'failed' && !clipIsRegenerating && (
+                  <button
+                    type="button"
+                    onClick={() => regenerateClip(i)}
+                    className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+                    title={`Re-generate the video for Clip ${i + 1} only`}
+                    aria-label={`Regenerate Clip ${i + 1} video`}
+                  >
+                    <RotateCcw size={10} /> Regenerate this clip
+                  </button>
+                )}
+                {clipIsRegenerating && (
+                  <span className="text-2xs text-text-muted flex items-center gap-1">
+                    <Loader2 size={10} className="animate-spin" /> Regenerating…
+                  </span>
+                )}
               </div>
+              {/* Inline rich error banner for this clip's video
+                  failure. Same DirectorErrorBanner used elsewhere —
+                  classifies the error (OOM / model / …) and lists
+                  remediation steps inline. */}
+              {status === 'failed' && videoError && failedClipIndex === i && (
+                <DirectorErrorBanner
+                  error={videoError}
+                  pipelineStatus={pipelineStatus}
+                  clipIndex={i}
+                  onDismiss={() => clearDirectorError()}
+                  onRegenerateClip={regenerateClip}
+                />
+              )}
               {allowSceneImageUploads && (
                 <div className="flex items-center gap-2 rounded-md border border-border bg-bg-secondary p-1.5">
                   {clipImage && (

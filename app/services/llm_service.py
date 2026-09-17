@@ -45,13 +45,23 @@ def _is_benign_gemma_template_warning(line: str) -> bool:
 
     return _GEMMA_TEMPLATE_COMPAT_MARKER in str(line or "").lower()
 
-# Provider state: "local" | "remote" | "openai" | "anthropic" | "minimax"
+# Provider state: "local" | "remote" | "openai" | "anthropic" | "minimax" | "ollama"
 # ``minimax`` is the third-party Anthropic-compatible gateway used for
 # MiniMax M3 — same `/v1/messages` wire format as Anthropic but with a
 # different base URL (configurable via ``_remote_url``). The provider
 # reuses the Anthropic request/response handling and just points the
 # base URL at ``https://api.minimax.com`` (or whatever the user supplies).
+# ``ollama`` talks to a local Ollama daemon over its OpenAI-compatible
+# `/v1` surface; model enumeration comes from `/api/tags` instead of
+# `/v1/models` because Ollama's OpenAI shim doesn't always implement
+# `/v1/models` cleanly across versions.
 _provider: str = "local"
+
+# Default Ollama endpoint. Ollama listens on 11434 by default and
+# exposes an OpenAI-compatible surface at /v1 once you point at the
+# base URL — no extra config needed. Users running Ollama on a
+# different host/port override via the Remote URL field in Settings.
+OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434"
 _remote_url: str = ""       # Base URL for remote/OpenAI-compatible servers
 _api_key: str = ""           # API key for OpenAI/Anthropic/MiniMax
 
@@ -661,6 +671,14 @@ def get_available_models(provider: str = "local", remote_url: str = "", api_key:
             {"id": "minimax-m3", "label": "MiniMax M3", "size_hint": "minimax", "provider": "minimax"},
         ])
 
+    # Ollama exposes model inventory via its native /api/tags endpoint
+    # (NOT /v1/models — the OpenAI shim is chat-only). Fall back to a
+    # curated list of common tags if the daemon is unreachable so the
+    # picker is never empty when Ollama is offline.
+    if provider == "ollama":
+        ollama_models = _list_ollama_models(remote_url)
+        remote_models.extend(ollama_models)
+
     return local_models + remote_models
 
 
@@ -682,7 +700,89 @@ PROVIDER_API_KEY_SETTING = {
     "openai": "openai_api_key",
     "anthropic": "anthropic_api_key",
     "minimax": "minimax_api_key",
+    # Ollama doesn't require auth by default but supports an
+    # OLLAMA_AUTH-style header via the same `llm_remote_api_key` slot
+    # as Remote — keeps credentials in one place rather than adding
+    # yet another settings key.
+    "ollama": "llm_remote_api_key",
 }
+
+
+def _ollama_base_url(remote_url: str = "") -> str:
+    """Resolve the Ollama daemon base URL.
+
+    Ollama's OpenAI-compatible chat surface lives at ``<base>/v1`` and
+    its native model listing lives at ``<base>/api/tags``. The user can
+    point at any host/port via the Remote URL field; we default to the
+    canonical local daemon address ``http://localhost:11434`` when
+    nothing is configured.
+    """
+    base = (remote_url or OLLAMA_DEFAULT_BASE_URL).rstrip("/")
+    if base.endswith("/v1"):
+        return base[: -len("/v1")]
+    return base
+
+
+def _list_ollama_models(remote_url: str = "") -> list:
+    """Enumerate locally-installed Ollama tags via /api/tags.
+
+    Returns a list of picker-shaped dicts (``{id, label, provider,
+    size_hint}``). Empty list on connection failure so the dropdown
+    falls back gracefully — the user can still type a model name
+    manually. Tags are returned as ``name:tag`` so multimodal models
+    like ``llama3.2-vision:latest`` round-trip cleanly.
+    """
+    base = _ollama_base_url(remote_url)
+    fallback = [
+        "llama3.2:3b",
+        "llama3.1:8b",
+        "qwen2.5:7b",
+        "qwen2.5:14b",
+        "gemma3:4b",
+        "gemma3:12b",
+        "llama3.2-vision:11b",
+    ]
+    try:
+        resp = requests.get(f"{base}/api/tags", timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        models = data.get("models") or []
+        if not models:
+            return [
+                {"id": m, "label": f"{m} (Ollama, offline)", "size_hint": "ollama", "provider": "ollama"}
+                for m in fallback
+            ]
+        out = []
+        for m in models:
+            name = m.get("name") or m.get("model") or ""
+            if not name:
+                continue
+            size_bytes = m.get("size") or 0
+            size_gb = round(size_bytes / (1024 ** 3), 1) if size_bytes else None
+            details = m.get("details") or {}
+            family = details.get("family") or ""
+            param_size = details.get("parameter_size") or ""
+            label_parts = [name]
+            if param_size:
+                label_parts.append(param_size)
+            if family and family.lower() not in name.lower():
+                label_parts.append(family)
+            if size_gb:
+                label_parts.append(f"{size_gb} GB")
+            label = " · ".join(label_parts) + " (Ollama)"
+            out.append({
+                "id": name,
+                "label": label,
+                "size_hint": f"{size_gb} GB" if size_gb else "ollama",
+                "provider": "ollama",
+            })
+        return out
+    except Exception as e:
+        print(f"[LLM] Ollama /api/tags probe failed for {base}: {e}")
+        return [
+            {"id": m, "label": f"{m} (Ollama, offline)", "size_hint": "ollama", "provider": "ollama"}
+            for m in fallback
+        ]
 
 
 def provider_api_key(provider: str, services: dict) -> str:
@@ -728,7 +828,7 @@ def _finalize_payload(payload: dict) -> dict:
     llama.cpp-only fields such as ``cache_prompt`` and ``min_p``.
     """
 
-    if _provider not in ("remote", "openai"):
+    if _provider not in ("remote", "openai", "ollama"):
         return payload
     prepared = {
         key: value
@@ -746,15 +846,31 @@ def _finalize_payload(payload: dict) -> dict:
 
 
 def _server_url() -> str:
+    """Return the **root** base URL for the current provider (no /v1 suffix).
+
+    The chat-completions call sites append ``/v1/chat/completions`` to
+    this. Returning the root (without ``/v1``) keeps the call sites
+    uniform across providers — Ollama's root is ``http://host:11434``
+    so the final URL becomes ``.../v1/chat/completions``; llama-server
+    is on a bare port so the same append yields
+    ``http://127.0.0.1:PORT/v1/chat/completions``; Remote/OpenAI use
+    whatever the user configured.
+    """
+    if _provider == "ollama":
+        return _ollama_base_url(_remote_url)
     if _provider in ("remote", "openai") and _remote_url:
-        return _remote_url.rstrip("/")
+        # Strip a user-supplied /v1 if they put one — call sites add it back.
+        url = _remote_url.rstrip("/")
+        if url.endswith("/v1"):
+            return url[:-3]
+        return url
     return f"http://127.0.0.1:{_server_port}"
 
 
 def _api_headers() -> dict:
     """Build headers for API calls (adds auth for remote providers)."""
     headers = {"Content-Type": "application/json"}
-    if _provider in ("remote", "openai", "anthropic", "minimax") and _api_key:
+    if _provider in ("remote", "openai", "anthropic", "minimax", "ollama") and _api_key:
         if _provider == "anthropic":
             headers["x-api-key"] = _api_key
             headers["anthropic-version"] = "2023-06-01"
@@ -1161,7 +1277,7 @@ def _log_generation_metrics(metrics: dict) -> None:
 
 
 def is_loaded() -> bool:
-    if _provider in ("remote", "openai", "anthropic", "minimax"):
+    if _provider in ("remote", "openai", "anthropic", "minimax", "ollama"):
         return bool(_model_id)
     return _process is not None and _process.poll() is None
 
@@ -1671,7 +1787,7 @@ def load_model(
         model_id: Model ID (HF repo for local, model name for remote/API)
         device: "cpu" or "cuda" (local only)
         force_reload: If True, restart even if already running
-        provider: "local" | "remote" | "openai" | "anthropic"
+        provider: "local" | "remote" | "openai" | "anthropic" | "minimax" | "ollama"
         remote_url: Base URL for remote/openai servers (e.g. http://192.168.1.100:1234)
         api_key: API key for openai/anthropic providers
     """
@@ -1679,7 +1795,7 @@ def load_model(
     global _provider, _remote_url, _api_key
 
     # Handle remote/API providers — no subprocess needed
-    if provider in ("remote", "openai", "anthropic", "minimax"):
+    if provider in ("remote", "openai", "anthropic", "minimax", "ollama"):
         with _lock:
             if (
                 is_loaded()

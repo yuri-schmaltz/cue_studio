@@ -277,6 +277,7 @@ export function ServicesSettingsPanel() {
   const isOpenAI = provider === 'openai'
   const isLocal = provider === 'local'
   const isMiniMax = provider === 'minimax'
+  const isOllama = provider === 'ollama'
 
   const handleRefreshModels = async () => {
     setRefreshing(true)
@@ -348,14 +349,15 @@ export function ServicesSettingsPanel() {
           >
             <option value="local">Local (llama-server)</option>
             <option value="remote">Remote OpenAI-Compatible (LM Studio, etc.)</option>
+            <option value="ollama">Ollama (local daemon)</option>
             <option value="openai">OpenAI API</option>
             <option value="anthropic">Anthropic API</option>
             <option value="minimax">MiniMax M3 (Anthropic-compatible)</option>
           </select>
         </div>
 
-        {/* Remote URL (for remote/openai providers) */}
-        {(isRemote || isOpenAI || isMiniMax) && (
+        {/* Remote URL (for remote/openai/ollama providers) */}
+        {(isRemote || isOpenAI || isMiniMax || isOllama) && (
           <div className="space-y-3">
             <div>
               <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
@@ -367,21 +369,25 @@ export function ServicesSettingsPanel() {
                 onChange={e => updateConfig({ llm_remote_url: e.target.value })}
                 placeholder={isRemote
                   ? 'http://192.168.1.100:1234'
-                  : isMiniMax
-                    ? 'https://api.minimax.com'
-                    : 'https://api.openai.com'}
+                  : isOllama
+                    ? 'http://localhost:11434'
+                    : isMiniMax
+                      ? 'https://api.minimax.com'
+                      : 'https://api.openai.com'}
                 className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
               />
               <p className="text-2xs text-text-muted mt-1">
                 {isRemote
-                  ? 'URL of your LM Studio, Ollama, or other OpenAI-compatible server'
-                  : isMiniMax
-                    ? 'MiniMax M3 gateway URL. Leave blank for default https://api.minimax.com'
-                    : 'Leave blank for default OpenAI endpoint'}
+                  ? 'URL of your LM Studio or other OpenAI-compatible server'
+                  : isOllama
+                    ? 'Ollama daemon URL. Leave blank for default http://localhost:11434. Models are auto-detected from /api/tags.'
+                    : isMiniMax
+                      ? 'MiniMax M3 gateway URL. Leave blank for default https://api.minimax.com'
+                      : 'Leave blank for default OpenAI endpoint'}
               </p>
             </div>
 
-            {isRemote && (
+            {(isRemote || isOllama) && (
               <div>
                 <ApiKeyField
                   label="Server API Key"
@@ -392,7 +398,7 @@ export function ServicesSettingsPanel() {
                   }}
                 />
                 <p className="text-2xs text-text-muted mt-1">
-                  Optional. Sent only to this self-hosted OpenAI-compatible server.
+                  Optional. Ollama ignores this unless you set OLLAMA_AUTH or run it behind a reverse proxy that requires a key.
                 </p>
               </div>
             )}
@@ -434,6 +440,11 @@ export function ServicesSettingsPanel() {
           )}
         </div>
 
+        {/* Ollama runs on the user's own hardware — the device toggle is
+            a no-op since Ollama manages its own CPU/GPU split, so we
+            hide it (the dropdown below would be misleading otherwise).
+            Local llama-server still benefits from the CPU/CUDA choice
+            because the Maestro-launched subprocess owns the device. */}
         {/* Device selector (local only) */}
         {isLocal && (
           <div>

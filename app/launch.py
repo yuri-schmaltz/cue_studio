@@ -184,22 +184,31 @@ wgp.server_config["notification_sound_enabled"] = 0
 # Base save path always comes from server_config["save_path"] (never from wgp.save_path which gets workspace-modified)
 
 # Apply active workspace on startup
+# _projects_root() is defined further down; inline the precedence here so
+# this block runs before that helper exists in the module namespace.
 _startup_ws = wgp.server_config.get("services", {}).get("active_workspace", "default")
+_startup_configured = (
+    (wgp.server_config.get("services") or {}).get("projects_root_path") or ""
+)
+if _startup_configured and os.path.isdir(_startup_configured):
+    _startup_root = _startup_configured
+else:
+    _startup_root = wgp.server_config.get("save_path", "outputs")
 if _startup_ws != "default":
-    _ws_dir = os.path.join(wgp.server_config.get("save_path", "outputs"), _startup_ws)
+    _ws_dir = os.path.join(_startup_root, _startup_ws)
     os.makedirs(_ws_dir, exist_ok=True)
     wgp.save_path = _ws_dir
     wgp.image_save_path = _ws_dir
     print(f"[Workspace] Active workspace: {_startup_ws} ({_ws_dir})")
 else:
-    _default_path = wgp.server_config.get("save_path", "outputs")
+    _default_path = _startup_root
     print(f"[Workspace] Active workspace: default ({_default_path})")
 
 # Reclaim trash-renamed leftovers (deleted-but-locked files/folders from a
 # previous run whose deferred cleanup didn't finish before shutdown).
 try:
     from services.win_safe_files import sweep_trash as _sweep_trash
-    _sweep_trash(wgp.server_config.get("save_path", "outputs"))
+    _sweep_trash(_startup_root)
 except Exception as _sweep_err:
     print(f"[Workspace] Trash sweep skipped: {_sweep_err}")
 
@@ -700,8 +709,14 @@ def _workspace_dir(workspace: str = None) -> str:
 
 
 def _workspace_setup_path(name: str) -> str | None:
-    """Compatibility wrapper for the workspace setup service."""
-    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    """Compatibility wrapper for the workspace setup service.
+
+    Reads through ``_projects_root()`` so a configured Storage root
+    (Configurações > Storage) is honored — previously this read the raw
+    ``save_path`` and silently saved ``setup.json`` into the legacy
+    ``outputs/`` folder when the user had moved their projects elsewhere.
+    """
+    base = os.path.abspath(_projects_root())
     return setup_path(base, name)
 
 
@@ -717,14 +732,26 @@ _DEFAULT_PROJECT_SETUP = DEFAULT_PROJECT_SETUP
 
 
 def _load_workspace_setup(name: str) -> dict:
-    """Compatibility wrapper for the workspace setup service."""
-    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    """Compatibility wrapper for the workspace setup service.
+
+    Uses ``_projects_root()`` so workspace setup reads from the same
+    place writes do — fixes the silent split where loading one location
+    and saving to another made the Edit Setup dialog appear to lose its
+    edits after a refresh.
+    """
+    base = os.path.abspath(_projects_root())
     return load_setup(base, name)
 
 
 def _persist_workspace_setup(name: str, setup: dict) -> dict:
-    """Compatibility wrapper mapping service errors to FastAPI errors."""
-    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    """Compatibility wrapper mapping service errors to FastAPI errors.
+
+    Persists under the configured projects root so the next load sees
+    the same data. Saving into the legacy ``outputs/`` folder while
+    loading from the configured root (or vice-versa) is the cause of the
+    "minhas configurações não salvam" reports.
+    """
+    base = os.path.abspath(_projects_root())
     try:
         return persist_setup(base, name, setup)
     except WorkspaceSetupError as exc:
@@ -738,9 +765,15 @@ def _workspace_browse_dir(workspace: str) -> str | None:
     older output folders may legitimately contain spaces. Browsing therefore
     accepts any single safe path segment while still rejecting traversal and
     paths that escape the configured output root.
+
+    Uses ``_projects_root()`` so workspaces live where the user pointed
+    Storage at — historically this read ``save_path`` directly, so a
+    configured Storage root was ignored and media/files were read from
+    the legacy ``outputs/`` folder even after the user moved their
+    projects elsewhere.
     """
     name = str(workspace or "default").strip() or "default"
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     if name == "default":
         return os.path.realpath(base)
     if (
@@ -779,8 +812,14 @@ def _list_workspaces() -> list[dict]:
     `setup.json`). Surfacing this in the list endpoint lets the project
     card render the same chip that the Edit setup dialog would show
     without a second round-trip on first paint.
+
+    Uses ``_projects_root()`` so the gallery reflects the same folder
+    the user pointed Storage at. The previous direct read of
+    ``save_path`` made a configured Storage root invisible — the
+    Projects page would still list the legacy ``outputs/`` workspaces
+    while writes were landing elsewhere.
     """
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     workspaces = [{"name": "default", "path": base, "file_count": _workspace_file_count(base), "modified": _workspace_modified(base), "setup": _load_workspace_setup("default")}]
     if os.path.isdir(base):
         for name in sorted(os.listdir(base)):
@@ -7389,7 +7428,7 @@ def system_preflight():
 
     # Free disk on the output drive.
     try:
-        save_path = wgp.server_config.get("save_path", "outputs")
+        save_path = _projects_root()
         probe_dir = save_path if os.path.isdir(save_path) else os.getcwd()
         free_gb = _shutil.disk_usage(probe_dir).free / (1024 ** 3)
         if free_gb < 5:
@@ -7426,6 +7465,10 @@ def _mask_key(key: str) -> str:
 
 
 _PUBLIC_LLM_PROVIDERS = {"openai", "anthropic", "minimax"}
+# Providers that run against a user-controlled daemon. NSFW stays
+# available because nothing leaves the box — unlike the public APIs
+# above which ban adult content per their terms of service.
+_LOCAL_DAEMON_PROVIDERS = {"local", "remote", "ollama"}
 
 
 # Director v2 plan cancellation lives in its own module so the cancel
@@ -7447,6 +7490,9 @@ def _llm_api_key_for_provider(services: dict, provider: str) -> str:
         "openai": "openai_api_key",
         "anthropic": "anthropic_api_key",
         "minimax": "minimax_api_key",
+        # Ollama shares the Remote API key slot — auth is opt-in via
+        # OLLAMA_AUTH / reverse-proxy, no separate credential needed.
+        "ollama": "llm_remote_api_key",
     }.get(str(provider or "").lower())
     return str(services.get(key_name, "") or "") if key_name else ""
 
@@ -7809,7 +7855,7 @@ async def upload_workspace_cover(name: str, file: UploadFile = File(...)):
     removed after the new setup.json persists, so a failed persist
     never destroys the previous cover.
     """
-    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    base = os.path.abspath(_projects_root())
     content = await file.read()
     try:
         stored = save_cover_image(base, name, content, file.filename or "cover.png")
@@ -7831,7 +7877,7 @@ async def upload_workspace_cover(name: str, file: UploadFile = File(...)):
 @api.get("/api/v1/workspaces/{name}/cover")
 def serve_workspace_cover(name: str):
     """Serve the project card cover image referenced by setup.json."""
-    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    base = os.path.abspath(_projects_root())
     filename = (_load_workspace_setup(name).get("cover_image") or "")
     path = cover_image_path(base, name, filename) if filename else None
     if path is None:
@@ -7849,7 +7895,7 @@ def serve_workspace_cover(name: str):
 @api.delete("/api/v1/workspaces/{name}/cover")
 def delete_workspace_cover(name: str):
     """Remove the project card cover image and clear the setup reference."""
-    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    base = os.path.abspath(_projects_root())
     current = _load_workspace_setup(name)
     current["cover_image"] = ""
     persisted = _persist_workspace_setup(name, current)
@@ -7871,7 +7917,7 @@ def delete_workspace(name: str):
         raise HTTPException(status_code=400, detail="The default workspace is the outputs folder itself and cannot be deleted.")
     if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', name):
         raise HTTPException(status_code=400, detail="Invalid workspace name.")
-    base = os.path.abspath(wgp.server_config.get("save_path", "outputs"))
+    base = os.path.abspath(_projects_root())
     # _safe_join resolves symlinks/junctions before the containment check —
     # the regex blocks traversal but not a junction inside outputs/.
     ws_dir = _safe_join(base, name)
@@ -8180,7 +8226,7 @@ def storage_usage():
     """Usage analytics backfilled from generation sidecars: every job ever
     run left a .meta.json with model_type, activated_loras, and created_at.
     Joined with on-disk sizes so 'largest, least used' is one sort away."""
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     scan_dirs = [w["path"] for w in _list_workspaces()]
     model_usage: dict = {}
     lora_usage: dict = {}
@@ -9575,7 +9621,7 @@ async def mix_audio(request: Request):
     # endpoint enforces via _safe_join. Never feed arbitrary host paths to
     # ffmpeg.
     uploads_root = os.path.realpath(os.path.join(os.getcwd(), "uploads"))
-    outputs_root = os.path.realpath(wgp.server_config.get("save_path", "outputs"))
+    outputs_root = os.path.realpath(_projects_root())
 
     def _contained(real: str, root: str) -> bool:
         real_n, root_n = os.path.normcase(real), os.path.normcase(root)
@@ -9899,6 +9945,125 @@ async def plan_audio_structure(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api.post("/api/v1/director/generate-negative-prompt")
+async def director_generate_negative_prompt(request: Request):
+    """Use the LLM to derive a project-specific negative prompt from the
+    scene description + style bibles. The returned comma-separated list
+    of things-to-avoid is appended to the model's DEFAULT_NEGATIVE_PROMPT
+    so every clip generation in this project benefits from it without
+    the user having to hand-curate a negative prompt.
+
+    Returns:
+        {negative_prompt: string} — single-line, comma-separated terms
+    """
+    from services import llm_service
+    body = await request.json()
+
+    scene_description = (body.get("scene_description") or "").strip()
+    if not scene_description:
+        raise HTTPException(
+            status_code=400, detail="scene_description is required",
+        )
+
+    style_bibles = body.get("style_bibles") or []
+    lyrics_summary = (body.get("lyrics_summary") or "").strip()
+
+    _ensure_llm_loaded()
+
+    style_lines = []
+    for sb in style_bibles[:3]:
+        if not isinstance(sb, dict):
+            continue
+        name = (sb.get("name") or sb.get("title") or "").strip()
+        body_text = (sb.get("description") or sb.get("body") or "").strip()
+        if name and body_text:
+            style_lines.append(f"- {name}: {body_text}")
+        elif body_text:
+            style_lines.append(f"- {body_text}")
+
+    style_block = "\n".join(style_lines) if style_lines else "(none)"
+    lyrics_block = lyrics_summary if lyrics_summary else "(no lyrics)"
+
+    system_prompt = (
+        "You are a prompt engineer for a diffusion-based video/image model. "
+        "Given a project's scene description, style bibles, and a short "
+        "lyrics summary, produce a comma-separated list of terms the model "
+        "should AVOID when generating the visuals.\n\n"
+        "Focus on:\n"
+        "- Visual artefacts: 'blurry', 'out of focus', 'overexposed', "
+        "'grainy', 'low contrast', 'distorted proportions'.\n"
+        "- Style mismatches with the brief: anything that contradicts the "
+        "scene description or style bibles (e.g. if the brief is 'noir', "
+        "include 'bright daylight, pastel colors, cartoonish rendering').\n"
+        "- Content the user explicitly said to avoid (analyze the brief).\n\n"
+        "Do NOT include:\n"
+        "- The default safety negatives — those are appended automatically.\n"
+        "- Anything that contradicts the positive intent of the brief.\n"
+        "- Generic 'low quality' terms already in the default list.\n\n"
+        "Output format:\n"
+        "A SINGLE LINE of comma-separated phrases, lowercase, no numbering, "
+        "no bullet points, no prose. 8-16 phrases is the sweet spot. Be "
+        "specific to THIS project — do not produce a generic negative prompt."
+    )
+
+    user_prompt = (
+        f"Scene description:\n{scene_description}\n\n"
+        f"Style bibles:\n{style_block}\n\n"
+        f"Lyrics summary (may be empty for instrumental tracks):\n{lyrics_block}\n\n"
+        f"Project-specific negative prompt (one line, comma-separated):"
+    )
+
+    try:
+        raw = llm_service.generate(
+            prompt=user_prompt,
+            system_prompt=system_prompt,
+            max_new_tokens=200,
+            temperature=0.3,
+        )
+        # Strip thinking tags, surrounding quotes, and any leading
+        # enumeration ('1.', '-', etc.) the model may have emitted.
+        import re
+        cleaned = llm_service._strip_thinking_tags(raw).strip()
+        cleaned = re.sub(r"^[\"'\s]+|[\"'\s]+$", "", cleaned)
+        # Drop everything after the first newline — the spec is one line.
+        cleaned = cleaned.splitlines()[0] if cleaned else ""
+        cleaned = cleaned.strip().strip('"').strip("'")
+        # Collapse whitespace inside the line and trim trailing commas.
+        cleaned = re.sub(r"\s+", " ", cleaned)
+        cleaned = cleaned.rstrip(",").strip()
+        if not cleaned:
+            cleaned = ""
+        return {"negative_prompt": cleaned}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api.post("/api/v1/director/{pid}/negative-prompt")
+async def director_set_negative_prompt(pid: str, request: Request):
+    """Persist the project-scoped negative prompt so every subsequent
+    image/video generation for ``pid`` carries it. Frontend calls this
+    after the LLM produces the prompt in /generate-negative-prompt.
+
+    Body: {"negative_prompt": "<comma-separated terms>"} — pass an
+    empty string to clear.
+    """
+    from services import director_pipeline
+    body = await request.json()
+    prompt = (body.get("negative_prompt") or "").strip()
+    director_pipeline.set_director_negative_prompt(pid, prompt)
+    return {"ok": True, "negative_prompt": prompt}
+
+
+@api.get("/api/v1/director/{pid}/negative-prompt")
+async def director_get_negative_prompt(pid: str):
+    """Read the project's stored negative prompt, if any. Returns
+    {"negative_prompt": ""} when nothing is set."""
+    from services import director_pipeline
+    prompt = director_pipeline._get_director_negative_prompt(pid)
+    return {"negative_prompt": prompt}
+
+
 @api.post("/api/v1/director/classify-sections")
 async def director_classify_sections(request: Request):
     """Use LLM to reclassify section labels based on lyrics content."""
@@ -10149,7 +10314,7 @@ def director_queue_list():
     """Return the persistent, project-level Director render queue."""
     _init_pipeline()
     from services.director_pipeline import list_director_queue
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     return list_director_queue(base)
 
 
@@ -10233,7 +10398,7 @@ async def director_queue_add(request: Request):
     params = body.get("params") if isinstance(body, dict) else None
     if not isinstance(params, dict):
         raise HTTPException(status_code=400, detail="Director queue params are required")
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         # Freezing a project can copy a full music track and many references.
         # Keep that durable snapshot work off FastAPI's event loop so status,
@@ -10247,7 +10412,7 @@ async def director_queue_add(request: Request):
 def director_queue_start():
     _init_pipeline()
     from services.director_pipeline import start_director_queue
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     return start_director_queue(base)
 
 
@@ -10255,7 +10420,7 @@ def director_queue_start():
 def director_queue_pause():
     _init_pipeline()
     from services.director_pipeline import pause_director_queue
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     return pause_director_queue(base)
 
 
@@ -10267,7 +10432,7 @@ async def director_queue_reorder(request: Request):
     entry_ids = body.get("entry_ids") if isinstance(body, dict) else None
     if not isinstance(entry_ids, list) or not all(isinstance(item, str) for item in entry_ids):
         raise HTTPException(status_code=400, detail="entry_ids must be a list of queue IDs")
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     return reorder_director_queue(base, entry_ids)
 
 
@@ -10275,7 +10440,7 @@ async def director_queue_reorder(request: Request):
 def director_queue_get(entry_id: str):
     _init_pipeline()
     from services.director_pipeline import get_director_queue_entry
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     entry = get_director_queue_entry(base, entry_id)
     if not entry:
         raise HTTPException(status_code=404, detail="Director queue entry not found")
@@ -10294,7 +10459,7 @@ async def director_queue_update(entry_id: str, request: Request):
     params = body.get("params") if isinstance(body, dict) else None
     if not isinstance(params, dict):
         raise HTTPException(status_code=400, detail="Director queue params are required")
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         return await asyncio.to_thread(
             update_director_queue_entry, base, entry_id, params,
@@ -10312,7 +10477,7 @@ def director_queue_delete(entry_id: str):
         PipelineBusyError,
         remove_director_queue_entry,
     )
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         removed = remove_director_queue_entry(base, entry_id)
     except PipelineBusyError as exc:
@@ -10341,7 +10506,7 @@ async def director_pipeline_start(request: Request):
 def director_pipeline_status(pid: str):
     """Get current pipeline status with rich progress info."""
     from services.director_pipeline import get_pipeline_status
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     p = get_pipeline_status(pid, base)
     if not p:
         raise HTTPException(status_code=404, detail="Pipeline not found")
@@ -10399,7 +10564,7 @@ def director_pipeline_resume(pid: str):
     """
     _init_pipeline()
     from services.director_pipeline import resume_pipeline
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     ok, message = resume_pipeline(pid, base)
     if not ok:
         raise HTTPException(status_code=400, detail=message)
@@ -10412,7 +10577,7 @@ def director_pipeline_resume(pid: str):
 def list_saved_pipelines():
     """List saved pipeline states for the active workspace."""
     from services.director_pipeline import list_pipeline_states
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     pipelines = list_pipeline_states(base)
     for pipeline in pipelines:
         if pipeline.get("output_count") or pipeline.get("clip_count"):
@@ -10426,7 +10591,7 @@ def list_saved_pipelines():
 def get_saved_pipeline_thumbnail(pid: str):
     """Serve a cached first frame for the Editor's Director-run gallery."""
     from services.director_pipeline import build_pipeline_first_frame_thumbnail
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     thumbnail = build_pipeline_first_frame_thumbnail(base, pid)
     if not thumbnail:
         raise HTTPException(status_code=404, detail="Director thumbnail not available")
@@ -10437,7 +10602,7 @@ def get_saved_pipeline_thumbnail(pid: str):
 def get_saved_pipeline(pid: str):
     """Get a full saved pipeline state."""
     from services.director_pipeline import load_pipeline_state
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     state = load_pipeline_state(base, pid)
     if not state:
         return JSONResponse({"error": "Pipeline not found"}, status_code=404)
@@ -10450,7 +10615,7 @@ async def tag_pipeline_clip(pid: str, clip_index: int, request: Request):
     from services.director_pipeline import PipelineBusyError, update_clip_tag
     body = await request.json()
     tag = body.get("tag")
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         success = update_clip_tag(base, pid, clip_index, tag)
     except PipelineBusyError as exc:
@@ -10501,7 +10666,7 @@ def repair_saved_pipeline(pid: str):
         PipelineBusyError,
         start_pipeline_repair,
     )
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         result = start_pipeline_repair(base, pid)
         return JSONResponse(result, status_code=202)
@@ -10519,7 +10684,7 @@ def cancel_saved_pipeline_repair(pid: str):
     """Cancel a server-owned repair and its current generation child."""
     _init_pipeline()
     from services.director_pipeline import cancel_pipeline_repair
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     repair = cancel_pipeline_repair(base, pid)
     if not repair:
         return JSONResponse(
@@ -10538,7 +10703,7 @@ async def rerun_pipeline_clip_image(pid: str, clip_index: int, request: Request)
         rerun_clip_image,
     )
     body = await request.json()
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         # Image generation can take minutes. Running it directly inside this
         # async route blocks every heartbeat/poll request and can make the
@@ -10577,7 +10742,7 @@ async def rerun_pipeline_clip_video(pid: str, clip_index: int, request: Request)
         rerun_clip_video,
     )
     body = await request.json()
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         result = await asyncio.to_thread(
             rerun_clip_video,
@@ -10607,7 +10772,7 @@ async def rejoin_pipeline_clips(pid: str):
     """Re-join all clips from a saved pipeline using current best versions."""
     _init_pipeline()
     from services.director_pipeline import PipelineBusyError, rejoin_clips
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     try:
         result = await asyncio.to_thread(rejoin_clips, base, pid)
         return result
@@ -10624,7 +10789,7 @@ def delete_pipeline_endpoint(pid: str):
     """Delete a saved pipeline and all media it produced (any workspace)."""
     _init_pipeline()
     from services.director_pipeline import delete_pipeline
-    base = wgp.server_config.get("save_path", "outputs")
+    base = _projects_root()
     result = delete_pipeline(base, pid)
     if not result.get("ok"):
         if result.get("error") == "running":
@@ -28366,7 +28531,7 @@ def serve_file(filename: str, workspace: str = ""):
     user has to close the entire app to clean up.
     """
     from services.win_safe_files import share_delete_file_response
-    save_root = wgp.server_config.get("save_path", "outputs")
+    save_root = _projects_root()
     requested_workspace = str(workspace or "").strip()
     if requested_workspace:
         if requested_workspace == "__uploads__":
@@ -28848,7 +29013,16 @@ def serve_upload(filename: str):
 # ============================================================================
 
 def _editor_save_root() -> str:
-    return wgp.server_config.get("save_path", "outputs")
+    """Resolve the root where Editor (Cue Studio) projects persist.
+
+    Goes through ``_projects_root()`` so a configured Storage root
+    (Configurações > Storage) is honored. The previous direct read of
+    ``save_path`` made Editor saves land in the legacy ``outputs/``
+    folder even when the user had moved their projects elsewhere —
+    combined with the matching bug in the read paths, projects appeared
+    to "vanish" after a refresh.
+    """
+    return _projects_root()
 
 
 def _editor_uploads_root() -> str:

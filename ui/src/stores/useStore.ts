@@ -8,6 +8,7 @@ import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
 import { canonicalDirectorSkill } from '../types'
+import type { DirectorError } from './directorError'
 import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
@@ -1697,6 +1698,25 @@ export interface AppState {
    *  enabling the flag. */
   workspaceStage: 'studio' | 'director'
   directorStep: 'upload' | 'analyze' | 'structure' | 'style' | 'plan' | 'review' | 'generate_images' | 'plan_video' | 'review_video'
+
+  /**
+   * Derived from the live pipeline status (status.phase + progress.message +
+   * whether the LLM streaming flag is set). Returns a single human-readable
+   * label describing WHAT the Director is doing right now — replaces the
+   * hard-coded "Recalculating…" string that used to live in the
+   * CLIP STRUCTURE card and stayed on-screen no matter which long-running
+   * step was actually in flight.
+   *
+   * Possible values:
+   *   "Idle"                            – nothing running
+   *   "Planning with LLM…"              – phase=planning, first LLM pass
+   *   "Polishing prompts…"              – phase=polishing_prompts (3rd pass)
+   *   "Generating start image N/M…"     – phase=generating_images
+   *   "Writing video prompts…"          – phase=preparing_video
+   *   "Generating video clip N/M…"      – phase=generating_video
+   *   "Finalizing…"                     – phase=post_processing
+   *   <backend progress.message>        – fallback when no phase matches
+   */
   directorAudioFile: File | null
   directorAudioPath: string | null
   directorAnalysis: AudioAnalysisResult | null
@@ -1712,7 +1732,19 @@ export interface AppState {
    *  the sidebar loading spinner. Falls back to a default like
    *  "Analyzing audio..." in the UI when null. */
   directorLoadingMessage: string | null
-  directorError: string | null
+  /** Derived from the live pipeline status — replaces the hard-coded
+   *  "Recalculating…" label that used to sit in the CLIP STRUCTURE card.
+   *  See _computeDirectorActivity in useStore.ts. */
+  directorActivityLabel: string
+  /** 0..1 progress for the active phase; NaN when indeterminate
+   *  (e.g. mid-LLM-streaming when the backend hasn't reported step counts). */
+  directorActivityFraction: number
+  /** Typed failure surface — accepts either the new `DirectorError`
+   *  (rich: kind, phase, actions, recoverable, …) or a legacy plain
+   *  string for callers that haven't migrated yet. `normalizeDirectorError`
+   *  in stores/directorError.ts converts strings to the typed shape so
+   *  the DirectorErrorBanner can always render rich actions. */
+  directorError: DirectorError | string | null
   clearDirectorError: () => void
   directorReferenceImage: File | null
   directorReferenceImagePath: string | null
@@ -1847,6 +1879,19 @@ export interface AppState {
   directorWriteSong: () => Promise<void>
   directorGenerateTrack: (mode?: 'now' | 'queue') => Promise<void>
   directorSetAudioFile: (file: File | null) => void
+  /** Project-scoped "what to avoid" prompt. Generated once per project
+   *  from the scene description + style bibles, persisted server-side
+   *  keyed by pipeline_id, then injected into every clip generation
+   *  automatically. Editable in the Generation Options column. */
+  directorNegativePrompt: string
+  /** LLM-backed derivation of directorNegativePrompt from the current
+   *  scene description. Called by the auto-generate hook after the
+   *  user commits the brief; the result is sent to the backend via
+   *  setDirectorNegativePrompt (which stores it on the active
+   *  pipeline_id) and mirrored into the local store slice so the UI
+   *  shows it without a refetch. */
+  directorGenerateNegativePrompt: () => Promise<void>
+  directorSetNegativePrompt: (v: string) => Promise<void>
   directorAnalyzeAndPlan: (audioPath: string, opts?: { transcribe?: boolean; lyricsHint?: string }) => Promise<void>
   directorEnsureStructure: () => Promise<Awaited<ReturnType<typeof import('../api/client').planClipStructure>>>
   directorSetEnergyBias: (bias: number) => Promise<void>
@@ -2200,6 +2245,11 @@ async function _buildDirectorRestorePatch(
     directorSkill: skill,
     shortFilmPath,
     directorSceneDescription: String(ui.directorSceneDescription || pipeline.scene_description || ''),
+    // Project-scoped negative prompt isn't persisted on the server-side
+    // state file yet — we re-fetch it from the dedicated endpoint below
+    // (see _loadDirectorNegativePrompt) so a reopened project picks up
+    // its saved "things to avoid" list rather than starting empty.
+    directorNegativePrompt: '',
     directorAudioPath: audioPath,
     directorAudioFile: audioPath ? new File([], audioName, { type: 'audio/wav' }) : null,
     directorAnalysis: analysis,
@@ -2268,6 +2318,20 @@ async function _buildDirectorRestorePatch(
   }
 }
 
+/** Hydrate the project-scoped negative prompt from the backend when
+ *  opening a saved Director project. Silent on failure — the local
+ *  slice just stays empty and the user can still type a manual one. */
+async function _loadDirectorNegativePrompt(pid: string): Promise<void> {
+  try {
+    const { getDirectorNegativePrompt } = await import('../api/client')
+    const { negative_prompt } = await getDirectorNegativePrompt(pid)
+    useStore.setState({ directorNegativePrompt: negative_prompt || '' })
+  } catch {
+    // Best-effort; the textarea stays empty until the user types or
+    // directorGenerateNegativePrompt runs again.
+  }
+}
+
 function _directorStepForPipelineStatus(
   status: api.PipelineStatus,
   fallback: AppState['directorStep'],
@@ -2287,6 +2351,117 @@ function _directorStepForPipelineStatus(
     || status.phase === 'post_processing'
   ) return 'review_video'
   return fallback
+}
+
+/**
+ * Translate a live PipelineStatus into a single human-readable activity
+ * label + a 0..1 progress fraction. Both are surfaced to the user in
+ * three places that used to show the hard-coded "Recalculating..." /
+ * "Analyzing audio..." / nothing-at-all:
+ *
+ *   • CLIP STRUCTURE card (left chat column)   — small inline label
+ *   • Director Activity card (middle column)   — large live status
+ *   • Per-clip review cards' disabled affordance
+ *
+ * The label is derived from `status.phase` first, then falls back to the
+ * backend's `progress.message`, then to a generic "Working…". The
+ * fraction is `current/total` when both are > 0 (LLM streaming reports
+ * step/total_steps, image/video gen reports current_clip/total_clips).
+ *
+ * Returns NaN for the fraction when the backend hasn't reported any
+ * progress yet — the UI uses NaN to switch from a determinate bar to an
+ * indeterminate animated stripe so the user always sees motion.
+ */
+function _computeDirectorActivity(
+  status: api.PipelineStatus | null,
+  fallbackLabel: string | null,
+): { label: string; fraction: number; step?: number; total?: number } {
+  if (!status) {
+    return { label: fallbackLabel || 'Working…', fraction: NaN }
+  }
+  // Terminal states: no work in flight.
+  if (status.status === 'completed') {
+    return { label: 'Director run completed', fraction: 1 }
+  }
+  if (status.status === 'failed') {
+    return { label: 'Director run failed', fraction: NaN }
+  }
+  if (status.status === 'cancelled') {
+    return { label: 'Director run cancelled', fraction: NaN }
+  }
+  if (status.status === 'paused') {
+    return { label: 'Awaiting your review', fraction: NaN }
+  }
+  // In-flight phases.
+  const progress = status.progress
+  const current = progress?.current ?? 0
+  const total = progress?.total ?? 0
+  const step = progress?.step ?? 0
+  const totalSteps = progress?.total_steps ?? 0
+  const currentClip = progress?.current_clip
+  const totalClips = progress?.total_clips
+  const fraction = total > 0
+    ? Math.min(1, Math.max(0, current / total))
+    : (totalSteps > 0 ? Math.min(1, Math.max(0, step / totalSteps)) : NaN)
+  switch (status.phase) {
+    case 'resuming':
+      return {
+        label: 'Resuming previous run…',
+        fraction,
+        ...(totalSteps > 0 ? { step, total: totalSteps } : {}),
+      }
+    case 'planning': {
+      // Pass number is encoded in the message ("Polishing prompts (3rd
+      // pass)…" — see backend) so we just surface the message when
+      // present; otherwise default to the friendlier "Planning with LLM…".
+      const msg = progress?.message
+      if (msg && /polish/i.test(msg)) {
+        return { label: 'Polishing prompts…', fraction, ...(totalSteps > 0 ? { step, total: totalSteps } : {}) }
+      }
+      return {
+        label: 'Planning with LLM…',
+        fraction,
+        ...(totalSteps > 0 ? { step, total: totalSteps } : {}),
+      }
+    }
+    case 'polishing_prompts':
+      return {
+        label: 'Polishing prompts…',
+        fraction,
+        ...(totalSteps > 0 ? { step, total: totalSteps } : {}),
+      }
+    case 'generating_images': {
+      const m = currentClip && totalClips
+        ? `Generating start image ${currentClip}/${totalClips}…`
+        : 'Generating start images…'
+      return {
+        label: m,
+        fraction,
+        ...(currentClip && totalClips ? { step: currentClip, total: totalClips } : {}),
+      }
+    }
+    case 'preparing_video':
+      return { label: 'Writing video prompts…', fraction }
+    case 'generating_video': {
+      const m = currentClip && totalClips
+        ? `Generating video clip ${currentClip}/${totalClips}…`
+        : 'Generating videos…'
+      return {
+        label: m,
+        fraction,
+        ...(currentClip && totalClips ? { step: currentClip, total: totalClips } : {}),
+      }
+    }
+    case 'post_processing':
+      return { label: 'Joining final video…', fraction }
+    default: {
+      const msg = progress?.message?.trim()
+      return {
+        label: msg || fallbackLabel || 'Working…',
+        fraction,
+      }
+    }
+  }
 }
 
 // ── Per-sub-mode working sets (Studio Video) ─────────────────────────
@@ -3178,6 +3353,10 @@ export const useStore = create<AppState>((set, get, store) => ({
         await get().loadModelOptions(videoModel)
         void get().loadLoras(videoModel)
       }
+      // Hydrate the project-scoped negative prompt (see
+      // _loadDirectorNegativePrompt) so the Generation Options textarea
+      // doesn't open empty for a project that already had one.
+      void _loadDirectorNegativePrompt(pid)
     } catch (error) {
       // The live status connection is still useful even if an old/corrupt
       // editable snapshot cannot be reconstructed. Never hide a running job.
@@ -3288,6 +3467,12 @@ export const useStore = create<AppState>((set, get, store) => ({
         },
       }))
       if (videoModel) await get().loadModelOptions(videoModel)
+      // Hydrate the project-scoped negative prompt (see
+      // _loadDirectorNegativePrompt).
+      const openedPid = typeof params._director_project_id === 'string'
+        ? params._director_project_id
+        : draftPipeline.pipeline_id
+      if (openedPid) void _loadDirectorNegativePrompt(openedPid)
     } catch (e) {
       set({
         directorQueueLoading: false,
@@ -3507,6 +3692,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         await get().loadModelOptions(videoModel)
         void get().loadLoras(videoModel)
       }
+      // Hydrate the project-scoped negative prompt so the textarea
+      // reflects what was already generated/edited for this project.
+      void _loadDirectorNegativePrompt(pid)
     } catch (e) {
       console.error('Failed to load Director pipeline:', e)
       set({ directorError: e instanceof Error ? e.message : 'Failed to open Director project' })
@@ -7684,6 +7872,10 @@ export const useStore = create<AppState>((set, get, store) => ({
   directorEnergyBias: 0,
   directorClipPlans: [],
   directorSceneDescription: '',
+  // Project-scoped "things to avoid" derived once per project from the
+  // scene description. Empty until directorGenerateNegativePrompt runs
+  // (auto-fired when the scene description is committed).
+  directorNegativePrompt: '',
   directorLoading: false,
   directorLoadingMessage: null,
   directorError: null,
@@ -7780,6 +7972,8 @@ export const useStore = create<AppState>((set, get, store) => ({
   shortFilmNarrative: false,
   llmStreamText: '',
   llmStreamDone: true,
+  directorActivityLabel: 'Idle',
+  directorActivityFraction: NaN,
   pipelineId: null,
   pipelineStatus: null,
   pipelinePolling: false,
@@ -8441,6 +8635,80 @@ export const useStore = create<AppState>((set, get, store) => ({
     directorAudioPath: null,
   }),
 
+  // Derive a project-scoped "things to avoid" list from the scene
+  // description + style bibles, store it on the active pipeline_id so
+  // every subsequent clip generation carries it, and mirror the value
+  // into the local store so the textarea updates without a refetch.
+  // Safe to call repeatedly — overwrites the previous value.
+  directorGenerateNegativePrompt: async () => {
+    const state = get()
+    const scene = (state.directorSceneDescription || '').trim()
+    if (!scene) return
+    const pid = state.directorProjectId || state.pipelineId
+    try {
+      const { generateDirectorNegativePrompt, setDirectorNegativePrompt } = await import('../api/client')
+      const lyricsSummary = state.directorAnalysis?.lyrics
+        ? state.directorAnalysis.lyrics
+            .slice(0, 8)
+            .map((seg: { speaker?: string | null; text?: string }) =>
+              `${seg.speaker || '—'}: ${(seg.text || '').slice(0, 80)}`)
+            .join(' / ')
+        : ''
+      // Style bibles are pulled live from the API to keep the prompt
+      // generation aligned with what the user actually loaded into the
+      // pipeline; an empty array is the safe fallback (the LLM still
+      // produces a useful negative prompt from the scene description
+      // alone — see /api/v1/director/generate-negative-prompt docs).
+      let styleBibles: Array<{ name?: string; description?: string }> = []
+      try {
+        const { fetchStyleBibles } = await import('../api/client')
+        const all = await fetchStyleBibles()
+        styleBibles = (all?.bibles || []).slice(0, 3).map((sb: { name?: string; description?: string }) => ({
+          name: sb.name,
+          description: sb.description,
+        }))
+      } catch {
+        // Style bibles are best-effort here — fall through with an empty
+        // list rather than failing the whole generation.
+      }
+      const { negative_prompt } = await generateDirectorNegativePrompt({
+        scene_description: scene,
+        style_bibles: styleBibles,
+        lyrics_summary: lyricsSummary,
+      })
+      set({ directorNegativePrompt: negative_prompt })
+      if (pid) {
+        try {
+          await setDirectorNegativePrompt(pid, negative_prompt)
+        } catch {
+          // Backend persistence failure shouldn't block the UI — the
+          // local mirror is still useful and the next store action will
+          // retry on the next generation cycle.
+        }
+      }
+    } catch {
+      // Surface failure as a no-op: the textarea simply stays empty
+      // and the user can write a manual negative prompt instead.
+    }
+  },
+
+  // Persist the user's edit on the backend so it survives a page reload
+  // and is injected into the next generation. Empty string clears.
+  directorSetNegativePrompt: async (v) => {
+    const state = get()
+    const pid = state.directorProjectId || state.pipelineId
+    set({ directorNegativePrompt: v })
+    if (pid) {
+      try {
+        const { setDirectorNegativePrompt } = await import('../api/client')
+        await setDirectorNegativePrompt(pid, v)
+      } catch {
+        // Best-effort: local mirror is still authoritative for the
+        // current session, and the next generation cycle will resync.
+      }
+    }
+  },
+
   directorSetReferenceImage: (file) => set({
     directorReferenceImage: file,
     // A replacement/removal must not silently retain the durable path from a
@@ -8494,7 +8762,22 @@ export const useStore = create<AppState>((set, get, store) => ({
     return { directorLocationRefs: refs, directorLocationRefPaths: paths, directorLocationRefLabels: labels }
   }),
 
-  directorSetSceneDescription: (prompt) => set({ directorSceneDescription: prompt }),
+  directorSetSceneDescription: (prompt) => {
+    set({ directorSceneDescription: prompt })
+    // Auto-derive a project-scoped negative prompt whenever the user
+    // commits a meaningful scene description change. The LLM call is
+    // debounced through the backend (single call per project) so the
+    // textarea updates without flooding the LLM while the user is
+    // still typing — fires whenever the value is non-empty, which is
+    // exactly when the user is ready for the prompt to be relevant.
+    if (prompt.trim()) {
+      void get().directorGenerateNegativePrompt()
+    } else {
+      // Empty brief → clear the prompt so a stale "avoid" list from a
+      // previous brief doesn't leak into the new project.
+      void get().directorSetNegativePrompt('')
+    }
+  },
 
   // Helper: upload all Director reference images (main + characters + locations)
   _uploadDirectorRefs: async () => {
@@ -8991,7 +9274,11 @@ export const useStore = create<AppState>((set, get, store) => ({
       const base = anchorMade ? 1 : 0
       const generatedImages: DirectorClipImage[] = []
 
-      // Generate one start image per clip sequentially.
+      // Generate one start image per clip sequentially. Each iteration
+      // wraps in its own try/catch so a single failed clip (CUDA OOM,
+      // LoRA mismatch, network blip) records the failing index +
+      // message instead of failing the whole batch silently. The user
+      // can then re-roll only that clip via the per-clip ↻ Regenerate.
       for (let i = 0; i < directorClipPlans.length; i++) {
         const clip = directorPlannedClips[i]
         const plan = directorClipPlans[i]
@@ -8999,9 +9286,31 @@ export const useStore = create<AppState>((set, get, store) => ({
         set({
           directorImageGenProgress: { current: base + i, total, currentClipLabel: clipLabel, status: 'generating' },
         })
-        const { file, filename } = await genImage(plan.image_prompt, allRefs, clipLabel)
-        generatedImages.push({ clipIndex: i, prompt: plan.image_prompt, file, filename })
-        set({ directorClipImages: [...generatedImages] })
+        try {
+          const { file, filename } = await genImage(plan.image_prompt, allRefs, clipLabel)
+          generatedImages.push({ clipIndex: i, prompt: plan.image_prompt, file, filename })
+          set({ directorClipImages: [...generatedImages] })
+        } catch (clipErr: unknown) {
+          const msg = clipErr instanceof Error ? clipErr.message : 'Image generation failed for this clip'
+          console.error(`Director image generation failed for clip ${i}:`, clipErr)
+          // Continue the loop — let later clips try — but stop early so
+          // the error banner surfaces. The user can resume via the
+          // per-clip Regenerate button on the failed card.
+          set({
+            directorLoading: false,
+            directorError: msg,
+            directorImageGenProgress: {
+              current: base + i,
+              total,
+              currentClipLabel: `${clipLabel} — failed`,
+              status: 'error',
+              error_message: msg,
+              failed_clip_index: i,
+              failed_phase: 'image_gen',
+            },
+          })
+          return
+        }
       }
 
       set({
@@ -9156,6 +9465,8 @@ export const useStore = create<AppState>((set, get, store) => ({
       directorAnalyzeProgress: null,
       appSection: 'director' as const, workspaceStage: 'director' as const, sidebarMode: 'workspace' as const,
       directorStep: 'upload',
+      directorActivityLabel: 'Idle',
+      directorActivityFraction: NaN,
       directorAudioFile: null,
       directorAudioPath: null,
       directorAnalysis: null,
@@ -9163,6 +9474,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       directorEnergyBias: 0,
       directorClipPlans: [],
       directorSceneDescription: '',
+      directorNegativePrompt: '',
       directorLoading: false,
       directorError: null,
       directorReferenceImage: null,
@@ -11971,11 +12283,14 @@ export const useStore = create<AppState>((set, get, store) => ({
       ) return
 
       try {
-        const status = await api.fetchPipelineStatus(pid)
+        const pipelineState: api.PipelineStatus = await api.fetchPipelineStatus(pid)
         if (pollToken !== _directorPipelinePollToken || get().pipelineId !== pid) return
+        const activity = _computeDirectorActivity(pipelineState, get().directorLoadingMessage)
         set({
-          pipelineStatus: status,
-          directorLoadingMessage: status.progress?.message || null,
+          pipelineStatus: pipelineState,
+          directorLoadingMessage: pipelineState.progress?.message || null,
+          directorActivityLabel: activity.label,
+          directorActivityFraction: activity.fraction,
         })
 
         // Sync the backend's model-adapted plan, not just an initially empty
@@ -11990,16 +12305,16 @@ export const useStore = create<AppState>((set, get, store) => ({
         const preserveNextRevisionDraft = get().directorStep === 'review_video'
         const currentPlans = get().directorClipPlans
         const currentTimeline = get().directorPlannedClips
-        const plansChanged = Boolean(status.clip_plans?.length) && (
-          currentPlans.length !== status.clip_plans.length
-          || status.clip_plans.some((plan, index) => (
+        const plansChanged = Boolean(pipelineState.clip_plans?.length) && (
+          currentPlans.length !== pipelineState.clip_plans.length
+          || pipelineState.clip_plans.some((plan, index) => (
             plan.video_prompt !== currentPlans[index]?.video_prompt
             || plan.image_prompt !== currentPlans[index]?.image_prompt
           ))
         )
-        const timelineChanged = Boolean(status.planned_clips?.length) && (
-          currentTimeline.length !== status.planned_clips!.length
-          || status.planned_clips!.some((clip, index) => (
+        const timelineChanged = Boolean(pipelineState.planned_clips?.length) && (
+          currentTimeline.length !== pipelineState.planned_clips!.length
+          || pipelineState.planned_clips!.some((clip, index) => (
             clip.start !== currentTimeline[index]?.start
             || clip.end !== currentTimeline[index]?.end
             || clip.duration_frames !== currentTimeline[index]?.duration_frames
@@ -12007,13 +12322,13 @@ export const useStore = create<AppState>((set, get, store) => ({
         )
         if (!preserveNextRevisionDraft && (plansChanged || timelineChanged)) {
           set({
-            ...(plansChanged ? { directorClipPlans: status.clip_plans } : {}),
-            ...(timelineChanged ? { directorPlannedClips: status.planned_clips! } : {}),
+            ...(plansChanged ? { directorClipPlans: pipelineState.clip_plans } : {}),
+            ...(timelineChanged ? { directorPlannedClips: pipelineState.planned_clips! } : {}),
             ...(!currentPlans.length && plansChanged ? { directorStep: 'review' as const } : {}),
           })
         }
 
-        if (!preserveNextRevisionDraft && status.clip_images?.length) {
+        if (!preserveNextRevisionDraft && pipelineState.clip_images?.length) {
           // Strip empty filenames — those are failed-shot sentinels from the
           // pipeline (clip_images.append("") on exception). If we keep them,
           // downstream <img src={getFileUrl("")} /> hits /api/v1/file/ which
@@ -12022,10 +12337,10 @@ export const useStore = create<AppState>((set, get, store) => ({
           // image gen fails (e.g. incompatible LoRA architecture).
           // clipIndex is captured BEFORE filtering so it stays aligned to
           // the original clip plan position even when failed shots drop out.
-          const images = status.clip_images
+          const images = pipelineState.clip_images
             .map((filename, i) => ({
               clipIndex: i,
-              prompt: status.clip_plans?.[i]?.image_prompt || '',
+              prompt: pipelineState.clip_plans?.[i]?.image_prompt || '',
               file: null as unknown as File,
               filename,
             }))
@@ -12034,80 +12349,127 @@ export const useStore = create<AppState>((set, get, store) => ({
         }
 
         // Handle phase transitions
-        if (status.phase === 'polishing_prompts') {
+        if (pipelineState.phase === 'polishing_prompts') {
           set({
             directorImageGenProgress: {
-              current: status.progress.current,
-              total: status.progress.total,
-              currentClipLabel: status.progress.message || 'Polishing prompts (3rd pass)...',
+              current: pipelineState.progress.current,
+              total: pipelineState.progress.total,
+              currentClipLabel: pipelineState.progress.message || 'Polishing prompts (3rd pass)...',
               status: 'generating',
             },
           })
-        } else if (status.phase === 'generating_images') {
+        } else if (pipelineState.phase === 'generating_images') {
           set({
             directorStep: 'generate_images',
             directorImageGenProgress: {
-              current: status.progress.current,
-              total: status.progress.total,
-              currentClipLabel: status.progress.message,
+              current: pipelineState.progress.current,
+              total: pipelineState.progress.total,
+              currentClipLabel: pipelineState.progress.message,
               status: 'generating',
             },
           })
           // Refresh media feed to show new images as they're generated
           get().refreshOutputs()
-        } else if (status.phase === 'preparing_video') {
+        } else if (pipelineState.phase === 'preparing_video') {
           // H3 prompt-only/direct-reference projects intentionally skip the
           // image review stage and proceed straight to video rendering.
           set({
             directorStep: 'review_video',
             directorImageGenProgress: null,
           })
-        } else if (status.phase === 'generating_video') {
+        } else if (pipelineState.phase === 'generating_video') {
           set({ directorStep: 'review_video' })
           // Refresh media feed to show new video clips as they complete
           get().refreshOutputs()
         }
 
         // Handle LLM streaming
-        if (status.llm_streaming) {
+        if (pipelineState.llm_streaming) {
           set({ llmStreamDone: false })
         }
 
         // Handle pause
-        if (status.status === 'paused') {
+        if (pipelineState.status === 'paused') {
           set({ directorLoading: false })
-          if (status.pause_reason === 'review_prompts') {
+          if (pipelineState.pause_reason === 'review_prompts') {
             set({ directorStep: 'review' })
-          } else if ((status.pause_reason === 'review_images' || status.pause_reason === 'review_render')) {
+          } else if ((pipelineState.pause_reason === 'review_images' || pipelineState.pause_reason === 'review_render')) {
             set({ directorStep: 'review_video' })
           }
         }
 
         // Handle completion
-        if (status.status === 'completed') {
+        if (pipelineState.status === 'completed') {
           set({
             pipelinePolling: false,
             directorLoading: false,
             directorLoadingMessage: null,
             directorStep: 'review_video',
+            directorActivityLabel: 'Director run completed',
+            directorActivityFraction: 1,
           })
           get().loadOutputs()
           return  // Stop polling
         }
 
         // Handle failure
-        if (status.status === 'failed' || status.status === 'cancelled') {
+        if (pipelineState.status === 'failed' || pipelineState.status === 'cancelled') {
           set({
             pipelinePolling: false,
             directorLoading: false,
             directorLoadingMessage: null,
-            directorError: status.error || 'Pipeline stopped',
+            directorError: pipelineState.error || 'Pipeline stopped',
+            directorActivityLabel: pipelineState.status === 'failed' ? 'Director run failed' : 'Director run cancelled',
+            directorActivityFraction: NaN,
           })
           return  // Stop polling
         }
 
       } catch (e) {
         console.error('Pipeline poll error:', e)
+      }
+
+      // While the pipeline is in an LLM-driven phase, the backend
+      // (llm_service.generate_streaming) is populating _stream_buffer
+      // token-by-token. Poll the lightweight /api/v1/llm/stream-status
+      // endpoint and push the buffer into the store so the activity
+      // block in the middle column can render a live "X tokens
+      // streamed so far…" counter instead of just a generic spinner.
+      // This poll is throttled to every other pipeline tick (2s × 2 =
+      // 4s) to keep the network chatter small while still feeling live.
+      if (
+        pollToken === _directorPipelinePollToken
+        && get().pipelinePolling
+        && get().pipelineStatus
+        && (get().pipelineStatus!.phase === 'planning' || get().pipelineStatus!.phase === 'polishing_prompts')
+        && get().pipelineStatus!.llm_streaming
+      ) {
+        try {
+          const stream = await api.getLlmStreamStatus()
+          if (pollToken === _directorPipelinePollToken && get().pipelineId === pid) {
+            const current = get().llmStreamText
+            // Avoid forcing a re-render every tick if nothing changed;
+            // the backend also buffers in chunks, so this filters out
+            // the same content being read back twice.
+            if (stream.text && stream.text !== current) {
+              set({ llmStreamText: stream.text, llmStreamDone: stream.done })
+            } else if (stream.done !== get().llmStreamDone) {
+              set({ llmStreamDone: stream.done })
+            }
+          }
+        } catch (e) {
+          // stream-status is best-effort; don't fail the pipeline poll.
+          console.debug('LLM stream-status poll failed:', e)
+        }
+      } else if (
+        pollToken === _directorPipelinePollToken
+        && get().pipelinePolling
+        && (get().llmStreamText !== '' || !get().llmStreamDone)
+      ) {
+        // Reset the streaming state when the pipeline leaves the LLM
+        // phases so the next run starts clean. We don't clear it
+        // mid-pass — only on phase transitions out of planning/polish.
+        set({ llmStreamText: '', llmStreamDone: true })
       }
 
       // Continue polling

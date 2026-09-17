@@ -4,6 +4,7 @@ import { ProjectsPage } from './components/Shell/ProjectsPage'
 import { QueuePage } from './components/Shell/QueuePage'
 import { DirectorPage } from './components/Shell/DirectorPage'
 import { HardwareStatusBar } from './components/Sidebar/HardwareStatusBar'
+import { DirectorStatusPanel } from './components/Stages/DirectorStatusPanel'
 import { MainContent } from './components/MainContent/MainContent'
 import { SettingsDrawer } from './components/SettingsDrawer/SettingsDrawer'
 import { LoraBrowser } from './components/LoraBrowser/LoraBrowser'
@@ -65,9 +66,10 @@ function App() {
       </div>
       {/* The Director Planning/Studio toggle now lives inside
           DirectorPage itself (sub-header next to the Style Bibles
-          button), so the bottom status bar's leftSlot stays free for
-          every tab. */}
-      <HardwareStatusBar />
+          button). The bottom status bar's leftSlot is reserved for
+          the Director pipeline progress strip so GPU/VRAM/CPU/RAM and
+          the per-step chips live on the same single row. */}
+      <HardwareStatusBar leftSlot={<DirectorStatusPanel />} />
       <LoraBrowser />
       <DirectorDashboard />
       <StorageDashboard />

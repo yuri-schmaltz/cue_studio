@@ -15,13 +15,14 @@
 import { useStore } from './useStore'
 import type { DirectorShotImageGuidance, DirectorSkill, ResolutionPreset, AspectRatio } from '../types'
 import type { AudioAnalysisResult, PlannedClip, ClipPlan } from '../types'
+import type { DirectorError } from './directorError'
 
 /** Read-only view of all Director state under `workspace.director.*`. */
 export interface DirectorNamespace {
   step: 'upload' | 'analyze' | 'structure' | 'style' | 'plan' | 'review' | 'generate_images' | 'plan_video' | 'review_video'
   loading: boolean
   loadingMessage: string | null
-  error: string | null
+  error: DirectorError | string | null
   audioFile: File | null
   audioPath: string | null
   analysis: AudioAnalysisResult | null

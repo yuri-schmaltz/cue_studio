@@ -113,6 +113,47 @@ _CANCELLED_ARTIFACT_FIELDS = {
     "_clip_timings",
 }
 
+# Module-level registry of project-scoped negative prompts. Keyed by
+# pipeline_id; populated when the user submits a scene description so the
+# LLM can derive a project-specific list of "things to avoid" once per
+# project, then read on every clip generation. Cleared automatically
+# when the pipeline is deleted via delete_pipeline() so disk cleanup
+# doesn't leave dangling prompts in memory.
+_DIRECTOR_NEGATIVE_PROMPTS: dict[str, str] = {}
+_DIRECTOR_NEGATIVE_PROMPTS_LOCK = threading.Lock()
+
+
+def set_director_negative_prompt(pid: str, prompt: str) -> None:
+    """Store the project-scoped negative prompt so every subsequent
+    Director generation for ``pid`` carries it. Called from the
+    /api/v1/director/negative-prompt endpoint or from the frontend's
+    auto-generation hook fired after the scene description is committed.
+    Pass an empty string to clear (e.g. user deleted the brief).
+    """
+    with _DIRECTOR_NEGATIVE_PROMPTS_LOCK:
+        cleaned = (prompt or "").strip()
+        if cleaned:
+            _DIRECTOR_NEGATIVE_PROMPTS[pid] = cleaned
+        else:
+            _DIRECTOR_NEGATIVE_PROMPTS.pop(pid, None)
+
+
+def _get_director_negative_prompt(pid: Optional[str]) -> str:
+    """Read the project's negative prompt, or "" if none was set.
+
+    Lock-protected so the helper is safe to call from any thread that
+    submits a Director job (image/video rerun threads, planning worker,
+    repair threads, etc.) without risking an inconsistent read mid-
+    write. Returns the trimmed string exactly as the user/UI committed
+    it — no DEFAULT_NEGATIVE_PROMPT fallback here, that's the renderer's
+    job (LTX2 already falls back to DEFAULT_NEGATIVE_PROMPT when this
+    is empty, so we don't double-apply it).
+    """
+    if not pid:
+        return ""
+    with _DIRECTOR_NEGATIVE_PROMPTS_LOCK:
+        return _DIRECTOR_NEGATIVE_PROMPTS.get(pid, "")
+
 
 class PipelineBusyError(RuntimeError):
     """Raised when a Dashboard mutation conflicts with active pipeline work."""
@@ -1887,6 +1928,12 @@ def _delete_pipeline_locked(out_dir: str, pid: str) -> dict:
     in uploads/ (the song, character and location refs) are absolute
     paths outside the pipeline folder and are never touched.
     """
+    # Drop the project-scoped negative prompt so deleting a Director
+    # project also clears its LLM-derived "avoid" list from memory.
+    # Without this, re-opening a different project under the same pid
+    # would silently inherit the previous project's negative prompt.
+    with _DIRECTOR_NEGATIVE_PROMPTS_LOCK:
+        _DIRECTOR_NEGATIVE_PROMPTS.pop(pid, None)
     with _pipeline_lock:
         mem = _pipelines.get(pid)
         if (
@@ -2189,7 +2236,11 @@ def _rerun_clip_image_impl(out_dir: str, pid: str, clip_index: int, prompt_overr
         "settings_version": 2.52,
         "generation_mode": "image",
         "repeat_generation": 1,
-        "negative_prompt": "",
+        # Project-scoped negative prompt derived by the LLM from the
+        # scene description once per project; empty string here is
+        # fine — the renderer (LTX2) already falls back to its
+        # DEFAULT_NEGATIVE_PROMPT when this is empty.
+        "negative_prompt": _get_director_negative_prompt(pid),
         "video_length": 1,
         "activated_loras": image_loras.get("activated_loras", []),
         "loras_multipliers": " ".join(
@@ -2827,7 +2878,8 @@ def _rerun_clip_video_impl(out_dir: str, pid: str, clip_index: int, prompt_overr
         "settings_version": 2.52,
         "generation_mode": "video",
         "repeat_generation": 1,
-        "negative_prompt": "",
+        # Project-scoped negative prompt (see _get_director_negative_prompt).
+        "negative_prompt": _get_director_negative_prompt(pid),
         "activated_loras": video_loras.get("activated_loras", []),
         "loras_multipliers": " ".join(
             m.split(";")[0] for m in (video_loras.get("loras_multipliers", "") or "").split(" ") if m
@@ -6838,7 +6890,8 @@ def _run_image_generation(pid: str, params: dict, clip_plans: list[dict], out_di
             "settings_version": 2.52,
             "generation_mode": "image",
             "repeat_generation": 1,
-            "negative_prompt": "",
+            # Project-scoped negative prompt (see _get_director_negative_prompt).
+            "negative_prompt": _get_director_negative_prompt(pid),
             "video_length": 1,
             "activated_loras": image_loras.get("activated_loras", []),
             "loras_multipliers": image_loras.get("loras_multipliers", ""),
@@ -7732,7 +7785,8 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
             "settings_version": 2.52,
             "generation_mode": "video",
             "repeat_generation": 1,
-            "negative_prompt": "",
+            # Project-scoped negative prompt (see _get_director_negative_prompt).
+            "negative_prompt": _get_director_negative_prompt(pid),
             "self_refiner_setting": self_refiner,
             "_director_pipeline_id": pid,
             **lora_params,
@@ -7895,7 +7949,8 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
             "settings_version": 2.52,
             "generation_mode": "video",
             "repeat_generation": 1,
-            "negative_prompt": "",
+            # Project-scoped negative prompt (see _get_director_negative_prompt).
+            "negative_prompt": _get_director_negative_prompt(pid),
             "self_refiner_setting": self_refiner,
             "_director_pipeline_id": pid,
             **lora_params,

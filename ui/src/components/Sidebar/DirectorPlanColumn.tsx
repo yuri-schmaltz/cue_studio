@@ -33,6 +33,7 @@ import {
   VideoPromptsReview,
   LlmLogStage,
 } from './DirectorChat'
+import { DirectorActivityBlock } from './DirectorActivityBar'
 
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
 type DirectorStep = typeof STEP_ORDER[number]
@@ -220,27 +221,39 @@ export function DirectorPlanColumn() {
           surface (image prompts / video prompts / image gen). */}
 
       {/* 3) Plan loading + log — the first LLM pass writes
-          image_prompt per clip. The collapsible log stays in the chat
-          history once complete; we re-render it here so the user can
-          read the full reasoning without scrolling back through chat. */}
-      {(pastStep('plan') || (atStep('plan') && !loading)) && (
+          image_prompt per clip. During the loading phase we render the
+          DirectorActivityBlock so the user sees a live phase label
+          ("Planning with LLM…", "Polishing prompts…"), an indeterminate
+          or determinate progress bar, and a token-streaming counter.
+          After loading finishes we fall through to the collapsible log
+          so the full reasoning stays readable without scrolling back
+          through chat. Previously this card only rendered AFTER the
+          load completed, leaving the entire middle column blank during
+          the (often multi-minute) planning pass. */}
+      {(pastStep('plan') || atStep('plan')) && (
         <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">
             {isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'}
           </h3>
-          <LlmLogStage
-            stage="plan"
-            label={isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'}
-          />
+          <DirectorActivityBlock />
+          {!loading && (
+            <LlmLogStage
+              stage="plan"
+              label={isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'}
+            />
+          )}
         </section>
       )}
 
       {/* 4) Image prompts review — one card per clip with an editable
           image_prompt textarea. The user can re-roll the whole batch or
-          move to image generation. */}
+          move to image generation. The "Start Image Prompts" header
+          used to live here as an <h3>, but the inner ImagePromptsReview
+          already renders an identical label alongside the Regenerate
+          button — keeping both produced two back-to-back headers in the
+          middle column, so the outer one was removed. */}
       {usesShotImages && (atStep('review') || pastStep('review')) && (
         <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider">Start image prompts</h3>
           <ImagePromptsReview
             clipPlans={clipPlans}
             plannedClips={plannedClips}
@@ -272,19 +285,25 @@ export function DirectorPlanColumn() {
       )}
 
       {/* 6) Plan video log — second LLM pass that writes video_prompt
-          per clip. Same collapsible history as the image-prompt log. */}
-      {(pastStep('plan_video') || (atStep('plan_video') && !loading) || atStep('review_video')) && (
+          per clip. During the load we mount the DirectorActivityBlock so
+          the user sees the live phase + progress + token counter; after
+          the load completes we surface the collapsible history. */}
+      {(pastStep('plan_video') || atStep('plan_video') || atStep('review_video')) && (
         <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">Video prompts</h3>
-          <LlmLogStage stage="plan_video" label="Video prompts" />
+          <DirectorActivityBlock />
+          {!loading && <LlmLogStage stage="plan_video" label="Video prompts" />}
         </section>
       )}
 
       {/* 7) Video prompts review — final per-clip editing surface
-          before the user clicks Generate. */}
+          before the user clicks Generate. The "Video Prompts" header used
+          to live here as an <h3>, but the inner VideoPromptsReview
+          already renders an identical label alongside its Regenerate /
+          Re-roll controls — keeping both produced two back-to-back
+          headers in the middle column, so the outer one was removed. */}
       {atStep('review_video') && (
         <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider">Video prompts per clip</h3>
           <VideoPromptsReview
             clipPlans={clipPlans}
             plannedClips={plannedClips}

@@ -2,6 +2,8 @@ import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ChevronDown, ImageIcon, Play } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { DirectorActivityBadge } from './DirectorActivityBar'
+import { DirectorErrorBanner } from './DirectorErrorBanner'
 const AUDIO_ACCEPT = '.wav,.mp3,.flac,.ogg,.m4a'
 const IMAGE_ACCEPT = '.png,.jpg,.jpeg,.webp,.bmp'
 
@@ -160,11 +162,14 @@ export function DirectorPanel() {
         )}
       </div>
 
-      {/* Error */}
+      {/* Error — rich banner. See DirectorErrorBanner for the full list
+          of supported error kinds (OOM, VRAM, network, LoRA, …) and
+          the per-kind remediation steps it renders. */}
       {error && (
-        <div className="text-xs text-red-400 bg-red-500/10 rounded px-2 py-1.5">
-          {error}
-        </div>
+        <DirectorErrorBanner
+          error={error}
+          pipelineStatus={useStore.getState().pipelineStatus}
+        />
       )}
 
       {/* Step 1: Upload */}
@@ -358,26 +363,17 @@ export function DirectorPanel() {
             </div>
 
             {loading ? (
-              /* Stop button sits on the right so the spinner + label stay
-                 left-aligned (matches the "Writing image prompts..." /
-                 "Writing video prompts..." overlays elsewhere in this
-                 file — same affordance, same icon). The cancel action
-                 goes through useStore.cancelDirectorV2Plan() which
-                 aborts the in-flight HTTP request AND tells the backend
-                 to short-circuit the worker thread, so the GPU/llama-
-                 server stops generating tokens that no one will read. */
-              <div className="relative flex items-center gap-1.5 text-2xs text-text-muted py-1 pr-5">
-                <Loader2 size={10} className="animate-spin" /> Recalculating...
-                <button
-                  type="button"
-                  onClick={() => useStore.getState().cancelDirectorV2Plan()}
-                  title="Stop recalculating"
-                  aria-label="Stop recalculating"
-                  className="absolute right-0 top-1/2 -translate-y-1/2 bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-                >
-                  <X size={10} />
-                </button>
-              </div>
+              /* Live activity badge — replaces the hard-coded
+                 "Recalculating..." string that used to sit here. Reads
+                 directorActivityLabel from the store (derived from the
+                 live pipeline status in useStore.ts) so the user sees
+                 the actual phase: "Planning with LLM…", "Polishing
+                 prompts…", "Generating start image 3/13…", etc.
+                 Cancel button reuses cancelDirectorV2Plan() which aborts
+                 the HTTP request AND tells the backend to short-circuit
+                 the worker thread, so the GPU/llama-server stops
+                 generating tokens that no one will read. */
+              <DirectorActivityBadge cancelTitle="Stop the Director run" />
             ) : (
               <>
                 {/* Proportional bar chart */}

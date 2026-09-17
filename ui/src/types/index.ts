@@ -1527,6 +1527,18 @@ export interface DirectorImageGenProgress {
   total: number
   currentClipLabel: string
   status: 'generating' | 'polling' | 'downloading' | 'done' | 'error' | 'cancelled'
+  /** Optional: raw backend error string when status === 'error'. Surfaced
+   *  inside the per-clip Regenerate button so the user sees WHY that
+   *  particular clip failed (OOM, LoRA mismatch, network, etc.) without
+   *  having to scroll through the application log. */
+  error_message?: string | null
+  /** Optional: 0-based index of the clip that failed (when the failure is
+   *  per-clip rather than wholesale). Used by DirectorErrorBanner to
+   *  populate its `clipIndex` and offer "↻ Regenerate this clip". */
+  failed_clip_index?: number | null
+  /** Optional: which phase produced the error. Defaults to 'image_gen'
+   *  since this struct lives in the image-gen state slot. */
+  failed_phase?: 'image_gen' | 'video_gen' | 'planning' | 'plan_prompts' | 'plan_video' | 'post_processing' | null
 }
 
 /** Wire shape returned by GET/PUT /api/v1/settings/projects-root.
@@ -1557,6 +1569,10 @@ export interface DirectorAnalyzeProgress {
    *  in the UI when empty. */
   message: string
   status: 'running' | 'done' | 'error'
+  /** Optional: raw backend error string when status === 'error'. Picked
+   *  up by DirectorErrorBanner so the audio-analysis failure surfaces
+   *  the original backend message instead of a generic "Analyze failed". */
+  error_message?: string | null
 }
 
 /** Director skills exposed by the in-stage chooser modal.

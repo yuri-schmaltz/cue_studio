@@ -2536,6 +2536,60 @@ export async function planShortFilmScript(params: {
   return res.json()
 }
 
+// --- Project-scoped negative prompt (Director) ---
+// The Director pipeline derives a project-specific "what to avoid" list
+// once per project from the scene description + style bibles, then
+// reuses it on every clip generation so each take benefits from the
+// scene's negative guidance without a per-clip LLM call. The prompt
+// lives in the backend keyed by pipeline_id (see director_pipeline.
+// _DIRECTOR_NEGATIVE_PROMPTS); the frontend drives generation right
+// after the user commits the scene description, stores the result via
+// the set endpoint, and renders the value as an editable textarea in
+// the Generation Options column so the user can refine it at any time.
+
+export async function generateDirectorNegativePrompt(params: {
+  scene_description: string
+  style_bibles?: Array<{ name?: string; description?: string; body?: string }>
+  lyrics_summary?: string
+}): Promise<{ negative_prompt: string }> {
+  const res = await fetch(`${BASE}/api/v1/director/generate-negative-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Negative prompt generation failed' }))
+    throw new Error(err.detail || 'Negative prompt generation failed')
+  }
+  return res.json()
+}
+
+export async function setDirectorNegativePrompt(
+  pid: string,
+  negative_prompt: string,
+): Promise<{ ok: boolean; negative_prompt: string }> {
+  const res = await fetch(`${BASE}/api/v1/director/${encodeURIComponent(pid)}/negative-prompt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ negative_prompt }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Failed to persist negative prompt' }))
+    throw new Error(err.detail || 'Failed to persist negative prompt')
+  }
+  return res.json()
+}
+
+export async function getDirectorNegativePrompt(
+  pid: string,
+): Promise<{ negative_prompt: string }> {
+  const res = await fetch(`${BASE}/api/v1/director/${encodeURIComponent(pid)}/negative-prompt`)
+  if (!res.ok) {
+    return { negative_prompt: '' }
+  }
+  return res.json()
+}
+
 // --- CivitAI Browser ---
 
 export async function fetchLoraDirectories(): Promise<{ directories: string[] }> {
