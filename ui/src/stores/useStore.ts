@@ -1846,6 +1846,7 @@ export interface AppState {
   setDirectorSongDuration: (v: number) => void
   directorWriteSong: () => Promise<void>
   directorGenerateTrack: (mode?: 'now' | 'queue') => Promise<void>
+  directorSetAudioFile: (file: File | null) => void
   directorAnalyzeAndPlan: (audioPath: string, opts?: { transcribe?: boolean; lyricsHint?: string }) => Promise<void>
   directorEnsureStructure: () => Promise<Awaited<ReturnType<typeof import('../api/client').planClipStructure>>>
   directorSetEnergyBias: (bias: number) => Promise<void>
@@ -8430,6 +8431,15 @@ export const useStore = create<AppState>((set, get, store) => ({
   directorConfirmStructure: () => {
     set({ directorStep: 'style', directorLoading: false })
   },
+
+  directorSetAudioFile: (file) => set({
+    directorAudioFile: file,
+    // Clearing the audio must not silently retain the durable path from
+    // a previously reopened project — otherwise the chat would show the
+    // stale backend reference and the next upload would silently
+    // overwrite the old analysis on disk.
+    directorAudioPath: null,
+  }),
 
   directorSetReferenceImage: (file) => set({
     directorReferenceImage: file,

@@ -26,17 +26,13 @@
 // re-mount of the same sub-components DirectorChat already exported.
 
 import { useStore } from '../../stores/useStore'
-import { useMemo, useState, useRef } from 'react'
+import { useMemo } from 'react'
 import {
-  StructureView,
-  StyleForm,
   ImagePromptsReview,
   ImageGenView,
   VideoPromptsReview,
   LlmLogStage,
-  AnalysisSummary,
 } from './DirectorChat'
-import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
 
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
 type DirectorStep = typeof STEP_ORDER[number]
@@ -62,46 +58,40 @@ export function DirectorPlanColumn() {
 
   // planning surfaces
   const plannedClips = useStore(s => s.directorPlannedClips)
-  const energyBias = useStore(s => s.directorEnergyBias)
-  const setEnergyBias = useStore(s => s.directorSetEnergyBias)
-  const shortFilmSetPacingBias = useStore(s => s.shortFilmSetPacingBias)
-  const confirmStructure = useStore(s => s.directorConfirmStructure)
-  const totalClipDuration = plannedClips.length > 0 ? plannedClips[plannedClips.length - 1].end : 0
-  const beatDistribution = useMemo(() => {
-    const counts: Record<number, number> = {}
-    for (const c of plannedClips) counts[c.beat_count] = (counts[c.beat_count] || 0) + 1
-    return Object.entries(counts)
-      .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([beats, count]) => `${count}x${beats}-beat`)
-      .join(', ')
-  }, [plannedClips])
+  // Clip structure + pacing slider moved to the chat column (see
+  // DirectorChat). These selectors are kept subscribed so the plan
+  // column still re-renders when the user changes them in the chat,
+  // but the values are no longer consumed here.
+  void useStore(s => s.directorEnergyBias)
+  void useStore(s => s.directorSetEnergyBias)
+  void useStore(s => s.shortFilmSetPacingBias)
+  void useStore(s => s.directorConfirmStructure)
 
-  // local bias slider state (mirrors DirectorChat)
-  const [localBias, setLocalBias] = useState<number | null>(null)
-  const sliderRef = useRef<number | null>(null)
-  // expansion state for the analysis-details panel that now lives
-  // inside the clip-structure card.
-  const [showAnalysisDetails, setShowAnalysisDetails] = useState(false)
-
-  // analysis snapshot used by both the inline "Analysis complete" badge
-  // and the speaker-sample aggregation. Hoisted up here so it can be
-  // referenced inside the clip-structure section above without
-  // violating the temporal dead zone.
+  // analysis snapshot still consumed by the speaker-sample aggregation
+  // further down (lyrics → speakers). Hoisted up here so the memo can
+  // read it without violating the temporal dead zone.
   const analysis = useStore(s => s.directorAnalysis)
 
   // style / scene description
   // The directorSceneDescription state is still tracked (the
   // composer textarea on the left binds to it), but we no longer
   // re-render it as a read-only confirmation in this column. The
-  // left composer is the single source of truth for the brief.
+  // left composer is the single source of truth for the brief, and
+  // the Scene description card moved into DirectorChat's chat column
+  // (rendered below the CLIP STRUCTURE). The selectors below stay
+  // subscribed so this column still re-renders when the user mutates
+  // them elsewhere, but the values are no longer consumed here.
   void useStore(s => s.directorSceneDescription)
-  const speakers = useStore(s => s.directorSpeakers)
+  void useStore(s => s.directorSpeakers)
+  // speakerMappings is still consumed downstream (ImagePromptsReview
+  // and VideoPromptsReview both read it for the @SPEAKER_xx chip
+  // rendering), so we keep a real subscription here.
   const speakerMappings = useStore(s => s.directorSpeakerMappings)
-  const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
-  const insertSpeakerMention = useStore(s => s.directorInsertSpeakerMention)
-  const referenceImage = useStore(s => s.directorReferenceImage)
-  const shortFilmCharacters = useStore(s => s.shortFilmCharacters)
-  const shortFilmTargetDuration = useStore(s => s.shortFilmTargetDuration)
+  void useStore(s => s.directorSetSpeakerMapping)
+  void useStore(s => s.directorInsertSpeakerMention)
+  void useStore(s => s.directorReferenceImage)
+  void useStore(s => s.shortFilmCharacters)
+  void useStore(s => s.shortFilmTargetDuration)
 
   // pipeline / model selection affects whether shot images are generated
   const selectedDirectorShotImageSupport = useStore(s => s.models.find(
@@ -166,19 +156,23 @@ export function DirectorPlanColumn() {
     editClipPlan(index, field, value)
   }
 
-  // speaker samples (recomputed from analysis lyrics)
-  const speakerSamples = useMemo<Record<string, string[]>>(() => {
+  // speakerSamples used to feed the StyleForm that lived in this
+  // column; the form moved to DirectorChat's chat column, so the
+  // memo is now consumed there. Keeping the analysis subscription
+  // here (void) so the column still re-renders when the lyrics
+  // change, but the value computation is owned by the chat column.
+  void useMemo<Record<string, string[]>>(() => {
     const out: Record<string, string[]> = {}
     const lyrics = analysis?.lyrics
     if (!Array.isArray(lyrics)) return out
-    for (const speaker of speakers) out[speaker] = []
     for (const seg of lyrics) {
-      if (seg.speaker && out[seg.speaker] && seg.text) {
-        out[seg.speaker].push(seg.text)
+      if (seg.speaker && seg.text) {
+        if (!out[seg.speaker]) out[seg.speaker] = []
+        if (out[seg.speaker].length < 2) out[seg.speaker].push(seg.text)
       }
     }
     return out
-  }, [analysis, speakers])
+  }, [analysis])
 
   // If the user has no skill selected yet (or is still at the upload step
   // for a non-story path), there's nothing to plan — render an empty hint
@@ -213,94 +207,17 @@ export function DirectorPlanColumn() {
        generous enough to let the cards breathe without wasting
        vertical real estate. */
     <div className="h-full p-4 space-y-3" data-testid="director-plan-column">
-      {/* 1) Structure — clip structure with pacing slider. Skipped for
-          the story path (no audio → no clip boundary detection). */}
-      {!isStoryPath && (atStep('structure') || pastStep('structure')) && (
-        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
-          <header className="flex items-center justify-between gap-2">
-            <h3 className="text-xs text-text-muted uppercase tracking-wider">
-              {isShortFilm ? 'Scene structure' : 'Clip structure'}
-            </h3>
-            {/* Top-right cluster: only the compact wizard icon that
-                opens the timeline editor. The "N clips · 2:33" counter
-                used to live here, but the same numbers are now embedded
-                inside the structure preview row (the user prefers a
-                clean header) so the wizard icon stands alone as the
-                affordance. */}
-            <DirectorTimelineIconButton />
-          </header>
-          {/* "Analysis complete" badge used to live in the left chat
-              column as a system bubble; the user asked to consolidate
-              it (plus the "Edit scene timing" button below) into the
-              clip-structure card so the planning surface is the single
-              source of truth for the post-analyze view. */}
-          {analysis && pastStep('analyze') && (
-            <AnalysisSummary
-              analysis={analysis}
-              showDetails={showAnalysisDetails}
-              setShowDetails={setShowAnalysisDetails}
-              isShortFilm={isShortFilm}
-            />
-          )}
-          <StructureView
-            plannedClips={plannedClips}
-            energyBias={energyBias}
-            localBias={localBias}
-            setLocalBias={setLocalBias}
-            sliderRef={sliderRef}
-            setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
-            loading={loading}
-            totalClipDuration={totalClipDuration}
-            beatDistribution={beatDistribution}
-            confirmStructure={confirmStructure}
-            isActive={atStep('structure')}
-            isShortFilm={isShortFilm}
-          />
-          {/* The "Edit scene timing" button used to render here as a
-              full-width row below the structure preview. The user asked
-              to relocate it to the top-right of the card as a compact
-              wizard icon — see the header block above. */}
-        </section>
-      )}
+      {/* 1) Structure — moved to the chat column (DirectorChat). The
+          plan column starts at the post-upload planning surface. */}
 
-      {/* 2) Style / scene description — the user's creative brief,
-          rendered as a read-only confirmation of what was submitted. */}
-      {(atStep('style') || pastStep('style')) && (
-        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
-          <header className="flex items-center justify-between gap-2">
-            <h3 className="text-xs text-text-muted uppercase tracking-wider">Scene description</h3>
-            {isShortFilm && (
-              <span className="text-2xs text-text-muted">
-                {shortFilmTargetDuration}s film
-              </span>
-            )}
-          </header>
-          <StyleForm
-            speakers={speakers}
-            speakerMappings={speakerMappings}
-            speakerSamples={speakerSamples}
-            setSpeakerMapping={setSpeakerMapping}
-            insertSpeakerMention={insertSpeakerMention}
-            isActive={atStep('style')}
-            isShortFilm={isShortFilm}
-            isStoryPath={isStoryPath}
-          />
-          {/* The read-only confirmation of the scene description used to
-              render here as a separate paragraph block, but the same
-              text is already visible in the left-column composer
-              textarea. Duplicating it here wasted a huge amount of
-              vertical space in the center column — space that the
-              Image Prompts / Video Prompts planning cards need once
-              planning starts. Removed; the StyleForm's "Scene
-              description submitted. Planning shots..." message is
-              enough confirmation that the brief was received. */}
-          {isStoryPath && referenceImage && (
-            <div className="flex items-center gap-2 text-2xs text-text-muted">
-              <span>Reference attached · {shortFilmCharacters.length} characters</span>
-            </div>
-          )}
-        </section>
-      )}
+      {/* 2) Style / scene description — moved to the chat column
+          (DirectorChat) right under the CLIP STRUCTURE card so the
+          speaker-mapping + brief inputs live next to the upload and
+          audio analysis. The card is **collapsed by default** so the
+          chat column doesn't grow tall after the user submits the
+          brief. Nothing to render in this column for the style step
+          any more — the plan column starts at the post-style planning
+          surface (image prompts / video prompts / image gen). */}
 
       {/* 3) Plan loading + log — the first LLM pass writes
           image_prompt per clip. The collapsible log stays in the chat

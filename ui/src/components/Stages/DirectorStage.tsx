@@ -49,6 +49,7 @@ import {
   DirectorGenerationOptions,
 } from '../Sidebar/DirectorChat'
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
+import { DirectorTourOverlay } from './DirectorTourOverlay'
 
 /**
  * Mounts the Director planning UI as a Stage inside the Workspace.
@@ -218,10 +219,10 @@ function DirectorStatusPanel() {
           const p = Math.round((pipelineProgress.current / pipelineProgress.total) * 100)
           return {
             pct: p,
-            label: `${pipelineProgress.current} / ${pipelineProgress.total} ${plannedClipsCount > 0 ? 'clips' : 'items'}`,
+            label: `Pass 1/2 image prompts · ${pipelineProgress.current} / ${pipelineProgress.total} ${plannedClipsCount > 0 ? 'clips' : 'items'}`,
           }
         }
-        return { pct: null, label: loadingMessage || 'Writing image prompts…' }
+        return { pct: null, label: loadingMessage || 'Pass 1/2 — writing image prompts…' }
       }
       case 'generate_images': {
         // DirectorImageGenProgress carries {current, total,
@@ -246,15 +247,17 @@ function DirectorStatusPanel() {
       case 'plan_video': {
         // Same pattern as `plan` — the video-prompt batch planner
         // emits precise current/total via the planning progress
-        // callback. Show that ratio whenever it's available.
+        // callback. Show that ratio whenever it's available. Pass 2/2
+        // signals the second LLM call after the user reviews image
+        // prompts so the user knows which planning round is active.
         if (pipelineProgress?.total && pipelineProgress.total > 0) {
           const p = Math.round((pipelineProgress.current / pipelineProgress.total) * 100)
           return {
             pct: p,
-            label: `${pipelineProgress.current} / ${pipelineProgress.total} video prompts`,
+            label: `Pass 2/2 video prompts · ${pipelineProgress.current} / ${pipelineProgress.total} clips`,
           }
         }
-        return { pct: null, label: loadingMessage || 'Writing video prompts…' }
+        return { pct: null, label: loadingMessage || 'Pass 2/2 — writing video prompts…' }
       }
       case 'generate_videos': {
         // Final render — pipeline status carries current_clip /
@@ -398,6 +401,11 @@ export function DirectorStage() {
       data-testid="director-stage"
       data-pipeline-status={pipelineStatus?.status ?? 'idle'}
     >
+      {/* First-run guided tour — only fires once per browser (see
+          DirectorTourOverlay for the localStorage flag). Sits outside
+          the columns container so its fixed positioning can cover the
+          full viewport while still highlighting each column. */}
+      <DirectorTourOverlay />
       <div className="director-stage-columns">
         <aside className="director-stage-chat" aria-label="Director chat & decisions">
           <DirectorChat />
@@ -416,8 +424,56 @@ export function DirectorStage() {
           {directorStep !== 'upload' ? (
             <DirectorGenerationOptions />
           ) : (
-            <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-bg-tertiary p-6 text-center text-xs text-text-muted">
-              Generation options appear after you upload your audio and reference images.
+            /* Pre-upload placeholder — the empty state used to be a
+               single line of grey text. The user found it read as a
+               broken column. Replaced with a structured preview that
+               enumerates what each option does so the user knows what
+               unlocks once they finish the upload step. */
+            <div className="flex flex-1 flex-col items-stretch justify-center gap-3 rounded-xl border border-dashed border-border bg-bg-tertiary/60 p-6">
+              <div className="text-center">
+                <div className="text-2xs uppercase tracking-wider text-text-muted">
+                  Generation Options
+                </div>
+                <h3 className="mt-1 text-sm font-medium text-text-primary">
+                  Unlocks after you upload audio + references
+                </h3>
+                <p className="mt-1 text-2xs text-text-muted leading-snug">
+                  Once your audio is in, this column will surface the choices below. You can still change any of them later.
+                </p>
+              </div>
+              <ul className="mt-2 space-y-1.5 text-2xs text-text-secondary">
+                <li className="flex items-start gap-1.5">
+                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
+                  <span><strong className="text-text-primary">Aspect ratio</strong> &middot; 16:9 / 9:16 / 1:1</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
+                  <span><strong className="text-text-primary">Resolution presets</strong> &middot; 480p / 720p / 1080p / 4K</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
+                  <span><strong className="text-text-primary">Workflow</strong> &middot; standard / seamless</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
+                  <span><strong className="text-text-primary">Image &amp; Video LoRAs</strong> &middot; style + character</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
+                  <span><strong className="text-text-primary">Audio speed</strong> &middot; 1.0× / 3× / 5× TTS</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
+                  <span><strong className="text-text-primary">Image / Source strength</strong> &middot; 0..1 slider</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
+                  <span><strong className="text-text-primary">Identity guidance</strong> &middot; voice &amp; char locking</span>
+                </li>
+              </ul>
+              <div className="mt-2 rounded-md border border-border bg-bg-secondary p-2 text-2xs text-text-muted italic">
+                Tip — the chat column on the left is where you'll start. Drop a song or click Generate a track.
+              </div>
             </div>
           )}
         </aside>

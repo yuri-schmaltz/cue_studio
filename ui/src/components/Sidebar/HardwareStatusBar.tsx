@@ -108,10 +108,11 @@ export function HardwareStatusBar({ leftSlot }: { leftSlot?: React.ReactNode } =
       <div className="global-status-summary">
         {/* leftSlot renders in the grid's "auto" column when a parent
             (e.g. DirectorPage) wants to inject a workflow toggle that
-            belongs at the bottom of the workspace. Other tabs leave the
-            slot unset — an empty placeholder keeps the column so the
-            gauges stay centered. (The old "N items" project count that
-            used to live here was removed.) */}
+            belongs at the bottom of the workspace. The middle column
+            stays empty so the right-hand cluster (gauges + model)
+            hugs the extreme-right edge. The gauges were previously
+            centred in a 1fr column; now they sit right next to the
+            "No model" pill in the rightmost auto column. */}
         {leftSlot ? (
           <div className="status-project" aria-label="Workspace actions">
             {leftSlot}
@@ -120,41 +121,46 @@ export function HardwareStatusBar({ leftSlot }: { leftSlot?: React.ReactNode } =
           <div className="status-project" aria-hidden="true" />
         )}
 
-        <div className="status-gauges" role="group" aria-label="Hardware telemetry">
-          {gpu?.available ? (
-            <>
-              <MiniGauge label="GPU" percent={gpu.percent} value={`${gpu.percent.toFixed(0)}%`} fill="bg-accent-blue"
-                title={gpu.compute_percent != null ? `3D engine (matches Task Manager) · compute (nvidia-smi): ${gpu.compute_percent.toFixed(0)}%` : undefined} />
-              <MiniGauge label="VRAM" percent={gpu.vram_percent} value={fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}
-                fill={fullnessColor(gpu.vram_percent)} title={`VRAM ${fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}`} />
-            </>
-          ) : (
-            <div className="mini-gauge"><span className="mini-gauge-label">GPU</span><span className="mini-gauge-value">No GPU</span></div>
-          )}
-          <MiniGauge label="CPU" percent={cpu?.percent ?? 0} value={`${(cpu?.percent ?? 0).toFixed(0)}%`} fill="bg-accent-blue" />
-          <MiniGauge label="RAM" percent={ram?.percent ?? 0} value={fmtGb(ram?.used_gb, ram?.total_gb)}
-            fill={fullnessColor(ram?.percent ?? 0)} />
-        </div>
+        {/* Spacer — pushes the right-hand cluster to the edge. */}
+        <div />
 
-        <div className="status-model" title={modelLoaded ? (model?.name || 'Unknown model') : 'No model loaded'}>
-          <span className={`status-model-dot ${modelLoaded ? 'is-loaded' : ''}`} aria-hidden="true" />
-          <span className="status-model-name truncate">{modelLoaded ? model?.name : 'No model'}</span>
-          {(modelLoaded || llmStatus?.loaded) && !confirmUnload && !unloading && (
-            <button onClick={() => setConfirmUnload(true)}
-              title="Unload model — frees VRAM/RAM now; the next generation reloads it"
-              className="status-unload" aria-label="Unload model">
-              <Power size={11} />
-            </button>
-          )}
-          {confirmUnload && (
-            <span className="status-unload-confirm">
-              <span className="text-text-secondary">Unload?</span>
-              <button onClick={doUnload} className="status-unload-confirm-yes">Yes</button>
-              <button onClick={() => setConfirmUnload(false)} className="status-unload-confirm-no">No</button>
-            </span>
-          )}
-          {unloading && <span className="status-loading">Unloading…</span>}
-          {unloadNote && !unloading && <span className="status-loading">{unloadNote}</span>}
+        <div className="status-right-cluster">
+          <div className="status-gauges status-gauges-compact" role="group" aria-label="Hardware telemetry">
+            {gpu?.available ? (
+              <>
+                <MiniGauge label="GPU" percent={gpu.percent} value={`${gpu.percent.toFixed(0)}%`} fill="bg-accent-blue"
+                  title={gpu.compute_percent != null ? `3D engine (matches Task Manager) · compute (nvidia-smi): ${gpu.compute_percent.toFixed(0)}%` : undefined} />
+                <MiniGauge label="VRAM" percent={gpu.vram_percent} value={fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}
+                  fill={fullnessColor(gpu.vram_percent)} title={`VRAM ${fmtGb(gpu.vram_used_gb, gpu.vram_total_gb)}`} />
+              </>
+            ) : (
+              <div className="mini-gauge"><span className="mini-gauge-label">GPU</span><span className="mini-gauge-value">No GPU</span></div>
+            )}
+            <MiniGauge label="CPU" percent={cpu?.percent ?? 0} value={`${(cpu?.percent ?? 0).toFixed(0)}%`} fill="bg-accent-blue" />
+            <MiniGauge label="RAM" percent={ram?.percent ?? 0} value={fmtGb(ram?.used_gb, ram?.total_gb)}
+              fill={fullnessColor(ram?.percent ?? 0)} />
+          </div>
+
+          <div className="status-model" title={modelLoaded ? (model?.name || 'Unknown model') : 'No model loaded'}>
+            <span className={`status-model-dot ${modelLoaded ? 'is-loaded' : ''}`} aria-hidden="true" />
+            <span className="status-model-name truncate">{modelLoaded ? model?.name : 'No model'}</span>
+            {(modelLoaded || llmStatus?.loaded) && !confirmUnload && !unloading && (
+              <button onClick={() => setConfirmUnload(true)}
+                title="Unload model — frees VRAM/RAM now; the next generation reloads it"
+                className="status-unload" aria-label="Unload model">
+                <Power size={11} />
+              </button>
+            )}
+            {confirmUnload && (
+              <span className="status-unload-confirm">
+                <span className="text-text-secondary">Unload?</span>
+                <button onClick={doUnload} className="status-unload-confirm-yes">Yes</button>
+                <button onClick={() => setConfirmUnload(false)} className="status-unload-confirm-no">No</button>
+              </span>
+            )}
+            {unloading && <span className="status-loading">Unloading…</span>}
+            {unloadNote && !unloading && <span className="status-loading">{unloadNote}</span>}
+          </div>
         </div>
       </div>
     </footer>

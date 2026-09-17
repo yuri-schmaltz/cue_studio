@@ -1217,6 +1217,20 @@ input[type="range"]::-webkit-slider-thumb {
 .global-status-summary { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:24px; min-height:46px; padding:0 24px; font-size: var(--text-xs); }
 .status-project { display:flex; align-items:center; gap:8px; min-width:0; flex-shrink:0; }
 .status-gauges { display:flex; align-items:center; justify-content:center; gap:18px; min-width:0; flex:1; }
+/* Right-hand cluster: gauges + model pill sit side-by-side at the
+   extreme-right edge of the status bar. The previous layout centred
+   the gauges in a 1fr column, which left a huge empty band on wide
+   screens; the new layout hugs both elements to the right so the
+   bar reads as a compact corner cluster. */
+.status-right-cluster { display:flex; align-items:center; gap:14px; min-width:0; flex-shrink:0; }
+/* Compact mode: smaller bars, narrower labels and values so the four
+   gauges + model name fit on a single line at the bottom of the
+   workspace without overflowing the column. */
+.status-gauges-compact { gap:10px; flex:0 0 auto; min-width:0; }
+.status-gauges-compact .mini-gauge { gap:5px; }
+.status-gauges-compact .mini-gauge-label { width:auto; min-width:28px; text-align:left; }
+.status-gauges-compact .mini-gauge-bar { min-width:28px; max-width:56px; height:4px; }
+.status-gauges-compact .mini-gauge-value { min-width:auto; min-width:54px; }
 .mini-gauge { display:flex; align-items:center; gap:8px; min-width:0; }
 .mini-gauge-label { font-size: var(--text-2xs); text-transform:uppercase; letter-spacing:.08em; color:var(--color-text-muted); font-weight:600; width:32px; flex-shrink:0; text-align:right; }
 .mini-gauge-bar { flex:1; min-width:48px; max-width:140px; height:6px; border-radius:3px; background:var(--color-bg-tertiary); overflow:hidden; }
@@ -1279,6 +1293,9 @@ input[type="range"]::-webkit-slider-thumb {
   .status-telemetry > span { gap:3px; }
   .global-status-summary { grid-template-columns:auto 1fr auto; gap:10px; padding-inline:12px; }
   .status-gauges { gap:10px; }
+  .status-right-cluster { gap:10px; }
+  .status-gauges-compact .mini-gauge-bar { min-width:20px; max-width:36px; }
+  .status-gauges-compact .mini-gauge-value { min-width:42px; }
   .mini-gauge-label { display:none; }
   .mini-gauge-bar { min-width:36px; max-width:80px; }
   .mini-gauge-value { min-width:auto; }
