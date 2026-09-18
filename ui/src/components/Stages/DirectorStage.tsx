@@ -42,6 +42,7 @@ import { DirectorReview } from '../DirectorDashboard/DirectorReview'
 
 import { useEffect } from 'react'
 import { useStore } from '../../stores/useStore'
+import { useIsMobile } from '../../lib/useIsMobile'
 import {
   DirectorChat,
   DirectorGenerationOptions,
@@ -78,6 +79,7 @@ export function DirectorStage() {
   const pipelineId = useStore(s => s.pipelineId)
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const directorStep = useStore(s => s.directorStep)
+  const isMobile = useIsMobile(800)
   // The right column is now strictly per-take (changes land in the
   // per-pipeline snapshot at submit time) and stays editable throughout.
 
@@ -101,6 +103,7 @@ export function DirectorStage() {
       className="flex flex-col h-full min-h-0 bg-bg-secondary"
       data-testid="director-stage"
       data-pipeline-status={pipelineStatus?.status ?? 'idle'}
+      data-mobile={isMobile ? 'true' : 'false'}
     >
       {/* First-run guided tour — only fires once per browser (see
           DirectorTourOverlay for the localStorage flag). Sits outside

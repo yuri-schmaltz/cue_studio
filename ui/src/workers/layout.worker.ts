@@ -75,13 +75,16 @@ function computeLayout(payload: LayoutPayload): LayoutResult {
   }
 }
 
-self.onmessage = (event: MessageEvent<WorkerRequest<LayoutPayload>>) => {
+self.onmessage = (event: MessageEvent<WorkerRequest<LayoutPayload | OffsetPayload>>) => {
   const { id, op, payload } = event.data
   try {
     let result: unknown
     switch (op) {
       case 'computeLayout':
-        result = computeLayout(payload)
+        result = computeLayout(payload as LayoutPayload)
+        break
+      case 'gallery.computeOffset':
+        result = computeOffset(payload as OffsetPayload)
         break
       default:
         throw new Error(`unknown op: ${op}`)
@@ -96,6 +99,24 @@ self.onmessage = (event: MessageEvent<WorkerRequest<LayoutPayload>>) => {
     }
     ;(self as unknown as Worker).postMessage(response)
   }
+}
+
+type OffsetPayload = {
+  index: number
+  placeholderTotalHeight: number
+  // Function isn't serialisable across the postMessage boundary;
+  // callers send a pre-computed heights array instead. Kept here for
+  // documentation of the contract the bridge uses.
+  itemHeights: number[]
+}
+
+function computeOffset(payload: OffsetPayload): number {
+  const { index, placeholderTotalHeight, itemHeights } = payload
+  let sum = 0
+  for (let i = 0; i < index && i < itemHeights.length; i++) {
+    sum += itemHeights[i] + 8 /* GAP */
+  }
+  return placeholderTotalHeight + sum
 }
 
 export {}

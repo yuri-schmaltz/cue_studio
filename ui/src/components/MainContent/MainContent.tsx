@@ -7,6 +7,7 @@ import { DirectorReview } from '../DirectorDashboard/DirectorReview'
 import { useStore } from '../../stores/useStore'
 import { formatEstimatedClock, formatEtaDuration } from '../../lib/format'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
+import { runOnWorker } from '../../lib/webWorker'
 import type { GenerationJob } from '../../types'
 
 export function WorkspaceSelector() {
@@ -761,9 +762,23 @@ export function MainContent() {
     //            against its captured target on every frame and bails
     //            if a newer click overrode it.
 
-    const estimatedOffset = placeholderTotalHeight +
-      Array.from({ length: index }, (_, i) => getItemHeight(i) + GAP).reduce((a, b) => a + b, 0)
-    feedEl.scrollTo({ top: estimatedOffset, behavior: 'auto' })
+    // Workerized offset calculation: the sum over potentially
+    // hundreds of items blocks the main thread on a large gallery.
+    // The worker returns a Promise that resolves to the offset; if
+    // Worker is unavailable (SSR / jsdom), we fall back to the
+    // synchronous reduce inline so the gallery still scrolls.
+    const itemHeights = Array.from({ length: index }, (_, i) => getItemHeight(i))
+    const fallback = () => {
+      const sum = itemHeights.reduce((a, b) => a + b + 8 /* GAP */, 0)
+      return placeholderTotalHeight + sum
+    }
+    runOnWorker<number, { index: number; placeholderTotalHeight: number; itemHeights: number[] }>(
+      'gallery.computeOffset',
+      { index, placeholderTotalHeight, itemHeights },
+      fallback,
+    ).then((offset) => {
+      feedEl.scrollTo({ top: offset, behavior: 'auto' })
+    })
 
     const targetIndexAtStart = index
     let attempts = 0
