@@ -2319,8 +2319,7 @@ async function _buildDirectorRestorePatch(
  *  slice just stays empty and the user can still type a manual one. */
 async function _loadDirectorNegativePrompt(pid: string): Promise<void> {
   try {
-    const { getDirectorNegativePrompt } = await import('../api/client')
-    const { negative_prompt } = await getDirectorNegativePrompt(pid)
+    const { negative_prompt } = await api.getDirectorNegativePrompt(pid)
     useStore.setState({ directorNegativePrompt: negative_prompt || '' })
   } catch {
     // Best-effort; the textarea stays empty until the user types or
@@ -8642,7 +8641,6 @@ export const useStore = create<AppState>((set, get, store) => ({
     if (!scene) return
     const pid = state.directorProjectId || state.pipelineId
     try {
-      const { generateDirectorNegativePrompt, setDirectorNegativePrompt } = await import('../api/client')
       const lyricsSummary = state.directorAnalysis?.lyrics
         ? state.directorAnalysis.lyrics
             .slice(0, 8)
@@ -8657,8 +8655,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       // alone — see /api/v1/director/generate-negative-prompt docs).
       let styleBibles: Array<{ name?: string; description?: string }> = []
       try {
-        const { fetchStyleBibles } = await import('../api/client')
-        const all = await fetchStyleBibles()
+        const all = await api.fetchStyleBibles()
         styleBibles = (all?.bibles || []).slice(0, 3).map((sb: { name?: string; description?: string }) => ({
           name: sb.name,
           description: sb.description,
@@ -8667,7 +8664,7 @@ export const useStore = create<AppState>((set, get, store) => ({
         // Style bibles are best-effort here — fall through with an empty
         // list rather than failing the whole generation.
       }
-      const { negative_prompt } = await generateDirectorNegativePrompt({
+      const { negative_prompt } = await api.generateDirectorNegativePrompt({
         scene_description: scene,
         style_bibles: styleBibles,
         lyrics_summary: lyricsSummary,
@@ -8675,7 +8672,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       set({ directorNegativePrompt: negative_prompt })
       if (pid) {
         try {
-          await setDirectorNegativePrompt(pid, negative_prompt)
+          await api.setDirectorNegativePrompt(pid, negative_prompt)
         } catch {
           // Backend persistence failure shouldn't block the UI — the
           // local mirror is still useful and the next store action will
@@ -8696,8 +8693,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     set({ directorNegativePrompt: v })
     if (pid) {
       try {
-        const { setDirectorNegativePrompt } = await import('../api/client')
-        await setDirectorNegativePrompt(pid, v)
+        await api.setDirectorNegativePrompt(pid, v)
       } catch {
         // Best-effort: local mirror is still authoritative for the
         // current session, and the next generation cycle will resync.
