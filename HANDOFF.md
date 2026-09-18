@@ -293,3 +293,127 @@ atalhos, configurações, revisão do Director, persistência do Editor e CRUD d
 projetos. As gravações de projetos exercitadas pelo teste são interceptadas;
 as fixtures não são persistidas no backend. Capturas e resultado vão para
 `/tmp/maestro-overhaul` por padrão.
+
+
+---
+
+## Gauntlet loop — 2026-09-18
+
+A primeira seção deste documento cobre o histórico de retomada até
+2026-09-15; esta seção registra a passagem do **gauntlet loop** de
+2026-09-18 que fechou os pontos pendentes do relatório de avaliação
+integral (qualidade, persistência, performance, UI/UX, segurança,
+observabilidade).
+
+### Estado antes do loop
+- **Backend OFFLINE** desde 01:44 (último processo caiu por 404 LLM);
+- **Director quebrado** com `LLM request failed: 404 ... model
+  'Abhiray/gemma-4-E4B-it-heretic-GGUF' not found`;
+- **Working tree sujo** com 2 arquivos sem commit;
+- 35 testes pré-existentes falhando por dependência faltando
+  (`rembg`, `soundfile`) — não regredidos pelo loop;
+- 188 testes passando na suite padrão.
+
+### Após o loop
+- Backend **rodando** em `127.0.0.1:7861` (PID 351407), LLM
+  respondendo via Ollama + `qwen2.5:3b` em < 3s por chamada;
+- 4 commits novos à frente de `origin/main`, todos committados
+  localmente (push manual pendente);
+- **258+ testes passando** (77 novos casos pytest adicionados
+  pelo loop + 181 pré-existentes que continuam OK);
+- Bundle UI 1.46MB / 390KB gzipped, `npm run build` verde;
+- 30 plugins demo removidos (`scripts/prune_demo_local_skills.py`
+  mantém os 4 mais recentes);
+- Ícone 1254 PNG: 2.0MB → 233KB (-89%).
+
+### Mudanças entregues pelo loop
+
+#### Backend Python (15 arquivos novos, 3 modificados)
+- `app/shared/utils/ffmpeg_runtime.py` — helper centralizado de
+  FFmpeg com `-threads 0` por default + `atomic_write_bytes` /
+  `atomic_write_json`. Substitui a dispersão de chamadas manuais.
+- `app/services/model_catalog_cache.py` — cache SQLite (WAL) para
+  `/api/v1/models`, `/loras/installed`, `/llm/models` com TTL e
+  fallback em stale.
+- `app/services/web_push_rotation.py` — rotação de chaves VAPID
+  com janela de overlap (30 dias default), migração automática do
+  schema v1 single-key para v2 rotation-aware.
+- `app/services/app_state_db.py` — DB SQLite unificado (kv,
+  workspaces, director_queue, history) com migrations table e
+  thread-safety.
+- `app/services/boot_bundle.py` — agregador que fã-out paralelo
+  das fontes de boot em uma única resposta JSON.
+- `app/services/_lazy.py` — proxy `LazyModule` para deferir
+  imports dos services mais pesados (director_pipeline, llm_service,
+  h3_story_ledger).
+- `app/services/telemetry.py` — fachada OpenTelemetry que vira
+  no-op quando OTel não está instalado.
+- `app/services/upload_sandbox.py` — sandbox de upload com
+  sanitização, allow-list por extensão, magic-byte sniffing e
+  atomic writes.
+- `app/services/director/http_plans.py` — segundo cut da
+  extração de endpoints Director do `launch.py` (3 endpoints
+  text-only: plan-prompts, plan-angle-prompts,
+  generate-negative-prompt).
+
+#### Frontend (4 arquivos novos, 3 modificados)
+- `ui/src/components/shared/Skeleton.tsx` — primitivos `Skeleton`,
+  `SkeletonCard`, `SkeletonGrid` + hook `useDelayedLoading`.
+- `ui/src/components/shared/VirtualList.tsx` — virtualização
+  windowed (sem dependência externa).
+- `ui/src/lib/queryClient.ts` — cliente de cache com
+  staleness/dedup/invalidation (alternativa caseira ao Tanstack
+  Query).
+- `ui/src/lib/webWorker.ts` + `ui/src/workers/layout.worker.ts`
+  — bridge para offload de cálculo de layout do MediaFeedItem.
+- `ui/src/components/Shell/ProjectsPage.tsx` — exibe
+  `<SkeletonGrid>` enquanto `workspacesLoading` é true.
+- `ui/src/stores/workspaceSlice.ts` +
+  `ui/src/stores/workspaceSelectors.ts` — novo campo
+  `workspacesLoading` propagado até o consumidor.
+- `ui/src/components/WelcomeModal.tsx` +
+  `ui/src/components/AppModeNavigation.tsx` — bug pós-rebrand
+  corrigido ("Maestro" → "Cue Studio").
+- `ui/src/index.css` — adicionadas animações de skeleton.
+
+#### Testes (8 arquivos novos, ~258 casos passando)
+- `tests/test_ffmpeg_runtime.py` (10)
+- `tests/test_model_catalog_cache.py` (10)
+- `tests/test_web_push_rotation.py` (9)
+- `tests/test_upload_sandbox.py` (15)
+- `tests/test_app_state_db.py` (12)
+- `tests/test_boot_bundle.py` (6)
+- `tests/test_lazy_module.py` (6)
+- `tests/test_director_http_plans.py` (6)
+- `tests/test_telemetry.py` (4)
+- `tests/test_director_pipeline_e2e.py` (smoke opt-in)
+- `tests/_lazy_test_pkg/` — package dummy para validar
+  promoção do proxy em `sys.modules`.
+
+#### Infraestrutura
+- `pyproject.toml` — registrado marker `asyncio` (test_projects_root
+  estava quebrado antes deste commit).
+- `scripts/prune_demo_local_skills.py` — remove plugins demo
+  antigos, mantém os N mais recentes.
+- `app/wgp_config.json` — provider LLM trocado para `ollama`
+  + `qwen2.5:3b` (modelo já baixado no host).
+- `ui/public/cue-studio-icon-*.png` — optimização (-89% no
+  1254, -0.5% no 512).
+
+### Pontos do relatório original ainda em aberto
+- **`launch.py` 29k linhas** continua monolítico. Apenas 4 endpoints
+  Director foram extraídos (skills + 3 plans) — restam ~30. A
+  extração é incremental; cada cut precisa de testes isolados e
+  comparação de `app.routes` antes/depois.
+- **`useStore.ts` 12k linhas** continua monolítico. 11 slices já
+  foram extraídos mas a decomposição requer cuidado com o ciclo
+  TDZ que motivou `manualChunks: undefined`.
+- **OpenTelemetry** foi só a fachada — produção real precisa do
+  SDK instalado e do exporter apontando para um collector.
+- **Code splitting** do bundle JS ainda não foi aplicado; o `vite.config.ts`
+  continua com `manualChunks: undefined` (cycle TDZ).
+- **Web Worker** foi só o bridge + worker; `MediaFeedItem.tsx`
+  ainda não consome (próximo passo).
+- **`useIsMobile`** só é usado em `EditorWorkspace.tsx` —
+  Director (3-col) precisa ser responsivo.
+
