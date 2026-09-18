@@ -1605,10 +1605,6 @@ export interface AppState {
    *  editor reflects the user's choices without a workspace hop. */
   applyWorkspaceSetup: (setup: ProjectSetupDefaults) => void
 
-  // Storage Manager overlay
-  storageDashboardOpen: boolean
-  setStorageDashboardOpen: (open: boolean) => void
-
   // LoRA picker sort order — store-backed (not per-component state) so
   // simultaneously mounted pickers (e.g. Director's Image + Video
   // accordions) stay in sync; persisted to localStorage.
@@ -9877,9 +9873,6 @@ export const useStore = create<AppState>((set, get, store) => ({
   },
 
   ...createWorkspaceSlice(set, get, store),
-
-  storageDashboardOpen: false,
-  setStorageDashboardOpen: (open) => set({ storageDashboardOpen: open }),
 
   loraPickerSort: (() => {
     try { return localStorage.getItem('cue-studio_lora_picker_sort') === 'newest' ? 'newest' as const : 'name' as const } catch { return 'name' as const }

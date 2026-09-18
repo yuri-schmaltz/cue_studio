@@ -6,6 +6,7 @@ import { Film, Music } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { fetchModels, type ApiModel } from '../../api/client'
+import { NsfwToggle } from '../NSFW/NsfwToggle'
 
 /** Speed/quality tier shown as a text suffix in the model pickers
  *  ("LTX-2 22B Distilled · Fastest"). Native <select> options can't
@@ -261,6 +262,22 @@ export function ProjectSetupForm({
           Advanced defaults
         </summary>
         <div className="px-2.5 pb-2.5 space-y-3">
+      {/* NSFW toggle — moved here from the Integrations drawer so
+          users opt in to adult content generation at the moment
+          they're creating the project that will actually need it.
+          Lives inside Advanced defaults (collapsed by default) to
+          keep the visible top of the form focused on skill + format
+          + workflow + models. The toggle binds to the global
+          ``servicesConfig.nsfw_mode`` flag, so LoRAs / model
+          selectors / the LLM prompt start honoring the new value the
+          moment it's flipped on — no extra wiring required. The
+          ``disabled`` prop is forwarded so the Edit modal can lock
+          the whole form (Edit doesn't change NSFW state). */}
+      <fieldset className={sectionCls} aria-label="Content mode">
+        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Content mode</legend>
+        <NsfwToggle disabled={disabled} />
+      </fieldset>
+
       <fieldset className={sectionCls} aria-label="Default models">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
         <div className="flex gap-2">

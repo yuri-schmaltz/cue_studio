@@ -26,8 +26,8 @@
  * the index.html pre-mount script.
  */
 
-export type ThemeId = 'default' | 'golden-hour' | 'onyx' | 'ivory' | 'daylight' | 'pearl'
-export type FamilyId = 'default' | 'golden-hour' | 'onyx'
+export type ThemeId = 'default' | 'golden-hour' | 'onyx' | 'blender' | 'ivory' | 'daylight' | 'pearl' | 'graphite'
+export type FamilyId = 'default' | 'golden-hour' | 'onyx' | 'blender'
 export type ThemeMode = 'dark' | 'light' | 'auto'
 
 export interface ThemeVariant {
@@ -74,6 +74,14 @@ export const FAMILIES: ThemeFamily[] = [
     dark: { id: 'onyx', swatch: { bg: '#000000', surface: '#1a1a1a', accent: '#aaaaaa' } },
     light: { id: 'pearl', swatch: { bg: '#f2f2f2', surface: '#f9f9f9', accent: '#525252' } },
   },
+  {
+    id: 'blender',
+    label: 'Blender',
+    description:
+      'Inspired by Blender 3D — cool charcoal surfaces with signature orange accents. A professional creative-tool look at night; soft neutral grey by day.',
+    dark: { id: 'blender', swatch: { bg: '#1d1d1d', surface: '#2b2b2b', accent: '#ea7600' } },
+    light: { id: 'graphite', swatch: { bg: '#dedede', surface: '#e8e8e8', accent: '#c26800' } },
+  },
 ]
 
 /** Any theme id (either variant) -> its family. */
@@ -84,6 +92,8 @@ const FAMILY_OF: Record<ThemeId, FamilyId> = {
   daylight: 'default',
   onyx: 'onyx',
   pearl: 'onyx',
+  blender: 'blender',
+  graphite: 'blender',
 }
 
 const LIGHT_IDS: ReadonlySet<string> = new Set(['ivory', 'daylight', 'pearl'])

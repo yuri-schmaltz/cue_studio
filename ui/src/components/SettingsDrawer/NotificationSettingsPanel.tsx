@@ -216,24 +216,23 @@ export function NotificationSettingsPanel() {
     <section className="settings-panel" aria-label="Notifications settings">
       <header className="settings-panel-header">
         <h2><Bell size={18} aria-hidden="true" /> Notifications</h2>
-        <p>Maestro always shows a small in-app alert. The options below
-          add system notifications or sound.</p>
       </header>
 
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>This browser or device</h3>
-          <p>Saved separately in each browser.</p>
-        </div>
-
-        <div className="settings-card">
-          <div className="flex items-center gap-2">
-            <Bell size={15} className="text-accent-blue" />
-            <div>
-              <div className="text-xs font-medium text-text-primary">Browser alerts</div>
-              <div className="text-2xs text-text-muted">In-app toasts and optional OS notifications.</div>
+      {/* Two-column layout: Browser alerts on the left (per-device),
+          Host completion sound on the right (per-host computer).
+          Previously these were stacked full-width; side-by-side
+          halves the vertical scroll distance and surfaces the
+          "this device vs the Maestro host" pairing visually. */}
+      <div className="settings-feature-column">
+        <div className="settings-group">
+          <div className="settings-card">
+            <div className="flex items-center gap-2">
+              <Bell size={15} className="text-accent-blue" />
+              <div>
+                <div className="text-xs font-medium text-text-primary">Browser alerts</div>
+                <div className="text-2xs text-text-muted">In-app toasts and optional OS notifications.</div>
+              </div>
             </div>
-          </div>
 
         <Toggle
           checked={preferences.browserNotifications}
@@ -369,11 +368,6 @@ export function NotificationSettingsPanel() {
       </div>
 
       <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Maestro host computer</h3>
-          <p>Useful when you leave the generation machine running.</p>
-        </div>
-
         <div className="settings-card">
           <div className="flex items-center gap-2">
             <MonitorSpeaker size={15} className="text-accent-blue" />
@@ -418,6 +412,7 @@ export function NotificationSettingsPanel() {
         >
           {testingHost ? 'Playing…' : 'Test host sound'}
         </button>
+        </div>
         </div>
       </div>
 

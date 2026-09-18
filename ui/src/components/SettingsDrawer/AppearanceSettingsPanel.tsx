@@ -42,76 +42,70 @@ export function AppearanceSettingsPanel() {
     <section className="settings-panel" aria-label="Appearance settings">
       <header className="settings-panel-header">
         <h2><Palette size={18} aria-hidden="true" /> Appearance</h2>
-        <p>Theme family and dark / light / auto mode. Changes apply
-          instantly to the whole app and persist in this browser.</p>
       </header>
 
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Mode</h3>
-          <p>Auto follows your operating system preference.</p>
-        </div>
-        <div className="settings-card">
-          <div>
-            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-              Mode
-            </label>
-            <div className="flex rounded-lg border border-border overflow-hidden">
-              {modes.map(m => (
-                <button
-                  key={m.value}
-                  onClick={() => setThemeMode(m.value)}
-                  className={`flex-1 px-3 py-1.5 text-xs transition-colors ${
-                    prefs.mode === m.value
-                      ? 'bg-accent-blue text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-            {prefs.mode === 'auto' && (
+      <div className="settings-columns">
+        <div className="settings-group">
+          <div className="settings-card">
+            <div>
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
+                Mode
+              </label>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {modes.map(m => (
+                  <button
+                    key={m.value}
+                    onClick={() => setThemeMode(m.value)}
+                    className={`flex-1 px-3 py-1.5 text-xs transition-colors ${
+                      prefs.mode === m.value
+                        ? 'bg-accent-blue text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
               <p className="text-2xs text-text-muted mt-1.5">
-                Follows your system's appearance — currently {variant}.
+                {prefs.mode === 'auto'
+                  ? `Follows your system's appearance — currently ${variant}.`
+                  : prefs.mode === 'light'
+                    ? 'Light interface at all times.'
+                    : 'Dark interface at all times.'}
               </p>
-            )}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="settings-group">
-        <div className="settings-group-header">
-          <h3>Theme</h3>
-          <p>Color palette. Preview shows the variant currently in effect.</p>
-        </div>
-        <div className="settings-card">
-          <div>
-            <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-              Theme
-            </label>
-            <div className="flex items-center gap-2">
-              {/* Swatch — three colors stacked horizontally for a quick
-                  preview of the bg / surface / accent palette of the
-                  variant currently in effect. */}
-              <div className="flex shrink-0 rounded-md overflow-hidden border border-border">
-                <div className="w-3 h-7" style={{ background: swatch.bg }} />
-                <div className="w-3 h-7" style={{ background: swatch.surface }} />
-                <div className="w-3 h-7" style={{ background: swatch.accent }} />
+        <div className="settings-group">
+          <div className="settings-card">
+            <div>
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
+                Theme
+              </label>
+              <div className="flex items-center gap-2">
+                {/* Swatch — three colors stacked horizontally for a quick
+                    preview of the bg / surface / accent palette of the
+                    variant currently in effect. */}
+                <div className="flex shrink-0 rounded-md overflow-hidden border border-border">
+                  <div className="w-3 h-7" style={{ background: swatch.bg }} />
+                  <div className="w-3 h-7" style={{ background: swatch.surface }} />
+                  <div className="w-3 h-7" style={{ background: swatch.accent }} />
+                </div>
+                <select
+                  value={family.id}
+                  onChange={e => setThemeFamily(e.target.value as FamilyId)}
+                  className="flex-1 bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
+                >
+                  {FAMILIES.map(f => (
+                    <option key={f.id} value={f.id}>{f.label}</option>
+                  ))}
+                </select>
               </div>
-              <select
-                value={family.id}
-                onChange={e => setThemeFamily(e.target.value as FamilyId)}
-                className="flex-1 bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
-              >
-                {FAMILIES.map(f => (
-                  <option key={f.id} value={f.id}>{f.label}</option>
-                ))}
-              </select>
+              <p className="text-2xs text-text-muted mt-1.5">
+                {family.description}
+              </p>
             </div>
-            <p className="text-2xs text-text-muted mt-1.5">
-              {family.description}
-            </p>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Save, Trash2, FolderOpen, SlidersHorizontal } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { PostProcessing } from './PostProcessing'
+import { OutputCodecs } from './OutputCodecs'
 import { ControlVideoSection } from './ControlVideoSection'
 import { LoraSelector } from '../SettingsDrawer/LoraSelector'
 import { ResolutionPresets } from './ResolutionPresets'
@@ -850,6 +851,16 @@ export function AdvancedSettings() {
 
               {/* Post Processing */}
               {!isAudio && !isScailEdit && <PostProcessing />}
+
+              {/* Output Codecs — backend applies these via
+                  save_video/save_image when writing each generated
+                  file. Lives next to Post Processing because both
+                  are per-output choices, unlike the global system
+                  knobs on the Performance settings tab. Hidden for
+                  audio-only modes (codecs don't apply to audio
+                  encoding — the audio_output_codec is a separate
+                  field the backend doesn't yet expose). */}
+              {!isAudio && !isScailEdit && <OutputCodecs />}
 
               {/* Seed */}
               {

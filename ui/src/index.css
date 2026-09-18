@@ -329,6 +329,107 @@
  *   accent-blue #c2410c       4.8:1 as text; white text on it 5.2:1
  *   CTA stops #c2410c→#b45309 white text 5.2:1 / 5.0:1
  */
+[data-theme="blender"] {
+  /* Blender-inspired dark: cool charcoal surfaces, NOT warm. The
+     identity here is "professional creative tool" — think the
+     viewport, outliner, and properties panels of Blender 3D. Cool
+     grey ladder with a single warm accent (signature Blender orange
+     #ea7600) so the theme reads as a real alternative to Golden
+     Hour, not a recolor of it.
+     Surfaces deliberately lean cool (#232323 base) instead of pure
+     neutral so the warm orange accent pops without needing extra
+     saturation. */
+  --color-bg-primary: #1d1d1d;
+  --color-bg-secondary: #232323;
+  --color-bg-tertiary: #2b2b2b;
+  --color-bg-hover: #353535;
+  --color-bg-active: #404040;
+
+  /* Borders carry a faint cool cast — matches the cool background
+     ladder so the chrome feels like one material, not assembled
+     pieces. Slightly darker than bg-hover so dividers recede. */
+  --color-border: #3a3a3a;
+  --color-border-light: #4a4a4a;
+
+  /* Text — neutral off-white with the same temperature as the
+     background so headers don't fight the orange accent. */
+  --color-text-primary: #e8e8e8;
+  --color-text-secondary: #b8b8b8;
+  --color-text-muted: #8a8a8a;
+
+  /* Accents — Blender orange #ea7600 drives both action affordances
+     (accent-blue = primary CTA, focus rings, toggle pills) and the
+     gradient stops. accent-green stays warm-amber to keep the
+     "completion/progress" idiom consistent across themes (instead
+     of going pure green which would clash with the cool bg). */
+  --color-accent-green: #f59e0b;
+  --color-accent-green-hover: #fbbf24;
+  --color-accent-blue: #ea7600;
+  --color-accent-blue-hover: #ff8c1a;
+
+  --color-accent-warm: #ea7600;
+  --color-accent-warm-hover: #ff8c1a;
+
+  /* Cool-mode accent pair — kept lavender to differentiate from
+     the warm theme family (Golden Hour uses this too — intentional,
+     cross-theme consistency for the rare "cool" affordance). */
+  --color-accent-cool-from: #a855f7;
+  --color-accent-cool-to: #c084fc;
+
+  /* CTA gradient — Blender orange mono-tone, slight bump to
+     secondary stop for depth. */
+  --color-gradient-cta-from: #d97706;
+  --color-gradient-cta-to: #ea7600;
+
+  /* Toggle-active gradient — same orange pair so the active mode
+     pill reads as the same identity as primary CTAs. */
+  --color-gradient-toggle-from: #d97706;
+  --color-gradient-toggle-to: #ea7600;
+
+  /* Active-frame gradient — deeper burnt-orange to bright orange
+     for the bezel highlight around the selected asset. Narrower
+     hue gap than Golden Hour (no red→gold; just orange→bright
+     orange) to match the single-accent Blender aesthetic. */
+  --color-gradient-active-frame-from: #c2410c;
+  --color-gradient-active-frame-to: #fb923c;
+
+  /* Media canvas — same as bg-tertiary so generated videos blend
+     into the chrome. */
+  --color-media-canvas: #2b2b2b;
+
+  /* Glow tuned to Blender orange rather than Golden Hour red. */
+  --shadow-accent-glow: 0 0 18px rgba(234, 118, 0, 0.40);
+  --shadow-active-ring: 0 0 6px rgba(234, 118, 0, 0.18);
+}
+
+/* Blender dark active-frame bezel — same "spotlight stops" idea as
+ * Golden Hour, but in monochrome orange. Five stops around the
+ * conic to create the "lit by a single light source" effect that
+ * makes the active asset feel tactile. */
+[data-theme="blender"] .frame-active-gradient {
+  background-image:
+    linear-gradient(var(--color-bg-secondary), var(--color-bg-secondary)),
+    conic-gradient(
+      from var(--frame-angle, 0deg),
+      var(--color-gradient-active-frame-from) 0deg,
+      var(--color-gradient-active-frame-to) 35deg,
+      var(--color-bg-secondary) 90deg,
+      var(--color-bg-secondary) 180deg,
+      var(--color-gradient-active-frame-from) 235deg,
+      var(--color-gradient-active-frame-to) 305deg,
+      var(--color-bg-secondary) 360deg
+    );
+  background-blend-mode: normal, normal;
+  /* Mask trick: hide the conic behind the inner element, leaving
+   * only the bezel ring visible. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  padding: 1px;
+}
+
 [data-theme="ivory"] {
   /* Native form controls (selects, checkboxes, scrollbars the UA
      draws) must render light — without this they stay dark because
@@ -401,6 +502,61 @@
   /* Light themes signal elevation with soft drop shadows, not glow */
   --shadow-accent-glow: 0 2px 12px rgba(154, 82, 18, 0.28);
   --shadow-active-ring: 0 0 0 2px rgba(194, 65, 12, 0.35);
+}
+
+/* ─── Graphite theme ─────────────────────────────────────────────────────
+ * Light theme — Blender in daylight. Cool grey paper with a deeper
+ * burnt-orange accent so it stays warm against the cool background.
+ * Same elevation ladder as Daylight/Pearl: lighter surfaces go DOWN
+ * the ladder (paper feel) and hover/active go slightly darker. */
+[data-theme="graphite"] {
+  color-scheme: light;
+
+  --color-bg-primary: #dedede;
+  --color-bg-secondary: #e8e8e8;
+  --color-bg-tertiary: #f1f1f1;
+  --color-bg-hover: #d4d4d4;
+  --color-bg-active: #c4c4c4;
+
+  /* Cool grey borders, slightly darker than bg-hover so dividers
+     read as deliberate seams rather than noise. */
+  --color-border: #c0c0c0;
+  --color-border-light: #aeaeae;
+
+  --color-text-primary: #1f1f1f;
+  --color-text-secondary: #4a4a4a;
+  --color-text-muted: #5e5e5e;
+
+  /* Burnt-orange (Blender signature darkened for paper contrast).
+     White text on it 4.6:1 — meets AA-large. */
+  --color-accent-blue: #c26800;
+  --color-accent-blue-hover: #a85800;
+
+  /* Keep amber as the "warm success" cue for consistency with the
+     dark Blender variant. */
+  --color-accent-green: #c26800;
+  --color-accent-green-hover: #a85800;
+
+  --color-accent-warm: #c26800;
+  --color-accent-warm-hover: #a85800;
+
+  --color-accent-cool-from: #7c3aed;
+  --color-accent-cool-to: #a855f7;
+
+  /* CTA gradient — burnt-orange pair, both dark enough to keep the
+     app-wide hardcoded white label readable. */
+  --color-gradient-cta-from: #b85c00;
+  --color-gradient-cta-to: #c26800;
+  --color-gradient-toggle-from: #b85c00;
+  --color-gradient-toggle-to: #c26800;
+  --color-gradient-active-frame-from: #9a4400;
+  --color-gradient-active-frame-to: #c26800;
+
+  --color-media-canvas: #d8d8d8;
+
+  /* Light theme elevation cue — soft drop shadow, not glow. */
+  --shadow-accent-glow: 0 2px 12px rgba(154, 82, 18, 0.30);
+  --shadow-active-ring: 0 0 0 2px rgba(154, 82, 18, 0.40);
 }
 
 /* ─── Daylight theme ─────────────────────────────────────────────────────
@@ -825,7 +981,18 @@ input[type="range"]::-webkit-slider-thumb {
 .application-tab.is-locked:hover { background:transparent; color:var(--color-text-muted); }
 .application-tab-lock { margin-left:2px; opacity:.7; }
 .application-tab-count { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; margin-left:6px; border-radius:9px; background:var(--color-accent-blue); color:#fff; font-size: var(--text-2xs); font-weight:600; line-height:1; }
-.application-shell button:focus-visible, .application-shell [role=tabpanel]:focus-visible { outline:2px solid var(--color-accent-blue); outline-offset:-2px; }
+.application-shell button:focus-visible { outline:2px solid var(--color-accent-blue); outline-offset:2px; }
+/* The role=tabpanel wrapper holds tabIndex=0 so it's a valid focus
+ * stop for keyboard users. The previous rule drew an orange ring
+ * around the whole panel on every click (because :focus-visible
+ * triggered when a child element was focused and the parent
+ * carried tabindex). The panel-level ring is redundant — focusable
+ * children (buttons, inputs, selects) already show their own ring
+ * via the rule above. Removing it eliminates the visual
+ * "orange rectangle around the tab" artefact without hurting
+ * keyboard accessibility. */
+.application-shell [role=tabpanel]:focus,
+.application-shell [role=tabpanel]:focus-visible { outline: none; }
 .application-content { flex:1; min-height:0; min-width:0; overflow:hidden; }
 .section-scroll { height:100%; overflow-y:auto; }
 /* Edge-to-edge layout: the page stretches to the full width of the
@@ -1023,6 +1190,7 @@ input[type="range"]::-webkit-slider-thumb {
   flex-direction: column;
   gap: 4px;
   padding-bottom: 4px;
+  margin-bottom: -12px; /* compensa parte do gap do .settings-panel */
 }
 .settings-panel-header h2 {
   display: flex;
@@ -1096,6 +1264,114 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: start;
 }
 .settings-columns > .settings-group { margin: 0; min-width: 0; }
+/* Stretch direct-child cards inside .settings-columns so the
+ * shortest card grows to match its sibling. Without this the
+ * Appearance mode/auto-launch row keeps its natural shape (which
+ * is fine when both cards are short and balanced), but when one
+ * card is tall (e.g. Integrations → Providers) the shorter
+ * Models card next to it stays short and its footer (Linked
+ * Model Folders) sits well above the Providers bottom — visually
+ * misaligned. ``flex: 1`` on the direct .settings-card child
+ * lets it consume the leftover height inside its .settings-group
+ * column while keeping the card's own internal padding and gap
+ * intact. Cards without a flex child (i.e. free-form content)
+ * are unaffected because they're rendered inside the .settings-group
+ * flex column as ordinary content, not as direct .settings-card
+ * children. */
+.settings-columns > .settings-group > .settings-card { flex: 1; }
+/* Stretch variant: opt-in helper for the rare case where one
+ * column needs to grow to match the height of its sibling even
+ * when the parent .settings-columns uses ``align-items: start``.
+ * Without this the .settings-group has no definite parent height
+ * for `flex: 1` on its child .settings-card to consume — the card
+ * stays at its natural content height. `height: 100%` is required
+ * because the grid item (the .settings-group) doesn't stretch
+ * under align-items: start, so `display: flex; height: 100%`
+ * forces the group to take the full grid track height and lets
+ * the inner `flex: 1` card fill it. Used by the Integrations
+ * panel to align the Models footer with the Providers bottom. */
+.settings-group-stretch { display: flex; flex-direction: column; height: 100%; }
+/* Three-column "feature" wrapper for high-attention groups on the
+ * Performance tab (Enabled Models + Hardware & Auto-Tune +
+ * Advanced). The three columns share equal width (1fr each) so the
+ * trio reads as a balanced dashboard instead of fighting for space
+ * in the standard 2-col grid. align-items: stretch makes every
+ * column match the tallest sibling — the trio reads as a balanced
+ * horizontal band with no orphaned whitespace under the shortest
+ * card. .settings-group uses flex/column so its child .settings-card
+ * (or section body) grows to fill the column height. Media queries
+ * below collapse to 2 cols around 1100px and to 1 col on phones. */
+.settings-feature-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+.settings-feature-row > .settings-group {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Allow inner scroll panes (e.g. Enabled Models) without letting
+   * the column itself grow past its grid row. min-height:0 is the
+   * classic flex-overflow gotcha — without it flex children won't
+   * shrink below their content height, defeating the scroll. */
+  min-height: 0;
+  overflow: hidden;
+}
+.settings-feature-row > .settings-group > .settings-card { flex: 1; min-height: 0; }
+/* Two-column "feature" wrapper used by Integrations: LLM
+ * Configuration (heavy control surface) on the left, a vertical
+ * stack of shorter cards (NSFW + API Keys) on the right. Equal
+ * 1fr columns so the layout reads as a balanced pair.
+ * align-items: start (not stretch) — without it, the LLM card
+ * on the left would stretch to the height of the much taller
+ * right stack, leaving a large empty void below its content. Each
+ * card now keeps its natural height. Degrades to a single column
+ * on narrow screens via the responsive block below. */
+.settings-feature-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.settings-feature-column > .settings-group {
+  margin: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+/* Constrained variant of the settings panel — used by tabs whose
+ * internal layout relies on scroll panes (Performance trio). Caps
+ * the panel to the viewport so the trio can't grow past the
+ * available vertical space — without this cap, the Models card's
+ * expanded list pushes the entire row past the viewport and the
+ * internal scroll never engages (Linked Folders would scroll with
+ * the rest of the page instead of staying pinned to the card). The
+ * 180px offset covers the page header (40px), the tab nav padding
+ * (32px+48px), the panel header (~80px) and the trio's gap+border. */
+.settings-panel-constrained {
+  height: calc(100vh - 180px);
+  min-height: 520px;
+}
+.settings-panel-constrained > .settings-feature-row { flex: 1; min-height: 0; }
+/* Two-row vertical stack used by the Performance panel. Each child
+ * (a .settings-feature-column + .settings-feature-row pair) is laid
+ * out top-to-bottom with a 24px gap. The BOTTOM row is the one that
+ * scrolls (it's the trio with the dynamic Linked Folders list);
+ * the TOP row stays pinned because the runtime knobs there
+ * (LLM Configuration + FlashVSR) are short. flex: 1 on the bottom
+ * row + min-height: 0 lets it absorb leftover vertical space
+ * without pushing past the viewport cap. */
+.settings-panel-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+  min-height: 0;
+}
+.settings-panel-rows > .settings-feature-row { flex: 1; min-height: 0; }
 .settings-row {
   display: grid;
   grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
@@ -1213,8 +1489,15 @@ input[type="range"]::-webkit-slider-thumb {
 @media (max-width: 1100px) {
   .settings-grid { grid-template-columns: 1fr; }
   .settings-columns { grid-template-columns: 1fr; }
+  /* Performance feature-row wrapper: drop one column at the
+   * medium breakpoint so Enabled Models + Hardware/Auto-Tune
+   * stay side by side while Advanced wraps to a new row. */
+  .settings-feature-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 720px) {
+  /* Full-width single column on phones. */
+  .settings-feature-row { grid-template-columns: 1fr; }
+  .settings-feature-column { grid-template-columns: 1fr; }
   .settings-row { grid-template-columns: 1fr; }
   .settings-row-label { padding-top: 0; }
   .settings-row-hint { grid-column: 1; }
