@@ -1594,6 +1594,9 @@ export interface AppState {
   activeWorkspaceSetup: ProjectSetupDefaults | null
   /** True while a loadWorkspaceSetup call is in flight. */
   activeWorkspaceSetupLoading: boolean
+  /** True while a loadWorkspaces call is in flight. UI uses it to
+   *  show a skeleton grid instead of the empty-state placeholder. */
+  workspacesLoading: boolean
   loadWorkspaceSetup: (name: string) => Promise<void>
   /** Replace the active workspace's setup and persist via PUT. Pass
    *  the FULL setup payload — partial updates would race with later

@@ -12,7 +12,7 @@ import type { AppState } from './useStore'
 
 export type WorkspaceSlice = Pick<AppState,
   'workspaces' | 'activeWorkspace' | 'activeWorkspaceSetup' | 'activeWorkspaceSetupLoading' |
-  'browsingUploads' | 'loadWorkspaceSetup' | 'saveWorkspaceSetup' | 'applyWorkspaceSetup' |
+  'workspacesLoading' | 'browsingUploads' | 'loadWorkspaceSetup' | 'saveWorkspaceSetup' | 'applyWorkspaceSetup' |
   'loadWorkspaces' | 'switchWorkspace' | 'createWorkspace' | 'deleteWorkspace' |
   'projectsRoot' | 'loadProjectsRoot' | 'setProjectsRoot'
 >
@@ -26,6 +26,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
   activeWorkspace: 'default',
   activeWorkspaceSetup: null,
   activeWorkspaceSetupLoading: false,
+  workspacesLoading: false,
   browsingUploads: false,
 
   // Storage settings: where new workspaces are created. Hydrated by
@@ -153,6 +154,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
 
   loadWorkspaces: async () => {
     const request = ++workspaceRequest
+    set({ workspacesLoading: true })
     try {
       const data = await api.fetchWorkspaces()
       if (request !== workspaceRequest) return
@@ -161,15 +163,16 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       const current = get()
       const previousActive = current.activeWorkspace
       if (realWorkspaces.length === 0 && !activeIsReal && current.appSection !== 'configurations') {
-        set({ workspaces: data.workspaces, activeWorkspace: data.active, appSection: 'projects' as AppSection })
+        set({ workspaces: data.workspaces, activeWorkspace: data.active, appSection: 'projects' as AppSection, workspacesLoading: false })
       } else {
-        set({ workspaces: data.workspaces, activeWorkspace: data.active })
+        set({ workspaces: data.workspaces, activeWorkspace: data.active, workspacesLoading: false })
       }
       if (activeIsReal && data.active !== previousActive) {
         get().loadWorkspaceSetup(data.active)
       }
     } catch (error) {
       console.error('Failed to load workspaces:', error)
+      set({ workspacesLoading: false })
     }
   },
 

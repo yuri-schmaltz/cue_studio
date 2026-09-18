@@ -18,7 +18,7 @@ export function MaestroBrand({
         className={`${compact ? 'h-7 w-7 rounded-[7px]' : 'h-8 w-8 rounded-lg'} shrink-0`}
       />
       {!compact && (
-        <span className="text-sm font-semibold tracking-tight text-text-primary">Maestro</span>
+        <span className="text-sm font-semibold tracking-tight text-text-primary">Cue Studio</span>
       )}
     </div>
   )

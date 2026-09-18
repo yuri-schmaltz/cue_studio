@@ -78,6 +78,7 @@ addopts = "-ra --strict-markers -m 'not browser and not smoke'"
 markers = [
     "browser: requires playwright + a running backend (opt-in)",
     "smoke: spawns a fresh subprocess per module (opt-in)",
+    "asyncio: async test using pytest-asyncio (opt-in)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:starlette.testclient",

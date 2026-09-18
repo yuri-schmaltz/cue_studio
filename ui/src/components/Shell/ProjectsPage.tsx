@@ -6,6 +6,7 @@ import type { AppSection, ProjectSetupDefaults } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspaceCoverUrl, type Workspace } from '../../api/client'
 import { ProjectSetupForm, ProjectSetupSummary, PROJECT_SETUP_TEMPLATES } from './ProjectSetupForm'
+import { SkeletonGrid } from '../shared/Skeleton'
 
 /**
  * Projects page — one-to-one with workspaces on the backend.
@@ -80,6 +81,7 @@ function CoverSquareButton({ workspaceName, coverImage, pendingFile, pendingUrl,
 export function ProjectsPage() {
   const workspaces = useWorkspaceSlice('workspaces')
   const active = useWorkspaceSlice('activeWorkspace')
+  const workspacesLoading = useWorkspaceSlice('workspacesLoading')
   const createWorkspace = useStore(s => s.createWorkspace)
   const switchWorkspace = useStore(s => s.switchWorkspace)
   const deleteWorkspace = useStore(s => s.deleteWorkspace)
@@ -277,7 +279,10 @@ export function ProjectsPage() {
           <span className="projects-toolbar-count">{userProjects.length} {userProjects.length === 1 ? 'project' : 'projects'}</span>
         </div>
         {error && <p role="alert" className="my-4 rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-sm text-red-400">{error}</p>}
-        {!hasProjects && !query && (
+        {workspacesLoading && userProjects.length === 0 && (
+          <SkeletonGrid count={4} />
+        )}
+        {!hasProjects && !query && !workspacesLoading && (
           <div className="shell-empty">
             <FolderOpen size={40} strokeWidth={1.5} />
             <h2>Create your first project</h2>

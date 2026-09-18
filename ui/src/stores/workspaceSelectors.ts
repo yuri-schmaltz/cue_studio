@@ -5,6 +5,7 @@ export interface WorkspaceNamespace {
   activeWorkspace: string
   activeWorkspaceSetup: ReturnType<typeof useStore.getState>['activeWorkspaceSetup']
   activeWorkspaceSetupLoading: boolean
+  workspacesLoading: boolean
   browsingUploads: boolean
 }
 
@@ -17,6 +18,7 @@ const selectors: { [K in WorkspaceField]: (state: StoreState) => WorkspaceNamesp
   activeWorkspace: state => state.activeWorkspace,
   activeWorkspaceSetup: state => state.activeWorkspaceSetup,
   activeWorkspaceSetupLoading: state => state.activeWorkspaceSetupLoading,
+  workspacesLoading: state => state.workspacesLoading,
   browsingUploads: state => state.browsingUploads,
 }
 
@@ -31,6 +33,7 @@ export function readWorkspaceNamespace(): WorkspaceNamespace {
     activeWorkspace: state.activeWorkspace,
     activeWorkspaceSetup: state.activeWorkspaceSetup,
     activeWorkspaceSetupLoading: state.activeWorkspaceSetupLoading,
+    workspacesLoading: state.workspacesLoading,
     browsingUploads: state.browsingUploads,
   }
 }
