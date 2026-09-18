@@ -3,7 +3,9 @@
  *
  * The slice is built around a small set of pure state transitions
  * and HTTP calls. We mock the API client so the slice logic can be
- * exercised in isolation.
+ * exercised in isolation. Vitest's `vi.mock` happens once at module
+ * load; we wire each test's expected return value via the
+ * ``apiMocks`` object so we don't have to re-mock per ``it`` block.
  */
 
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -11,7 +13,7 @@ import { create } from 'zustand'
 
 import { createDirectorQueueSlice } from './directorQueueSlice'
 
-const apiMocks = {
+const apiMocks = vi.hoisted(() => ({
   fetchDirectorQueue: vi.fn(),
   enqueueDirectorPipeline: vi.fn(),
   updateDirectorQueueEntry: vi.fn(),
@@ -19,23 +21,31 @@ const apiMocks = {
   startDirectorQueue: vi.fn(),
   pauseDirectorQueue: vi.fn(),
   reorderDirectorQueue: vi.fn(),
-}
+}))
 
 vi.mock('../api/client', () => apiMocks)
 
-type TestStore = ReturnType<typeof createTestStore>
-
 function createTestStore() {
   return create<ReturnType<typeof createDirectorQueueSlice>>()(
-    (...a) => ({
-      ...createDirectorQueueSlice(...a),
-    }),
+    (...a) => createDirectorQueueSlice(...a),
   )
 }
 
+const EMPTY_QUEUE = { version: 1, paused: false, running: false, entries: [] }
+
 describe('directorQueueSlice', () => {
   beforeEach(() => {
-    vi.resetAllMocks()
+    vi.clearAllMocks()
+    // Default behaviour: every endpoint resolves with an empty queue
+    // snapshot. Individual tests override the relevant function for
+    // their specific assertion.
+    apiMocks.fetchDirectorQueue.mockResolvedValue(EMPTY_QUEUE)
+    apiMocks.enqueueDirectorPipeline.mockResolvedValue(EMPTY_QUEUE)
+    apiMocks.updateDirectorQueueEntry.mockResolvedValue(EMPTY_QUEUE)
+    apiMocks.deleteDirectorQueueEntry.mockResolvedValue(EMPTY_QUEUE)
+    apiMocks.startDirectorQueue.mockResolvedValue(EMPTY_QUEUE)
+    apiMocks.pauseDirectorQueue.mockResolvedValue(EMPTY_QUEUE)
+    apiMocks.reorderDirectorQueue.mockResolvedValue(EMPTY_QUEUE)
   })
 
   it('starts with empty queue state', () => {
@@ -47,10 +57,7 @@ describe('directorQueueSlice', () => {
 
   it('loads the queue from the API', async () => {
     apiMocks.fetchDirectorQueue.mockResolvedValue({
-      version: 1,
-      paused: false,
-      running: false,
-      entries: [{ id: 'e1' }],
+      version: 1, paused: false, running: false, entries: [{ id: 'e1' }],
     })
     const store = createTestStore()
     await store.getState().loadDirectorQueue()
@@ -67,12 +74,9 @@ describe('directorQueueSlice', () => {
   })
 
   it('adds an entry and reloads the queue', async () => {
-    apiMocks.enqueueDirectorPipeline.mockResolvedValue({})
+    apiMocks.enqueueDirectorPipeline.mockResolvedValue(EMPTY_QUEUE)
     apiMocks.fetchDirectorQueue.mockResolvedValue({
-      version: 1,
-      paused: false,
-      running: false,
-      entries: [{ id: 'e2' }],
+      version: 1, paused: false, running: false, entries: [{ id: 'e2' }],
     })
     const store = createTestStore()
     await store.getState().addDirectorQueueEntry({ pipeline_id: 'p1' })
@@ -81,13 +85,6 @@ describe('directorQueueSlice', () => {
   })
 
   it('removes entry and clears editing id', async () => {
-    apiMocks.deleteDirectorQueueEntry.mockResolvedValue(undefined)
-    apiMocks.fetchDirectorQueue.mockResolvedValue({
-      version: 1,
-      paused: false,
-      running: false,
-      entries: [],
-    })
     const store = createTestStore()
     store.setState({ directorQueueEditingEntryId: 'e1' })
     await store.getState().deleteDirectorQueueEntry('e1')
@@ -96,8 +93,12 @@ describe('directorQueueSlice', () => {
   })
 
   it('start and pause toggle the runner', async () => {
-    apiMocks.startDirectorQueue.mockResolvedValue({ version: 1, paused: false, running: true, entries: [] })
-    apiMocks.pauseDirectorQueue.mockResolvedValue({ version: 1, paused: true, running: false, entries: [] })
+    apiMocks.startDirectorQueue.mockResolvedValue({
+      version: 1, paused: false, running: true, entries: [],
+    })
+    apiMocks.pauseDirectorQueue.mockResolvedValue({
+      version: 1, paused: true, running: false, entries: [],
+    })
     const store = createTestStore()
     await store.getState().startDirectorQueue()
     expect(store.getState().directorQueueLoading).toBe(false)
@@ -106,12 +107,9 @@ describe('directorQueueSlice', () => {
   })
 
   it('reorder triggers refetch', async () => {
-    apiMocks.reorderDirectorQueue.mockResolvedValue(undefined)
+    apiMocks.reorderDirectorQueue.mockResolvedValue(EMPTY_QUEUE)
     apiMocks.fetchDirectorQueue.mockResolvedValue({
-      version: 1,
-      paused: false,
-      running: false,
-      entries: [{ id: 'e3' }],
+      version: 1, paused: false, running: false, entries: [{ id: 'e3' }],
     })
     const store = createTestStore()
     await store.getState().reorderDirectorQueue(['e3'])

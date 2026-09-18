@@ -208,6 +208,7 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
 
 
     @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
+    @unittest.skipIf(os.environ.get('MAESTRO_SKIP_INTEGRATION') == '1', 'Integration test: requires a real Maestro backend running with a matching version')
     def test_ensure_service_skips_when_version_matches(self):
         """If a Maestro with the same VERSION is already on the port,
         start.sh must print (skipped) and exit 0 without relaunching."""
@@ -270,6 +271,7 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                     proc.wait(timeout=5)
 
     @unittest.skipIf(sys.platform == 'win32', 'Bash background subshell daemon testing is POSIX-specific')
+    @unittest.skipIf(os.environ.get('MAESTRO_SKIP_INTEGRATION') == '1', 'Integration test: requires a real Maestro backend running with a matching version')
     def test_fallback_preserves_env_and_managed_restart(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

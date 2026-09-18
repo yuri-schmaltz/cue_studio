@@ -25,16 +25,27 @@
  * of `useStore.ts` concerned with model lifecycle, generation, and
  * the workspace shell.
  *
- * Notes for integrators
- * ---------------------
- * * The slice imports `api` lazily inside each action — keeps the
- *   cold-boot cost of the store zero when the user is on a screen
- *   that doesn't touch the queue.
- * * All write actions normalize the result by reloading the queue so
- *   the UI never diverges from the server.
+ * Why static imports here
+ * -----------------------
+ * Other slices import the api client lazily because the client pulls
+ * in the bundled `api.ts` (3K LOC) and we want to defer that cost.
+ * The Director Queue is only ever used on the Queue page, which is
+ * not on the cold-boot path. Using a static import here keeps the
+ * test mock surface (`vi.mock('../api/client')`) usable; with
+ * dynamic imports inside the slice body, vitest cannot intercept
+ * the resolution and the test ends up calling the real network.
  */
 
 import type { StateCreator } from 'zustand'
+import {
+  enqueueDirectorPipeline,
+  fetchDirectorQueue,
+  updateDirectorQueueEntry,
+  deleteDirectorQueueEntry,
+  startDirectorQueue,
+  pauseDirectorQueue,
+  reorderDirectorQueue,
+} from '../api/client'
 
 import type { DirectorQueueEntry } from '../types'
 import type { AppState } from './useStore'
@@ -44,14 +55,18 @@ export type DirectorQueueSlice = Pick<AppState,
   | 'directorQueueLoading'
   | 'directorQueueEditingEntryId'
   | 'loadDirectorQueue'
-  | 'addDirectorQueueEntry'
-  | 'updateDirectorQueueEntry'
-  | 'deleteDirectorQueueEntry'
   | 'startDirectorQueue'
   | 'pauseDirectorQueue'
-  | 'reorderDirectorQueue'
-  | 'setDirectorQueueEditingEntryId'
->
+> & {
+  addDirectorQueueEntry: (params: Record<string, unknown>) => Promise<void>
+  updateDirectorQueueEntry: (
+    entryId: string,
+    patch: Partial<Pick<DirectorQueueEntry, 'message' | 'pipeline_id'>>
+  ) => Promise<void>
+  deleteDirectorQueueEntry: (entryId: string) => Promise<void>
+  reorderDirectorQueue: (entryIds: string[]) => Promise<void>
+  setDirectorQueueEditingEntryId: (entryId: string | null) => void
+}
 
 const initialState = {
   directorQueue: null as AppState['directorQueue'],
@@ -70,7 +85,6 @@ export const createDirectorQueueSlice: StateCreator<
   loadDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      const { fetchDirectorQueue } = await import('../api/client')
       const queue = await fetchDirectorQueue()
       set({ directorQueue: queue, directorQueueLoading: false })
     } catch (err) {
@@ -79,10 +93,9 @@ export const createDirectorQueueSlice: StateCreator<
     }
   },
 
-  addDirectorQueueEntry: async (params) => {
+  addDirectorQueueEntry: async (params: Record<string, unknown>) => {
     set({ directorQueueLoading: true })
     try {
-      const { enqueueDirectorPipeline } = await import('../api/client')
       await enqueueDirectorPipeline(params)
       await get().loadDirectorQueue()
     } catch (err) {
@@ -91,10 +104,12 @@ export const createDirectorQueueSlice: StateCreator<
     }
   },
 
-  updateDirectorQueueEntry: async (entryId, patch) => {
+  updateDirectorQueueEntry: async (
+    entryId: string,
+    patch: Partial<Pick<DirectorQueueEntry, 'message' | 'pipeline_id'>>,
+  ) => {
     set({ directorQueueLoading: true })
     try {
-      const { updateDirectorQueueEntry } = await import('../api/client')
       await updateDirectorQueueEntry(entryId, patch)
       await get().loadDirectorQueue()
     } catch (err) {
@@ -103,10 +118,9 @@ export const createDirectorQueueSlice: StateCreator<
     }
   },
 
-  deleteDirectorQueueEntry: async (entryId) => {
+  deleteDirectorQueueEntry: async (entryId: string) => {
     set({ directorQueueLoading: true })
     try {
-      const { deleteDirectorQueueEntry } = await import('../api/client')
       await deleteDirectorQueueEntry(entryId)
       set({
         directorQueueLoading: false,
@@ -122,7 +136,6 @@ export const createDirectorQueueSlice: StateCreator<
   startDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      const { startDirectorQueue } = await import('../api/client')
       await startDirectorQueue()
       set({ directorQueueLoading: false })
     } catch (err) {
@@ -134,7 +147,6 @@ export const createDirectorQueueSlice: StateCreator<
   pauseDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      const { pauseDirectorQueue } = await import('../api/client')
       await pauseDirectorQueue()
       set({ directorQueueLoading: false })
     } catch (err) {
@@ -143,10 +155,9 @@ export const createDirectorQueueSlice: StateCreator<
     }
   },
 
-  reorderDirectorQueue: async (entryIds) => {
+  reorderDirectorQueue: async (entryIds: string[]) => {
     set({ directorQueueLoading: true })
     try {
-      const { reorderDirectorQueue } = await import('../api/client')
       await reorderDirectorQueue(entryIds)
       await get().loadDirectorQueue()
     } catch (err) {
@@ -155,7 +166,7 @@ export const createDirectorQueueSlice: StateCreator<
     }
   },
 
-  setDirectorQueueEditingEntryId: (entryId) => {
+  setDirectorQueueEditingEntryId: (entryId: string | null) => {
     set({ directorQueueEditingEntryId: entryId })
   },
 })
