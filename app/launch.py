@@ -10017,7 +10017,7 @@ async def director_generate_negative_prompt(request: Request):
         raw = llm_service.generate(
             prompt=user_prompt,
             system_prompt=system_prompt,
-            max_new_tokens=200,
+            max_new_tokens=800,
             temperature=0.3,
         )
         # Strip thinking tags, surrounding quotes, and any leading
