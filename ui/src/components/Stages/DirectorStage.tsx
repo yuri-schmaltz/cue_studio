@@ -78,7 +78,6 @@ import { DirectorTourOverlay } from './DirectorTourOverlay'
 export function DirectorStage() {
   const pipelineId = useStore(s => s.pipelineId)
   const pipelineStatus = useStore(s => s.pipelineStatus)
-  const directorStep = useStore(s => s.directorStep)
   const isMobile = useIsMobile(800)
   // The right column is now strictly per-take (changes land in the
   // per-pipeline snapshot at submit time) and stays editable throughout.
@@ -124,61 +123,12 @@ export function DirectorStage() {
           </div>
         </section>
         <aside className="director-stage-options" aria-label="Director generation options">
-          {directorStep !== 'upload' ? (
-            <DirectorGenerationOptions />
-          ) : (
-            /* Pre-upload placeholder — the empty state used to be a
-               single line of grey text. The user found it read as a
-               broken column. Replaced with a structured preview that
-               enumerates what each option does so the user knows what
-               unlocks once they finish the upload step. */
-            <div className="flex flex-1 flex-col items-stretch justify-center gap-3 rounded-xl border border-dashed border-border bg-bg-tertiary/60 p-6">
-              <div className="text-center">
-                <div className="text-2xs uppercase tracking-wider text-text-muted">
-                  Generation Options
-                </div>
-                <h3 className="mt-1 text-sm font-medium text-text-primary">
-                  Unlocks after you upload audio + references
-                </h3>
-                <p className="mt-1 text-2xs text-text-muted leading-snug">
-                  Once your audio is in, this column will surface the choices below. You can still change any of them later.
-                </p>
-              </div>
-              <ul className="mt-2 space-y-1.5 text-2xs text-text-secondary">
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
-                  <span><strong className="text-text-primary">Aspect ratio</strong> &middot; 16:9 / 9:16 / 1:1</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
-                  <span><strong className="text-text-primary">Resolution presets</strong> &middot; 480p / 720p / 1080p / 4K</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
-                  <span><strong className="text-text-primary">Workflow</strong> &middot; standard / seamless</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
-                  <span><strong className="text-text-primary">Image &amp; Video LoRAs</strong> &middot; style + character</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
-                  <span><strong className="text-text-primary">Audio speed</strong> &middot; 1.0× / 3× / 5× TTS</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
-                  <span><strong className="text-text-primary">Image / Source strength</strong> &middot; 0..1 slider</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/60" />
-                  <span><strong className="text-text-primary">Identity guidance</strong> &middot; voice &amp; char locking</span>
-                </li>
-              </ul>
-              <div className="mt-2 rounded-md border border-border bg-bg-secondary p-2 text-2xs text-text-muted italic">
-                Tip — the chat column on the left is where you'll start. Drop a song or click Generate a track.
-              </div>
-            </div>
-          )}
+          {/* DirectorGenerationOptions owns its own locked-vs-unlocked body.
+              The header (with the Style Bibles shortcut and the Básico /
+              Avançado toggle) renders unconditionally so the Style Bibles
+              button stays reachable from the moment the Director opens,
+              even before the user uploads audio. */}
+          <DirectorGenerationOptions />
         </aside>
       </div>
     </div>

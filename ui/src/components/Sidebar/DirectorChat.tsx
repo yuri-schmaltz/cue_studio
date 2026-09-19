@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Send, Users, FileText, ListVideo, Sparkles } from 'lucide-react'
+import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Send, Users, FileText, ListVideo, Sparkles, BookOpen } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
@@ -26,6 +26,7 @@ import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
 import type { DirectorShotImageGuidance, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
 import { readDirectorScript } from '../../api/client'
+import { StyleBiblesModal } from '../StyleBibles/StyleBiblesModal'
 
 // AUDIO_ACCEPT lists both audio formats AND video formats. When a video
 // file is uploaded, the backend's /api/v1/upload-audio endpoint extracts
@@ -2325,8 +2326,84 @@ function DirectorLoraAccordion() {
   )
 }
 
+/** Header for the right-column generation-options pane. Always
+ *  visible (even before audio is uploaded) so the Style Bibles
+ *  shortcut stays reachable from the moment the Director opens.
+ *  The body of the pane swaps between the locked-options preview
+ *  (pre-upload) and the full option accordion (post-upload); the
+ *  header is shared so neither state hides the Style Bibles button. */
+function DirectorGenerationOptionsHeader({
+  biblesOpen,
+  setBiblesOpen,
+  optionsViewMode,
+  setOptionsViewMode,
+}: {
+  biblesOpen: boolean
+  setBiblesOpen: (open: boolean) => void
+  optionsViewMode: 'basic' | 'expert'
+  setOptionsViewMode: (mode: 'basic' | 'expert') => void
+}) {
+  return (
+    <header className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
+      <div className="flex items-center gap-2">
+        <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+          Opções de Geração
+        </h3>
+        <button
+          type="button"
+          onClick={() => setBiblesOpen(!biblesOpen)}
+          className="text-2xs px-1.5 py-0.5 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1 text-text-secondary"
+          aria-label="Manage Style Bibles"
+          aria-expanded={biblesOpen}
+          data-testid="director-generation-options-style-bibles"
+        >
+          <BookOpen size={10} className="text-accent-blue" aria-hidden="true" />
+          Style Bibles
+        </button>
+      </div>
+      {/* Toggle Básico vs Avançado */}
+      <div className="inline-flex p-0.5 rounded-md bg-bg-tertiary border border-border/60 text-2xs">
+        <button
+          type="button"
+          onClick={() => setOptionsViewMode('basic')}
+          className={`px-2 py-0.5 rounded font-medium transition-colors ${
+            optionsViewMode === 'basic'
+              ? 'bg-accent-blue text-white shadow-xs'
+              : 'text-text-muted hover:text-text-primary'
+          }`}
+        >
+          Básico
+        </button>
+        <button
+          type="button"
+          onClick={() => setOptionsViewMode('expert')}
+          className={`px-2 py-0.5 rounded font-medium transition-colors ${
+            optionsViewMode === 'expert'
+              ? 'bg-accent-blue text-white shadow-xs'
+              : 'text-text-muted hover:text-text-primary'
+          }`}
+        >
+          Avançado
+        </button>
+      </div>
+    </header>
+  )
+}
+
+/** Wrapper that owns the generation-options state (Básico vs
+ *  Avançado, Style Bibles modal) and renders the always-visible
+ *  header plus the conditional body. The body is the locked preview
+ *  before audio upload and the full option accordion after. Splitting
+ *  the header out keeps the Style Bibles button accessible in both
+ *  states without forcing the parent (DirectorStage) to thread state
+ *  through two siblings. */
 export function DirectorGenerationOptions() {
   const [optionsViewMode, setOptionsViewMode] = useState<'basic' | 'expert'>('basic')
+  // Style Bibles modal lives here now — the shortcut moved out of
+  // the Director sub-header into this column's header so the modal
+  // stays reachable without the DirectorPage having to thread state
+  // through the DirectorStage tree.
+  const [biblesOpen, setBiblesOpen] = useState(false)
   const audioFile = useStore(s => s.directorAudioFile)
   const fixedMediaStrength = useStore(s => {
     const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
@@ -2336,59 +2413,62 @@ export function DirectorGenerationOptions() {
 
   return (
     <div className="space-y-3">
-      <header className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
-        <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-          Opções de Geração
-        </h3>
-        {/* Toggle Básico vs Avançado */}
-        <div className="inline-flex p-0.5 rounded-md bg-bg-tertiary border border-border/60 text-2xs">
-          <button
-            type="button"
-            onClick={() => setOptionsViewMode('basic')}
-            className={`px-2 py-0.5 rounded font-medium transition-colors ${
-              optionsViewMode === 'basic'
-                ? 'bg-accent-blue text-white shadow-xs'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            Básico
-          </button>
-          <button
-            type="button"
-            onClick={() => setOptionsViewMode('expert')}
-            className={`px-2 py-0.5 rounded font-medium transition-colors ${
-              optionsViewMode === 'expert'
-                ? 'bg-accent-blue text-white shadow-xs'
-                : 'text-text-muted hover:text-text-primary'
-            }`}
-          >
-            Avançado
-          </button>
-        </div>
-      </header>
+      <DirectorGenerationOptionsHeader
+        biblesOpen={biblesOpen}
+        setBiblesOpen={setBiblesOpen}
+        optionsViewMode={optionsViewMode}
+        setOptionsViewMode={setOptionsViewMode}
+      />
 
-      {/* Controles de LoRAs (sempre úteis) */}
-      <DirectorLoraAccordion />
+      {/* Body: locked preview before upload, full controls after. */}
+      {audioFile ? (
+        <>
+          {/* Controles de LoRAs (sempre úteis) */}
+          <DirectorLoraAccordion />
 
-      {/* Em modo Básico, os parâmetros profundos de atenção e multiplicadores ficam recolhidos; em Expert, abertos para edição */}
-      {optionsViewMode === 'expert' ? (
-        <DirectorAdvancedAccordion />
+          {/* Em modo Básico, os parâmetros profundos de atenção e multiplicadores ficam recolhidos; em Expert, abertos para edição */}
+          {optionsViewMode === 'expert' ? (
+            <DirectorAdvancedAccordion />
+          ) : (
+            <div className="rounded-lg border border-border/40 bg-bg-tertiary/40 p-2 text-2xs text-text-muted text-center">
+              Modo Básico ativo: parâmetros de atenção e latência usam as melhores recomendações automáticas do modelo.
+            </div>
+          )}
+
+          {!fixedMediaStrength && (
+            <div className="pt-2 border-t border-border/50">
+              <AudioScaleSlider />
+            </div>
+          )}
+          <ReferenceImageStrengthSlider />
+          <DirectorNegativePromptField />
+        </>
       ) : (
-        <div className="rounded-lg border border-border/40 bg-bg-tertiary/40 p-2 text-2xs text-text-muted text-center">
-          Modo Básico ativo: parâmetros de atenção e latência usam as melhores recomendações automáticas do modelo.
+        <div className="rounded-lg border border-dashed border-border/70 bg-bg-tertiary/40 p-3 text-2xs text-text-muted">
+          <p className="leading-snug">
+            Locked — drop audio in the chat column on the left to unlock aspect
+            ratio, resolution, LoRA picking, audio speed, source strength and the
+            negative prompt.
+          </p>
+          <p className="mt-2 leading-snug">
+            Style Bibles stay available from the header so you can prepare them
+            before the audio arrives.
+          </p>
         </div>
       )}
-
-      {audioFile && !fixedMediaStrength && (
-        <div className="pt-2 border-t border-border/50">
-          <AudioScaleSlider />
-        </div>
+      {biblesOpen && (
+        <StyleBiblesModal onClose={() => setBiblesOpen(false)} />
       )}
-      <ReferenceImageStrengthSlider />
-      <DirectorNegativePromptField />
     </div>
   )
 }
+
+/** Header-only variant so DirectorStage can render the column chrome
+ *  (title + Style Bibles shortcut + Básico/Avançado toggle) before
+ *  audio is uploaded without showing the locked-preview placeholder.
+ *  Currently unused; kept exported so callers that want the chrome
+ *  without the body can opt in. */
+export { DirectorGenerationOptionsHeader }
 
 /** Editable project-scoped "things to avoid" textarea. Auto-populated
  *  by directorGenerateNegativePrompt when the scene description is
