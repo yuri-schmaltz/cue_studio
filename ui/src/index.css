@@ -1130,7 +1130,14 @@ input[type="range"]::-webkit-slider-thumb {
    contents appearing to graze the rounded border. The composer
    (chat input) sits inside the same padding so its left edge aligns
    with the cards above it. */
-.director-stage-chat { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); padding:20px; gap:16px; }
+/* The three column containers keep 20px padding on the left / right /
+   top so the cards stack with consistent insets, but `padding-bottom`
+   is 0 so the rodapé pinned at the bottom via `mt-auto` lands flush
+   against the column's bottom border. The rodapé itself uses its own
+   internal vertical padding so the row's breathing room is preserved
+   without leaving a visible empty stripe between the rodapé and the
+   card edge. */
+.director-stage-chat { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); padding:20px 20px 0; gap:16px; }
 /* The chat column was scoped to user inputs only, but the SystemBubble/
    UserBubble helpers still ship with a left border that doubles as a
    visual timeline rail. Inside the DirectorStage chat column that rail
@@ -1139,8 +1146,8 @@ input[type="range"]::-webkit-slider-thumb {
    so the column reads as inputs only, without touching the bubble
    components themselves (other surfaces still want the rail). */
 .director-stage-chat .border-l-2 { border-left-width: 0 !important; }
-.director-stage-plan { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); padding:20px; gap:16px; }
-.director-stage-options { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; padding:20px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); overflow-y:auto; gap:16px; }
+.director-stage-plan { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); padding:20px 20px 0; gap:16px; }
+.director-stage-options { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; padding:20px 20px 0; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); overflow-y:auto; gap:16px; }
 /* Responsive: the 3-column stage only fits on wide viewports. Between
    801px and 1100px the chat takes the full first row (its message list
    scrolls internally) and Plan/Options share the second row. At or below
