@@ -44,10 +44,49 @@ function lazyWithCache<T extends ComponentType<unknown>>(
   let cached: Promise<unknown> | null = null
   return lazy(() => {
     if (!cached) {
-      cached = loader().catch((err) => {
-        cached = null
-        throw err
-      })
+      cached = loader()
+        .then((mod) => {
+          // Rollup/Vite emits a module namespace object whose
+          // shape depends on the source. ESM ``export default Foo``
+          // lands on ``mod.default``; a plain ``export function Foo``
+          // lands on ``mod.Foo``. React's lazy() requires the
+          // former — we therefore synthesise a default when only
+          // named exports are present so the resulting bundle
+          // works for both authoring styles. The heuristic picks
+          // the only callable export when there's exactly one;
+          // callers with multiple callables should switch to
+          // ``React.lazy(() => import(...).then(m => ({ default:
+          // m.TheRightOne })))`` directly.
+          const moduleObj = mod as { default?: unknown } & Record<
+            string,
+            unknown
+          >
+          if (typeof moduleObj.default === 'function') {
+            return mod as { default: T }
+          }
+          const callables = Object.entries(moduleObj).filter(
+            ([, v]) => typeof v === 'function',
+          )
+          if (callables.length === 1) {
+            const [, single] = callables[0]
+            return { default: single as T }
+          }
+          // Fallback — at this point we know the module doesn't
+          // have a default and has either zero or many callables.
+          // Either way the consumer's React.lazy render will throw
+          // a #306 the moment it tries to mount; surface a clear
+          // diagnostic instead of a silent undefined.
+          throw new Error(
+            `[lazyComponents] dynamic import resolved to a module ` +
+              `with no callable export. Add \`export default <Component>\` ` +
+              `or pass \`{ default: <Component> }\` explicitly. Module keys: ` +
+              `${Object.keys(moduleObj).join(', ')}`,
+          )
+        })
+        .catch((err) => {
+          cached = null
+          throw err
+        })
     }
     return cached as Promise<{ default: T }>
   })
