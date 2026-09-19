@@ -10038,7 +10038,22 @@ async def director_classify_sections(request: Request):
 
 @api.post("/api/v1/director/plan-prompts-and-images")
 async def director_plan_prompts_and_images(request: Request):
-    """Use LLM to generate per-clip video AND image-edit prompts."""
+    """Use LLM to generate per-clip video AND image-edit prompts.
+
+    Despite the ``-and-images`` suffix this endpoint only returns
+    LLM-written **prompts**. It does NOT generate start images — to
+    actually materialise the start images you must run the full
+    pipeline via ``/api/v1/director/pipeline/start`` (or ``/api/v1/
+    director/pipelines/{pid}/clips/{i}/rerun-image`` for a single
+    clip in a saved pipeline).
+
+    Use this endpoint to preview the per-clip prompts the Director
+    pipeline would produce without paying the cost of an end-to-end
+    generation. The returned ``clip_plans[i]`` carries ``video_prompt``
+    and ``image_prompt`` (when ``prompt_type="both"``) ready to feed
+    straight into ``/api/v1/director/pipeline/start``'s
+    ``prepared_clip_plans``.
+    """
     from services import llm_service
     body = await request.json()
 

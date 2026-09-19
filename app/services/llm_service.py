@@ -5983,8 +5983,19 @@ def _build_clip_description_v2(
     elif performer_map and section in performer_map:
         performer_hint = f" Performer: the {performer_map[section]}."
 
+    # Per-clip framing/camera directive. The dialog-scene planner
+    # (plan-dialogue-scenes) already populates this with a cinematic
+    # hint like "wide establishing shot, slow push-in" or "medium
+    # close-up". Surfacing it to the LLM gives every clip a distinct
+    # camera/angle, which solves the "all three clips end up with the
+    # same video prompt" failure mode when there's no lyrics to drive
+    # differentiation. Without this line the planner has no signal to
+    # distinguish intro / verse / climax beyond section_label.
+    hint = (clip.get("suggested_prompt_hint") or "").strip()
+    hint_line = f" Framing: {hint}." if hint else ""
+
     return (
-        f"Clip {index + 1}: {section}, {beat_count} beats, {vocal_info}.{performer_hint}"
+        f"Clip {index + 1}: {section}, {beat_count} beats, {vocal_info}.{performer_hint}{hint_line}"
     )
 
 
