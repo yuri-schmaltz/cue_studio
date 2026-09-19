@@ -20,6 +20,7 @@ import {
   QueuePage,
   RecipesOverlay,
   SettingsDrawer,
+  StudioPage,
 } from './lib/lazyComponents'
 import { useStore } from './stores/useStore'
 
@@ -62,6 +63,7 @@ function App() {
           {section === 'queue' && <QueuePage />}
           {section === 'dashboard' && <DirectorDashboard embedded={true} />}
           {section === 'director' && <DirectorPage />}
+          {section === 'studio' && <StudioPage />}
           {section === 'editor' && <EditorWorkspace />}
           {section === 'medias' && <MainContent />}
           {section === 'configurations' && <SettingsDrawer />}

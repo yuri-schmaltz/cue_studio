@@ -7800,7 +7800,20 @@ export const useStore = create<AppState>((set, get, store) => ({
     if (gated.includes(section) && current.activeWorkspace === 'default') {
       section = 'projects'
     }
-    set({ appSection: section, sidebarMode: section === 'editor' ? 'editor' : 'workspace', settingsOpen: section === 'configurations', sidebarOpen: false })
+    set({
+      appSection: section,
+      sidebarMode: section === 'editor' ? 'editor' : 'workspace',
+      // Studio now lives on its own top-level tab. Keep workspaceStage
+      // pinned in sync so the legacy call sites (AdvancedSettings,
+      // GenerateButton, directorSidebarMode branches) that key off
+      // workspaceStage continue to behave correctly when the user
+      // enters Studio via the new shell tab.
+      workspaceStage: section === 'studio' ? 'studio' as const
+        : section === 'director' ? 'director' as const
+        : get().workspaceStage,
+      settingsOpen: section === 'configurations',
+      sidebarOpen: false,
+    })
   },
   sidebarMode: 'workspace' as const,
   // Hydrate the rollout flag from localStorage if the user opted in
@@ -8198,7 +8211,10 @@ export const useStore = create<AppState>((set, get, store) => ({
     } else if (mode === 'director') {
       get().openDirectorStage()
     } else if (mode === 'studio') {
-      get().closeDirectorStage()
+      // Studio is now its own top-level shell tab. Navigate there
+      // directly; setAppSection pins workspaceStage='studio' for the
+      // legacy call sites that still key off it.
+      get().setAppSection('studio')
     } else if (mode === 'workspace') {
       get().setAppSection('director')
     }

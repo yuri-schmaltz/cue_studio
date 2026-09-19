@@ -163,6 +163,18 @@ export const DirectorPage = lazyWithCache(
 )
 
 /**
+ * Studio page — manual generation workspace (Sidebar + MainContent).
+ *
+ * Lifted out of the old Director Planning/Studio toggle so it
+ * lives on its own shell tab. Hosts the same heavy Sidebar and
+ * MainContent chunks DirectorPage used to mount under the Studio
+ * branch, so lazy-loading is still the right call.
+ */
+export const StudioPage = lazyWithCache(
+  () => import('../components/Shell/StudioPage'),
+)
+
+/**
  * Queue page.
  *
  * Smaller than the editor or Director but still pulls in the
