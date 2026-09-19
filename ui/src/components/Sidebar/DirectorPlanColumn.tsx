@@ -190,6 +190,69 @@ export function DirectorPlanColumn() {
     // them into a single generic placeholder while the column is empty
     // — the actual call-to-action for picking a skill lives in the
     // chat column on the left, so repeating it here is redundant.
+    //
+    // But the middle column being totally blank during the analyze
+    // step is a UX dead-zone — the user looks right and sees nothing.
+    // When we already have an analysis result, surface the headline
+    // numbers (BPM, beats, sections, lyrics preview) so the column
+    // becomes useful immediately and the user has a clear "the audio
+    // analysis succeeded" signal before the plan surfaces render.
+    const analysis = useStore(s => s.directorAnalysis)
+    const hasAnalysis = Boolean(analysis && (
+      analysis.bpm || (analysis.sections && analysis.sections.length)
+    ))
+    if (hasAnalysis) {
+      const lyricsPreview = (analysis?.lyrics || [])
+        .slice(0, 3)
+        .map((seg) => `"${(seg.text || '').trim().slice(0, 60)}"`)
+        .filter(Boolean)
+      return (
+        <div className="h-full p-4 space-y-3" data-testid="director-plan-column-audio-summary">
+          <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-2">
+            <h3 className="text-xs text-text-muted uppercase tracking-wider">
+              Audio analysis
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-text-primary tabular-nums">
+                  {analysis?.bpm?.toFixed(1) ?? '—'}
+                </div>
+                <div className="text-2xs text-text-muted">BPM</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-text-primary tabular-nums">
+                  {analysis?.beats?.length ?? 0}
+                </div>
+                <div className="text-2xs text-text-muted">Beats</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-text-primary tabular-nums">
+                  {analysis?.sections?.length ?? 0}
+                </div>
+                <div className="text-2xs text-text-muted">
+                  {analysis?.sections?.length === 1 ? 'Section' : 'Sections'}
+                </div>
+              </div>
+            </div>
+            {lyricsPreview.length > 0 && (
+              <div className="pt-2 border-t border-border/60 space-y-1">
+                <div className="text-2xs text-text-muted uppercase tracking-wider">
+                  Lyrics preview
+                </div>
+                <ul className="space-y-0.5 text-2xs text-text-secondary italic">
+                  {lyricsPreview.map((line, i) => (
+                    <li key={i} className="truncate">{line}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+          <p className="text-2xs text-text-muted text-center leading-relaxed">
+            Drop a brief in the chat column to start planning clips.
+          </p>
+        </div>
+      )
+    }
     return (
       <div className="h-full flex items-center justify-center p-6 text-center">
         <p className="text-xs text-text-muted leading-relaxed">

@@ -1117,12 +1117,23 @@ export function DirectorChat() {
               rows={3}
               minHeight={108}
               maxHeight={108}
-              className="w-full h-[108px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+              aria-keyshortcuts="Shift+Enter"
+              className="w-full h-[108px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 pb-7 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
             />
-            {/* Enter/Shift+Enter hint removed: the user inverted the
-                default chat convention so plain Enter inserts a newline
-                and Shift+Enter sends. The shortcut now matches every
-                word processor / messaging app the user is used to. */}
+            {/* Discoverability hint: subtle bottom-right caption that
+                only shows when the textarea is empty and the input is
+                enabled. Reveals the non-obvious Shift+Enter (or
+                Cmd/Ctrl+Enter) shortcut to the user without competing
+                with the typed content. Hidden once the user starts
+                writing so it never overlaps their text. */}
+            {chatInputEnabled && !(mvGenerateSetup ? songDescription : chatInput).trim() && (
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-2 right-3 text-2xs text-text-muted/70 select-none"
+              >
+                Shift+Enter to start
+              </span>
+            )}
           </div>
           {/* Action stack — three square buttons stacked vertically so
               they read as a primary action column beside the textarea.

@@ -95,6 +95,35 @@ export function DirectorStatusPanel() {
       aria-live="polite"
       aria-label={`Director pipeline: ${activeStep.label}, step ${Math.min(completedCount + (loading ? 1 : 0), totalSteps)} of ${totalSteps}`}
     >
+      {/* Inline progress strip — only renders while loading so the bar
+          stays out of the way when idle. Shows current/total clip
+          counts (e.g. 2/3) when the pipeline exposes them, otherwise
+          the indeterminate shimmer (animate-pulse). The backend fills
+          in `directorImageGenProgress.current / total` for image
+          generation and similar fields for video generation; when
+          nothing is exposed yet, the bar still shows progress via the
+          chip animation alone. */}
+      {loading && (() => {
+        const p = useStore(s => s.directorImageGenProgress)
+        const determinate = Boolean(p?.total && p.total > 0)
+        const pct = determinate
+          ? Math.min(100, Math.round(((p?.current ?? 0) / (p?.total ?? 1)) * 100))
+          : 40
+        return (
+          <div
+            aria-hidden="true"
+            data-testid="director-status-progress"
+            className="relative h-1 w-16 rounded-full bg-bg-tertiary overflow-hidden shrink-0"
+          >
+            <div
+              className={`absolute inset-y-0 left-0 rounded-full transition-all duration-300 ${
+                determinate ? 'bg-accent-blue' : 'bg-accent-blue/60 animate-pulse'
+              }`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )
+      })()}
       {/* Compact status icon — mirrors the active/loading state so the
           user sees a single visual cue before reading the chips. */}
       {loading ? (
@@ -110,8 +139,19 @@ export function DirectorStatusPanel() {
           flex-shrink on the chips). */}
       <ol className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
         {STATUS_STEPS.map((s, i) => {
+          // Three visual states, derived strictly from the pipeline
+          // advance marker (currentIndex):
+          //   - active  : this step is currently running (loading=true
+          //               and the store has bumped us into this step).
+          //   - done    : we have already advanced past this step.
+          //   - pending : we haven't reached this step yet — OR the
+          //               store says we're here but with loading=false,
+          //               which means the user has only navigated the
+          //               UI to this step (e.g. opened a project mid-
+          //               flow) without the backend actually running
+              //               work. Showing ✓ in that case would lie.
           const isActive = i === currentIndex && loading
-          const isDone = i < currentIndex || (i === currentIndex && !loading)
+          const isDone = i < currentIndex
           return (
             <li
               key={s.id}
