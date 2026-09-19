@@ -23,7 +23,7 @@ import { DirectorStage } from '../Stages/DirectorStage'
  */
 export function DirectorPage() {
   return (
-    <div className="director-layout flex-1 min-h-0">
+    <div className="director-layout h-full">
       <div className="director-stage-pane h-full">
         <DirectorStage />
       </div>
