@@ -4825,6 +4825,18 @@ def start_pipeline(params: dict) -> str:
         workspace = None
         print(f"[Pipeline] No workspace, using wgp.save_path={out_dir}")
 
+    # Nest this run's outputs under a dedicated subfolder so multiple
+    # Director runs in the same workspace don't dump flat into the
+    # workspace root. The Dashboard already keys by pipeline_id so the
+    # nested path is transparent to navigation — it just makes the
+    # workspace filesystem readable when a user runs the same Director
+    # project twice (e.g. one polished + one experimental pass). Old
+    # flat pipelines still load because _load_pipeline_state_locked
+    # searches the workspace recursively.
+    nested_dir = os.path.join(out_dir, f".director/{pid}")
+    os.makedirs(nested_dir, exist_ok=True)
+    out_dir = nested_dir
+
     # Freeze lineage and own every input before the worker starts.  The queue
     # and Open & Edit flows may point at files in uploads or in an older
     # workspace; copying them here makes this revision self-contained.
