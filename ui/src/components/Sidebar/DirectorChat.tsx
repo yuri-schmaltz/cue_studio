@@ -7,16 +7,11 @@ import { DirectorSongSetup } from './DirectorSongSetup'
 import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
 import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
-import { DirectorActivityBadge } from './DirectorActivityBar'
 import {
   AdditionalRefsSection,
   StructureView,
 } from './DirectorReferencePanels'
-// DirectorActivityBadge is still subscribed by ``DirectorChat``
-// indirectly through ``DirectorActivityBar``'s internal hooks, but
-// the type-only reference below keeps the import live so future
-// orchestration hooks can wire it back without re-importing.
-void DirectorActivityBadge
+
 import {
   SectionBadge,
   EnergyDot,
