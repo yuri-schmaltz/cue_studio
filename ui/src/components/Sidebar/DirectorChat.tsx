@@ -8,6 +8,13 @@ import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
 import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
 import { DirectorActivityBadge } from './DirectorActivityBar'
+import {
+  SectionBadge,
+  EnergyDot,
+  ShotStatus,
+  SystemBubble,
+  UserBubble,
+} from './DirectorChatBadges'
 import { DirectorErrorBanner } from './DirectorErrorBanner'
 
 import { formatSeconds, recommendedWindowProfile } from './DurationSlider'
@@ -177,21 +184,6 @@ function formatTime(s: number): string {
   return `${m}:${sec.toString().padStart(2, '0')}`
 }
 
-const sectionColors: Record<string, string> = {
-  intro: 'bg-blue-500/20 text-chip-blue',
-  verse: 'bg-green-500/20 text-chip-green',
-  chorus: 'bg-purple-500/20 text-chip-purple',
-  bridge: 'bg-yellow-500/20 text-chip-yellow',
-  outro: 'bg-gray-500/20 text-chip-gray',
-  instrumental: 'bg-cyan-500/20 text-chip-cyan',
-  // Short film scene types
-  dialogue: 'bg-green-500/20 text-chip-green',
-  action: 'bg-orange-500/20 text-chip-orange',
-  opening: 'bg-blue-500/20 text-chip-blue',
-  closing: 'bg-gray-500/20 text-chip-gray',
-  scene: 'bg-teal-500/20 text-chip-teal',
-}
-
 const sectionBarColors: Record<string, string> = {
   intro: 'bg-blue-500',
   verse: 'bg-green-500',
@@ -283,56 +275,6 @@ export function AutoResizeTextarea({ minHeight, maxHeight, ...props }: React.Tex
   const mergedStyle: React.CSSProperties = { ...(props.style || {}), overflowY: overflowing ? 'auto' : 'hidden' }
   return <textarea ref={ref} {...props} style={mergedStyle} />
 }
-
-function SectionBadge({ label }: { label: string }) {
-  return (
-    <span className={`text-2xs px-1.5 py-0.5 rounded-full ${sectionColors[label] || 'bg-bg-hover text-text-muted'}`}>
-      {label}
-    </span>
-  )
-}
-
-function EnergyDot({ energy }: { energy: number }) {
-  const color = energy > 0.6 ? 'bg-chip-red' : energy < 0.3 ? 'bg-chip-blue' : 'bg-chip-yellow'
-  return <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={`Energy: ${(energy * 100).toFixed(0)}%`} />
-}
-
-function ShotStatus({ status }: { status: 'pending' | 'generating' | 'ready' | 'failed' }) {
-  const labels = { pending: 'Pending', generating: 'Generating', ready: 'Ready', failed: 'Failed' }
-  const styles = {
-    pending: 'bg-bg-hover text-text-muted',
-    generating: 'bg-accent-blue/15 text-accent-blue',
-    ready: 'bg-indicator-success/15 text-indicator-success',
-    failed: 'bg-red-500/15 text-red-400',
-  }
-  return <span className={`rounded-full px-1.5 py-0.5 text-2xs ${styles[status]}`}>{labels[status]}</span>
-}
-
-// Event/entry wrapper used by the chat column on the Director page.
-//
-// The app moved away from the conversational "chat bubble" pattern
-// (left system bubble / right user reply). Every chat event is now a
-// neutral log line — the user's selections and the app's prompts share
-// the same left-rail, neutral styling so the eye scans a single timeline
-// rather than two alternating speakers. Indentation comes from a left
-// rule, not a margin offset, so alignment stays consistent across event
-// sizes.
-function SystemBubble({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="pl-3 py-2 border-l-2 border-border/60 space-y-2">
-      {children}
-    </div>
-  )
-}
-
-function UserBubble({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="pl-3 py-2 border-l-2 border-accent-blue/40 space-y-1">
-      {children}
-    </div>
-  )
-}
-
 
 /** Collapsed, persistent record of completed LLM streams for one stage.
  *  Replaces the old behavior where the thinking/output box vanished the

@@ -1,24 +1,26 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { ApplicationHeader } from './components/Shell/ApplicationHeader'
-import { ProjectsPage } from './components/Shell/ProjectsPage'
-import { QueuePage } from './components/Shell/QueuePage'
-import { DirectorPage } from './components/Shell/DirectorPage'
 import { HardwareStatusBar } from './components/Sidebar/HardwareStatusBar'
 import { DirectorStatusPanel } from './components/Stages/DirectorStatusPanel'
 import { MainContent } from './components/MainContent/MainContent'
-import { SettingsDrawer } from './components/SettingsDrawer/SettingsDrawer'
-import { LoraBrowser } from './components/LoraBrowser/LoraBrowser'
-import { DirectorDashboard } from './components/DirectorDashboard/DirectorDashboard'
 import { RetakeDialog } from './components/RetakeDialog'
 import { OomRecoveryBanner } from './components/OomRecoveryBanner'
 import { DownloadStatusBanner } from './components/DownloadStatusBanner'
 import { PreflightBanner } from './components/PreflightBanner'
 import { WelcomeModal } from './components/WelcomeModal'
-import { RecipesOverlay } from './components/Recipes/RecipesOverlay'
 import { NotificationCoordinator } from './components/NotificationCoordinator'
 import { NotificationToastHost } from './components/NotificationToastHost'
-import { EditorWorkspace } from './editor/EditorWorkspace'
 import { EditorRoundTripBanner } from './editor/EditorRoundTripBanner'
+import {
+  DirectorDashboard,
+  DirectorPage,
+  EditorWorkspace,
+  LoraBrowser,
+  ProjectsPage,
+  QueuePage,
+  RecipesOverlay,
+  SettingsDrawer,
+} from './lib/lazyComponents'
 import { useStore } from './stores/useStore'
 
 function App() {
@@ -55,13 +57,15 @@ function App() {
     <div className="application-shell">
       <ApplicationHeader />
       <div className="application-content" role="tabpanel" id={`panel-${section}`} aria-labelledby={`tab-${section}`} tabIndex={0}>
-        {section === 'projects' && <ProjectsPage />}
-        {section === 'queue' && <QueuePage />}
-        {section === 'dashboard' && <DirectorDashboard embedded />}
-        {section === 'director' && <DirectorPage />}
-        {section === 'editor' && <EditorWorkspace />}
-        {section === 'medias' && <MainContent />}
-        {section === 'configurations' && <SettingsDrawer />}
+        <Suspense fallback={<RouteLoadingShell />}>
+          {section === 'projects' && <ProjectsPage />}
+          {section === 'queue' && <QueuePage />}
+          {section === 'dashboard' && <DirectorDashboard embedded={true} />}
+          {section === 'director' && <DirectorPage />}
+          {section === 'editor' && <EditorWorkspace />}
+          {section === 'medias' && <MainContent />}
+          {section === 'configurations' && <SettingsDrawer />}
+        </Suspense>
       </div>
       {/* The Director Planning/Studio toggle now lives inside
           DirectorPage itself (sub-header next to the Style Bibles
@@ -69,9 +73,11 @@ function App() {
           the Director pipeline progress strip so GPU/VRAM/CPU/RAM and
           the per-step chips live on the same single row. */}
       <HardwareStatusBar leftSlot={<DirectorStatusPanel />} />
-      <LoraBrowser />
-      <DirectorDashboard />
-      <RecipesOverlay />
+      <Suspense fallback={null}>
+        <LoraBrowser />
+        <DirectorDashboard embedded={false} />
+        <RecipesOverlay />
+      </Suspense>
       <RetakeDialog />
       {/* OomRecoveryBanner is a fixed-position overlay — renders nothing
           unless the latest job/pipeline failure has oom_info attached.
@@ -95,6 +101,25 @@ function App() {
       <NotificationCoordinator />
       <NotificationToastHost />
       <EditorRoundTripBanner />
+    </div>
+  )
+}
+
+/**
+ * Lightweight fallback shown by the route-level <Suspense> while a
+ * lazy chunk is being fetched. Reusing the same skeleton shape on
+ * every route keeps the perceived navigation latency low — the user
+ * sees a consistent loading frame rather than a blank panel.
+ */
+function RouteLoadingShell() {
+  return (
+    <div
+      className="route-loading-shell"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading screen"
+    >
+      <div className="route-loading-shell__spinner" aria-hidden="true" />
     </div>
   )
 }

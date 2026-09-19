@@ -7671,99 +7671,6 @@ async def update_services_config(request: Request):
 
 
 # ============================================================================
-# API Routes: Workspaces
-# ============================================================================
-
-@api.get("/api/v1/settings/projects-root")
-def get_projects_root():
-    """Return the user-configured projects root path.
-
-    The path is stored in ``wgp.server_config["services"]["projects_root_path"]``.
-    When unset (the default), the effective root falls back to
-    ``wgp.server_config["save_path"]`` — preserving the legacy layout
-    where workspaces live directly under ``outputs/``.
-
-    The endpoint also reports the currently-effective root and whether
-    the configured path actually exists on disk so the UI can show
-    stale-config warnings without a second round-trip.
-    """
-    services = wgp.server_config.get("services", {}) or {}
-    configured = services.get("projects_root_path") or ""
-    default_path = wgp.server_config.get("save_path", "outputs")
-    effective = configured or default_path
-    exists = bool(effective) and os.path.isdir(effective)
-    writable = False
-    if exists:
-        try:
-            writable = os.access(effective, os.W_OK)
-        except OSError:
-            writable = False
-    return {
-        "configured_path": configured,
-        "default_path": default_path,
-        "effective_path": effective,
-        "exists": exists,
-        "writable": writable,
-    }
-
-
-@api.put("/api/v1/settings/projects-root")
-async def set_projects_root(request: Request):
-    """Set the projects root path. Empty string clears it (revert to default).
-
-    Validates that the path exists and is writable before persisting.
-    Empty string is accepted as a "reset to default" sentinel — the
-    caller no longer wants the custom layout. Relative paths are
-    resolved against the backend cwd; absolute paths are taken as-is.
-
-    The new path takes effect immediately for *new* workspaces; existing
-    workspaces under the old root remain accessible until the user moves
-    them manually. The active workspace is not auto-migrated because the
-    user may still have the old root mounted by an external tool.
-    """
-    body = await request.json()
-    raw = (body.get("path") or "").strip()
-    if not raw:
-        # Explicit reset to default. Clear the configured key.
-        services = wgp.server_config.setdefault("services", {})
-        services.pop("projects_root_path", None)
-        with open(wgp.server_config_filename, "w", encoding="utf-8") as f:
-            f.write(json.dumps(wgp.server_config, indent=4))
-        return {
-            "configured_path": "",
-            "effective_path": wgp.server_config.get("save_path", "outputs"),
-            "exists": True,
-            "writable": True,
-        }
-
-    path = os.path.abspath(raw)
-    # Defense in depth: refuse path that escapes the user's expected
-    # layout via a traversal marker. We don't restrict to absolute
-    # paths because users may legitimately want a sibling of /home.
-    if "\x00" in path:
-        raise HTTPException(status_code=400, detail="Invalid path: null byte")
-    if not os.path.isdir(path):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path does not exist or is not a directory: {path}",
-        )
-    if not os.access(path, os.W_OK):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Path is not writable: {path}",
-        )
-    services = wgp.server_config.setdefault("services", {})
-    services["projects_root_path"] = path
-    with open(wgp.server_config_filename, "w", encoding="utf-8") as f:
-        f.write(json.dumps(wgp.server_config, indent=4))
-    return {
-        "configured_path": path,
-        "effective_path": path,
-        "exists": True,
-        "writable": True,
-    }
-
-
 @api.get("/api/v1/workspaces")
 def list_workspaces_endpoint():
     """List all workspaces and the active one."""
@@ -10759,6 +10666,33 @@ def delete_pipeline_endpoint(pid: str):
 # hooks. See services/director/http.py for the split rationale.
 from services.director.http import build_skills_router
 api.include_router(build_skills_router())
+
+# Workspaces settings (GET/PUT /api/v1/settings/projects-root).
+# Extracted from the launch.py monolith to ``services/workspaces.py``
+# so tests can mount this router without dragging the entire WanGP
+# engine into memory. The handler still imports ``wgp`` lazily so
+# unit tests that only exercise path validation don't pay the
+# full import cost.
+try:
+    from services.workspaces import router as _workspaces_router
+    api.include_router(_workspaces_router)
+except Exception as _workspaces_import_err:
+    log.debug("[workspaces] router unavailable: %s", _workspaces_import_err)
+
+# Backwards-compat re-exports — the existing test suite reaches
+# into ``launch`` for the workspace helpers. Keep the names
+# reachable so the cutover doesn't break the test surface.
+get_projects_root = None  # type: ignore[assignment]
+set_projects_root = None  # type: ignore[assignment]
+try:
+    from services.workspaces import (  # noqa: E402,F401
+        get_projects_root as _ws_get,
+        set_projects_root as _ws_set,
+    )
+    get_projects_root = _ws_get
+    set_projects_root = _ws_set
+except Exception:  # noqa: BLE001
+    pass
 
 
 # ── Director V2 Planning ─────────────────────────────────────────────────
