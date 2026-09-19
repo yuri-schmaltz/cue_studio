@@ -11542,8 +11542,18 @@ def prepare_inputs_dict(target, inputs, model_type = None, model_filename = None
 
     if target == "metadata":
         inputs = {k: v for k,v in inputs.items() if v != None  }
-        if hasattr(app, 'plugin_manager'):
-            inputs = app.plugin_manager.run_data_hooks(
+        # Maestro runs WanGP through FastAPI, not Gradio, so the legacy
+        # ``app`` namespace that used to be injected via
+        # ``app.initialize_plugins(globals())`` is never defined here.
+        # Guard with ``"app" in globals()`` (not ``hasattr(app, ...)`` — that
+        # raises NameError before the attribute lookup even runs) and skip the
+        # data-hook pass when no plugin manager is registered. Without this
+        # guard every Director image-gen call would crash at VAE-decoding time
+        # and silently leave zero start-image files on disk, breaking the
+        # pipeline with a misleading "no recorded files" error.
+        if "app" in globals() and hasattr(globals()["app"], "plugin_manager"):
+            _plugin_app = globals()["app"]
+            inputs = _plugin_app.plugin_manager.run_data_hooks(
                 'before_metadata_save',
                 configs=inputs,
                 plugin_data=plugin_data,
