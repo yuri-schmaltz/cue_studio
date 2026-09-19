@@ -9938,6 +9938,23 @@ async def director_generate_negative_prompt(request: Request):
         # Collapse whitespace inside the line and trim trailing commas.
         cleaned = re.sub(r"\s+", " ", cleaned)
         cleaned = cleaned.rstrip(",").strip()
+        # Dedupe the comma-separated terms. qwen2.5:3b regularly enters
+        # a repetition loop (emits 800 tokens of the same phrase copy-
+        # pasted) and the spec is one-line comma-separated, so a plain
+        # split + set + rejoin recovers a usable prompt from a corrupted
+        # one. Cap at 24 terms so a runaway loop doesn't dominate the
+        # model's normal "avoid" signal.
+        if cleaned:
+            terms = [t.strip() for t in cleaned.split(",") if t.strip()]
+            seen = set()
+            deduped = []
+            for term in terms:
+                key = term.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                deduped.append(term)
+            cleaned = ", ".join(deduped[:24])
         if not cleaned:
             cleaned = ""
         return {"negative_prompt": cleaned}

@@ -38,6 +38,15 @@ import {
 
 let _directorAnalysisSequence = 0
 
+// Debounce handle for auto-regenerating the project-scoped negative
+// prompt from the scene description. Previously this fired on every
+// onChange keystroke (which translates to one full LLM call per
+// character typed) — a single 200-char brief would queue ~200 HTTP
+// calls and ~15 minutes of blocked Ollama time. 1.2s of typing
+// silence is the standard "user paused" signal.
+let _directorNegativePromptDebounce: ReturnType<typeof setTimeout> | null = null
+const DIRECTOR_NEGATIVE_PROMPT_DEBOUNCE_MS = 1200
+
 let _reviewSnapshot: AppState | null = null
 let _reviewRequestToken = 0
 
@@ -8760,16 +8769,23 @@ export const useStore = create<AppState>((set, get, store) => ({
   directorSetSceneDescription: (prompt) => {
     set({ directorSceneDescription: prompt })
     // Auto-derive a project-scoped negative prompt whenever the user
-    // commits a meaningful scene description change. The LLM call is
-    // debounced through the backend (single call per project) so the
-    // textarea updates without flooding the LLM while the user is
-    // still typing — fires whenever the value is non-empty, which is
-    // exactly when the user is ready for the prompt to be relevant.
+    // pauses typing. Previously this fired on every keystroke (a 200-char
+    // brief would queue ~200 sequential LLM calls and ~15 min of blocked
+    // Ollama time, plus the qwen2.5:3b repetition-loop bug would pollute
+    // the textarea with runaway duplicates of the same token). The
+    // debounce fires 1.2s after the last keystroke, which matches the
+    // standard "user paused" signal. Empty brief → flush + clear so a
+    // stale "avoid" list from a previous brief doesn't leak.
+    if (_directorNegativePromptDebounce) {
+      clearTimeout(_directorNegativePromptDebounce)
+      _directorNegativePromptDebounce = null
+    }
     if (prompt.trim()) {
-      void get().directorGenerateNegativePrompt()
+      _directorNegativePromptDebounce = setTimeout(() => {
+        _directorNegativePromptDebounce = null
+        void get().directorGenerateNegativePrompt()
+      }, DIRECTOR_NEGATIVE_PROMPT_DEBOUNCE_MS)
     } else {
-      // Empty brief → clear the prompt so a stale "avoid" list from a
-      // previous brief doesn't leak into the new project.
       void get().directorSetNegativePrompt('')
     }
   },
