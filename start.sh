@@ -248,8 +248,22 @@ fi
 # --- 6. Sobe o backend ---
 cd "$APP_DIR"
 echo "[start] Lançando backend → log: $LOGFILE"
+# ``expandable_segments`` evita que o PyTorch reserve VRAM em blocos
+# contíguos grandes — uma das causas comuns do CUDA OOM em GPUs
+# 12 GB quando o modelo + text encoder + cache de atenção somam
+# ~14 GB no pico. Documentado em
+# https://pytorch.org/docs/stable/notes/cuda.html#environment-variables
+#
+# ``--vram-safety-coefficient 0.5`` reduz o budget default de 0.8 para
+# 0.5 — o mmgp reserva metade da VRAM para o modelo transformer,
+# deixando o resto para text encoder, attention cache, e scratch
+# tensors. Em GPUs 12 GB o default 0.8 (≈10 GB reservado) é demais
+# para modelos como Flux 9B (9 GB) + qwen3_8b (5 GB) — o offloader
+# tenta caber em 53% (6.3 GB) e falha. 0.5 dá ~6 GB e força o
+# streaming layer-by-layer em vez de tentar carregar tudo.
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
 SERVER_NAME="$BIND_HOST" SERVER_PORT="$PORT" \
-  nohup "$PY" -u launch.py $COMPILE_FLAG >"$LOGFILE" 2>&1 &
+nohup "$PY" -u launch.py $COMPILE_FLAG --vram-safety-coefficient 0.5 >"$LOGFILE" 2>&1 &
 BACKEND_PID=$!
 echo "$BACKEND_PID" > "$PIDFILE"
 
