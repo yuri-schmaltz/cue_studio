@@ -24,11 +24,44 @@
  * ``AdditionalRefsSection`` via the ``imageOnly`` flag).
  */
 
-import { useCallback, useRef, useState } from 'react'
-import { X, MapPin, Users } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import {
+  X,
+  MapPin,
+  Users,
+  Mic,
+  ChevronDown,
+  ChevronRight,
+  ListVideo,
+} from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { DirectorActivityBadge } from './DirectorActivityBar'
+import { SectionBadge, EnergyDot } from './DirectorChatBadges'
 
-function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorder, placeholder }: {
+// Constants and helpers lifted from ``DirectorChat.tsx`` so the
+// reference panel can stand on its own. The audio MIME accept list
+// drives the file picker for voice references; ``formatTime``
+// formats the per-section timestamp labels; ``sectionBarColors``
+// maps a music section label to its bar colour.
+const AUDIO_ACCEPT = '.wav,.mp3,.flac,.ogg,.m4a,.mp4,.mov,.mkv,.webm,.avi,.m4v'
+const IMAGE_ACCEPT = '.png,.jpg,.jpeg,.webp,.bmp'
+
+function formatTime(s: number): string {
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
+
+const sectionBarColors: Record<string, string> = {
+  intro: 'bg-blue-500',
+  verse: 'bg-green-500',
+  chorus: 'bg-purple-500',
+  bridge: 'bg-yellow-500',
+  outro: 'bg-gray-500',
+  instrumental: 'bg-cyan-500',
+}
+
+export function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorder, placeholder }: {
   file: File; label: string; index: number
   onRemove: (i: number) => void
   onLabelChange: (i: number, v: string) => void
@@ -81,7 +114,7 @@ function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorde
   )
 }
 
-function AdditionalRefsSection() {
+export function AdditionalRefsSection() {
   const charRefs = useStore(s => s.directorCharacterRefs)
   const charLabels = useStore(s => s.directorCharacterRefLabels)
   const locRefs = useStore(s => s.directorLocationRefs)
