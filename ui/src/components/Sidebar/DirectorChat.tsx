@@ -325,7 +325,6 @@ export function DirectorChat() {
   // disable itself, but the value is consumed inside DirectorPlanColumn.
   void useStore(s => s.isGenerating)
   const error = useStore(s => s.directorError)
-  const clearDirectorError = useStore(s => s.clearDirectorError)
   const analysis = useStore(s => s.directorAnalysis)
   const plannedClips = useStore(s => s.directorPlannedClips)
   // Reactivated for the in-chat StructureView (moved from the middle
@@ -990,20 +989,13 @@ export function DirectorChat() {
             rendered above inside the side-by-side audio+reference
             layout, so nothing extra is needed here. */}
 
-        {/* Error — rich dismissible banner. Classifies the error
-            (OOM, VRAM, network, LoRA mismatch, …), shows the failing
-            phase as a badge, lists pre-baked remediation steps, and
-            exposes the raw backend message in a collapsible technical-
-            details panel + copy-to-clipboard button. Accepts both
-            legacy strings and the new typed DirectorError, so this is
-            backwards-compatible with older call sites. */}
-        {error && (
-          <DirectorErrorBanner
-            error={error}
-            pipelineStatus={useStore.getState().pipelineStatus}
-            onDismiss={clearDirectorError}
-          />
-        )}
+        {/* Global directorError banner was removed from the left chat
+            column to avoid showing the same error three times. Per-clip
+            banners still surface in the middle column (image prompts
+            and video prompts) and the GENERATED IMAGES section keeps
+            its inline imageGenProgress error banner. The global slot is
+            intentionally cleared here so the chat column stays focused
+            on planning inputs only. */}
 
         {/* Structure step — the actual StructureView (clip structure,
             pacing slider, "X clips confirmed") is rendered by
