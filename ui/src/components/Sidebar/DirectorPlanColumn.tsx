@@ -207,7 +207,8 @@ export function DirectorPlanColumn() {
         .map((seg) => `"${(seg.text || '').trim().slice(0, 60)}"`)
         .filter(Boolean)
       return (
-        <div className="h-full p-4 space-y-3" data-testid="director-plan-column-audio-summary">
+        <div className="h-full flex flex-col p-4 space-y-3" data-testid="director-plan-column-audio-summary">
+          <div className="flex-1 space-y-3 min-h-0">
           <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-2">
             <h3 className="text-xs text-text-muted uppercase tracking-wider">
               Audio analysis
@@ -250,14 +251,19 @@ export function DirectorPlanColumn() {
           <p className="text-2xs text-text-muted text-center leading-relaxed">
             Drop a brief in the chat column to start planning clips.
           </p>
+          </div>
+          <DirectorPlanRodape step={step} loading={loading} />
         </div>
       )
     }
     return (
-      <div className="h-full flex items-center justify-center p-6 text-center">
-        <p className="text-xs text-text-muted leading-relaxed">
-          Planning controls will appear here.
-        </p>
+      <div className="h-full flex flex-col" data-testid="director-plan-empty">
+        <div className="flex-1 flex items-center justify-center p-6 text-center">
+          <p className="text-xs text-text-muted leading-relaxed">
+            Planning controls will appear here.
+          </p>
+        </div>
+        <DirectorPlanRodape step={step} loading={loading} />
       </div>
     )
   }
@@ -270,7 +276,7 @@ export function DirectorPlanColumn() {
        visible inset is 36px from the column's rounded border —
        generous enough to let the cards breathe without wasting
        vertical real estate. */
-    <div className="h-full p-4 space-y-3" data-testid="director-plan-column">
+    <div className="h-full flex flex-col p-4 space-y-3" data-testid="director-plan-column">
       {/* 1) Structure — moved to the chat column (DirectorChat). The
           plan column starts at the post-upload planning surface. */}
 
@@ -387,6 +393,45 @@ export function DirectorPlanColumn() {
           />
         </section>
       )}
+      <DirectorPlanRodape step={step} loading={loading} />
+    </div>
+  )
+}
+
+/** Rodapé da coluna do meio — faixa fina que se estende até a base
+ *  da coluna e mostra o estado atual do pipeline + etapa ativa do
+ *  Director. Aparece em todas as três variantes (estado vazio,
+ *  análise de áudio, planning surfaces) para que o usuário sempre
+ *  tenha um indicador de "onde estou" no fluxo. `mt-auto` empurra
+ *  o rodapé para o fundo do flex column sem precisar de flex-1 (o
+ *  conteúdo principal é apenas scrollable). */
+function DirectorPlanRodape({ step, loading }: { step: string | undefined; loading: boolean }) {
+  return (
+    <div
+      className="mt-auto shrink-0 border-t border-border/30 px-4 py-2 flex items-center justify-between gap-3 text-2xs text-text-muted/80"
+      data-testid="director-plan-rodape"
+      aria-label="Pipeline status and current step"
+    >
+      <span className="flex items-center gap-1.5 min-w-0 truncate">
+        <span
+          aria-hidden="true"
+          className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+            loading ? 'bg-accent-blue animate-pulse' : 'bg-text-muted/40'
+          }`}
+        />
+        <span>
+          Pipeline:{' '}
+          <span className="text-text-secondary font-medium">
+            {loading ? 'processando' : 'ocioso'}
+          </span>
+        </span>
+      </span>
+      <span className="tabular-nums shrink-0">
+        Etapa:{' '}
+        <span className="text-text-secondary font-medium">
+          {step || '—'}
+        </span>
+      </span>
     </div>
   )
 }

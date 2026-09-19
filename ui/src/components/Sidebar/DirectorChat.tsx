@@ -1236,6 +1236,36 @@ export function DirectorChat() {
           </div>
         )}
       </div>
+
+      {/* Rodapé do Composer — faixa fina que se estende até a base da
+          coluna. Mostra atalhos de teclado (Shift+Enter / Cmd+Ctrl+S)
+          e contagem da fila pendente. Usa `mt-auto` em vez de flex-1
+          para que o rodapé sempre fique imediatamente abaixo do
+          composer sem competir com a área de mensagens rolável acima
+          (que já é flex-1). A borda-t é hairline-thin e a cor
+          atenuada para não competir com a borda do card. */}
+      <div
+        className="mt-auto flex items-center justify-between gap-2 border-t border-border/30 px-3 py-1.5 text-2xs text-text-muted/80"
+        data-testid="director-chat-rodape"
+        aria-label="Composer shortcuts and queue status"
+      >
+        <span className="truncate">
+          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">Shift</kbd>
+          <span className="mx-1">+</span>
+          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">Enter</kbd>
+          <span className="mx-1.5">envia</span>
+          <span className="mx-1 text-text-muted/40">·</span>
+          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">Cmd/Ctrl</kbd>
+          <span className="mx-1">+</span>
+          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">S</kbd>
+          <span className="mx-1.5">adiciona à fila</span>
+        </span>
+        <span className="shrink-0 tabular-nums" aria-live="polite">
+          {directorQueueEntriesCount > 0
+            ? `${directorQueueEntriesCount} na fila`
+            : 'Fila vazia'}
+        </span>
+      </div>
     </div>
   )
 }
@@ -2410,9 +2440,29 @@ export function DirectorGenerationOptions() {
     const model = s.models.find(item => item.model_type === selected)
     return directorModelUsesFixedMediaStrength(selected, model?.architecture)
   })
+  // Rodapé selectors — kept as primitives so Zustand's default ===
+  // equality check works (otherwise returning a fresh object each call
+  // would trigger an infinite re-render). Each selector picks one
+  // scalar, so the column re-renders only when the model changes or
+  // the GPU stats poll updates one of these values.
+  const rodapeModelName = useStore(s => {
+    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
+    const def = s.models.find(item => item.model_type === selected)
+    return def?.name || selected
+  })
+  const rodapeArchitecture = useStore(s => {
+    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
+    return s.models.find(item => item.model_type === selected)?.architecture
+  })
+  const rodapeVramUsedGb = useStore(s => s.systemStats?.gpu.available ? s.systemStats?.gpu.vram_used_gb : null)
+  const rodapeVramTotalGb = useStore(s => s.systemStats?.gpu.vram_total_gb ?? 0)
+  const rodapeGpuAvailable = useStore(s => s.systemStats?.gpu.available ?? false)
+  const rodapeVram = rodapeGpuAvailable && rodapeVramUsedGb != null
+    ? { usedGb: rodapeVramUsedGb, totalGb: rodapeVramTotalGb }
+    : null
 
   return (
-    <div className="space-y-3">
+    <div className="h-full flex flex-col space-y-3">
       <DirectorGenerationOptionsHeader
         biblesOpen={biblesOpen}
         setBiblesOpen={setBiblesOpen}
@@ -2422,7 +2472,7 @@ export function DirectorGenerationOptions() {
 
       {/* Body: locked preview before upload, full controls after. */}
       {audioFile ? (
-        <>
+        <div className="flex-1 space-y-3 min-h-0 overflow-y-auto pr-1 -mr-1">
           {/* Controles de LoRAs (sempre úteis) */}
           <DirectorLoraAccordion />
 
@@ -2442,9 +2492,9 @@ export function DirectorGenerationOptions() {
           )}
           <ReferenceImageStrengthSlider />
           <DirectorNegativePromptField />
-        </>
+        </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-border/70 bg-bg-tertiary/40 p-3 text-2xs text-text-muted">
+        <div className="flex-1 rounded-lg border border-dashed border-border/70 bg-bg-tertiary/40 p-3 text-2xs text-text-muted">
           <p className="leading-snug">
             Locked — drop audio in the chat column on the left to unlock aspect
             ratio, resolution, LoRA picking, audio speed, source strength and the
@@ -2456,9 +2506,64 @@ export function DirectorGenerationOptions() {
           </p>
         </div>
       )}
+      <DirectorGenerationOptionsRodape
+        modelName={rodapeModelName}
+        architecture={rodapeArchitecture}
+        vram={rodapeVram}
+      />
       {biblesOpen && (
         <StyleBiblesModal onClose={() => setBiblesOpen(false)} />
       )}
+    </div>
+  )
+}
+
+/** Rodapé da coluna de Opções de Geração — faixa fina que se estende
+ *  até a base da coluna mostrando o modelo de vídeo selecionado
+ *  (resolvido para o nome amigável do `ModelDef`) e o uso de VRAM
+ *  atual/total quando o GPU está disponível. `mt-auto` empurra o
+ *  rodapé para o fundo do flex column independente do tamanho do
+ *  body (accordion recolhido ou expandido). A borda-t hairline-thin
+ *  separa o rodapé do conteúdo sem competir com a borda do card. */
+function DirectorGenerationOptionsRodape({
+  modelName,
+  architecture,
+  vram,
+}: {
+  modelName: string
+  architecture?: string
+  vram: { usedGb: number; totalGb: number } | null
+}) {
+  return (
+    <div
+      className="mt-auto shrink-0 border-t border-border/30 pt-2 flex items-center justify-between gap-3 text-2xs text-text-muted/80"
+      data-testid="director-options-rodape"
+      aria-label="Selected model and VRAM usage"
+    >
+      <span className="flex items-center gap-1.5 min-w-0 truncate">
+        <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/70" />
+        <span className="truncate">
+          Modelo:{' '}
+          <span className="text-text-secondary font-medium" title={modelName}>
+            {modelName}
+          </span>
+          {architecture && (
+            <span className="ml-1 text-text-muted/70">· {architecture}</span>
+          )}
+        </span>
+      </span>
+      <span className="shrink-0 tabular-nums" aria-live="polite">
+        {vram ? (
+          <>
+            VRAM:{' '}
+            <span className="text-text-secondary font-medium">
+              {vram.usedGb.toFixed(1)} / {vram.totalGb.toFixed(0)} GB
+            </span>
+          </>
+        ) : (
+          <span className="text-text-muted/60">VRAM indisponível</span>
+        )}
+      </span>
     </div>
   )
 }
