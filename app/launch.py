@@ -28153,7 +28153,7 @@ def cancel_job(job_id: str):
 
 
 @api.post("/api/v1/force-cancel/{job_id}")
-def force_terminate_job(job_id: str):
+async def force_terminate_job(request: Request, job_id: str):
     """Force-terminate a job regardless of its current state (held, queued, or running).
 
     Unlike the regular /cancel endpoint which only cancels held/queued jobs,
