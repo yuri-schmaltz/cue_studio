@@ -504,7 +504,7 @@ def _load_cue_studio_version() -> str:
 
 CUE_STUDIO_VERSION = _load_cue_studio_version()
 
-api = FastAPI(title="Cue Studio API", version=CUE_STUDIO_VERSION)
+api = app = FastAPI(title="Cue Studio API", version=CUE_STUDIO_VERSION)
 
 
 @app.exception_handler(Exception)
@@ -537,7 +537,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 
-@api.get("/health/version", include_in_schema=False)
+@app.get("/health/version", include_in_schema=False)
 def _health_version() -> JSONResponse:
     """Lightweight endpoint used by the version-aware bootstrapper
     (start.sh) to detect stale builds. Returns the Cue Studio release
