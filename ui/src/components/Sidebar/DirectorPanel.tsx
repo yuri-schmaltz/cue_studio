@@ -18,7 +18,7 @@ const getCategoryLabel = (text?: string): string => {
   return category
 }
 
-const SPEAKER_CATEGORIES = [
+const SPEAKER_CATEGORIES: Array<{ id: string; label: string; color: string }> = [
   { id: 'vocals_male', label: 'Vocal Masculino', color: 'bg-green-500/20 text-chip-green border-green-400/30' },
   { id: 'vocals_female', label: 'Vocal Feminino', color: 'bg-pink-500/20 text-chip-pink border-pink-400/30' },
   { id: 'choir', label: 'Coro / Coral', color: 'bg-purple-500/20 text-chip-purple border-purple-400/30' },
@@ -63,9 +63,14 @@ const sectionBarColors: Record<string, string> = {
   instrumental: 'bg-cyan-500',
 }
 
+const sectionLabels = ['intro', 'verse', 'chorus', 'bridge', 'outro', 'instrumental'] as const
+const colorMap = Object.fromEntries(
+  sectionLabels.map(label => [label, sectionColors[label] || 'bg-bg-hover text-text-muted'])
+) as Record<string, string>
+
 function SectionBadge({ label }: { label: string }) {
   return (
-    <span className={`text-2xs px-1.5 py-0.5 rounded-full ${sectionColors[label] || 'bg-bg-hover text-text-muted'}`}>
+    <span className={`text-2xs px-1.5 py-0.5 rounded-full ${colorMap[label]}`}>
       {label}
     </span>
   )
@@ -119,30 +124,35 @@ export function DirectorPanel() {
     [referenceImage]
   )
 
+  // === PERFORMANCE OPTIMIZATION: Memoized analysis state ===
+  const analysisMemo = useMemo(() => {
+    if (analysis?.lyrics) return analysis
+    return undefined
+  }, [analysis])
+
   // Sample lyrics per speaker for identification
   const speakerSamples = useMemo(() => {
+    if (!analysisMemo?.lyrics) return {} as Record<string, string[]>
     const samples: Record<string, string[]> = {}
-    if (analysis?.lyrics) {
-      for (const seg of analysis.lyrics) {
-        if (seg.speaker && !samples[seg.speaker]) {
-          samples[seg.speaker] = []
-        }
-        if (seg.speaker && samples[seg.speaker].length < 2) {
-          samples[seg.speaker].push(seg.text)
-        }
+    for (const seg of analysis.lyrics) {
+      if (seg.speaker && !samples[seg.speaker]) {
+        samples[seg.speaker] = []
+      }
+      if (seg.speaker && samples[seg.speaker].length < 2) {
+        samples[seg.speaker].push(seg.text)
       }
     }
     return samples
-  }, [analysis])
+  }, [analysisMemo?.lyrics])
 
   const [dragOver, setDragOver] = useState(false)
   const [localBias, setLocalBias] = useState<number | null>(null)
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false)
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
 
-  // Compute speaker categories from lyrics text using the helper function
-  useEffect(() => {
-    if (!analysis?.lyrics || plannedClips.length === 0) return
+  // === PERFORMANCE: useMemo for category computation (avoids recompute on every render) ===
+  const categorizedClips = useMemo(() => {
+    if (!analysisMemo?.lyrics || plannedClips.length === 0) return [] as PlannedClipWithImage[]
     const byCategory: Record<string, PlannedClip[]> = {}
     for (const clip of plannedClips) {
       let category = 'other'
@@ -164,34 +174,15 @@ export function DirectorPanel() {
       }
       return next
     })
-  }, [analysis?.lyrics, plannedClips])
+    // Return clips with category attached
+    return plannedClips.map(clip => ({
+      ...clip,
+      category: getAutoCategory(clip),
+      sampleText: getFirstSample(clip),
+    })) as PlannedClipWithImage[]
+  }, [analysisMemo?.lyrics, plannedClips])
 
-  // Get first speaker sample for a clip
-  const getFirstSample = useCallback((clip: PlannedClip): string => {
-    if (step === 'plan') return ''
-    let dominant: string | undefined = clip.dominant_speaker
-    if (!dominant && analysis?.lyrics) {
-      for (const seg of analysis.lyrics) {
-        if (seg.start >= clip.start && seg.end <= clip.end && seg.speaker) {
-          dominant = seg.speaker
-          break
-        }
-      }
-    }
-    const sample = speakers?.[dominant]?.samples || []
-    return sample.length > 0 ? sample[0] : '...'
-  }, [step, analysis, speakers])
-
-  // Determine auto-mode category for a clip
-  const getAutoCategory = useCallback((clip: PlannedClip): string => {
-    if (!analysis?.lyrics) return 'other'
-    for (const seg of analysis.lyrics) {
-      if (seg.start >= clip.start && seg.end <= clip.end && seg.speaker) {
-        return getCategoryLabel(seg.text)
-      }
-    }
-    return 'other'
-  }, [analysis?.lyrics])
+  const [hoveringField, setHoveringField] = useState<{ field?: 'start' | 'end'; index?: number }>({})
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith('audio/') && !AUDIO_ACCEPT.split(',').some(ext => file.name.toLowerCase().endsWith(ext))) {
@@ -207,14 +198,14 @@ export function DirectorPanel() {
     if (file) handleFile(file)
   }, [handleFile])
 
-  // Compute total duration from planned clips
+  // === PERFORMANCE: useMemo for total duration and beat distribution ===
   const totalClipDuration = useMemo(
     () => plannedClips.length > 0 ? plannedClips[plannedClips.length - 1].end : 0,
     [plannedClips]
   )
 
-  // Beat count distribution summary
   const beatDistribution = useMemo(() => {
+    if (plannedClips.length === 0) return ''
     const counts: Record<number, number> = {}
     for (const c of plannedClips) {
       counts[c.beat_count] = (counts[c.beat_count] || 0) + 1
@@ -222,14 +213,14 @@ export function DirectorPanel() {
     return Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ')
   }, [plannedClips])
 
-  // Process planned clips into a structure suitable for the left column UI
+  // === PERFORMANCE: useMemo for processed clips (avoids recompute on every render) ===
   const processedClips = useMemo(() => {
-    return plannedClips.map(clip => ({
+    return categorizedClips.map(clip => ({
       ...clip,
-      category: autoMode ? getAutoCategory(clip) : 'other',
+      category: getAutoCategory(clip),
       sampleText: getFirstSample(clip),
     })) as PlannedClipWithImage[]
-  }, [plannedClips, autoMode, getAutoCategory, getFirstSample])
+  }, [categorizedClips])
 
   const refAudioPreview = useMemo(() => audioFile ? URL.createObjectURL(audioFile) : null, [audioFile])
 
@@ -243,9 +234,9 @@ export function DirectorPanel() {
         <div className="flex items-center gap-1.5">
           <Music size={14} className="text-accent-blue" />
           <span className="text-xs font-medium text-text-primary">Director</span>
-          {analysis && (
+          {analysisMemo && (
             <span className="text-2xs text-text-muted">
-              {analysis.bpm.toFixed(0)} BPM
+              {analysisMemo.bpm.toFixed(0)} BPM
             </span>
           )}
         </div>
@@ -260,7 +251,7 @@ export function DirectorPanel() {
         )}
       </div>
 
-      {/* Error banner */}
+      {/* Error — rich banner */}
       {error && (
         <DirectorErrorBanner error={error} pipelineStatus={useStore.getState().pipelineStatus} />
       )}
@@ -303,12 +294,12 @@ export function DirectorPanel() {
             {/* Analysis details collapsible */}
             <div className={`space-y-2 transition-all overflow-hidden ${showAnalysisDetails ? 'max-h-[30vh]' : ''}`}>
               <div className="bg-bg-primary/50 rounded-md p-2.5 space-y-2 text-xs">
-                {analysis && (
+                {analysisMemo && (
                   <>
                     {/* BPM / key */}
                     <div className="flex items-center justify-between bg-accent-blue/10 px-2 py-1 rounded-md">
-                      <span className="text-text-secondary font-medium">{analysis.bpm.toFixed(1)} BPM</span>
-                      {analysis.key && <span className="text-text-muted text-2xs">Chord: {analysis.key}</span>}
+                      <span className="text-text-secondary font-medium">{analysisMemo.bpm.toFixed(1)} BPM</span>
+                      {analysisMemo.key && <span className="text-text-muted text-2xs">Chord: {analysisMemo.key}</span>}
                     </div>
 
                     {/* Energy bias */}
@@ -336,7 +327,7 @@ export function DirectorPanel() {
                         {plannedClips.map((clip, i) => (
                           <div key={i} className="flex items-center justify-between bg-bg-primary/30 px-2 py-1.5 rounded-md">
                             <div className="flex items-center gap-2 flex-wrap min-w-0">
-                              <span className={`text-xs font-medium ${clip.section_label === 'chorus' ? 'text-accent-purple' : ''}`}>[{clip.start.toFixed(1)}–{clip.end.toFixed(1)}]</span>
+                              <span className={`text-xs font-medium ${clip.section_label === 'chorus' ? 'text-accent-purple' : ''}`}>[{formatTime(clip.start)}–{formatTime(clip.end)}]</span>
                               {clip.section_label !== 'instrumental' && <SectionBadge label={clip.section_label} />}
                               <EnergyDot energy={clip.energy} />
                             </div>
@@ -371,7 +362,7 @@ export function DirectorPanel() {
         {step === 'generate' && (
           <div className="space-y-2.5">
             {/* Scene description */}
-            <SceneDescriptionEditor sceneDescription={sceneDescription} setSceneDescription={setSceneDescription} refImagePreview={refImagePreview} />
+            <SceneDescriptionEditor sceneDescription={sceneDescription} setSceneDescription={setSceneDescription} refImagePreview={refAudioPreview} />
 
             {/* Image generation progress */}
             {imageGenProgress > 0 && (
@@ -431,7 +422,7 @@ export function DirectorPanel() {
         {/* Step 6 — Finished */}
         {step === 'finished' && (
           <div className="space-y-2.5">
-            <FinishedCard plannedClips={plannedClips} referenceImage={refImagePreview} sceneDescription={sceneDescription} />
+            <FinishedCard plannedClips={plannedClips} referenceImage={refAudioPreview} sceneDescription={sceneDescription} />
           </div>
         )}
 
@@ -502,7 +493,7 @@ function SceneDescriptionEditor({ sceneDescription, setSceneDescription, refImag
               value={sceneDescription || ''}
               onChange={(e) => setSceneDescription(e.target.value)}
               placeholder="Descreva a cena para cada clip (ex: 'um homem com cicatriz na testa, olhos arregalados, vestindo uma jaqueta jeans desbotada...')"
-              className={`w-full h-[5vh] min-h-[32px] px-2 text-xs rounded-md resize-none bg-bg-primary/70 border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue ${hoveringField === 'scene' ? 'border-accent-blue' : 'border-input-field hover:border-input-field-hover'}`}
+              className={`w-full h-[5vh] min-h-[32px] px-2 text-xs rounded-md resize-none bg-bg-primary/70 border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue ${hoveringField === 'scene' ? 'border-accent-blue' : 'border-input-field hover:border-input-field-hover'} cursor-text`}
               onMouseEnter={() => setHoveringField('scene')}
               onMouseLeave={() => setHoveringField('')}
             />
@@ -557,7 +548,7 @@ function SceneDescriptionEditor({ sceneDescription, setSceneDescription, refImag
           value={sceneDescription || ''}
           onChange={(e) => setSceneDescription(e.target.value)}
           placeholder="Descreva a cena para cada clip (ex: 'um homem com cicatriz na testa, olhos arregalados, vestindo uma jaqueta jeans desbotada...')"
-          className={`w-full h-[5vh] min-h-[32px] px-2 text-xs rounded-md resize-none bg-bg-primary/70 border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue ${hoveringField === 'scene' ? 'border-accent-blue' : 'border-input-field hover:border-input-field-hover'}`}
+          className={`w-full h-[5vh] min-h-[32px] px-2 text-xs rounded-md resize-none bg-bg-primary/70 border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue ${hoveringField === 'scene' ? 'border-accent-blue' : 'border-input-field hover:border-input-field-hover'} cursor-text`}
           onMouseEnter={() => setHoveringField('scene')}
           onMouseLeave={() => setHoveringField('')}
         />
@@ -600,7 +591,7 @@ function ClipStructureCard({
   applyToClips: () => void
   refAudioPreview: string | null
 }) {
-  const [hoveringField, setHoveringField] = useState<{ field: keyof PlannedClip; index: number } | null>(null)
+  const [hoveringField, setHoveringField] = useState<{ field?: 'start' | 'end'; index?: number }>({})
 
   return (
     <div className="space-y-2">
@@ -625,7 +616,7 @@ function ClipStructureCard({
       {/* Clips list with hover preview */}
       <div className="space-y-1 max-h-[28vh] overflow-y-auto pr-1 custom-scrollbar">
         {clips.map((clip, i) => (
-          <ClipRow key={i} index={i} clip={clip} hoveringField={hoveringField?.field === 'start' && hoveringField?.index === i ? 'start' : ''} hoverPreviewText={hoveringField?.field === 'end' && hoveringField?.index === i ? String(clip.end) : null} onMouseEnter={() => { setHoveringField({ field: 'start', index: i }) }} onMouseLeave={() => setHoveringField(null)} />
+          <ClipRow key={i} index={i} clip={clip} hoveringField={hoveringField?.field === 'start' && hoveringField?.index === i ? 'start' : ''} hoverPreviewText={hoveringField?.field === 'end' && hoveringField?.index === i ? String(clip.end) : null} onMouseEnter={() => { setHoveringField({ field: 'start', index: i }) }} onMouseLeave={() => setHoveringField({})} />
         ))}
       </div>
 
@@ -646,11 +637,11 @@ function ClipStructureCard({
 
 function ClipRow({ index, clip, hoveringField, hoverPreviewText, onMouseEnter, onMouseLeave }: { index: number; clip: PlannedClipWithImage; hoveringField: string; hoverPreviewText: string | null; onMouseEnter: () => void; onMouseLeave: () => void }) {
   return (
-    <div className="group flex items-center justify-between bg-bg-primary/30 px-2 py-1.5 rounded-md transition-colors hover:bg-bg-primary/60">
+    <div className="group flex items-center justify-between bg-bg-primary/30 px-2 py-1.5 rounded-md transition-colors hover:bg-bg-primary">
       <div className="flex items-center gap-2 min-w-0 flex-wrap">
         {/* Start time with hover preview */}
         <div className="relative w-[78px] shrink-0">
-          <input type="number" step={0.1} min={0} max={600} value={clip.start} onChange={(e) => { /* Would call editClipPlan here */ }} className={`w-full h-[24px] px-1 text-xs rounded bg-bg-primary border outline-none focus:outline-none focus:border-accent-blue text-center ${hoveringField === 'start' && index === clip.start ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-input-field hover:border-input-field-hover'} transition-colors`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} title="Início do clip" />
+          <input type="number" step={0.1} min={0} max={600} value={clip.start} onChange={(e) => { /* Would call editClipPlan here — needs store update */ }} className={`w-full h-[24px] px-1 text-xs rounded bg-bg-primary border outline-none focus:outline-none focus:border-accent-blue text-center transition-colors ${hoveringField === 'start' && index === clip.start ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-input-field hover:border-input-field-hover'} cursor-text`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} title="Início do clip" />
           {hoveringField === 'start' && index === clip.start && hoverPreviewText !== null && (
             <div className="absolute -top-6 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-1.5 rounded-md border border-accent-blue shadow-lg whitespace-nowrap">
               Tempo de início do clip: {hoverPreviewText}s
@@ -671,11 +662,18 @@ function ClipRow({ index, clip, hoveringField, hoverPreviewText, onMouseEnter, o
         <div className="text-2xs text-text-muted px-1.5 py-0.5 bg-bg-primary rounded-md border border-input-field">
           {clip.beat_count}-beat
         </div>
+
+        {/* Category pill (auto-mode) */}
+        {clip.category !== 'other' && (
+          <span className="text-[9px] px-1 py-0.25 bg-accent-blue/10 text-accent-blue rounded-full border border-accent-blue/30">
+            {SPEAKER_CATEGORIES.find(c => c.id === clip.category)?.label || clip.category}
+          </span>
+        )}
       </div>
 
       {/* End time with hover preview */}
       <div className="relative w-[78px] shrink-0 text-right pr-1">
-        <input type="number" step={0.1} min={0} max={600} value={clip.end} onChange={(e) => { /* Would call editClipPlan here */ }} className={`w-full h-[24px] px-1 text-xs rounded bg-bg-primary border outline-none focus:outline-none focus:border-accent-blue text-right ${hoveringField === 'end' && index === clip.start ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-input-field hover:border-input-field-hover'} transition-colors`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} title="Fim do clip" />
+        <input type="number" step={0.1} min={0} max={600} value={clip.end} onChange={(e) => { /* Would call editClipPlan here — needs store update */ }} className={`w-full h-[24px] px-1 text-xs rounded bg-bg-primary border outline-none focus:outline-none focus:border-accent-blue text-right transition-colors cursor-text ${hoveringField === 'end' && index === clip.start ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-input-field hover:border-input-field-hover'} ${clip.end < clip.start + 1.5 ? 'bg-red-500/10 border-red-400' : ''}`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} title="Fim do clip" />
         {hoveringField === 'end' && index === clip.start && hoverPreviewText !== null && (
           <div className="absolute -bottom-6 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-1.5 rounded-md border border-accent-blue shadow-lg whitespace-nowrap">
             Tempo de fim do clip: {hoverPreviewText}s
@@ -736,21 +734,25 @@ function FinishedCard({ plannedClips, referenceImage, sceneDescription }: { plan
 
         {/* Section distribution */}
         <div className="space-y-0.5">
-          {['intro', 'verse', 'chorus', 'bridge', 'outro', 'instrumental'].map(label => (
+          {sectionLabels.map(label => (
             <div key={label} className="flex items-center justify-between text-text-muted">
               <span>{label}</span>
-              <span>{(plannedClips.filter(c => c.section_label === label).length || 0)}</span>
+              <span>({(plannedClips.filter(c => c.section_label === label).length || 0)})</span>
             </div>
           ))}
         </div>
 
         {/* Beat distribution */}
         {(() => {
+          if (plannedClips.length === 0) return null
           const counts: Record<number, number> = {}
           for (const c of plannedClips) {
             counts[c.beat_count] = (counts[c.beat_count] || 0) + 1
           }
-          return Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ') ? <div className="flex items-center gap-1.5 text-text-muted"><Zap size={10} /> {Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ')}</div> : null
+          if (!Object.keys(counts).length) return <div className="text-text-muted">—</div>
+          return Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ') ? (
+            <div className="flex items-center gap-1.5 text-text-muted"><Zap size={10} /> {Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ')}</div>
+          ) : null
         })()}
 
         {/* Reference image */}
@@ -765,7 +767,7 @@ function FinishedCard({ plannedClips, referenceImage, sceneDescription }: { plan
         {sceneDescription && (
           <div className="flex items-center gap-1.5 text-text-muted">
             <span>Cena:</span>
-            <span className="px-1.5 py-0.5 bg-accent-blue/10 rounded-full text-[10px] truncate max-w-[8ch]">{sceneDescription.trim()}</span>
+            <span className="px-1.5 py-0.5 bg-accent-blue/10 rounded-full text-[10px] truncate max-w-[8ch]">{sceneDescription.trim().slice(0, 40)}</span>
           </div>
         )}
       </div>
@@ -783,7 +785,7 @@ function FinishedCard({ plannedClips, referenceImage, sceneDescription }: { plan
 // ============================================================
 
 function SpeakerManagementCard({ speakers, speakerMappings, setSpeakerMapping, insertSpeakerMention, autoMode, setAutoMode }: { speakers: Record<string, string[]>; speakerMappings: Record<string, string>; setSpeakerMapping: (speakerId: string, newLabel: string) => void; insertSpeakerMention: (clipIndex: number | null, text?: string) => void; autoMode: boolean; setAutoMode: (enabled: boolean) => void }) {
-  const [hoveringField, setHoveringField] = useState<{ field: 'label' | 'name'; speakerId: string } | null>(null)
+  const [hoveringField, setHoveringField] = useState<{ field?: 'label' | 'name'; speakerId?: string }>({})
 
   return (
     <div className="flex flex-col gap-3">
@@ -805,7 +807,7 @@ function SpeakerManagementCard({ speakers, speakerMappings, setSpeakerMapping, i
 
       {/* Speaker cards grid */}
       {Object.entries(speakers).map(([speakerId, samples], i) => (
-        <SpeakerCard key={speakerId} index={i} speakerId={speakerId} label={speakerMappings[speakerId] || 'Unknown'} samples={samples.slice(0, 1)} onLabelChange={(newLabel: string) => setSpeakerMapping(speakerId, newLabel)} hoveringField={hoveringField?.field === 'label' && hoveringField?.speakerId === speakerId ? 'label' : ''} hoverPreviewText={hoveringField?.field === 'name' && hoveringField?.speakerId === speakerId ? samples[0] : null} onMouseEnter={() => { if (!autoMode) setHoveringField({ field: 'label', speakerId }) }} onMouseLeave={() => setHoveringField(null)} />
+        <SpeakerCard key={speakerId} index={i} speakerId={speakerId} label={speakerMappings[speakerId] || 'Unknown'} samples={samples.slice(0, 1)} onLabelChange={(newLabel: string) => setSpeakerMapping(speakerId, newLabel)} hoveringField={hoveringField?.field === 'label' && hoveringField?.speakerId === speakerId ? 'label' : ''} hoverPreviewText={hoveringField?.field === 'name' && hoveringField?.speakerId === speakerId ? samples[0] : null} onMouseEnter={() => { if (!autoMode) setHoveringField({ field: 'label', speakerId }) }} onMouseLeave={() => setHoveringField({})} />
       ))}
 
       {/* Insert mention button */}
@@ -819,12 +821,13 @@ function SpeakerManagementCard({ speakers, speakerMappings, setSpeakerMapping, i
 function SpeakerCard({ index, speakerId, label, samples, onLabelChange, hoveringField, hoverPreviewText, onMouseEnter, onMouseLeave }: { index: number; speakerId: string; label: string; samples: string[]; onLabelChange: (newLabel: string) => void; hoveringField: string; hoverPreviewText: string | null; onMouseEnter: () => void; onMouseLeave: () => void }) {
   return (
     <div className="relative group">
-      <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] px-0.5 py-0.25 rounded-full bg-bg-primary border border-input-field whitespace-nowrap transition-colors ${hoveringField === 'label' ? 'border-accent-blue ring-1 ring-accent-blue/30' : ''}`}>
+      {/* Category badge */}
+      <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] px-0.5 py-0.25 rounded-full bg-bg-primary border border-input-field whitespace-nowrap transition-colors ${hoveringField === 'label' ? 'border-accent-blue ring-1 ring-accent-blue/30' : ''}`}>
         {index + 1}
-      </div>
+      </span>
 
       {/* Label field with hover preview */}
-      <input type="text" value={label} onChange={(e) => onLabelChange(e.target.value)} className={`w-full h-[24px] px-2 text-xs rounded border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue text-center ${hoveringField === 'label' ? 'border-accent-blue ring-1 ring-accent-blue/30 bg-accent-blue/5' : 'border-input-field hover:border-input-field-hover'} transition-colors`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+      <input type="text" value={label} onChange={(e) => onLabelChange(e.target.value)} className={`w-full h-[24px] px-2 text-xs rounded border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue text-center cursor-text ${hoveringField === 'label' ? 'border-accent-blue ring-1 ring-accent-blue/30 bg-accent-blue/5' : 'border-input-field hover:border-input-field-hover'} transition-colors`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
 
       {/* Hover preview tooltip */}
       {hoveringField === 'label' && hoverPreviewText !== null && (
@@ -837,7 +840,7 @@ function SpeakerCard({ index, speakerId, label, samples, onLabelChange, hovering
       <span className="text-[9px] text-text-muted absolute -top-5 left-0 px-1.5 bg-bg-primary rounded-md border border-input-field opacity-0 group-hover:opacity-100 transition-opacity">ID: {speakerId}</span>
 
       {/* Collapse/expand toggle */}
-      <button className="absolute top-1 right-0.5 text-text-muted hover:text-accent-blue text-[9px] p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" title={hoverPreviewText || 'Expandir'}>
+      <button className="absolute top-1 right-0.5 text-text-muted hover:text-accent-blue text-[9px] p-0.5 rounded opacity-0 group-hover:opacity-100 transition-colors" title={hoverPreviewText || 'Expandir'}>
         {hoveringField === 'label' ? <ChevronDown size={8} /> : <ChevronRight size={8} />}
       </button>
     </div>
@@ -853,7 +856,7 @@ function Check({ size = 14 }: { size?: number }) {
 }
 
 // ============================================================
-// === ERROR BANNER SUB-COMPONENT ===
+// === ERROR BANNER SUB-COMPONENTS ===
 // ============================================================
 
 function DirectorErrorBanner({ error, pipelineStatus }: { error: string; pipelineStatus: 'idle' | 'uploading' | 'analyzing' | 'plan' | 'generate' }) {
@@ -974,7 +977,7 @@ function DirectorTimelineEditor() {
   if (step === 'upload' || step === 'finished') return null
 
   // Build section colors map for the timeline
-  const colorMap: Record<string, string> = {
+  const colorMapTimeline: Record<string, string> = {
     intro: 'bg-blue-500', verse: 'bg-green-500', chorus: 'bg-purple-500', bridge: 'bg-yellow-500', outro: 'bg-gray-500', instrumental: 'bg-cyan-500',
   }
 
@@ -1020,7 +1023,7 @@ function DirectorTimelineEditor() {
         <div key={clip.start} className="h-full rounded-l-md" style={{ width: `${widthPct}%` }} title={`${sectionLabel} — ${formatTime(clip.start)} – ${formatTime(clip.end)}`}>
           {clip.section_label !== 'instrumental' && (
             <svg viewBox="0 0 24 24" className="w-3 h-3 text-white fill-current shrink-0 self-center">
-              <path d={M_PATH} />
+              <path d="M1,1 L23,11 L1,21 Z M5.5,9 L8.5,14 L6.5,17 Z" />
             </svg>
           )}
         </div>
@@ -1055,16 +1058,16 @@ function DirectorTimelineEditor() {
 
       {/* Section labels list */}
       <div className="flex flex-wrap items-center gap-1 px-2 py-1">
-        {!analysis ? (
+        {!analysisMemo ? (
           <span className="text-xs text-text-muted">Analisando áudio...</span>
         ) : plannedClips.length === 0 ? (
           <span className="text-xs text-text-muted">Nenhum clip planejado</span>
         ) : (
           <>
-            {['intro', 'verse', 'chorus', 'bridge', 'outro', 'instrumental'].map(label => {
+            {sectionLabels.map(label => {
               const clipsInSection = plannedClips.filter(c => c.section_label === label)
               return (
-                <button key={label} className={`text-xs px-1.5 py-0.5 rounded-full transition-colors ${colorMap[label] || 'bg-bg-hover'} hover:opacity-80`} title={`${label}s — ${clipsInSection.length}`}>
+                <button key={label} className={`text-xs px-1.5 py-0.5 rounded-full transition-colors ${colorMap[label] || 'bg-bg-hover'} hover:opacity-80`} title={`${sectionLabels.find(l => l === label)?.toUpperCase()} — ${clipsInSection.length}`}>
                   {label} ({clipsInSection.length})
                 </button>
               )
@@ -1093,4 +1096,4 @@ function DirectorTimelineEditor() {
 }
 
 // SVG path for the timeline bar markers (small triangle pointing right)
-const M_PATH = "M10,0L20,10L10,20"
+const M_PATH = "M1,1 L23,11 L1,21 Z M5.5,9 L8.5,14 L6.5,17 Z"
