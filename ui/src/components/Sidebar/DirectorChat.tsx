@@ -808,33 +808,15 @@ export function DirectorChat() {
                   WHERE the audio comes from, the References tab opens
                   the visual anchors panel. */}
               {!isShortFilm && (
-                <div className="flex items-stretch gap-1.5">
-                  <DirectorMusicSourceCombobox
-                    value={(musicSource || 'upload') as 'upload' | 'generate'}
-                    /* Clicking the combobox closes the References
-                       panel so the user always sees the audio panel
-                       reflect their latest selection. Without this the
-                       audio content stays hidden behind the refs
-                       panel and the combobox feels unresponsive. */
-                    onChange={(v) => {
-                      setMusicSource(v)
-                      setReferencesOpen(false)
-                    }}
-                  />
-                  <ReferencesTabButton
-                    active={referencesOpen}
-                    /* Clicking the References button also closes the
-                       audio panel (mutually exclusive surfaces) so the
-                       user always sees a single coherent section below
-                       the header row. */
-                    onClick={() => setReferencesOpen(o => {
-                      const next = !o
-                      // Toggling References off restores the audio
-                      // panel automatically (no state to flip back).
-                      return next
-                    })}
-                  />
-                </div>
+                <DirectorAudioSourceTabs
+                  value={(musicSource || 'upload') as 'upload' | 'generate'}
+                  referencesOpen={referencesOpen}
+                  onMusicSourceChange={(v) => {
+                    setMusicSource(v)
+                    setReferencesOpen(false)
+                  }}
+                  onReferencesToggle={() => setReferencesOpen(o => !o)}
+                />
               )}
               {/* Audio source panel + CLIP STRUCTURE — both render
                   ONLY when the References panel is closed. The user
@@ -1457,155 +1439,87 @@ function UploadZone({
   )
 }
 
-/* Custom dropdown for choosing between uploading a track or generating
-   one with the music model. Replaces the previous segmented toggle so
-   the chat column reads as a single primary affordance with a list of
-   choices — closer to the "Audio source" header other surfaces use.
+/* Three equal-width tabs that replace the previous "dropdown + sibling
+   button" row. Each tab uses `flex-1` so they share the row evenly
+   (1fr each); the active tab paints its border + text + icon in the
+   accent colour, the inactive ones stay muted until hover. The three
+   tabs are mutually exclusive: clicking References flips the
+   references-open flag and the parent stops rendering the audio panel
+   behind it, so only one surface is visible at a time. The "Upload"
+   and "Generate" tabs drive `directorMusicSource`; the References
+   tab is local to the chat (the audio-source tabs always close it
+   when re-selected).
 
-   Behavior:
-   - Click anywhere on the trigger button to toggle the menu.
-   - Click an option to select it AND close the menu.
-   - Click outside or press Escape to dismiss without changing.
-   - The trigger always reflects the active option's label + icon so
-     the user knows what they're currently set to without opening. */
-function DirectorMusicSourceCombobox({ value, onChange }: {
+   The visual chrome matches the previous ReferencesTabButton so the
+   row reads as one cohesive header rather than a combobox with a
+   stray button stuck beside it. role="tablist" + role="tab" + aria-
+   selected announce the state to screen readers and integrate with
+   keyboard nav (Tab cycles between tabs, Space/Enter activates). */
+function DirectorAudioSourceTabs({
+  value,
+  referencesOpen,
+  onMusicSourceChange,
+  onReferencesToggle,
+}: {
   value: 'upload' | 'generate'
-  onChange: (v: 'upload' | 'generate') => void
+  referencesOpen: boolean
+  onMusicSourceChange: (v: 'upload' | 'generate') => void
+  onReferencesToggle: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  // Outside-click + Escape dismissal. Each combobox is its own focus
-  // scope — a single global listener trying to close every popover
-  // would race with the DirectorTourOverlay's own keyboard handler.
-  useEffect(() => {
-    if (!open) return undefined
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        setOpen(false)
-      }
-    }
-    window.addEventListener('mousedown', onDown)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      window.removeEventListener('mousedown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
-  const options: Array<{
-    id: 'upload' | 'generate'
-    label: string
-    /** Tooltip shown on hover AND read by screen readers via aria-label.
-     *  Replaces the old subtext line so the listbox stays one row tall. */
-    hint: string
-    Icon: React.ComponentType<{ size?: number; className?: string }>
-  }> = [
-    {
-      id: 'upload',
-      label: 'Upload a track',
-      hint: 'Drop a song or video file from your machine',
-      Icon: Music,
-    },
-    {
-      id: 'generate',
-      label: 'Generate a track',
-      hint: 'Compose a song with the selected music model',
-      Icon: Sparkles,
-    },
-  ]
-  const current = options.find(o => o.id === value) || options[0]
-
   return (
-    <div ref={rootRef} className="relative shrink-0 w-[170px]">
+    <div role="tablist" aria-label="Audio source tabs" className="flex items-stretch gap-1.5">
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`Audio source: ${current.label}`}
-        title={current.hint}
-        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border bg-bg-tertiary text-xs transition-colors ${
-          open
-            ? 'border-accent-blue text-text-primary'
-            : 'border-border hover:border-border-light text-text-primary'
+        role="tab"
+        aria-selected={value === 'upload' && !referencesOpen}
+        aria-label="Upload a track"
+        title="Drop a song or video file from your machine"
+        onClick={() => onMusicSourceChange('upload')}
+        data-testid="director-tab-upload"
+        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border bg-bg-tertiary text-xs font-medium transition-colors ${
+          value === 'upload' && !referencesOpen
+            ? 'border-accent-blue text-accent-blue'
+            : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <current.Icon size={14} className="text-accent-blue shrink-0" />
-        <span className="flex-1 text-left font-medium whitespace-nowrap">{current.label}</span>
-        <ChevronDown size={14} className={`text-text-muted transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} />
+        <Music size={13} className={value === 'upload' && !referencesOpen ? 'text-accent-blue' : 'text-text-muted'} />
+        <span>Upload</span>
       </button>
-      {open && (
-        <ul
-          role="listbox"
-          aria-label="Audio source"
-          className="absolute z-30 left-0 right-0 mt-1 rounded-lg border border-border bg-bg-secondary shadow-2xl py-1"
-        >
-          {options.map(opt => {
-            const active = opt.id === value
-            return (
-              <li key={opt.id} role="option" aria-selected={active}>
-                <button
-                  type="button"
-                  onClick={() => { onChange(opt.id); setOpen(false) }}
-                  title={opt.hint}
-                  aria-label={`${opt.label} — ${opt.hint}`}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors ${
-                    active
-                      ? 'bg-accent-blue/15 text-text-primary'
-                      : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
-                  }`}
-                >
-                  <opt.Icon size={13} className={`shrink-0 ${active ? 'text-accent-blue' : 'text-text-muted'}`} />
-                  <span className="flex-1 font-medium whitespace-nowrap">{opt.label}</span>
-                  {active && <Check size={12} className="text-accent-blue shrink-0" />}
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      )}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === 'generate' && !referencesOpen}
+        aria-label="Generate a track"
+        title="Compose a song with the selected music model"
+        onClick={() => onMusicSourceChange('generate')}
+        data-testid="director-tab-generate"
+        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border bg-bg-tertiary text-xs font-medium transition-colors ${
+          value === 'generate' && !referencesOpen
+            ? 'border-accent-blue text-accent-blue'
+            : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
+        }`}
+      >
+        <Sparkles size={13} className={value === 'generate' && !referencesOpen ? 'text-accent-blue' : 'text-text-muted'} />
+        <span>Generate</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={referencesOpen}
+        aria-label="References panel"
+        title="Open the visual anchors panel (reference photo + character / location / voice refs)"
+        onClick={onReferencesToggle}
+        data-testid="director-tab-references"
+        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border bg-bg-tertiary text-xs font-medium transition-colors ${
+          referencesOpen
+            ? 'border-accent-blue text-accent-blue'
+            : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
+        }`}
+      >
+        <ImageIcon size={13} className={referencesOpen ? 'text-accent-blue' : 'text-text-muted'} />
+        <span>References</span>
+      </button>
     </div>
-  )
-}
-
-/* Peer button to the audio-source combobox. Opens/closes the
-   References panel (reference photo + character/location refs +
-   voice ref). Sits on the right half of the header row so the two
-   affordances are visually balanced — both 50% wide, same border +
-   padding treatment, same height.
-
-   The button reflects its open/closed state with a coloured bottom
-   border so the user sees whether the panel below is expanded. The
-   aria-expanded + aria-controls pair makes the toggle state
-   available to screen readers and integrates with keyboard nav. */
-function ReferencesTabButton({ active, onClick }: {
-  active: boolean
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={active}
-      aria-expanded={active}
-      aria-label="References panel"
-      onClick={onClick}
-      className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border bg-bg-tertiary text-xs font-medium transition-colors ${
-        active
-          ? 'border-accent-blue text-accent-blue'
-          : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
-      }`}
-    >
-      <ImageIcon size={13} className={active ? 'text-accent-blue' : 'text-text-muted'} />
-      <span>References</span>
-    </button>
   )
 }
 
