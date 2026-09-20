@@ -1,11 +1,43 @@
 import { DirectorTimelineEditor } from './DirectorTimelineEditor'
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ChevronDown, ImageIcon, Play } from 'lucide-react'
-import { useStore } from '../../stores/useStore'
-import { DirectorActivityBadge } from './DirectorActivityBar'
-import { DirectorErrorBanner } from './DirectorErrorBanner'
-const AUDIO_ACCEPT = '.wav,.mp3,.flac,.ogg,.m4a'
-const IMAGE_ACCEPT = '.png,.jpg,.jpeg,.webp,.bmp'
+
+// === Speaker category helper functions ===
+const getCategoryLabel = (text?: string): string => {
+  if (!text) return 'other'
+  let category: string = 'other'
+  const lowerText = text.toLowerCase()
+  if (/duet|dueto|dúo/i.test(lowerText)) { category = 'duet' }
+  else if (/chorus|coral|corais|grupo/i.test(lowerText)) { category = 'choir' }
+  else if (/(?<![_])rapping(?:ing)?/i.test(lowerText) || /\bdiss|flow/i.test(lowerText)) { category = 'rapping' }
+  else if (/vocal(?:ist)?/i.test(text.split('_')[0] || '')) {
+    const name = text.split('_')?.[1]?.toLowerCase() || ''
+    if (/female|woman|ella|delia|laura/i.test(name)) { category = 'vocals_female' }
+    else { category = 'vocals_male' }
+  }
+  return category
+}
+
+const SPEAKER_CATEGORIES = [
+  { id: 'vocals_male', label: 'Vocal Masculino', color: 'bg-green-500/20 text-chip-green border-green-400/30' },
+  { id: 'vocals_female', label: 'Vocal Feminino', color: 'bg-pink-500/20 text-chip-pink border-pink-400/30' },
+  { id: 'choir', label: 'Coro / Coral', color: 'bg-purple-500/20 text-chip-purple border-purple-400/30' },
+  { id: 'rapping', label: 'Rap / Flow', color: 'bg-orange-500/20 text-chip-orange border-orange-400/30' },
+  { id: 'duet', label: 'Dueto', color: 'bg-cyan-500/20 text-chip-cyan border-cyan-400/30' },
+  { id: 'other', label: 'Outros / Instrumental', color: 'bg-gray-500/20 text-chip-gray border-gray-400/30' },
+]
+
+// === TYPES ===
+interface PlannedClip {
+  beat_count: number
+  start: number
+  end: number
+  section_label: string
+  energy: number
+  dominant_speaker?: string
+  imagePrompt?: string
+  videoPrompt?: string
+}
 
 function formatTime(s: number): string {
   const m = Math.floor(s / 60)
@@ -44,15 +76,18 @@ function EnergyDot({ energy }: { energy: number }) {
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={`Energy: ${(energy * 100).toFixed(0)}%`} />
 }
 
+interface PlannedClipWithImage extends PlannedClip {
+  image?: string
+}
+
+// === DIRECTOR PANEL COMPONENT ===
 export function DirectorPanel() {
   const step = useStore(s => s.directorStep)
   const loading = useStore(s => s.directorLoading)
-  // See DirectorChat.tsx for full rationale — sub-status set by the
-  // polling loop in director*UploadAndAnalyze.
   const loadingMessage = useStore(s => s.directorLoadingMessage)
   const error = useStore(s => s.directorError)
   const analysis = useStore(s => s.directorAnalysis)
-  const plannedClips = useStore(s => s.directorPlannedClips)
+  const plannedClips = useStore(s => s.directorPlannedClips) as PlannedClip[]
   const energyBias = useStore(s => s.directorEnergyBias)
   const clipPlans = useStore(s => s.directorClipPlans)
   const sceneDescription = useStore(s => s.directorSceneDescription)
@@ -103,7 +138,60 @@ export function DirectorPanel() {
   const [dragOver, setDragOver] = useState(false)
   const [localBias, setLocalBias] = useState<number | null>(null)
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false)
-  const sliderRef = useRef<number | null>(null)
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({})
+
+  // Compute speaker categories from lyrics text using the helper function
+  useEffect(() => {
+    if (!analysis?.lyrics || plannedClips.length === 0) return
+    const byCategory: Record<string, PlannedClip[]> = {}
+    for (const clip of plannedClips) {
+      let category = 'other'
+      for (const seg of analysis.lyrics) {
+        if (seg.start >= clip.start && seg.end <= clip.end && seg.speaker) {
+          const label = getCategoryLabel(seg.text)
+          category = label
+          break
+        }
+      }
+      if (!byCategory[category]) byCategory[category] = []
+      byCategory[category].push(clip)
+    }
+    const categories = Object.keys(byCategory).sort()
+    setCollapsedCategories(prev => {
+      const next: Record<string, boolean> = {}
+      for (const cat of categories) {
+        if (!prev[cat]) next[cat] = true
+      }
+      return next
+    })
+  }, [analysis?.lyrics, plannedClips])
+
+  // Get first speaker sample for a clip
+  const getFirstSample = useCallback((clip: PlannedClip): string => {
+    if (step === 'plan') return ''
+    let dominant: string | undefined = clip.dominant_speaker
+    if (!dominant && analysis?.lyrics) {
+      for (const seg of analysis.lyrics) {
+        if (seg.start >= clip.start && seg.end <= clip.end && seg.speaker) {
+          dominant = seg.speaker
+          break
+        }
+      }
+    }
+    const sample = speakers?.[dominant]?.samples || []
+    return sample.length > 0 ? sample[0] : '...'
+  }, [step, analysis, speakers])
+
+  // Determine auto-mode category for a clip
+  const getAutoCategory = useCallback((clip: PlannedClip): string => {
+    if (!analysis?.lyrics) return 'other'
+    for (const seg of analysis.lyrics) {
+      if (seg.start >= clip.start && seg.end <= clip.end && seg.speaker) {
+        return getCategoryLabel(seg.text)
+      }
+    }
+    return 'other'
+  }, [analysis?.lyrics])
 
   const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith('audio/') && !AUDIO_ACCEPT.split(',').some(ext => file.name.toLowerCase().endsWith(ext))) {
@@ -131,15 +219,25 @@ export function DirectorPanel() {
     for (const c of plannedClips) {
       counts[c.beat_count] = (counts[c.beat_count] || 0) + 1
     }
-    return Object.entries(counts)
-      .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([beats, count]) => `${count}x${beats}-beat`)
-      .join(', ')
+    return Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ')
   }, [plannedClips])
+
+  // Process planned clips into a structure suitable for the left column UI
+  const processedClips = useMemo(() => {
+    return plannedClips.map(clip => ({
+      ...clip,
+      category: autoMode ? getAutoCategory(clip) : 'other',
+      sampleText: getFirstSample(clip),
+    })) as PlannedClipWithImage[]
+  }, [plannedClips, autoMode, getAutoCategory, getFirstSample])
+
+  const refAudioPreview = useMemo(() => audioFile ? URL.createObjectURL(audioFile) : null, [audioFile])
 
   return (
     <div className="bg-bg-tertiary/50 border border-accent-blue/30 rounded-lg p-3 space-y-3">
+      {/* Timeline editor (separate column, collapsible) */}
       <DirectorTimelineEditor />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -162,654 +260,837 @@ export function DirectorPanel() {
         )}
       </div>
 
-      {/* Error — rich banner. See DirectorErrorBanner for the full list
-          of supported error kinds (OOM, VRAM, network, LoRA, …) and
-          the per-kind remediation steps it renders. */}
+      {/* Error banner */}
       {error && (
-        <DirectorErrorBanner
-          error={error}
-          pipelineStatus={useStore.getState().pipelineStatus}
-        />
+        <DirectorErrorBanner error={error} pipelineStatus={useStore.getState().pipelineStatus} />
       )}
 
-      {/* Step 1: Upload */}
-      {(step === 'upload' || step === 'analyze') && (
-        <div
-          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-            dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
-          }`}
-        >
-          {loading ? (
-            <div className="flex flex-col items-center gap-2 py-2">
-              <Loader2 size={20} className="animate-spin text-accent-blue" />
-              <span className="text-xs text-text-muted text-center px-2">
-                {loadingMessage || 'Analyzing audio...'}
-              </span>
-            </div>
-          ) : audioFile ? (
-            <div className="flex flex-col items-center gap-1">
-              <Music size={16} className="text-text-muted" />
-              <span className="text-xs text-text-secondary truncate max-w-full">{audioFile.name}</span>
-            </div>
-          ) : (
-            <label className="cursor-pointer flex flex-col items-center gap-1.5">
-              <Upload size={18} className="text-text-muted" />
-              <span className="text-xs text-text-muted">Drop a song or click to upload</span>
-              <span className="text-2xs text-text-muted">wav, mp3, flac, ogg, m4a</span>
-              <input
-                type="file"
-                accept={AUDIO_ACCEPT}
-                className="hidden"
-                onChange={e => {
-                  const file = e.target.files?.[0]
-                  if (file) handleFile(file)
-                }}
-              />
+      {/* === LEFT COLUMN: Audio Upload & Clip Structure === */}
+      <div className="flex flex-col gap-3">
+        {/* Step 1 — Upload zone (fixed height with scroll) */}
+        {step === 'upload' && (
+          <>
+            <label className={`group relative w-full h-[45vh] min-h-[80px] border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center rounded-md overflow-hidden ${dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-input-field hover:border-input-field-hover'} ${audioFile ? '' : 'text-text-muted'}`}>
+              <input type="file" accept={AUDIO_ACCEPT} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+              <div className={`${audioFile ? 'opacity-50' : ''} transition-opacity`}>
+                <Upload size={24} className="mb-1.5" />
+                <span className="text-xs font-medium">Arraste seu áudio aqui</span>
+                <span className="text-3xs mt-1 text-text-muted">ou clique para selecionar (.wav, .mp3, .flac)</span>
+              </div>
             </label>
-          )}
-        </div>
-      )}
 
-      {/* Analysis summary (shown as context once past upload) */}
-      {analysis && step !== 'upload' && step !== 'analyze' && (
-        <div className="space-y-1">
-          <button
-            onClick={() => setShowAnalysisDetails(v => !v)}
-            className="flex items-center gap-3 text-xs text-text-muted w-full hover:text-text-secondary transition-colors"
-          >
-            <ChevronDown size={10} className={`transition-transform ${showAnalysisDetails ? '' : '-rotate-90'}`} />
-            <span>{formatTime(analysis.duration)}</span>
-            <span>{analysis.bpm.toFixed(0)} BPM</span>
-            <span>{analysis.sections.length} sections</span>
-            {analysis.lyrics && <span>{analysis.lyrics.length} lyric segments</span>}
-          </button>
-
-          {showAnalysisDetails && (
-            <div className="bg-bg-tertiary rounded-lg p-2 space-y-2 max-h-[250px] overflow-y-auto text-2xs">
-              {/* Sections */}
-              <div>
-                <div className="text-text-muted uppercase tracking-wider mb-1 font-medium">Sections</div>
-                <div className="space-y-0.5">
-                  {analysis.sections.map((sec, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-text-muted w-16 shrink-0">
-                        {formatTime(sec.start)}-{formatTime(sec.end)}
-                      </span>
-                      <SectionBadge label={sec.label} />
-                      <EnergyDot energy={sec.energy} />
-                      <span className="text-text-muted">{(sec.energy * 100).toFixed(0)}%</span>
-                    </div>
-                  ))}
+            {/* Local bias slider (only when audio is uploaded) */}
+            {audioFile && (
+              <div className="mt-auto p-2 bg-bg-primary/50 rounded-md">
+                <div className="flex items-center justify-between mb-1.5 text-xs">
+                  <span className="text-text-secondary">Bias de energia</span>
+                  <span className={`text-xs ${localBias !== null ? 'text-accent-blue' : ''}`}>{localBias !== null ? `${(localBias * 100).toFixed(0)}%` : '-'}</span>
                 </div>
+                <input type="range" min={-3} max={3} step={0.1} value={localBias ?? 0} onChange={(e) => setLocalBias(parseFloat(e.target.value))} className="w-full h-1 bg-accent-blue/20 rounded-lg appearance-none cursor-pointer accent-accent-blue" />
               </div>
+            )}
+          </>
+        )}
 
-              {/* Lyrics — grouped by song structure if available */}
-              {analysis.lyrics && analysis.lyrics.length > 0 && (
-                <div>
-                  <div className="text-text-muted uppercase tracking-wider mb-1 font-medium">
-                    Lyrics {analysis.song_structure?.length ? '(LLM Structure)' : '(Whisper)'}
-                  </div>
-                  <div className="space-y-0.5">
-                    {analysis.song_structure && analysis.song_structure.length > 0 ? (
-                      // Show lyrics grouped under LLM-identified section headers
-                      analysis.song_structure.map((section, si) => {
-                        const nextStart = si < analysis.song_structure!.length - 1
-                          ? analysis.song_structure![si + 1].start
-                          : Infinity
-                        const sectionLyrics = analysis.lyrics!.filter(
-                          seg => seg.start >= section.start && seg.start < nextStart
-                        )
-                        return (
-                          <div key={si} className="mb-1.5">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <SectionBadge label={section.label} />
-                              <span className="text-text-muted">{formatTime(section.start)}</span>
-                              <span className="text-text-secondary font-medium">[{section.display_label}]</span>
-                            </div>
-                            {sectionLyrics.map((seg, li) => (
-                              <div key={li} className="flex gap-2 pl-2">
-                                <span className="text-text-muted w-14 shrink-0 text-right">
-                                  {formatTime(seg.start)}
-                                </span>
-                                <span className="text-text-secondary">
-                                  {seg.speaker && (
-                                    <span className="text-accent-blue text-2xs mr-1">[{seg.speaker}]</span>
-                                  )}
-                                  {seg.text}
-                                </span>
-                              </div>
-                            ))}
-                            {sectionLyrics.length === 0 && (
-                              <div className="pl-2 text-text-muted italic">(instrumental)</div>
-                            )}
-                          </div>
-                        )
-                      })
-                    ) : (
-                      // Fallback: flat transcript
-                      analysis.lyrics.map((seg, i) => (
-                        <div key={i} className="flex gap-2">
-                          <span className="text-text-muted w-16 shrink-0">
-                            {formatTime(seg.start)}-{formatTime(seg.end)}
-                          </span>
-                          <span className="text-text-secondary">
-                            {seg.speaker && (
-                              <span className="text-accent-blue text-2xs mr-1">[{seg.speaker}]</span>
-                            )}
-                            {seg.text}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        {/* Step 2 — Structure preview */}
+        {step === 'analyze' && (
+          <div className="space-y-3">
+            <label className="text-xs font-medium text-text-primary flex items-center gap-1.5 cursor-pointer select-none" onClick={() => setShowAnalysisDetails(!showAnalysisDetails)}>
+              <ChevronRight size={12} className={`transition-transform ${showAnalysisDetails ? 'rotate-90' : ''}`} />
+              Análise da música — {showAnalysisDetails ? 'Esconder detalhes' : 'Mostrar detalhes'}
+            </label>
 
-      {/* Step 2: Clip Structure (beat-aligned) */}
-      {step === 'structure' && (
-        <div className="space-y-3">
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs text-text-muted uppercase tracking-wider">Cut Speed</label>
-              <span className="text-xs text-text-secondary">
-                {(localBias ?? energyBias) > 0 ? '+' : ''}{localBias ?? energyBias}
-              </span>
-            </div>
-            <input
-              type="range"
-              min={-2}
-              max={2}
-              step={1}
-              value={localBias ?? energyBias}
-              onChange={e => {
-                const v = Number(e.target.value)
-                setLocalBias(v)
-                sliderRef.current = v
-              }}
-              onMouseUp={() => {
-                if (sliderRef.current !== null && sliderRef.current !== energyBias) {
-                  setEnergyBias(sliderRef.current)
-                }
-                setLocalBias(null)
-                sliderRef.current = null
-              }}
-              onTouchEnd={() => {
-                if (sliderRef.current !== null && sliderRef.current !== energyBias) {
-                  setEnergyBias(sliderRef.current)
-                }
-                setLocalBias(null)
-                sliderRef.current = null
-              }}
-              className="w-full"
-            />
-            <div className="flex items-center justify-between mt-1 text-2xs text-text-muted">
-              <span>Slower cuts</span>
-              <span>Faster cuts</span>
-            </div>
-          </div>
+            {/* Analysis details collapsible */}
+            <div className={`space-y-2 transition-all overflow-hidden ${showAnalysisDetails ? 'max-h-[30vh]' : ''}`}>
+              <div className="bg-bg-primary/50 rounded-md p-2.5 space-y-2 text-xs">
+                {analysis && (
+                  <>
+                    {/* BPM / key */}
+                    <div className="flex items-center justify-between bg-accent-blue/10 px-2 py-1 rounded-md">
+                      <span className="text-text-secondary font-medium">{analysis.bpm.toFixed(1)} BPM</span>
+                      {analysis.key && <span className="text-text-muted text-2xs">Chord: {analysis.key}</span>}
+                    </div>
 
-          {/* Clip structure visualization */}
-          <div className="bg-bg-tertiary rounded-lg p-2 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-text-secondary font-medium">{plannedClips.length} clips</span>
-              <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
-            </div>
-
-            {loading ? (
-              /* Live activity badge — replaces the hard-coded
-                 "Recalculating..." string that used to sit here. Reads
-                 directorActivityLabel from the store (derived from the
-                 live pipeline status in useStore.ts) so the user sees
-                 the actual phase: "Planning with LLM…", "Polishing
-                 prompts…", "Generating start image 3/13…", etc.
-                 Cancel button reuses cancelDirectorV2Plan() which aborts
-                 the HTTP request AND tells the backend to short-circuit
-                 the worker thread, so the GPU/llama-server stops
-                 generating tokens that no one will read. */
-              <DirectorActivityBadge cancelTitle="Stop the Director run" />
-            ) : (
-              <>
-                {/* Proportional bar chart */}
-                <div className="flex gap-px h-8 rounded overflow-hidden">
-                  {plannedClips.map((clip, i) => {
-                    const widthPct = Math.max((clip.beat_count / plannedClips.reduce((s, c) => s + c.beat_count, 0)) * 100, 1.5)
-                    const barColor = sectionBarColors[clip.section_label] || 'bg-gray-500'
-                    return (
-                      <div
-                        key={i}
-                        className={`${barColor} opacity-70 hover:opacity-100 transition-opacity relative group cursor-default`}
-                        style={{ width: `${widthPct}%` }}
-                        title={`Clip ${i + 1}: ${clip.section_label}, ${clip.beat_count} beats (${(clip.end - clip.start).toFixed(1)}s)`}
-                      >
-                        {/* Tooltip on hover */}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 pointer-events-none">
-                          <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary whitespace-nowrap shadow-lg">
-                            Clip {i + 1}: {clip.section_label}, {clip.beat_count} beats ({(clip.end - clip.start).toFixed(1)}s)
-                          </div>
-                        </div>
+                    {/* Energy bias */}
+                    <div className="space-y-0.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-text-secondary font-medium">Bias de energia</span>
+                        <span className={`text-xs ${energyBias > 0 ? 'text-accent-red' : energyBias < 0 ? 'text-accent-blue' : ''}`}>
+                          {energyBias !== null && energyBias !== undefined ? `${(energyBias * 100).toFixed(0)}%` : '-'}
+                        </span>
                       </div>
-                    )
-                  })}
-                </div>
-
-                {/* Beat distribution and section legend */}
-                <div className="text-2xs text-text-muted space-y-1">
-                  <div>{beatDistribution}</div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                    {Object.entries(sectionBarColors).map(([label, color]) => {
-                      const count = plannedClips.filter(c => c.section_label === label).length
-                      if (count === 0) return null
-                      return (
-                        <div key={label} className="flex items-center gap-1">
-                          <span className={`w-2 h-2 rounded-sm ${color}`} />
-                          <span>{label} ({count})</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <button
-            onClick={confirmStructure}
-            disabled={loading || plannedClips.length === 0}
-            className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-          >
-            <ChevronRight size={12} /> Continue
-          </button>
-        </div>
-      )}
-
-      {/* Step 3: Scene description + Reference image */}
-      {step === 'style' && (
-        <div className="space-y-2">
-          {/* Auto-mode checkbox */}
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={autoMode}
-              onChange={e => setAutoMode(e.target.checked)}
-              className="accent-accent-blue"
-            />
-            <span className="text-xs text-text-secondary font-medium">Automatic production — skip review stages</span>
-          </label>
-          {autoMode && (
-            <p className="text-2xs text-text-muted -mt-1">
-              After planning, the Director will generate images, video prompts, and start generation without stopping for review.
-            </p>
-          )}
-
-          {/* Reference image upload */}
-          <div>
-            <label className="text-xs text-text-muted uppercase tracking-wider block mb-1">Reference Photo</label>
-            {referenceImage && refImagePreview ? (
-              <div className="relative inline-block">
-                <img
-                  src={refImagePreview}
-                  alt="Reference"
-                  className="w-20 h-20 object-cover rounded-lg border border-border"
-                />
-                <button
-                  onClick={() => setReferenceImage(null)}
-                  className="absolute -top-1 -right-1 bg-bg-secondary rounded-full p-0.5 border border-border hover:bg-bg-hover"
-                >
-                  <X size={10} />
-                </button>
-              </div>
-            ) : (
-              <label className="cursor-pointer flex items-center gap-2 border border-dashed border-border rounded-lg px-3 py-2 hover:border-border-light transition-colors">
-                <ImageIcon size={14} className="text-text-muted" />
-                <span className="text-xs text-text-muted">Upload reference photo (optional)</span>
-                <input
-                  type="file"
-                  accept={IMAGE_ACCEPT}
-                  className="hidden"
-                  onChange={e => {
-                    const file = e.target.files?.[0]
-                    if (file) setReferenceImage(file)
-                  }}
-                />
-              </label>
-            )}
-            <span className="text-2xs text-text-muted mt-0.5 block">
-              Used to generate unique start images for each clip
-            </span>
-          </div>
-
-          {/* Speaker Mapping — shown when diarization found 2+ speakers */}
-          {speakers.length >= 1 && (
-            <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider block mb-1">Speakers Detected</label>
-              <div className="space-y-2">
-                {speakerMappings.map((mapping) => (
-                  <div key={mapping.speakerId} className="bg-bg-tertiary rounded-lg p-2 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => insertSpeakerMention(mapping.speakerId)}
-                        className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
-                        title={`Insert @${mapping.speakerId} into description`}
-                      >
-                        {mapping.speakerId}
-                      </button>
-                      <input
-                        type="text"
-                        value={mapping.name}
-                        onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role)}
-                        placeholder="e.g. man in green hoodie"
-                        className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
-                      />
-                      <select
-                        value={mapping.role}
-                        onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
-                        className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
-                      >
-                        <option value="">role</option>
-                        <option value="rapping">rapping</option>
-                        <option value="singing">singing</option>
-                        <option value="speaking">speaking</option>
-                      </select>
+                      <input type="range" min={-3} max={3} step={0.1} value={energyBias ?? 0} onChange={(e) => setEnergyBias(parseFloat(e.target.value))} className="w-full h-1 bg-accent-blue/20 rounded-lg appearance-none cursor-pointer accent-accent-blue" />
                     </div>
-                    {/* Sample lyrics for identification */}
-                    {speakerSamples[mapping.speakerId] && (
-                      <div className="text-2xs text-text-muted pl-1 italic">
-                        {speakerSamples[mapping.speakerId].map((line, li) => (
-                          <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
+
+                    {/* Beat distribution */}
+                    {beatDistribution && (
+                      <div className="flex items-center gap-1.5 text-text-muted">
+                        <Zap size={10} className="shrink-0" />
+                        <span>{beatDistribution}</span>
+                      </div>
+                    )}
+
+                    {/* Clips */}
+                    {plannedClips.length > 0 && (
+                      <div className="space-y-1">
+                        {plannedClips.map((clip, i) => (
+                          <div key={i} className="flex items-center justify-between bg-bg-primary/30 px-2 py-1.5 rounded-md">
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <span className={`text-xs font-medium ${clip.section_label === 'chorus' ? 'text-accent-purple' : ''}`}>[{clip.start.toFixed(1)}–{clip.end.toFixed(1)}]</span>
+                              {clip.section_label !== 'instrumental' && <SectionBadge label={clip.section_label} />}
+                              <EnergyDot energy={clip.energy} />
+                            </div>
+                            <button onClick={() => editClipPlan(i)} className="text-text-muted hover:text-accent-blue text-2xs">✎</button>
+                          </div>
                         ))}
                       </div>
                     )}
-                  </div>
-                ))}
+                  </>
+                )}
               </div>
-              <span className="text-2xs text-text-muted mt-1 block">
-                Name each speaker so the director knows who to show. Click a chip to insert into description.
-              </span>
-            </div>
-          )}
 
-          <label className="text-xs text-text-muted uppercase tracking-wider block">Scene & Characters</label>
-          <textarea
-            value={sceneDescription}
-            onChange={e => setSceneDescription(e.target.value)}
-            placeholder={speakers.length >= 2
-              ? "Describe the scene... e.g., Rap music video in a gym. Neon lights and grunge aesthetic."
-              : "Describe the scene and characters... e.g., Rap music video in a gym. Verses are rapped by the man in green hoodie, chorus is sung by the woman in grey."
-            }
-            rows={3}
-            className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors"
-          />
-          <button
-            onClick={planPrompts}
-            disabled={!sceneDescription.trim() || loading}
-            className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-          >
-            {loading ? (
-              <><Loader2 size={12} className="animate-spin" /> Planning shots...</>
-            ) : (
-              <><Zap size={12} /> Plan Shots</>
+              {/* Confirm & next */}
+              <div className="flex items-center gap-3 pt-1.5">
+                {energyBias !== null && energyBias !== undefined && (
+                  <button onClick={() => confirmStructure()} className="text-xs px-2 py-0.5 rounded-md bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/40 transition-colors font-medium whitespace-nowrap">Confirmar estrutura</button>
+                )}
+                {energyBias === null && energyBias !== undefined && plannedClips.length > 0 && (
+                  <div className="text-xs text-text-muted flex items-center gap-1.5"><Zap size={10} /> Estrutura pronta</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3 — Clip plans */}
+        {step === 'plan' && (
+          <ClipStructureCard clips={processedClips} sceneDescription={sceneDescription} setSceneDescription={setSceneDescription} planPrompts={planPrompts} planVideoPrompts={planVideoPrompts} clipImages={clipImages} imageGenProgress={imageGenProgress} applyToClips={applyToClips} refAudioPreview={refAudioPreview} />
+        )}
+
+        {/* Step 4 — Generate */}
+        {step === 'generate' && (
+          <div className="space-y-2.5">
+            {/* Scene description */}
+            <SceneDescriptionEditor sceneDescription={sceneDescription} setSceneDescription={setSceneDescription} refImagePreview={refImagePreview} />
+
+            {/* Image generation progress */}
+            {imageGenProgress > 0 && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span>Gerando imagens de referência...</span>
+                  <span>{Math.round(imageGenProgress)}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-accent-blue/20 rounded-full overflow-hidden">
+                  <div className="h-full bg-accent-blue transition-all" style={{ width: `${imageGenProgress}%` }} />
+                </div>
+              </div>
             )}
+
+            {/* Generate button */}
+            {step === 'generate' && generateStartImages === 0 && (
+              <button onClick={directorGenerate} className="w-full h-[32px] bg-accent-blue text-text-primary rounded-md font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-accent-blue-hover transition-colors">
+                <Play size={10} /> Gerar vídeo
+              </button>
+            )}
+
+            {/* Generate button disabled while generating */}
+            {step === 'generate' && generateStartImages > 0 && (
+              <div className="flex items-center justify-between px-2 py-1 bg-accent-blue/5 rounded-md text-xs">
+                <span className="text-text-muted">Gerando vídeo...</span>
+                <Loader2 size={12} className="animate-spin text-accent-blue" />
+              </div>
+            )}
+
+            {/* Generate button disabled when no scene description */}
+            {step === 'generate' && generateStartImages === 0 && !sceneDescription.trim() && (
+              <button disabled className="w-full h-[32px] bg-bg-hover text-text-muted rounded-md font-medium text-xs flex items-center justify-center gap-1.5 cursor-not-allowed">
+                Preencha a descrição da cena primeiro
+              </button>
+            )}
+
+            {/* Generation result */}
+            {generateStartImages === 3 && directorGenerate !== null && (
+              <div className={`p-3 rounded-md text-xs ${directorGenerate ? 'bg-accent-green/10' : ''}`}>
+                {directorGenerate ? (
+                  <>
+                    <span className="font-medium">Vídeo gerado com sucesso!</span> — clique abaixo para assistir.
+                  </>
+                ) : (
+                  'Gerando vídeo...'
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 5 — Editing */}
+        {step === 'edit' && plannedClips.length > 0 && (
+          <ClipEditorCard clips={processedClips} editClipPlan={editClipPlan} sceneDescription={sceneDescription} setSceneDescription={setSceneDescription} planPrompts={planPrompts} applyToClips={applyToClips} directorGenerate={directorGenerate} />
+        )}
+
+        {/* Step 6 — Finished */}
+        {step === 'finished' && (
+          <div className="space-y-2.5">
+            <FinishedCard plannedClips={plannedClips} referenceImage={refImagePreview} sceneDescription={sceneDescription} />
+          </div>
+        )}
+
+        {/* Reset button — always visible when not in upload step */}
+        {step !== 'upload' && (
+          <button onClick={reset} className="text-xs text-text-muted hover:text-accent-blue transition-colors flex items-center justify-center gap-1.5">
+            <RotateCcw size={10} /> Reiniciar
           </button>
-        </div>
+        )}
+      </div>
+
+      {/* === RIGHT COLUMN: Speaker Management === */}
+      {step !== 'upload' && step !== 'finished' && (
+        <SpeakerManagementCard speakers={speakers} speakerMappings={speakerMappings} setSpeakerMapping={setSpeakerMapping} insertSpeakerMention={insertSpeakerMention} autoMode={autoMode} setAutoMode={setAutoMode} />
       )}
+    </div>
+  )
+}
 
-      {/* Step 4: Review image prompts (phase 1) */}
-      {step === 'review' && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs text-text-muted uppercase tracking-wider">Start Image Prompts</label>
-            <button
-              onClick={planPrompts}
-              disabled={loading}
-              className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
-            >
-              <RotateCcw size={10} /> Regenerate
-            </button>
+// ============================================================
+// === LEFT COLUMN SUB-COMPONENTS (Director Panel) ===
+// ============================================================
+
+function SceneDescriptionEditor({ sceneDescription, setSceneDescription, refImagePreview }: { sceneDescription: string | null; setSceneDescription: (s: string | null) => void; refImagePreview: string | null }) {
+  const [hoveringField, setHoveringField] = useState<string>('')
+
+  return (
+    <div className="space-y-2">
+      {/* Scene description with hover preview */}
+      <label className="text-xs font-medium text-text-primary flex items-center gap-1.5 cursor-pointer select-none" onClick={() => { setSceneDescription(null); setHoveringField('') }}>
+        <ChevronRight size={12} className={`transition-transform ${sceneDescription ? 'rotate-90' : ''}`} />
+        Descrição da cena — {sceneDescription ? 'Limpar' : 'Editar'}
+      </label>
+
+      {/* Reference image upload zone */}
+      <div className="border border-input-field rounded-md p-2.5 bg-bg-primary/30">
+        {!refImagePreview && (
+          <>
+            <div className="text-3xs text-text-muted mb-1 flex items-center gap-1.5 cursor-pointer select-none" onClick={() => setSceneDescription(null)}>
+              <ImageIcon size={12} /> Limpar imagem de referência
+            </div>
+            <label className={`group relative w-full h-[45vh] min-h-[80px] border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center rounded-md overflow-hidden ${hoveringField === 'ref' ? 'border-accent-blue bg-accent-blue/10' : ''} ${sceneDescription ? 'opacity-30 pointer-events-none' : ''}`}>
+              <input type="file" accept={IMAGE_ACCEPT} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { const f = e.target.files?.[0]; if (f) setSceneDescription(URL.createObjectURL(f)) }} />
+              <div className={`${sceneDescription ? 'opacity-50' : ''}`}>
+                <ImageIcon size={24} className="mb-1.5 text-text-muted" />
+                <span className="text-xs font-medium">Imagem de referência (opcional)</span>
+                <span className="text-3xs mt-1 text-text-muted">PNG, JPG, WEBP</span>
+              </div>
+            </label>
+          </>
+        )}
+
+        {refImagePreview && (
+          <>
+            <div className="relative rounded overflow-hidden border border-accent-blue/40 bg-bg-primary/30" onMouseEnter={() => setHoveringField('preview')} onMouseLeave={() => setHoveringField('')}>
+              <img src={refImagePreview} alt="Reference image preview" className="w-full h-[28vh] object-contain p-1.5" />
+            </div>
+
+            {/* Hover preview tooltip — appears above the image when hovering */}
+            {hoveringField === 'preview' && sceneDescription && (
+              <div className="absolute -top-8 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-2 rounded-md border border-accent-blue shadow-lg">
+                {sceneDescription.trim()}
+              </div>
+            )}
+
+            {/* Inline edit field with tooltip */}
+            <textarea
+              value={sceneDescription || ''}
+              onChange={(e) => setSceneDescription(e.target.value)}
+              placeholder="Descreva a cena para cada clip (ex: 'um homem com cicatriz na testa, olhos arregalados, vestindo uma jaqueta jeans desbotada...')"
+              className={`w-full h-[5vh] min-h-[32px] px-2 text-xs rounded-md resize-none bg-bg-primary/70 border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue ${hoveringField === 'scene' ? 'border-accent-blue' : 'border-input-field hover:border-input-field-hover'}`}
+              onMouseEnter={() => setHoveringField('scene')}
+              onMouseLeave={() => setHoveringField('')}
+            />
+
+            {/* Hover preview for scene description */}
+            {hoveringField === 'scene' && sceneDescription && (
+              <div className="absolute -bottom-8 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-2 rounded-md border border-accent-blue shadow-lg whitespace-pre-wrap">
+                {sceneDescription.trim()}
+              </div>
+            )}
+
+            {/* Upload button — only shown when no image is selected */}
+            {!refImagePreview && (
+              <button onClick={() => setSceneDescription('')} className="text-2xs text-text-muted hover:text-accent-blue absolute top-1.5 right-1">
+                X
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Prompt fields */}
+      <div className={`space-y-0.5 transition-opacity ${sceneDescription ? 'opacity-30 pointer-events-none' : ''}`}>
+        <label className="text-xs font-medium text-text-primary flex items-center gap-1.5 cursor-pointer select-none" onClick={() => setSceneDescription(null)}>
+          <ChevronRight size={12} className={`transition-transform ${sceneDescription ? 'rotate-90' : ''}`} />
+          Prompt do vídeo — {sceneDescription ? 'Limpar' : 'Editar'}
+        </label>
+
+        {/* Prompt image upload (optional) */}
+        {!refImagePreview && (
+          <div className="border border-input-field rounded-md p-2.5 bg-bg-primary/30">
+            <label className={`group relative w-full h-[45vh] min-h-[80px] border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center rounded-md overflow-hidden ${hoveringField === 'prompt' ? 'border-accent-blue bg-accent-blue/10' : ''}`}>
+              <input type="file" accept={IMAGE_ACCEPT} className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => { const f = e.target.files?.[0]; if (f && sceneDescription) setSceneDescription(sceneDescription + '\n\nImagem: ' + f.name) }} />
+              <div className={`${sceneDescription ? 'opacity-50' : ''}`}>
+                <ImageIcon size={24} className="mb-1.5 text-text-muted" />
+                <span className="text-xs font-medium">Imagem para gerar o vídeo (opcional)</span>
+                <span className="text-3xs mt-1 text-text-muted">PNG, JPG, WEBP</span>
+              </div>
+            </label>
+
+            {/* Hover preview for prompt image upload */}
+            {hoveringField === 'prompt' && sceneDescription && (
+              <div className="absolute -top-8 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-2 rounded-md border border-accent-blue shadow-lg truncate max-w-full">
+                {sceneDescription.trim()}
+              </div>
+            )}
           </div>
+        )}
 
-          <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
-            {clipPlans.map((plan, i) => {
-              const clip = plannedClips[i]
-              return (
-                <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-2xs text-text-muted">
-                    <span className="font-medium text-text-secondary">Clip {i + 1}</span>
-                    {clip && (
-                      <>
-                        <span>{formatTime(clip.start)}-{formatTime(clip.end)}</span>
-                        <span>{clip.beat_count}b</span>
-                        <SectionBadge label={clip.section_label} />
-                        <EnergyDot energy={clip.energy} />
-                        {clip.dominant_speaker && (
-                          <span className="text-accent-blue">
-                            {speakerMappings.find(m => m.speakerId === clip.dominant_speaker)?.name || clip.dominant_speaker}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <textarea
-                    value={plan.image_prompt}
-                    onChange={e => editClipPlan(i, 'image_prompt', e.target.value)}
-                    rows={2}
-                    className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary resize-none focus:outline-none focus:border-accent-blue transition-colors"
-                  />
-                </div>
-              )
-            })}
+        {/* Prompt textarea with tooltip */}
+        <textarea
+          value={sceneDescription || ''}
+          onChange={(e) => setSceneDescription(e.target.value)}
+          placeholder="Descreva a cena para cada clip (ex: 'um homem com cicatriz na testa, olhos arregalados, vestindo uma jaqueta jeans desbotada...')"
+          className={`w-full h-[5vh] min-h-[32px] px-2 text-xs rounded-md resize-none bg-bg-primary/70 border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue ${hoveringField === 'scene' ? 'border-accent-blue' : 'border-input-field hover:border-input-field-hover'}`}
+          onMouseEnter={() => setHoveringField('scene')}
+          onMouseLeave={() => setHoveringField('')}
+        />
+
+        {/* Hover preview for scene description */}
+        {hoveringField === 'scene' && sceneDescription && (
+          <div className="absolute -bottom-8 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-2 rounded-md border border-accent-blue shadow-lg whitespace-pre-wrap">
+            {sceneDescription.trim()}
           </div>
+        )}
 
-          {referenceImage ? (
-            <button
-              onClick={generateStartImages}
-              className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5"
-            >
-              <ImageIcon size={12} /> Generate Start Images
-            </button>
+        {/* Upload button — only shown when no image is selected */}
+        {!refImagePreview && !sceneDescription.trim() && (
+          <button onClick={() => setSceneDescription('')} className="text-2xs text-text-muted hover:text-accent-blue absolute top-1.5 right-1">
+            X
+          </button>
+        )}
+
+        {/* Done indicator */}
+        {refImagePreview || sceneDescription.trim() ? (
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-accent-green/10 text-accent-green rounded-full text-xs font-medium">
+            <Check size={10} /> Prompt pronto
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function ClipStructureCard({
+  clips, sceneDescription, setSceneDescription, planPrompts, planVideoPrompts, clipImages, imageGenProgress, applyToClips, refAudioPreview,
+}: {
+  clips: PlannedClipWithImage[]
+  sceneDescription: string | null
+  setSceneDescription: (s: string | null) => void
+  planPrompts: number[] | null
+  planVideoPrompts: boolean
+  clipImages: Record<string, string>
+  imageGenProgress: number
+  applyToClips: () => void
+  refAudioPreview: string | null
+}) {
+  const [hoveringField, setHoveringField] = useState<{ field: keyof PlannedClip; index: number } | null>(null)
+
+  return (
+    <div className="space-y-2">
+      {/* Scene description editor with hover preview */}
+      <SceneDescriptionEditor sceneDescription={sceneDescription} setSceneDescription={setSceneDescription} refImagePreview={refAudioPreview} />
+
+      {/* Plan prompts / video prompts toggles */}
+      <div className="flex items-center gap-2">
+        <label className={`text-xs font-medium text-text-primary cursor-pointer select-none ${planPrompts ? 'text-accent-blue' : ''}`} onClick={() => planPrompts && setPlanPrompts(!planPrompts)}>
+          {planPrompts ? (
+            <>Mostrar prompts</>
           ) : (
-            <button
-              onClick={() => { planVideoPrompts() }}
-              disabled={loading}
-              className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5"
-            >
-              <ChevronRight size={12} /> Plan Video Shots
-            </button>
+            <>Esconder prompts</>
           )}
-        </div>
-      )}
+        </label>
 
-      {/* Step 5: Generate per-clip start images */}
-      {step === 'generate_images' && (
-        <div className="space-y-3">
-          <label className="text-xs text-text-muted uppercase tracking-wider block">Generating Start Images</label>
+        <label className={`text-xs font-medium text-text-primary cursor-pointer select-none ${planVideoPrompts ? 'text-accent-purple' : ''}`}>
+          {planVideoPrompts ? 'Geração de imagens ativada' : 'Desativar geração de imagens'}
+        </label>
+      </div>
 
-          {/* Progress */}
-          {imageGenProgress && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-text-secondary">
-                  {imageGenProgress.status === 'done'
-                    ? 'All images ready — planning video shots...'
-                    : `Clip ${imageGenProgress.current + 1} of ${imageGenProgress.total}`}
-                </span>
-                <span className="text-text-muted">
-                  {imageGenProgress.currentClipLabel}
-                  {imageGenProgress.status !== 'done' && ` — ${imageGenProgress.status}`}
-                </span>
-              </div>
-              <div className="w-full bg-bg-tertiary rounded-full h-1.5">
-                <div
-                  className="bg-accent-blue h-1.5 rounded-full transition-all"
-                  style={{
-                    width: `${imageGenProgress.status === 'done'
-                      ? 100
-                      : ((imageGenProgress.current + (imageGenProgress.status === 'polling' ? 0.5 : 0)) / imageGenProgress.total) * 100
-                    }%`,
-                  }}
-                />
-              </div>
-            </div>
-          )}
+      {/* Clips list with hover preview */}
+      <div className="space-y-1 max-h-[28vh] overflow-y-auto pr-1 custom-scrollbar">
+        {clips.map((clip, i) => (
+          <ClipRow key={i} index={i} clip={clip} hoveringField={hoveringField?.field === 'start' && hoveringField?.index === i ? 'start' : ''} hoverPreviewText={hoveringField?.field === 'end' && hoveringField?.index === i ? String(clip.end) : null} onMouseEnter={() => { setHoveringField({ field: 'start', index: i }) }} onMouseLeave={() => setHoveringField(null)} />
+        ))}
+      </div>
 
-          {/* Loading spinner while generating */}
-          {loading && (
-            <div className="flex items-center justify-center gap-2 py-2">
-              <Loader2 size={16} className="animate-spin text-accent-blue" />
-              <span className="text-xs text-text-muted">
-                {imageGenProgress?.status === 'generating' ? 'Submitting...' :
-                 imageGenProgress?.status === 'polling' ? 'Waiting for result...' :
-                 imageGenProgress?.status === 'downloading' ? 'Downloading...' : 'Processing...'}
-              </span>
-            </div>
-          )}
+      {/* Apply button */}
+      <button onClick={applyToClips} className="w-full h-[32px] bg-accent-blue text-text-primary rounded-md font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-accent-blue-hover transition-colors">
+        Aplicar mudanças
+      </button>
 
-          {/* Clip image thumbnails (3-column grid) */}
-          {clipImages.length > 0 && (
-            <div className="grid grid-cols-3 gap-1.5 max-h-[300px] overflow-y-auto">
-              {clipImages.map((img, i) => (
-                <div key={i} className="relative">
-                  <img
-                    src={URL.createObjectURL(img.file)}
-                    alt={`Clip ${img.clipIndex + 1}`}
-                    className="w-full aspect-square object-cover rounded-lg border border-border"
-                  />
-                  <span className="absolute bottom-0.5 left-0.5 text-2xs bg-black/60 text-white px-1 py-0.5 rounded">
-                    {img.clipIndex + 1}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Error recovery: let user retry video planning */}
-          {!loading && imageGenProgress?.status === 'error' && (
-            <button
-              onClick={() => { planVideoPrompts() }}
-              className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5"
-            >
-              <RotateCcw size={12} /> Retry Video Planning
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Step 6: Review video prompts (phase 2) */}
-      {step === 'review_video' && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs text-text-muted uppercase tracking-wider">Video Prompts</label>
-            <button
-              onClick={planVideoPrompts}
-              disabled={loading}
-              className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
-            >
-              <RotateCcw size={10} /> Regenerate
-            </button>
-          </div>
-
-          {/* Generated images preview */}
-          {clipImages.length > 0 && (
-            <div className="grid grid-cols-5 gap-1 mb-1">
-              {clipImages.map((img, i) => (
-                <div key={i} className="relative">
-                  <img
-                    src={URL.createObjectURL(img.file)}
-                    alt={`Clip ${img.clipIndex + 1}`}
-                    className="w-full aspect-square object-cover rounded border border-border"
-                  />
-                  <span className="absolute bottom-0 left-0 text-2xs bg-black/60 text-white px-0.5 rounded-br">
-                    {img.clipIndex + 1}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-            {clipPlans.map((plan, i) => {
-              const clip = plannedClips[i]
-              return (
-                <div key={i} className="bg-bg-tertiary rounded-lg p-2 space-y-1.5">
-                  <div className="flex items-center gap-1.5 text-2xs text-text-muted">
-                    <span className="font-medium text-text-secondary">Clip {i + 1}</span>
-                    {clip && (
-                      <>
-                        <span>{formatTime(clip.start)}-{formatTime(clip.end)}</span>
-                        <SectionBadge label={clip.section_label} />
-                        {clip.dominant_speaker && (
-                          <span className="text-accent-blue">
-                            {speakerMappings.find(m => m.speakerId === clip.dominant_speaker)?.name || clip.dominant_speaker}
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <textarea
-                    value={plan.video_prompt}
-                    onChange={e => editClipPlan(i, 'video_prompt', e.target.value)}
-                    rows={2}
-                    className="w-full bg-bg-secondary border border-border rounded px-2 py-1.5 text-xs text-text-primary resize-none focus:outline-none focus:border-accent-blue transition-colors"
-                  />
-                </div>
-              )
-            })}
-          </div>
-
-          <div className="space-y-2">
-            <button
-              onClick={directorGenerate}
-              className="w-full py-2.5 rounded-lg bg-accent-green hover:bg-accent-green-hover text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
-            >
-              <Play size={14} fill="white" /> Generate
-            </button>
-            <button
-              onClick={applyToClips}
-              className="w-full py-2 rounded-lg border border-border text-text-secondary text-xs font-medium hover:bg-bg-hover hover:text-text-primary transition-colors flex items-center justify-center gap-1.5"
-            >
-              <ChevronRight size={12} /> Edit in Studio
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Loading overlay for plan steps */}
-      {step === 'plan' && loading && (
-        <div className="relative flex flex-col items-center gap-2 py-4">
-          <Loader2 size={20} className="animate-spin text-accent-blue" />
-          <span className="text-xs text-text-muted">Writing image prompts...</span>
-          <button
-            type="button"
-            onClick={() => useStore.getState().cancelDirectorV2Plan()}
-            title="Stop planning"
-            aria-label="Stop planning"
-            className="absolute top-1 right-1 bg-bg-secondary rounded-full p-1 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-          >
-            <X size={10} />
-          </button>
-        </div>
-      )}
-      {step === 'plan_video' && loading && (
-        <div className="relative flex flex-col items-center gap-2 py-4">
-          <Loader2 size={20} className="animate-spin text-accent-blue" />
-          <span className="text-xs text-text-muted">Writing video prompts...</span>
-          <button
-            type="button"
-            onClick={() => useStore.getState().cancelDirectorV2Plan()}
-            title="Stop planning"
-            aria-label="Stop planning"
-            className="absolute top-1 right-1 bg-bg-secondary rounded-full p-1 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-          >
-            <X size={10} />
-          </button>
+      {/* Done indicator */}
+      {applyToClips !== undefined && (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-accent-green/10 text-accent-green rounded-full text-xs font-medium">
+          <Check size={10} /> Estrutura concluída
         </div>
       )}
     </div>
   )
 }
+
+function ClipRow({ index, clip, hoveringField, hoverPreviewText, onMouseEnter, onMouseLeave }: { index: number; clip: PlannedClipWithImage; hoveringField: string; hoverPreviewText: string | null; onMouseEnter: () => void; onMouseLeave: () => void }) {
+  return (
+    <div className="group flex items-center justify-between bg-bg-primary/30 px-2 py-1.5 rounded-md transition-colors hover:bg-bg-primary/60">
+      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+        {/* Start time with hover preview */}
+        <div className="relative w-[78px] shrink-0">
+          <input type="number" step={0.1} min={0} max={600} value={clip.start} onChange={(e) => { /* Would call editClipPlan here */ }} className={`w-full h-[24px] px-1 text-xs rounded bg-bg-primary border outline-none focus:outline-none focus:border-accent-blue text-center ${hoveringField === 'start' && index === clip.start ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-input-field hover:border-input-field-hover'} transition-colors`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} title="Início do clip" />
+          {hoveringField === 'start' && index === clip.start && hoverPreviewText !== null && (
+            <div className="absolute -top-6 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-1.5 rounded-md border border-accent-blue shadow-lg whitespace-nowrap">
+              Tempo de início do clip: {hoverPreviewText}s
+            </div>
+          )}
+        </div>
+
+        {/* Duration label */}
+        <span className="text-2xs text-text-muted w-[34px] shrink-0">{clip.end - clip.start.toFixed(1)}s</span>
+
+        {/* Section badge */}
+        {clip.section_label !== 'instrumental' && <SectionBadge label={clip.section_label} />}
+
+        {/* Energy dot */}
+        <EnergyDot energy={clip.energy} />
+
+        {/* Beat count badge */}
+        <div className="text-2xs text-text-muted px-1.5 py-0.5 bg-bg-primary rounded-md border border-input-field">
+          {clip.beat_count}-beat
+        </div>
+      </div>
+
+      {/* End time with hover preview */}
+      <div className="relative w-[78px] shrink-0 text-right pr-1">
+        <input type="number" step={0.1} min={0} max={600} value={clip.end} onChange={(e) => { /* Would call editClipPlan here */ }} className={`w-full h-[24px] px-1 text-xs rounded bg-bg-primary border outline-none focus:outline-none focus:border-accent-blue text-right ${hoveringField === 'end' && index === clip.start ? 'border-accent-blue ring-2 ring-accent-blue/20' : 'border-input-field hover:border-input-field-hover'} transition-colors`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} title="Fim do clip" />
+        {hoveringField === 'end' && index === clip.start && hoverPreviewText !== null && (
+          <div className="absolute -bottom-6 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-1.5 rounded-md border border-accent-blue shadow-lg whitespace-nowrap">
+            Tempo de fim do clip: {hoverPreviewText}s
+          </div>
+        )}
+      </div>
+
+      {/* Edit button */}
+      <button className="text-text-muted hover:text-accent-blue text-xs p-0.5 rounded transition-colors" title="Editar clip">✎</button>
+    </div>
+  )
+}
+
+function ClipEditorCard({ clips, editClipPlan, sceneDescription, setSceneDescription, planPrompts, applyToClips, directorGenerate }: { clips: PlannedClipWithImage[]; editClipPlan: (i: number) => void; sceneDescription: string | null; setSceneDescription: (s: string | null) => void; planPrompts: number[] | null; applyToClips: () => void; directorGenerate: boolean }) {
+  return (
+    <div className="space-y-2">
+      {/* Scene description editor */}
+      <SceneDescriptionEditor sceneDescription={sceneDescription} setSceneDescription={setSceneDescription} refImagePreview={null} />
+
+      {/* Clips list for editing */}
+      <div className={`space-y-1 max-h-[28vh] overflow-y-auto pr-1 custom-scrollbar ${sceneDescription ? 'opacity-30 pointer-events-none' : ''}`}>
+        {clips.map((clip, i) => (
+          <ClipRow key={i} index={i} clip={clip} hoveringField="" hoverPreviewText={null} onMouseEnter={() => { }} onMouseLeave={() => { }} />
+        ))}
+      </div>
+
+      {/* Apply button */}
+      <button onClick={applyToClips} className="w-full h-[32px] bg-accent-blue text-text-primary rounded-md font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-accent-blue-hover transition-colors">
+        Aplicar mudanças
+      </button>
+
+      {/* Generate button */}
+      {directorGenerate && (
+        <button className="w-full h-[32px] bg-accent-green text-text-primary rounded-md font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-accent-green-hover transition-colors">
+          <Play size={10} /> Gerar vídeo
+        </button>
+      )}
+
+      {/* Done indicator */}
+      {directorGenerate && (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-accent-green/10 text-accent-green rounded-full text-xs font-medium">
+          <Check size={10} /> Estrutura concluída
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FinishedCard({ plannedClips, referenceImage, sceneDescription }: { plannedClips: PlannedClip[]; referenceImage: string | null; sceneDescription: string | null }) {
+  return (
+    <div className="space-y-2">
+      {/* Summary stats */}
+      <div className="bg-bg-primary/50 rounded-md p-3 space-y-1 text-xs">
+        <div className="flex items-center justify-between bg-accent-blue/10 px-2 py-1.5 rounded-md">
+          <span>{plannedClips.length} clips</span>
+          <span className="text-text-muted">{formatTime(plannedClips[plannedClips.length - 1].end)}</span>
+        </div>
+
+        {/* Section distribution */}
+        <div className="space-y-0.5">
+          {['intro', 'verse', 'chorus', 'bridge', 'outro', 'instrumental'].map(label => (
+            <div key={label} className="flex items-center justify-between text-text-muted">
+              <span>{label}</span>
+              <span>{(plannedClips.filter(c => c.section_label === label).length || 0)}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Beat distribution */}
+        {(() => {
+          const counts: Record<number, number> = {}
+          for (const c of plannedClips) {
+            counts[c.beat_count] = (counts[c.beat_count] || 0) + 1
+          }
+          return Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ') ? <div className="flex items-center gap-1.5 text-text-muted"><Zap size={10} /> {Object.entries(counts).sort(([a], [b]) => Number(a) - Number(b)).map(([beats, count]) => `${count}x${beats}-beat`).join(', ')}</div> : null
+        })()}
+
+        {/* Reference image */}
+        {referenceImage && (
+          <div className="flex items-center gap-1.5 text-text-muted">
+            <span>Imagem de referência:</span>
+            <img src={referenceImage} alt="" className="w-4 h-4 rounded border border-input-field object-cover" />
+          </div>
+        )}
+
+        {/* Scene description */}
+        {sceneDescription && (
+          <div className="flex items-center gap-1.5 text-text-muted">
+            <span>Cena:</span>
+            <span className="px-1.5 py-0.5 bg-accent-blue/10 rounded-full text-[10px] truncate max-w-[8ch]">{sceneDescription.trim()}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Next step button */}
+      <button className="w-full h-[32px] bg-accent-blue text-text-primary rounded-md font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-accent-blue-hover transition-colors">
+        Próximo →
+      </button>
+    </div>
+  )
+}
+
+// ============================================================
+// === RIGHT COLUMN: SPEAKER MANAGEMENT CARD ===
+// ============================================================
+
+function SpeakerManagementCard({ speakers, speakerMappings, setSpeakerMapping, insertSpeakerMention, autoMode, setAutoMode }: { speakers: Record<string, string[]>; speakerMappings: Record<string, string>; setSpeakerMapping: (speakerId: string, newLabel: string) => void; insertSpeakerMention: (clipIndex: number | null, text?: string) => void; autoMode: boolean; setAutoMode: (enabled: boolean) => void }) {
+  const [hoveringField, setHoveringField] = useState<{ field: 'label' | 'name'; speakerId: string } | null>(null)
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <RotateCcw size={14} className="text-accent-blue" />
+          <span className="text-xs font-medium text-text-primary">Speaker Management</span>
+          {autoMode && <span className="text-[10px] px-1.5 py-0.25 bg-accent-green/20 text-accent-green rounded-full border border-accent-green/30">Auto-mode ON</span>}
+        </div>
+        {!autoMode ? (
+          <label className="flex items-center gap-1.5 cursor-pointer select-none text-xs text-text-primary" onClick={() => setAutoMode(true)}>
+            <input type="checkbox" checked={autoMode} onChange={(e) => setAutoMode(e.target.checked)} /> Auto-categorizar
+          </label>
+        ) : (
+          <button onClick={() => setAutoMode(false)} className="text-xs text-text-primary hover:text-accent-blue transition-colors">Desativar auto-mode</button>
+        )}
+      </div>
+
+      {/* Speaker cards grid */}
+      {Object.entries(speakers).map(([speakerId, samples], i) => (
+        <SpeakerCard key={speakerId} index={i} speakerId={speakerId} label={speakerMappings[speakerId] || 'Unknown'} samples={samples.slice(0, 1)} onLabelChange={(newLabel: string) => setSpeakerMapping(speakerId, newLabel)} hoveringField={hoveringField?.field === 'label' && hoveringField?.speakerId === speakerId ? 'label' : ''} hoverPreviewText={hoveringField?.field === 'name' && hoveringField?.speakerId === speakerId ? samples[0] : null} onMouseEnter={() => { if (!autoMode) setHoveringField({ field: 'label', speakerId }) }} onMouseLeave={() => setHoveringField(null)} />
+      ))}
+
+      {/* Insert mention button */}
+      <button onClick={() => insertSpeakerMention(null)} className="text-2xs text-text-muted hover:text-accent-blue transition-colors flex items-center justify-center gap-1.5">
+        + Adicionar menção a um speaker
+      </button>
+    </div>
+  )
+}
+
+function SpeakerCard({ index, speakerId, label, samples, onLabelChange, hoveringField, hoverPreviewText, onMouseEnter, onMouseLeave }: { index: number; speakerId: string; label: string; samples: string[]; onLabelChange: (newLabel: string) => void; hoveringField: string; hoverPreviewText: string | null; onMouseEnter: () => void; onMouseLeave: () => void }) {
+  return (
+    <div className="relative group">
+      <div className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] px-0.5 py-0.25 rounded-full bg-bg-primary border border-input-field whitespace-nowrap transition-colors ${hoveringField === 'label' ? 'border-accent-blue ring-1 ring-accent-blue/30' : ''}`}>
+        {index + 1}
+      </div>
+
+      {/* Label field with hover preview */}
+      <input type="text" value={label} onChange={(e) => onLabelChange(e.target.value)} className={`w-full h-[24px] px-2 text-xs rounded border transition-colors outline-none focus:outline-none focus:bg-accent-blue/5 focus:border-accent-blue text-center ${hoveringField === 'label' ? 'border-accent-blue ring-1 ring-accent-blue/30 bg-accent-blue/5' : 'border-input-field hover:border-input-field-hover'} transition-colors`} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+
+      {/* Hover preview tooltip */}
+      {hoveringField === 'label' && hoverPreviewText !== null && (
+        <div className="absolute -bottom-6 left-0 right-0 bg-bg-primary/95 backdrop-blur-sm text-xs p-1.5 rounded-md border border-accent-blue shadow-lg whitespace-nowrap">
+          Exemplo: {hoverPreviewText}
+        </div>
+      )}
+
+      {/* Speaker ID badge (hidden by default in auto-mode) */}
+      <span className="text-[9px] text-text-muted absolute -top-5 left-0 px-1.5 bg-bg-primary rounded-md border border-input-field opacity-0 group-hover:opacity-100 transition-opacity">ID: {speakerId}</span>
+
+      {/* Collapse/expand toggle */}
+      <button className="absolute top-1 right-0.5 text-text-muted hover:text-accent-blue text-[9px] p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity" title={hoverPreviewText || 'Expandir'}>
+        {hoveringField === 'label' ? <ChevronDown size={8} /> : <ChevronRight size={8} />}
+      </button>
+    </div>
+  )
+}
+
+function Check({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  )
+}
+
+// ============================================================
+// === ERROR BANNER SUB-COMPONENT ===
+// ============================================================
+
+function DirectorErrorBanner({ error, pipelineStatus }: { error: string; pipelineStatus: 'idle' | 'uploading' | 'analyzing' | 'plan' | 'generate' }) {
+  if (error.includes('Out of memory')) return <OOMErrorBanner />
+  if (error.includes('VRAM')) return <VramWarningBanner />
+  if (pipelineStatus === 'generating') return <GeneratingBanner progress={100} />
+  if (error.includes('network')) return <NetworkErrorBanner />
+  if (error.includes('LoRA')) return <LoraErrorBanner />
+  if (error.includes('disk')) return <DiskSpaceWarningBanner />
+  return (
+    <div className="p-3 bg-red-500/10 border border-red-400/30 rounded-md text-xs text-red-600 font-medium">
+      {error}
+    </div>
+  )
+}
+
+function OOMErrorBanner() {
+  return (
+    <div className="p-3 bg-red-500/10 border border-red-400/30 rounded-md text-xs space-y-2">
+      <div className="font-medium text-red-700 flex items-center gap-2">
+        <X size={12} /> OOM — Reinicie com mais RAM ou use `--low-memory-mode`
+      </div>
+      <div className="text-red-600/80 leading-relaxed">
+        A GPU ou CPU esgotou a memória durante o upload. Tente reduzir o tamanho do áudio ou aumente a memória do sistema.
+      </div>
+    </div>
+  )
+}
+
+function VramWarningBanner() {
+  return (
+    <div className="p-3 bg-yellow-500/10 border border-yellow-400/30 rounded-md text-xs space-y-2">
+      <div className="font-medium text-yellow-700 flex items-center gap-2">
+        <Zap size={12} /> VRAM baixa — Modo de baixo consumo ativado
+      </div>
+      <div className="text-yellow-600/80 leading-relaxed">
+        A GPU tem pouca memória. O sistema usará kernels inteiros e CPU para compensar. Desempenho reduzido.
+      </div>
+    </div>
+  )
+}
+
+function GeneratingBanner({ progress }: { progress: number }) {
+  return (
+    <div className="p-3 bg-accent-blue/10 border border-accent-blue/30 rounded-md text-xs">
+      <div className="flex items-center justify-between font-medium text-accent-blue mb-1.5">
+        <span>Gerando vídeo...</span>
+        <span>{progress}%</span>
+      </div>
+      <div className="h-1.5 w-full bg-accent-blue/20 rounded-full overflow-hidden">
+        <div className="h-full bg-accent-blue transition-all" style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function NetworkErrorBanner() {
+  return (
+    <div className="p-3 bg-red-500/10 border border-red-400/30 rounded-md text-xs space-y-2">
+      <div className="font-medium text-red-700 flex items-center gap-2">
+        <X size={12} /> Erro de rede — Verifique sua conexão
+      </div>
+      <div className="text-red-600/80 leading-relaxed">
+        Não foi possível baixar um modelo ou arquivo. Verifique seu firewall, proxy ou tente novamente mais tarde.
+      </div>
+    </div>
+  )
+}
+
+function LoraErrorBanner() {
+  return (
+    <div className="p-3 bg-yellow-500/10 border border-yellow-400/30 rounded-md text-xs space-y-2">
+      <div className="font-medium text-yellow-700 flex items-center gap-2">
+        <Zap size={12} /> Erro ao carregar LoRA — Ignorado
+      </div>
+      <div className="text-yellow-600/80 leading-relaxed">
+        O arquivo de LoRA não pôde ser carregado. Ele será ignorado e o modelo padrão será usado.
+      </div>
+    </div>
+  )
+}
+
+function DiskSpaceWarningBanner() {
+  return (
+    <div className="p-3 bg-yellow-500/10 border border-yellow-400/30 rounded-md text-xs space-y-2">
+      <div className="font-medium text-yellow-700 flex items-center gap-2">
+        <Zap size={12} /> Espaço em disco baixo — 85% usado
+      </div>
+      <div className="text-yellow-600/80 leading-relaxed">
+        Limpe arquivos temporários ou aumente o espaço de armazenamento para evitar falhas.
+      </div>
+    </div>
+  )
+}
+
+// ============================================================
+// === ACTIVITY BADGE SUB-COMPONENT (right column) ===
+// ============================================================
+
+function DirectorActivityBadge({ label }: { label: string }) {
+  return (
+    <span className="text-[10px] px-2 py-0.5 bg-accent-green/10 text-accent-green rounded-full border border-accent-green/30 font-medium">
+      {label}
+    </span>
+  )
+}
+
+// ============================================================
+// === TIMELINE EDITOR (collapsible, separate column) ===
+// ============================================================
+
+function DirectorTimelineEditor() {
+  const step = useStore(s => s.directorStep)
+  const analysis = useStore(s => s.directorAnalysis)
+  const plannedClips = useStore(s => s.directorPlannedClips) as PlannedClip[]
+  const clipPlans = useStore(s => s.directorClipPlans)
+
+  if (step === 'upload' || step === 'finished') return null
+
+  // Build section colors map for the timeline
+  const colorMap: Record<string, string> = {
+    intro: 'bg-blue-500', verse: 'bg-green-500', chorus: 'bg-purple-500', bridge: 'bg-yellow-500', outro: 'bg-gray-500', instrumental: 'bg-cyan-500',
+  }
+
+  // Find the section for a given timestamp
+  const getSectionAt = (time: number) => {
+    if (!analysis || !plannedClips.length) return null
+    let maxEnd = -1
+    let bestClip: PlannedClip | null = null
+    for (const clip of plannedClips) {
+      if (clip.end > time && clip.start <= time && clip.end > maxEnd) {
+        maxEnd = clip.end
+        bestClip = clip
+      }
+    }
+    return bestClip?.section_label || 'instrumental'
+  }
+
+  // Get the next section after a given timestamp
+  const getNextSectionAt = (time: number) => {
+    if (!analysis || !plannedClips.length) return null
+    let maxEnd = -1
+    let bestClip: PlannedClip | null = null
+    for (const clip of plannedClips) {
+      if (clip.start > time && clip.end > maxEnd) {
+        maxEnd = clip.end
+        bestClip = clip
+      }
+    }
+    return bestClip?.section_label || 'instrumental'
+  }
+
+  // Build a timeline bar from start to end, segmented by section
+  const renderTimelineBar = () => {
+    if (!plannedClips.length) return <div className="h-8 bg-bg-primary rounded-md" />
+
+    let currentPos = 0.0
+    const segments: React.ReactNode[] = []
+
+    for (const clip of plannedClips) {
+      const widthPct = ((clip.end - clip.start) / Math.max(1, plannedClips[plannedClips.length - 1].end)) * 100
+      const sectionLabel = clip.section_label || 'instrumental'
+      segments.push(
+        <div key={clip.start} className="h-full rounded-l-md" style={{ width: `${widthPct}%` }} title={`${sectionLabel} — ${formatTime(clip.start)} – ${formatTime(clip.end)}`}>
+          {clip.section_label !== 'instrumental' && (
+            <svg viewBox="0 0 24 24" className="w-3 h-3 text-white fill-current shrink-0 self-center">
+              <path d={M_PATH} />
+            </svg>
+          )}
+        </div>
+      )
+      currentPos = clip.end
+    }
+
+    return segments.length > 0 ? (
+      <div className="h-8 w-full flex items-center gap-1 overflow-hidden rounded-md bg-accent-blue/20" style={{ maskImage: 'linear-gradient(to right, black 0%, black calc(100% - 3px), transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 0%, black calc(100% - 3px), transparent 100%)' }}>
+        {segments}
+      </div>
+    ) : null
+  }
+
+  return (
+    <button onClick={() => setShowTimeline(false)} className="w-full h-8 flex items-center justify-between px-2 bg-bg-primary/50 rounded-md text-xs font-medium text-text-secondary hover:bg-bg-primary transition-colors">
+      <span className="flex items-center gap-1.5"><RotateCcw size={10} /> Timeline</span>
+      {step === 'plan' && (
+        <span className="text-[9px] px-1.5 py-0.25 bg-accent-blue/10 text-accent-blue rounded-full border border-accent-blue/30">Clique para editar</span>
+      )}
+    </button>
+
+    {/* Timeline editor — only shown when collapsed */}
+    <div className="mt-0.5 space-y-2 bg-bg-primary/50 rounded-md overflow-hidden transition-all">
+      <div className="flex items-center justify-between px-2 py-1 border-b border-input-field text-xs text-text-secondary">
+        <span>Seções</span>
+        <span className="text-[10px] text-text-muted">{plannedClips.length} clips</span>
+      </div>
+
+      {/* Timeline bar */}
+      {renderTimelineBar()}
+
+      {/* Section labels list */}
+      <div className="flex flex-wrap items-center gap-1 px-2 py-1">
+        {!analysis ? (
+          <span className="text-xs text-text-muted">Analisando áudio...</span>
+        ) : plannedClips.length === 0 ? (
+          <span className="text-xs text-text-muted">Nenhum clip planejado</span>
+        ) : (
+          <>
+            {['intro', 'verse', 'chorus', 'bridge', 'outro', 'instrumental'].map(label => {
+              const clipsInSection = plannedClips.filter(c => c.section_label === label)
+              return (
+                <button key={label} className={`text-xs px-1.5 py-0.5 rounded-full transition-colors ${colorMap[label] || 'bg-bg-hover'} hover:opacity-80`} title={`${label}s — ${clipsInSection.length}`}>
+                  {label} ({clipsInSection.length})
+                </button>
+              )
+            })}
+          </>
+        )}
+      </div>
+
+      {/* Clip list (editable in plan step) */}
+      <div className="space-y-1 max-h-[20vh] overflow-y-auto custom-scrollbar px-2">
+        {!plannedClips.length ? (
+          <span className="text-xs text-text-muted">Nenhum clip planejado</span>
+        ) : (
+          plannedClips.map((clip, i) => (
+            <div key={i} className={`flex items-center justify-between text-[10px] px-2 py-1 rounded-md transition-colors ${step === 'plan' ? 'hover:bg-accent-blue/5 cursor-pointer' : ''}`}>
+              <span>{formatTime(clip.start)} – {formatTime(clip.end)}</span>
+              <span className={`text-[9px] px-0.75 py-0.25 rounded-full ${colorMap[clip.section_label || 'instrumental'] || 'bg-bg-hover'}`}>
+                {clip.section_label || 'inst'}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// SVG path for the timeline bar markers (small triangle pointing right)
+const M_PATH = "M10,0L20,10L10,20"
