@@ -472,10 +472,16 @@ export function DirectorChat() {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [dragOver, setDragOver] = useState(false)
   // localBias + sliderRef were the in-chat pacing slider state. The
-  // StructureView that consumed them moved to the middle column. The
-  // component-level slider state is rebuilt inside DirectorPlanColumn.
-  void useState<number | null>(null)
-  void useRef<number | null>(null)
+  // StructureView that consumed them moved to the middle column.
+  // Previously we left `void useState(null)` / `void useRef(null)`
+  // placeholders here to keep the hook order stable, but React's
+  // production reconciler doesn't honour the discarded setters —
+  // the call still increments the hook index, so when something
+  // above changed the order (e.g. audioFile → next render), React
+  // threw error #310 ("Rendered more hooks than during the previous
+  // render") and the entire tree went blank. Removing the placeholders
+  // is safe: the live state lives inside DirectorPlanColumn now, so
+  // this component no longer needs that index slot.
   const [chatInput, setChatInput] = useState('')
   const [draftQueuePending, setDraftQueuePending] = useState(false)
   const [draftQueueConfirmation, setDraftQueueConfirmation] = useState<string | null>(null)

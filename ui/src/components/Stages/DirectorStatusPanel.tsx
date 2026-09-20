@@ -79,6 +79,16 @@ export function DirectorStatusPanel() {
   const loadingMessage = useDirectorSlice('loadingMessage')
   const cancel = useStore(s => s.cancelDirectorV2Plan)
   const plannedClipsCount = useStore(s => s.directorPlannedClips.length)
+  // The progress selector used to live inside a `{loading && (() => { ... })()}`
+  // IIFE on line 107 — a hooks-in-conditional anti-pattern that React
+  // enforces strictly. When `loading` flipped from false → true (which
+  // happens as soon as the user drops an audio file and the analyzer
+  // kicks off), the IIFE's body started running its first useStore
+  // call mid-render, bumping the hook count from 20 to 21 and tripping
+  // "Rendered more hooks than during the previous render" (minified
+  // error #310, blank screen). Lifting the selector to the top of the
+  // component keeps the hook count stable across every render.
+  const imageGenProgress = useStore(s => s.directorImageGenProgress)
 
   const currentIndex = STATUS_STEPS.findIndex(s => s.id === step)
   const hasActivity = loading || currentIndex > 0
@@ -104,10 +114,9 @@ export function DirectorStatusPanel() {
           nothing is exposed yet, the bar still shows progress via the
           chip animation alone. */}
       {loading && (() => {
-        const p = useStore(s => s.directorImageGenProgress)
-        const determinate = Boolean(p?.total && p.total > 0)
+        const determinate = Boolean(imageGenProgress?.total && imageGenProgress.total > 0)
         const pct = determinate
-          ? Math.min(100, Math.round(((p?.current ?? 0) / (p?.total ?? 1)) * 100))
+          ? Math.min(100, Math.round(((imageGenProgress?.current ?? 0) / (imageGenProgress?.total ?? 1)) * 100))
           : 40
         return (
           <div
