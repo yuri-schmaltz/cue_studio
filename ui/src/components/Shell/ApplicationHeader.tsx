@@ -10,11 +10,11 @@ const sections: ReadonlyArray<{
   icon: typeof FolderOpen
   showCount?: boolean
 }> = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'projects', label: 'Projects', icon: FolderOpen },
   { id: 'director', label: 'Director', icon: Clapperboard },
   { id: 'studio', label: 'Studio', icon: SlidersHorizontal },
   { id: 'editor', label: 'Editor', icon: Film },
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'medias', label: 'Medias', icon: Images },
   { id: 'queue', label: 'Queue', icon: ListVideo, showCount: true },
   { id: 'configurations', label: 'Configurations', icon: SlidersHorizontal },
