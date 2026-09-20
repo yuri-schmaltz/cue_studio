@@ -30,6 +30,7 @@ import {
   MapPin,
   Users,
   Mic,
+  Plus,
   ChevronDown,
   ChevronRight,
   ListVideo,
@@ -111,6 +112,71 @@ export function DraggableRefRow({ file, label, index, onRemove, onLabelChange, o
         className="w-full min-w-0 bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-2xs text-text-primary placeholder:text-text-muted focus:border-accent-blue outline-none"
       />
     </div>
+  )
+}
+
+/** Square "add a reference" card used as the empty-state for the
+ *  Character / Location / Voice reference tabs and as a trailing tile
+ *  next to the grid when the list is already populated. Wraps a
+ *  hidden file input so the entire card is the click target; keyboard
+ *  activation (Space/Enter) opens the native file picker through the
+ *  label-for pattern. The card stays square (aspect-square) so it
+ *  reads as a tile in the grid (matching the populated DraggableRefRow
+ *  footprint) and as a single big "tap to add" affordance when used
+ *  as the empty-state. `disabled` paints the card in muted tones and
+ *  blocks the file picker — used for the voice-ref unavailable
+ *  state so the user sees an affordance shape that explains why the
+ *  section is hidden without a verbose italic helper. */
+function RefAddCard({
+  testid,
+  title,
+  hint,
+  onFiles,
+  accept,
+  disabled = false,
+}: {
+  testid: string
+  title: string
+  hint?: string
+  onFiles: (files: FileList | null) => void
+  accept: string
+  disabled?: boolean
+}) {
+  const inputId = `${testid}-input`
+  return (
+    <label
+      htmlFor={inputId}
+      data-testid={testid}
+      className={`aspect-square w-full rounded-lg border border-dashed flex flex-col items-center justify-center gap-1.5 p-3 text-center transition-colors ${
+        disabled
+          ? 'border-border bg-bg-tertiary/30 text-text-muted/60 cursor-not-allowed'
+          : 'border-accent-blue/50 bg-accent-blue/5 hover:bg-accent-blue/10 hover:border-accent-blue text-text-secondary hover:text-text-primary cursor-pointer'
+      }`}
+    >
+      <div className={`flex items-center justify-center h-7 w-7 rounded-full ${
+        disabled ? 'bg-bg-tertiary' : 'bg-accent-blue/15 text-accent-blue'
+      }`}>
+        {disabled ? <Mic size={14} className="text-text-muted/60" /> : <Plus size={16} className="text-accent-blue" />}
+      </div>
+      <span className="text-2xs font-medium leading-tight">{title}</span>
+      {hint && (
+        <span className="text-[10px] text-text-muted/80 leading-tight line-clamp-3 px-1">
+          {hint}
+        </span>
+      )}
+      <input
+        id={inputId}
+        type="file"
+        accept={accept}
+        multiple={accept.startsWith('.png')}
+        disabled={disabled}
+        className="sr-only"
+        onChange={e => {
+          onFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+    </label>
   )
 }
 
@@ -229,22 +295,19 @@ export function AdditionalRefsSection() {
 
       {/* Active tab's content panel — full width below the tab strip.
           Each card stacks its reference photo on top and the label
-          input directly below so the eye reads top-to-bottom per ref. */}
+          input directly below so the eye reads top-to-bottom per ref.
+          When the active tab is empty we replace the verbose empty-
+          state text with a single square "Add references" card so the
+          eye reads the affordance at a glance — the card is a label
+          wrapping a hidden file input, so clicking / keyboard-activating
+          it opens the native file picker for the current tab's
+          reference type (image for character / location, audio for
+          voice). The + icon and the empty-state helper sit inside the
+          card so the surface reads as "tap to add" without needing a
+          separate Add button + caption combo. */}
       <div role="tabpanel" className="space-y-1.5">
         {activeRefTab === 'char' ? (
           <>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-2xs text-text-secondary inline-flex items-center gap-1"
-                title="Character refs only affect the planner after you finish the style step and send the brief. Drop close-up portraits for best identity lock.">
-                <Users size={9} className="text-accent-blue/70" />
-                Individual close-ups improve identity
-              </span>
-              <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
-                + Add
-                <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
-                  onChange={e => handleFiles(e.target.files, 'char')} />
-              </label>
-            </div>
             {charRefs.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 {charRefs.map((f, i) => (
@@ -252,25 +315,25 @@ export function AdditionalRefsSection() {
                     onRemove={removeCharRef} onLabelChange={setCharLabel} onReorder={reorderCharRefs}
                     placeholder="e.g. Thor - blonde, hammer" />
                 ))}
+                <RefAddCard
+                  testid="ref-add-card-char"
+                  title="Add character ref"
+                  onFiles={files => handleFiles(files, 'char')}
+                  accept={IMAGE_ACCEPT}
+                />
               </div>
             ) : (
-              <p className="text-2xs text-text-muted italic">No character refs yet — click "+ Add" or drop images here. Drag rows to reorder priority.</p>
+              <RefAddCard
+                testid="ref-add-card-char"
+                title="Add character ref"
+                hint="Drop close-up portraits for best identity lock"
+                onFiles={files => handleFiles(files, 'char')}
+                accept={IMAGE_ACCEPT}
+              />
             )}
           </>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-2xs text-text-secondary inline-flex items-center gap-1"
-                title="Location refs lock the look of recurring environments so every clip that returns to the same place stays visually consistent.">
-                <MapPin size={9} className="text-accent-blue/70" />
-                Scene/environment reference images
-              </span>
-              <label className="cursor-pointer text-2xs text-accent-blue hover:underline">
-                + Add
-                <input type="file" accept={IMAGE_ACCEPT} multiple className="hidden"
-                  onChange={e => handleFiles(e.target.files, 'loc')} />
-              </label>
-            </div>
             {locRefs.length > 0 ? (
               <div className="grid grid-cols-2 gap-2">
                 {locRefs.map((f, i) => (
@@ -278,9 +341,21 @@ export function AdditionalRefsSection() {
                     onRemove={removeLocRef} onLabelChange={setLocLabel} onReorder={reorderLocRefs}
                     placeholder="e.g. backstage, leather couches" />
                 ))}
+                <RefAddCard
+                  testid="ref-add-card-loc"
+                  title="Add location ref"
+                  onFiles={files => handleFiles(files, 'loc')}
+                  accept={IMAGE_ACCEPT}
+                />
               </div>
             ) : (
-              <p className="text-2xs text-text-muted italic">No location refs yet — click "+ Add" or drop images here. Drag rows to reorder priority.</p>
+              <RefAddCard
+                testid="ref-add-card-loc"
+                title="Add location ref"
+                hint="Lock the look of recurring environments"
+                onFiles={files => handleFiles(files, 'loc')}
+                accept={IMAGE_ACCEPT}
+              />
             )}
           </>
         )}
@@ -329,12 +404,21 @@ export function AdditionalRefsSection() {
       </div>}
       {/* Why Voice ref may be missing — only shown when the model does
           NOT support voice cloning so the user understands the section
-          isn't broken, just hidden by their current video model. */}
+          isn't broken, just hidden by their current video model. The
+          previous italic helper line was replaced with a unified
+          square add-card so the visual affordance matches the
+          character / location tabs above: clicking it opens the native
+          file picker for an audio file, and the disabled state makes it
+          obvious the action would be a no-op for the current model. */}
       {!showVoiceReference && (
-        <p className="text-2xs text-text-muted/70 italic"
-          title="Switch to LTX or H3 Omni in the Generation Options column to enable voice reference.">
-          Voice ref hidden — current model doesn't support voice cloning.
-        </p>
+        <RefAddCard
+          testid="ref-add-card-voice-disabled"
+          title="Voice ref unavailable"
+          hint="Current model doesn't support voice cloning — switch to LTX or H3 Omni in Generation Options to enable."
+          onFiles={() => undefined}
+          accept={AUDIO_ACCEPT}
+          disabled
+        />
       )}
     </div>
   )

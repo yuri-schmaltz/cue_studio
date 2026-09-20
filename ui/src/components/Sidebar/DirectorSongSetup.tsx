@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { Music } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { DurationPresetControl } from './DurationPresetControl'
 import { formatDuration } from '../../lib/durationPlanning'
@@ -50,10 +49,7 @@ export function DirectorSongSetup() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="text-xs text-text-muted uppercase tracking-wider flex items-center gap-1.5">
-          <Music size={12} /> Generate a song
-        </label>
+      <div className="flex items-center justify-end">
         <label className="flex items-center gap-1.5 cursor-pointer text-2xs text-text-secondary hover:text-text-primary transition-colors">
           <input
             type="checkbox"
