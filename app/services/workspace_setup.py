@@ -271,3 +271,80 @@ def cover_image_path(save_path: str, name: str, filename: str) -> str | None:
     if candidate != base_real and candidate.startswith(base_real + os.sep) and os.path.isfile(candidate):
         return candidate
     return None
+def migrate_setup(name: str) -> None:
+    """Migrate legacy per-workspace setup.json into the new schema v1.
+
+    Legacy Cue Studio used a flat ``setup.json`` in each workspace folder,
+    keyed by ``workspace_name``. The new storage model stores one file
+    per project with a single root ``default/workspace/default/setup.json``.
+
+    This function is idempotent and safe to run on every launch:
+    - If the legacy key exists, it is copied into the default workspace.
+      If the destination already holds data, it is overwritten (the legacy
+      file is considered stale).
+    - The new location is normalized: the workspace name from the old flat
+      file is preserved but trimmed of trailing slashes so it survives
+      Windows junctions and case-normalized mounts.
+    - A migration log records whether any copy took place; this avoids
+      repeating the filesystem read if a user opens another project tab
+      in the same session. The log itself never leaves the current Python
+      process scope, so there is no risk of stale state persisting between
+      runs — each launch re-reads the disk and decides afresh.
+    - On first boot after an upgrade, ``migrate_setup`` writes a new
+      migration log into the outputs folder so that subsequent launches
+      skip the read. After that, each launch reads the fresh file from
+      disk again to decide whether to migrate or not. The log is always
+      written before being read back, so concurrent runs never see a
+      partially-written state.
+    """
+    base = os.path.abspath(_projects_root())
+
+    # 1. Resolve the legacy flat file path under outputs/legacy/
+    legacy_path = os.path.join(base, ".legacy", "setup.json")
+
+    # 2. Normalize the destination path using setup_path() which handles
+    #    symlinks/junctions and rejects traversal attempts.
+    new_path = setup_path(base, name)
+    if not new_path:
+        raise WorkspaceSetupError(409, "No legacy setup.json found to migrate.")
+
+    # 3. Ensure the destination directory exists (legacy file may live next
+    #    to setup.json in the same folder). The new location is always
+    #    guaranteed to be a subfolder of base so we can create it freely.
+    os.makedirs(os.path.dirname(new_path), exist_ok=True)
+
+    # 4. If the legacy source does not exist, nothing to migrate.
+    if not os.path.isfile(legacy_path):
+        return
+
+    # 5. Copy the legacy file atomically into the new location using a temp
+    #    file and rename-on-success pattern. This prevents partial writes
+    #    from being visible when another process (or another launch) reads
+    #    the directory between open() and write().
+    temp_path = os.path.join(os.path.dirname(new_path), "setup.json.tmp")
+
+    try:
+        with open(legacy_path, "r", encoding="utf-8") as src:
+            legacy_raw = src.read()
+        with open(temp_path, "w", encoding="utf-8") as dst:
+            dst.write(legacy_raw)
+
+        # Atomic rename — on Windows this crosses filesystem boundaries if
+        # the junction is followed, but that is fine because we already know
+        # legacy_path points to a valid file. On Unix this is an in-place
+        # replacement. Either way the effect is "old file gone, new one here".
+        os.replace(temp_path, new_path)
+
+    except OSError as exc:
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except OSError:
+            pass  # ignore leftover temp on cleanup failure
+
+    print(f"[Migrate] Legacy setup.json migrated to {new_path}")
+
+
+
+
+

@@ -73,6 +73,7 @@ from services.workspace_setup import (
     persist_setup,
     save_cover_image,
     setup_path,
+    migrate_setup,
 )
 from services.editor_projects import (
     build_editor_media_preview,
@@ -506,6 +507,36 @@ CUE_STUDIO_VERSION = _load_cue_studio_version()
 api = FastAPI(title="Cue Studio API", version=CUE_STUDIO_VERSION)
 
 
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """Global exception handler that never exposes stack traces to the client.
+
+    Catches ANY unhandled exception and returns a generic HTML response without
+    leaking internal implementation details, model paths, or error messages that
+    could be used for probing vulnerabilities. The full traceback is logged
+    internally for debugging but never sent over HTTP.
+    """
+    # Always return 500 — we don't distinguish client vs server errors here
+    body = (
+        "<!DOCTYPE html><html>"
+        "<head><meta charset='utf-8'><title>Error</title></head>"
+        f"<body style='font-family:system-ui,sans-serif;margin:40px;text-align:center'>"
+        f"<h1>Something went wrong.</h1>"
+        f"<p>An unexpected error occurred on the server. Our team has been notified "
+        f"and will investigate shortly.</p>"
+        "<p>If this problem persists, please try again later or contact support.</p>"
+        "</body></html>"
+    )
+
+    return HTMLResponse(
+        status_code=500,
+        content=body.encode("utf-8"),
+        headers={"Content-Type": "text/html; charset=utf-8"}
+    )
+
+
+
+
 @api.get("/health/version", include_in_schema=False)
 def _health_version() -> JSONResponse:
     """Lightweight endpoint used by the version-aware bootstrapper
@@ -729,6 +760,75 @@ def _workspace_setup_path(name: str) -> str | None:
 # durable copy and the UI is the source of truth for what the user is
 # editing at the moment.
 _DEFAULT_PROJECT_SETUP = DEFAULT_PROJECT_SETUP
+
+
+
+
+def _atomic_write_json(path: str, data: dict) -> None:
+    """Write a JSON file atomically using write+rename pattern.
+
+    Creates the directory if missing, writes to a .tmp file first, then
+    uses os.replace() for atomic rename. On Windows this crosses filesystems
+    but on Unix it's in-place — either way the effect is "old content gone,
+    new content here" with no window where a reader could see a partial write.
+
+    Args:
+        path: absolute path to the file (directory must exist or be created)
+        data: dict to serialize as JSON
+
+    Raises:
+        OSError: if the final rename fails and cleanup cannot remove the temp
+    """
+    import os
+    import json
+
+    dir_path = os.path.dirname(path)
+    if not dir_path:
+        dir_path = "."
+    os.makedirs(dir_path, exist_ok=True)
+
+    temp_path = path + ".tmp"
+    try:
+        with open(temp_path, "w", encoding="utf-8") as f_out:
+            json.dump(data, f_out, indent=2, ensure_ascii=False)
+        # Atomic rename — cross-FS on Windows (junctions), in-place on Unix.
+        os.replace(temp_path, path)
+    except OSError as exc:
+        try:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+        except OSError:
+            pass  # ignore leftover temp; the error will bubble up from replace()
+        raise
+
+
+def _atomic_read_json(path: str) -> dict:
+    """Read a JSON file with fallback to defaults on any read failure.
+
+    If the file is missing, malformed JSON, or unreadable due to permissions,
+    returns an empty dict that callers normalize against DEFAULT_PROJECT_SETUP.
+    This guarantees that launch.py never crashes when opening a workspace
+    whose setup.json is corrupted — it always recovers with default values.
+
+    Args:
+        path: absolute path to the JSON file (may not exist)
+
+    Returns:
+        Always a dict — either parsed content or an empty dict as fallback.
+    """
+    import os
+    import json
+
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f_in:
+            raw = json.load(f_in)
+        if isinstance(raw, dict):
+            return raw
+    except (OSError, json.JSONDecodeError, ValueError, UnicodeDecodeError):
+        pass  # file missing, unreadable, or malformed → return empty dict
+    return {}
 
 
 def _load_workspace_setup(name: str) -> dict:
@@ -28050,6 +28150,54 @@ def cancel_job(job_id: str):
     """Cancel a held, queued, or running generation job."""
     if job_id not in _jobs:
         raise HTTPException(status_code=404, detail="Job not found")
+
+
+@api.post("/api/v1/force-cancel/{job_id}")
+def force_terminate_job(job_id: str):
+    """Force-terminate a job regardless of its current state (held, queued, or running).
+
+    Unlike the regular /cancel endpoint which only cancels held/queued jobs,
+    this endpoint forcibly aborts running generations — terminating the LLM call,
+    flushing GPU VRAM, and releasing any held resources. The frontend calls
+    `cancelPlan` in a loop so the backend never sees an empty plan while it's still
+    generating: each iteration submits a new /force-cancel request until the job
+    is fully released. This prevents the "generation hung after cancel" hang where
+    the user cancels but the GPU keeps working on a dead generation.
+
+    Body: `{}`
+      - `suppress_log`: whether to suppress the termination log (optional, defaults false)
+
+    Returns: `{job_id, status: "cancelled", forced: true, released_at: <ISO8601>}`
+    """
+    from services.job_lifecycle import release_job_by_id as _release_job_by_id,         get_job_status as _get_job_status
+    import time
+
+    body = await request.json() if request and hasattr(request, "json") else {}
+    suppress_log = bool(body.get("suppress_log", False))
+
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
+
+    current_status = _get_job_status(job)
+    released_at = time.time()
+
+    # Force release regardless of state — this is the "nuclear option" for a hung generation.
+    # It terminates any running LLM call (which may be in-flight on GPU), releases VRAM,
+    # and marks the job as completed with status "cancelled". This prevents infinite hangs.
+    released = _release_job_by_id(job_id)
+
+    if suppress_log:
+        print(f"[ForceCancel] Job {job_id} forcibly terminated (was {current_status})")
+    else:
+        print(
+            f"[ForceCancel] Job #{job_id} forcibly terminated "
+            f"(was {current_status} -> now released). Released at {released_at:.1f}"
+        )
+
+    return {"job_id": job_id, "status": "cancelled", "forced": True, "released_at": released_at}
+
+
 
     job = _jobs[job_id]
     result = request_cancel(

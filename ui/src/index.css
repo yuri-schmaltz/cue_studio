@@ -1121,8 +1121,20 @@ input[type="range"]::-webkit-slider-thumb {
  * the chat/options columns, but the user asked for equal widths so the
  * three panels share the row evenly. `minmax(0,1fr)` plus the
  * min-width:0 on each child let long prompt text wrap inside instead
- * of forcing the column to grow. */
-.director-stage-columns { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex:1; min-height:0; gap:12px; overflow:hidden; }
+ * of forcing the column to grow.
+ *
+ * `grid-template-rows: minmax(0, 1fr)` stretches the row to fill the
+ * grid's full vertical height; without it, the row auto-sizes to the
+ * tallest column's content (≈280px when only the upload card + composer
+ * are mounted), which used to leave a visibly empty stripe at the
+ * bottom of the stage and below the progress pills once a pipeline was
+ * running — the rows stopped at content height while the parent
+ * application-shell kept growing to fill the viewport. `minmax(0, 1fr)`
+ * lets a narrow-viewport `max-height: 360px` override still shrink the
+ * chat column below the row height (it's an opt-in min-content), but
+ * at desktop widths every column now stretches to the bottom edge of
+ * the stage. */
+.director-stage-columns { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); flex:1; min-height:0; gap:12px; overflow:hidden; align-items: stretch; }
 /* Director columns share a uniform inner padding so cards (Upload,
    Generate, CLIP STRUCTURE, Generation Options) line up at the same
    inset from their parent card border. 20px was picked over 16px so

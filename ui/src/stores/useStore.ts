@@ -2954,7 +2954,13 @@ export const useStore = create<AppState>((set, get, store) => ({
   }),
 
   settingsOpen: false,
-  toggleSettings: () => get().setAppSection(get().appSection === 'configurations' ? 'director' : 'configurations'),
+  // Fallback for the toggle button in contexts where Dashboard is the
+  // active section: returning to `director` would dump users on a
+  // workspace they may have not opened yet (and that requires a real
+  // workspace selected). Fall back to `projects` so the toggle still
+  // hides the drawer without forcing a tab switch the user didn't ask
+  // for.
+  toggleSettings: () => get().setAppSection(get().appSection === 'configurations' ? 'projects' : 'configurations'),
   setSettingsOpen: (open) => {
     if (open) get().setAppSection('configurations')
     else set({ settingsOpen: false })
@@ -7787,7 +7793,14 @@ export const useStore = create<AppState>((set, get, store) => ({
   },
 
   // Director (Music Video Director)
-  appSection: 'projects',
+  // Default landing tab = Dashboard. The previous default
+  // ('projects') made the projects page greet first-launch users with
+  // a list view instead of the at-a-glance status surface they expect
+  // from a video production tool. 'dashboard' lets the queue, recent
+  // outputs and the status pills be visible on cold start; the
+  // Projects tab still owns the global tab list so users land there
+  // when they explicitly choose to browse projects.
+  appSection: 'dashboard',
   setAppSection: (section) => {
     // Gate project-scoped sections behind having a real (non-default)
     // workspace selected. Director, Editor and Medias all write or read
