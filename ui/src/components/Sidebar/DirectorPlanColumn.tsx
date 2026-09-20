@@ -197,7 +197,13 @@ export function DirectorPlanColumn() {
     // numbers (BPM, beats, sections, lyrics preview) so the column
     // becomes useful immediately and the user has a clear "the audio
     // analysis succeeded" signal before the plan surfaces render.
-    const analysis = useStore(s => s.directorAnalysis)
+    //
+    // NOTE: `analysis` is the same selector already read near the top
+    // of this component (line ~58). React hooks are positional, so
+    // re-declaring it here would shift the hook count between renders
+    // and trip "Rendered fewer hooks than expected" the moment
+    // `showPlanSurfaces` flips from false → true after analyze. Use
+    // the top-level binding instead.
     const hasAnalysis = Boolean(analysis && (
       analysis.bpm || (analysis.sections && analysis.sections.length)
     ))
