@@ -1,4 +1,67 @@
-# Handoff — Cue Studio fork standalone (2026-09-21)
+# Handoff — Cue Studio fork standalone (2026-09-22)
+
+## Atualização de retomada — 2026-09-22
+
+**HEAD verificado:** `0b4a0ec` — `fix(ui): revert DirectorPanel.tsx
+to a11c9ee — build was broken since 43600ac`. **Branch:** `main`
+1 commit à frente de `origin/main`. **VERSION / pyproject:** `2.1.4`.
+**Working tree:** clean.
+
+### Revert crítico — 2026-09-22
+
+O `DirectorPanel.tsx` no HEAD `83e1f9b` (e desde `43600ac`/`v2.1.3`)
+estava **quebrado** e impedia o build da UI:
+
+- `import { useStore }` ausente (~10 usos órfãos)
+- Helpers `getAutoCategory` / `getFirstSample` referenciados mas não
+  declarados
+- Constantes `AUDIO_ACCEPT` / `IMAGE_ACCEPT` referenciadas sem definição
+- `PlannedClipWithImage.category` / `.sampleText` lidos sem declaração
+- Tipos errados passados para `<DirectorTimelineEditor />`
+- Erro de sintaxe na linha 1046 (`<button>` fora do JSX wrapper)
+
+Os HANDOFFs anteriores registravam "build verde" mas isso nunca foi
+validado de fato — o `ui/dist/` antigo continuou servindo o bundle
+pré-bug até alguém limpar o cache. Solução: `git checkout a11c9ee --
+ui/src/components/Sidebar/DirectorPanel.tsx` (último estado funcional
+conhecido) e commit `0b4a0ec`. Funcionalidades refatoradas nos
+commits `43600ac`/`5b37a5d`/`83e1f9b` (refactor 3 colunas, memoização,
+layout coluna esquerda) precisam ser refeitas em uma etapa futura a
+partir do estado revertido — não estavam completas.
+
+### Estado operacional — 2026-09-22
+
+| Item | Estado |
+| --- | --- |
+| Backend `launch.py` rodando | ✅ PID `1896653` em `127.0.0.1:7861` |
+| `app/env/` provisionado | ✅ Python 3.12.3 + PyTorch 2.7.1+cu128 |
+| `ui/dist/index.html` | ✅ Gerado pelo build |
+| `GET /` | ✅ 200 — bundle React servindo |
+| `GET /api/v1/director/skills` | ✅ 200 — Music Video + Short Film |
+| `GET /health/version` | ✅ `{"name":"cue-studio","version":"2.1.4"}` |
+| CUDA | ✅ 12.8 / RTX 3060 / driver 595.84 |
+
+### Validação desta etapa
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm run build` | ✅ built in 6.08s |
+| `npm run test:store` | ✅ 5/5 contratos |
+| `npm run test:control` | ✅ 2/2 fases |
+| `pytest tests/ -q` | ✅ 328 passed, 2 failed (subprocess timeout, conhecido), 4 skipped |
+| Smoke HTTP (`/`, `/docs`, `/assets/*.js`, `/api/v1/director/skills`) | ✅ todos 200 |
+
+### Próximas ações
+
+1. **Refazer o refactor do painel Director** a partir do estado
+   revertido (`a11c9ee`), reaplicando as otimizações de performance
+   dos commits `43600ac`/`5b37a5d` **passo a passo**, com build
+   validado em cada etapa.
+2. Smoke real no navegador: criar projeto → upload de áudio → gerar
+   imagem de teste.
+3. CI em ambiente limpo para evitar que builds quebrados voltem.
+4. Push do `0b4a0ec` para `origin/main` (ainda pendente — 1 commit
+   local não pushed).
 
 ## Atualização de retomada — 2026-09-21
 
