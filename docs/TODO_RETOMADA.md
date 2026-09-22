@@ -1,15 +1,60 @@
 # TODO de retomada — Maestro
 
-Revisão: 2026-09-14. Base observada: commit `4b82d94` (HEAD) e alterações
-locais nos arquivos `ui/src/api/client.ts`, `ui/src/stores/useStore.ts`,
-`ui/src/types/index.ts`, `ui/scripts/store-gauntlet.mjs`, `CHANGELOG.md`,
-`HANDOFF.md`.
+Revisão: 2026-09-21. Base observada: commit `5b37a5d` (`v2.1.4`, HEAD
+atual) com remotes `origin/main` e `origin/cue-studio/main` em sincronia.
+Esta rodada sincronizou a versão (`VERSION` + `pyproject.toml` em
+`2.1.4`), consolidou as release notes dos patch versions `v2.1.1` a
+`v2.1.4`, eliminou a divergência de 1 commit entre os dois pares remotos
+e atualizou este documento e o `HANDOFF.md` para refletirem o estado
+operacional.
 
-Este documento compara a análise de 2026-09-12 com as correções e extrações
-feitas posteriormente. As rodadas anteriores deste revisor foram somente
-diagnósticas; as implementações subsequentes pertencem aos outros agentes.
-Nesta rodada (2026-09-14) o patch parcial das ações de cancel foi
-completado e os gauntlets passaram; o backend real não foi reiniciado.
+> **Nota sobre rodadas anteriores.** As seções datadas de 2026-09-13 e
+> 2026-09-14 permanecem neste arquivo como histórico. O HEAD mudou de
+> `4b82d94` para `5b37a5d` no commit `perf(ui): otimizações de
+> performance no painel Director — layout coluna esquerda` (v2.1.4).
+> Todas as verificações de gate anteriores permanecem válidas para os
+> commits que existiam naquele momento.
+
+## Execução em andamento — 2026-09-21 (sincronização operacional)
+
+Esta etapa é de consolidação, não de feature. O trabalho de produto
+estava concluído em `5b37a5d`; o que faltava era coerência entre
+VERSION, pyproject, release notes, tags e remotes.
+
+Entregue nesta etapa:
+
+- **Remotes alinhados.** `main` resetado para `origin/cue-studio/main`
+  em `5b37a5d` (commits `1ce8148` e `5b37a5d` tinham mensagens
+  idênticas e diff zero entre si — eram duplicados). Push executado.
+- **Tag `v2.1.4` recriada** no mesmo commit (`5b37a5d`) e empurrada com
+  `--force` (a tag anterior apontava para `1ce8148`, que era o
+  duplicado).
+- **VERSION e pyproject atualizados para `2.1.4`.** Sincronizados com a
+  tag git mais recente do projeto.
+- **Release notes criadas para todos os patch versions** desde a
+  v2.1: `docs/RELEASE_NOTES_V2.1.1.md`, `_V2.1.2.md`, `_V2.1.3.md` e
+  `_V2.1.4.md`.
+- **HANDOFF.md atualizado** com nova seção “Atualização de retomada —
+  2026-09-21” descrevendo o estado operacional (HEAD real, divergência
+  resolvida, ambiente local, próximos passos para provisionar).
+- **TODO_RETOMADA.md (este arquivo)** com nova seção datada de
+  2026-09-21.
+
+Próximas ações desta retomada:
+
+| # | Ação | Estado |
+| --- | --- | --- |
+| 1 | Provisionar `app/env` (Python 3.12 + PyTorch 2.7.1/CUDA 12.8) | Pendente |
+| 2 | `cd ui && npm install && npm run build` | Pendente |
+| 3 | Parar Maestro antigo em `/home/yuri/Documentos/maestro/` | Pendente |
+| 4 | `./start.sh --port 7861` neste fork | Pendente |
+| 5 | Rodar gauntlets (`pytest`, `test:store`, `test:control`) | Pendente |
+| 6 | Smoke: criar projeto + gerar imagem de teste | Pendente |
+
+Itens do roadmap estrutural permanecem inalterados (ver seção
+"Roadmap de manutenção estrutural" no `HANDOFF.md`).
+
+## Execução em andamento — 2026-09-14 (cancel + contratos)
 
 ## Execução em andamento — 2026-09-14 (cancel + contratos)
 

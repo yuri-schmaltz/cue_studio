@@ -1,4 +1,62 @@
-# Handoff — Cue Studio fork standalone (2026-09-15)
+# Handoff — Cue Studio fork standalone (2026-09-21)
+
+## Atualização de retomada — 2026-09-21
+
+Esta revisão sincronizou o estado operacional e empurrou `v2.1.4` para
+`origin`. O histórico abaixo (2026-09-14) permanece preservado para
+trilha; a nova seção “Estado operacional” é a fonte da verdade atual.
+
+**HEAD verificado:** `5b37a5d` (`v2.1.4`) — `perf(ui): otimizações
+de performance no painel Director — layout coluna esquerda`.
+**Branch:** `main` em sincronia com `origin/main` e `origin/cue-studio/main`.
+**VERSION / pyproject:** `2.1.4`.
+**Working tree:** clean. **Push:** OK.
+
+### Divergência de remotes resolvida (2026-09-21)
+
+Existiam dois pares remotos divergentes em 1 commit cada:
+- `origin/main` em `1ce8148`
+- `origin/cue-studio/main` em `5b37a5d` (com tag `v2.1.4`)
+
+Mensagens idênticas; `git diff 1ce8148..5b37a5d --` mostrou `0` arquivos
+alterados. Ação: `main` foi alinhado por `git reset --hard
+origin/cue-studio/main`, a tag `v2.1.4` recriada e o push executado
+(`git push origin main --tags --force-with-lease`).
+
+### Release notes consolidadas (2026-09-21)
+
+Quatro novos arquivos em `docs/`:
+- [RELEASE_NOTES_V2.1.1.md](docs/RELEASE_NOTES_V2.1.1.md) — cancel + persistência
+- [RELEASE_NOTES_V2.1.2.md](docs/RELEASE_NOTES_V2.1.2.md) — janela de estabilização
+- [RELEASE_NOTES_V2.1.3.md](docs/RELEASE_NOTES_V2.1.3.md) — refactor 3 colunas Director
+- [RELEASE_NOTES_V2.1.4.md](docs/RELEASE_NOTES_V2.1.4.md) — memoização perf
+
+### Estado operacional — 2026-09-21
+
+| Item | Estado |
+| --- | --- |
+| Backend `launch.py` rodando | ❌ Não (fork Cue Studio) |
+| Outra instância Maestro (legado) | ✅ PID `1742672` em `/home/yuri/Documentos/maestro/` |
+| `app/env*` provisionado | ❌ Não |
+| `ui/dist/index.html` | ❌ Ausente |
+| CUDA disponível | ✅ 12.8 / RTX 3060 / driver 595.84 |
+
+Antes de `./start.sh` neste fork, parar o Maestro antigo para liberar
+VRAM (não competirão por GPU mas compartilham a VRAM de 12 GB):
+
+```bash
+/home/yuri/Documentos/maestro/stop.sh
+./start.sh --port 7861   # porta alternativa para evitar colisão
+```
+
+### Próximos passos após o provisionamento
+
+1. Provisionar `app/env` com Python 3.12 + PyTorch 2.7.1/CUDA 12.8.
+2. `cd ui && npm install && npm run build` (gera `ui/dist/index.html`).
+3. `./start.sh --port 7861` e abrir `http://127.0.0.1:7861/`.
+4. Rodar gauntlets: `pytest tests/ -q`, `npm run test:store`,
+   `npm run test:control`.
+5. Smoke test: criar projeto, abrir Director, gerar imagem de teste.
 
 ## Atualização de retomada — 2026-09-14
 
