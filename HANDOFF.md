@@ -33,8 +33,8 @@ partir do estado revertido — não estavam completas.
 
 | Item | Estado |
 | --- | --- |
-| Backend `launch.py` rodando | ✅ PID `1896653` em `127.0.0.1:7861` |
-| `app/env/` provisionado | ✅ Python 3.12.3 + PyTorch 2.7.1+cu128 |
+| Backend `launch.py` rodando | ✅ PID `1901108` em `127.0.0.1:7861` |
+| `app/env/` provisionado | ✅ Python 3.11.15 + PyTorch 2.7.1+cu128 (recriado via `install.sh`) |
 | `ui/dist/index.html` | ✅ Gerado pelo build |
 | `GET /` | ✅ 200 — bundle React servindo |
 | `GET /api/v1/director/skills` | ✅ 200 — Music Video + Short Film |
@@ -60,8 +60,85 @@ partir do estado revertido — não estavam completas.
 2. Smoke real no navegador: criar projeto → upload de áudio → gerar
    imagem de teste.
 3. CI em ambiente limpo para evitar que builds quebrados voltem.
-4. Push do `0b4a0ec` para `origin/main` (ainda pendente — 1 commit
-   local não pushed).
+
+## Atualização de retomada — 2026-09-22 (wrapper `install.sh`)
+
+Adicionado [`install.sh`](install.sh) na raiz do repo — wrapper
+não-interativo de bootstrap que orquestra **clone → venv → deps →
+`start.sh`** em um único comando.
+
+### Por que coexiste com `app/setup.py`
+
+`app/setup.py` continua sendo o **caminho oficial interativo** (perfil
+de GPU detectado, escolha manual de versões Python/Torch/Triton/Sage,
+registro de múltiplos venvs). O `install.sh` é a **alternativa
+não-interativa** para:
+
+- Cold-start de uma máquina nova
+- CI / Dockerfiles reproduzíveis
+- Re-criação determinística do venv com Python 3.11 + Torch cu128
+
+### Pipeline do wrapper
+
+| # | Fase | Implementação |
+| --- | --- | --- |
+| 1 | Detectar checkout | Walk up 4 níveis procurando `VERSION + start.sh` |
+| 2 | Pré-requisitos | `git`, `curl`, `python3 (≥3.10)`, `uv`/`nvidia-smi` (warning) |
+| 3 | Clone | `git clone $REPO $TARGET_DIR` se não houver checkout |
+| 4 | Venv | `uv venv --python $VER` (preferido) ou `python3 -m venv` (fallback) |
+| 5 | CUDA resolve | `nvidia-smi` → `nvcc` → inferência por driver major → fallback cu128 |
+| 6 | pip install | torch (com `--extra-index-url`) + `app/requirements.txt` em dois passos |
+| 7 | torch sanity | `import torch; print(torch.__version__, torch.cuda.is_available())` |
+| 8 | llama-server | Apenas verifica presença; download é on-demand no primeiro uso |
+| 9 | UI | `npm install` + `npm run build` se `dist/` faltar |
+| 10 | Launch (opcional) | `./start.sh --no-open --port $PORT` + probe `/health/version` |
+
+### Flags disponíveis
+
+```
+--repo URL              # clona de uma URL custom
+--target DIR            # instala em DIR (default: cwd)
+--python-ver 3.11       # força versão Python (default: 3.11)
+--venv-name env         # nome do venv (default: env)
+--cuda cu128            # força versão CUDA (auto|disable|cu121|cu124|cu126|cu128|cu130)
+--port 7861             # porta do backend (default: 7860)
+--no-deps               # pula pip install (assume deps ok)
+--no-llama              # pula verificação do llama-server
+--launch                # após instalar, sobe start.sh
+--force-clone           # força clone mesmo se há checkout
+--dry-run               # apenas printa comandos, não executa
+```
+
+Variáveis de ambiente honradas: `CUE_STUDIO_REPO`, `CUE_STUDIO_PYTHON`,
+`CUE_STUDIO_CUDA`, `CUE_STUDIO_PORT`, `CUE_STUDIO_SKIP_DEPS`,
+`CUE_STUDIO_SKIP_LLAMA`, `CUE_STUDIO_DRY_RUN`.
+
+### Exit codes
+
+| Code | Significado |
+| --- | --- |
+| 0 | Sucesso (instalação completa ou backend já estava rodando) |
+| 1 | Pré-requisito faltando |
+| 2 | Argumento inválido |
+| 3 | Clone falhou |
+| 4 | Venv não pôde ser criado |
+| 5 | pip install falhou |
+| 6 | Backend não respondeu no probe |
+| 7 | llama-server falhou (não fatal) |
+
+### Validação desta etapa
+
+`./install.sh --no-llama --launch --port 7861 --cuda cu128` rodou
+end-to-end em ~3 min:
+
+- Detecção: ✅ checkout encontrado
+- Venv: ✅ Python 3.11.15 via `uv venv`
+- Deps: ✅ 265+ pacotes instalados (Pillow 11.3, numpy 2.1.2,
+  torch 2.7.1+cu128, diffusers 0.36.0, transformers 4.57.1,
+  mmgp 3.7.12, fastapi 0.141.1, gradio 5.29.0)
+- torch sanity: ✅ `cuda=True`
+- Backend: ✅ PID 1901108 em :7861, `/health/version` retornou
+  `{"name":"cue-studio","version":"2.1.4"}`
 
 ## Atualização de retomada — 2026-09-21
 
