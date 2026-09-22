@@ -40,7 +40,19 @@
 # Idempotent: safe to run on every startup. Fast: < 50 ms.
 set -euo pipefail
 
-BIN_DIR="${1:-/home/yuri/Documentos/maestro/app/ckpts/llm/bin}"
+# Resolve BIN_DIR with priority:
+#   1. CLI arg (allows callers to override)
+#   2. SCRIPT_DIR-based: if the script lives at app/scripts/, derive
+#      app/ckpts/llm/bin from there (works regardless of where the
+#      repo is checked out — Cue Studio, Maestro, or any fork).
+#   3. Hardcoded Maestro path as a last-resort fallback.
+if [[ $# -ge 1 && -n "$1" ]]; then
+  BIN_DIR="$1"
+elif BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../ckpts/llm/bin" 2>/dev/null && pwd)"; then
+  : # resolved from script location
+else
+  BIN_DIR="/home/yuri/Documentos/maestro/app/ckpts/llm/bin"
+fi
 
 if [[ ! -d "$BIN_DIR" ]]; then
   echo "[fix_llama_symlinks] directory not found: $BIN_DIR" >&2
