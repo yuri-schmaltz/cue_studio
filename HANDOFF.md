@@ -99,12 +99,54 @@ cases.
 ### Estado final do branch
 
 ```
+6357af8 (HEAD -> main, tag: v2.1.4, origin/main, origin/HEAD)
+       docs(handoff): 2026-09-22 exhaustion gauntlet — 6 bugs found, 1 critical fixed
 db0ed63 fix(scripts): fix_llama_symlinks.sh resolves BIN_DIR from script location
 c5386d1 feat: add install.sh wrapper (non-interactive bootstrap)
 8be0920 docs(handoff): 2026-09-22 — revert DirectorPanel.tsx + backend running on :7861
 0b4a0ec fix(ui): revert DirectorPanel.tsx to a11c9ee — build was broken since 43600ac
 83e1f9b chore(release): promote v2.1.4 + cleanup residual duplicate timeline editor
+5b37a5d perf(ui): otimizações de performance no painel Director — layout coluna esquerda
+43600ac (tag: v2.1.3) feat: refactoring completo do painel Director
 ```
+
+## Atualização de retomada — 2026-09-22 (housekeeping de branches)
+
+Cleanup de branches/tags pós-gauntlet:
+
+### Operações executadas
+
+| Operação | Comando | Estado |
+| --- | --- | --- |
+| Apagar `origin/cue-studio/main` (órfão, 4 commits atrás) | `git push origin --delete cue-studio/main` | ✅ |
+| Recriar tag `v2.1.4` no HEAD atual | `git tag -d v2.1.4 && git tag -a v2.1.4 HEAD -m "..."` | ✅ |
+
+### Estado pós-cleanup
+
+```
+remotes/origin/HEAD      → origin/main       (único remote default)
+remotes/origin/main      = 6357af8           (HEAD, tag: v2.1.4)
+remotes/origin/cue-studio/main               ❌ deletado
+tags/v2.1.3              → 43600ac
+tags/v2.1.4              → 6357af8 (movida do 5b37a5d original)
+```
+
+### Justificativa da mudança de tag
+
+A tag `v2.1.4` foi originalmente colocada em `5b37a5d` ("promote
+v2.1.4") antes da auditoria do gauntlet. Esse commit, no entanto,
+shippou dois bugs críticos:
+
+1. `DirectorPanel.tsx` quebrado (imports órfãos, helpers não
+   declarados, sintaxe inválida) — build da UI quebrava.
+2. `fix_llama_symlinks.sh` com path hardcoded para o Maestro
+   upstream — todos endpoints que dependiam do LLM advisor
+   retornavam 500.
+
+Quatro commits pós-release corrigiram ambos os bugs. A tag foi
+movida para o HEAD atual (`6357af8`) para refletir o estado
+verdadeiramente entregue da v2.1.4. A mensagem da tag documenta
+essa decisão para clareza histórica.
 
 ### Próximas ações
 
