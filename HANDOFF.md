@@ -148,6 +148,52 @@ movida para o HEAD atual (`6357af8`) para refletir o estado
 verdadeiramente entregue da v2.1.4. A mensagem da tag documenta
 essa decisão para clareza histórica.
 
+## Atualização de retomada — 2026-09-22 (icon branding refresh)
+
+Três fontes de branding coexistindo desde o rebrand Maestro →
+Cue Studio:
+
+| Arquivo | Tamanho | Quem serve | Status antes |
+| --- | --- | --- | --- |
+| `icon.png` (raiz) | 1.7 MB | ninguém | Maestro legacy ❌ |
+| `app/favicon.png` | 1.7 MB | `wgp.py` Gradio | Maestro legacy ❌ |
+| `ui/public/cue-studio-icon-1254.png` | 228 KB | `/cue-studio-icon.png` FastAPI | Cue Studio ✅ |
+| `ui/public/cue-studio-icon.svg` | ~5 KB | `<link rel="icon">` UI real | Cue Studio ✅ |
+
+**Sintoma**: `/icon.png` e `/favicon.ico` retornavam 404. Browser
+caía no SVG (declarado em `index.html`), mas scrapers, PWA
+installers e RSS readers que assumem os defaults viam 404 → ícone
+genérico do browser.
+
+### Operações executadas
+
+| Operação | Comando | Estado |
+| --- | --- | --- |
+| Substituir `icon.png` (raiz) | `cp ui/public/cue-studio-icon-1254.png icon.png` | ✅ (1.7 MB → 228 KB) |
+| Substituir `app/favicon.png` | `cp ui/public/cue-studio-icon-1254.png app/favicon.png` | ✅ (1.7 MB → 228 KB) |
+| Adicionar rota FastAPI `/icon.png` | edit em `launch.py` | ✅ |
+| Adicionar rota FastAPI `/favicon.ico` | edit em `launch.py` | ✅ |
+| Atualizar allowlist security | `/icon.png` + `/cue-studio-icon.png` em `services/security.py` | ✅ |
+
+### Validação end-to-end
+
+```
+GET /icon.png           → 200 (233571 bytes, image/png)
+GET /favicon.ico        → 200 (233571 bytes, image/png)
+GET /cue-studio-icon.png → 200 (233571 bytes, image/png)
+GET /maestro-icon.png   → 200 (233571 bytes, image/png)
+                          (alias legacy mantido por 1-2 releases)
+
+md5 do /icon.png servido = md5 de ui/public/cue-studio-icon-1254.png
+                          (binariamente idêntico)
+
+Cache-Control: public, max-age=86400 (24h) — todos endpoints
+```
+
+**Redução total**: 1.7 MB → 228 KB = **86% menor**. Os 3 PNGs do
+repo são agora binariamente idênticos (mesmo MD5), o que evita
+drift futuro entre fontes.
+
 ### Próximas ações
 
 1. **Refazer o refactor do painel Director** a partir do estado

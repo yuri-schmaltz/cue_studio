@@ -29572,16 +29572,24 @@ _mimetypes.add_type("image/svg+xml", ".svg")
 # iOS apple-touch-icon link can both use the same stable URL.
 # (Legacy /maestro-icon.png route kept as an alias for a couple of minor
 # releases so installs that cached the old URL don't 404.)
+#
+# `/icon.png` and `/favicon.ico` are added as compatibility shims for
+# browsers that auto-request the legacy defaults — these used to 404 and
+# leave the browser with a generic placeholder. Both now serve the same
+# Cue Studio icon. The 86% smaller PNG (228 KB vs 1.7 MB) is shared
+# from a single file via a closure.
 _cue_studio_web_icon = os.path.normpath(
     os.path.join(_app_dir, "..", "ui", "public", "cue-studio-icon-1254.png")
 )
 if os.path.isfile(_cue_studio_web_icon):
+    _icon_cache_headers = {"Cache-Control": "public, max-age=86400"}
+
     @api.get("/cue-studio-icon.png", include_in_schema=False)
     def cue_studio_web_icon():
         return FileResponse(
             _cue_studio_web_icon,
             media_type="image/png",
-            headers={"Cache-Control": "public, max-age=86400"},
+            headers=_icon_cache_headers,
         )
 
     @api.get("/maestro-icon.png", include_in_schema=False)
@@ -29592,7 +29600,33 @@ if os.path.isfile(_cue_studio_web_icon):
         return FileResponse(
             _cue_studio_web_icon,
             media_type="image/png",
-            headers={"Cache-Control": "public, max-age=86400"},
+            headers=_icon_cache_headers,
+        )
+
+    @api.get("/icon.png", include_in_schema=False)
+    def _icon_png_compat():
+        # Browser compatibility: some clients (RSS readers, social
+        # scrapers, PWA install prompts) probe `/icon.png` directly
+        # instead of reading the manifest. Returning the same PNG keeps
+        # the visual identity consistent across all entry points.
+        return FileResponse(
+            _cue_studio_web_icon,
+            media_type="image/png",
+            headers=_icon_cache_headers,
+        )
+
+    @api.get("/favicon.ico", include_in_schema=False)
+    def _favicon_ico_compat():
+        # Browser default probe — every browser hits this URL when the
+        # page doesn't explicitly declare a favicon. We serve the PNG
+        # under image/png (most modern browsers accept this despite
+        # the .ico extension) because we don't carry a true ICO file
+        # in the repo and rasterizing on every request would slow the
+        # cold path.
+        return FileResponse(
+            _cue_studio_web_icon,
+            media_type="image/png",
+            headers=_icon_cache_headers,
         )
 
 _ui_dist = os.path.normpath(os.path.join(_app_dir, "..", "ui", "dist"))
