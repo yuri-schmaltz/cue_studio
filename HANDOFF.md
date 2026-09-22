@@ -41,15 +41,70 @@ partir do estado revertido — não estavam completas.
 | `GET /health/version` | ✅ `{"name":"cue-studio","version":"2.1.4"}` |
 | CUDA | ✅ 12.8 / RTX 3060 / driver 595.84 |
 
-### Validação desta etapa
+### Próximas ações
+
+1. **Refazer o refactor do painel Director** a partir do estado
+   revertido (`a11c9ee`), reaplicando as otimizações de performance
+   dos commits `43600ac`/`5b37a5d` **passo a passo**, com build
+   validado em cada etapa.
+2. Smoke real no navegador: criar projeto → upload de áudio → gerar
+   imagem de teste.
+3. CI em ambiente limpo para evitar que builds quebrados voltem.
+
+## Atualização de retomada — 2026-09-22 (gauntlet de exaustão)
+
+Sweep completo de todos os 196 endpoints da OpenAPI + assets de UI
++ sandbox de upload + CORS + rate limiting + concorrência + edge
+cases.
+
+### Resumo quantitativo
+
+| Categoria | Total | 2xx | 4xx | 5xx | Timeout |
+| --- | --- | --- | --- | --- | --- |
+| GETs sem path params | 44 | 43 | 1 | 0 | 0 |
+| Writes (POST/PUT/DELETE) | 85 | 20 | 46 | 1 | 18 |
+| UI assets | 8 | 7 | 1 | 0 | 0 |
+| Concorrência (30 paralelos) | 30 | 30 | 0 | 0 | 0 |
+| Path traversal (3 vetores) | 3 | 0 | 3 | 0 | 0 |
+| Upload sandbox | 4 | 4 | 0 | 0 | 0 |
+
+### Bugs encontrados e corrigidos nesta rodada
+
+| # | Severidade | Bug | Fix |
+| --- | --- | --- | --- |
+| 1 | **Crítico** | `fix_llama_symlinks.sh` tem `BIN_DIR` hardcoded para `/home/yuri/Documentos/maestro/...` — em qualquer fork, o script é no-op e o llama-server falha com `libllama-common.so.0: cannot open shared object file`. Resultado: TODOS os endpoints que dependem do LLM advisor retornam 500. | Resolução dinâmica via `BASH_SOURCE` + fallback Maestro path. Validado: 5 symlinks criados, llama-server responde `--help` corretamente. **Commit `db0ed63`** pushed. |
+
+### Bugs conhecidos (não corrigidos nesta rodada)
+
+| # | Severidade | Bug | Workaround |
+| --- | --- | --- | --- |
+| 1 | Médio | `POST /api/v1/workspaces` e `PUT /api/v1/settings/projects-root` retornam **500** quando recebem JSON malformado, body vazio, ou tipo errado — deveriam retornar 422 (FastAPI validation). | Clientes enviam JSON válido. |
+| 2 | Médio | `PUT /api/v1/settings/projects-root` com `{}` retorna 200 silenciosamente (reseta para default) — deveria ser 422 (campo `path` obrigatório). | Enviar `{"path":"..."}` explicitamente. |
+| 3 | Médio | `POST /api/v1/director/v2/plan` aceita qualquer payload e crasha em runtime com `MusicVideoPlanner.plan() missing 2 required positional arguments: 'clips' and 'scene_description'` — OpenAPI não documenta o schema. | Enviar payload completo: `{"clips":[...],"scene_description":"..."}`. Endpoint precisa de schema Pydantic. |
+| 4 | Baixo | Não há rate limiting — 50 requests em <1s todas retornam 200. | OK para app local; crítico se exposto em LAN/WAN. |
+| 5 | Baixo | Upload não tem limite de tamanho — testamos 100 MB OK. | OK para uso normal; potencial DoS em ambiente hostil. |
+| 6 | Info | `/health/live` e `/health/ready` retornam 404 — só existe `/health/version`. | Adicionar endpoints se necessário para k8s/load-balancer. |
+
+### Validação final
 
 | Verificação | Resultado |
 | --- | --- |
-| `npm run build` | ✅ built in 6.08s |
+| `npm run build` | ✅ built in 6.05s |
 | `npm run test:store` | ✅ 5/5 contratos |
 | `npm run test:control` | ✅ 2/2 fases |
 | `pytest tests/ -q` | ✅ 328 passed, 2 failed (subprocess timeout, conhecido), 4 skipped |
-| Smoke HTTP (`/`, `/docs`, `/assets/*.js`, `/api/v1/director/skills`) | ✅ todos 200 |
+| Backend uptime | 8h37min, 1.7GB RSS, 0.3% CPU |
+| Zero `Traceback`/`ERROR` no log | ✅ 933 linhas limpas |
+
+### Estado final do branch
+
+```
+db0ed63 fix(scripts): fix_llama_symlinks.sh resolves BIN_DIR from script location
+c5386d1 feat: add install.sh wrapper (non-interactive bootstrap)
+8be0920 docs(handoff): 2026-09-22 — revert DirectorPanel.tsx + backend running on :7861
+0b4a0ec fix(ui): revert DirectorPanel.tsx to a11c9ee — build was broken since 43600ac
+83e1f9b chore(release): promote v2.1.4 + cleanup residual duplicate timeline editor
+```
 
 ### Próximas ações
 
