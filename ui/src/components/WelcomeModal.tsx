@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles, Download, Cpu, ShieldAlert, X } from 'lucide-react'
+import { Sparkles, Download, Cpu, ShieldAlert } from 'lucide-react'
 
 const SEEN_KEY = 'cue-studio_welcome_seen_v1'
 
@@ -40,9 +40,9 @@ export function WelcomeModal() {
               that plans a whole music video or short film from a sentence.
             </p>
           </div>
-          <button onClick={dismiss} className="p-1 rounded text-text-muted hover:text-text-primary" aria-label="Close">
-            <X size={16} />
-          </button>
+          {/* X close button intentionally omitted — clicking the backdrop or the
+              "Get started" footer button both dismiss the modal, and an extra
+              close affordance cluttered the header behind the Dashboard tab. */}
         </div>
 
         {/* Points */}
