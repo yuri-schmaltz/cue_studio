@@ -826,10 +826,19 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
           </div>
         )}
 
-        <button onClick={() => setOpen(false)}
-          className="fixed top-3 right-4 z-[61] p-1.5 rounded-lg bg-bg-secondary hover:bg-bg-hover transition-colors shadow-md border border-border">
-          <X size={16} className="text-text-muted" />
-        </button>
+        {/* Close button: only meaningful in standalone (non-embedded) mode,
+            where the Dashboard overlays the whole screen. In embedded mode
+            (the default for the Dashboard tab), navigation lives in the tab
+            bar — and `setOpen(false)` is a no-op because the embedded gate
+            ignores the open state. Showing it there just adds a dead button
+            on top of the tab area. */}
+        {!embedded && (
+          <button onClick={() => setOpen(false)}
+            aria-label="Close Dashboard"
+            className="fixed top-3 right-4 z-[61] p-1.5 rounded-lg bg-bg-secondary hover:bg-bg-hover transition-colors shadow-md border border-border">
+            <X size={16} className="text-text-muted" />
+          </button>
+        )}
       </div>
 
       {/* Content */}
