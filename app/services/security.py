@@ -70,8 +70,7 @@ async def verify_api_key(
         return True
         
     # Isenção para rotas de documentação pública ou arquivos estáticos
-    if request.url.path in ("/docs", "/openapi.json", "/redoc", "/favicon.ico",
-                            "/maestro-icon.png", "/icon.png", "/cue-studio-icon.png"):
+    if request.url.path in ("/docs", "/openapi.json", "/redoc", "/favicon.ico", "/maestro-icon.png"):
         return True
         
     # Verificar loopback se permitido
