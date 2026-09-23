@@ -1,4 +1,38 @@
-# Handoff — Cue Studio fork standalone (2026-09-22)
+# Handoff — Cue Studio fork standalone (2026-09-23)
+
+## Atualização de retomada — 2026-09-23 (Dashboard embedded X close gated)
+
+**HEAD verificado:** `fee1176` — `ui(dashboard): hide close X in
+embedded mode (no-op + dead affordance)`. **Tag:** `v2.1.4` movida
+para `fee1176`. **Branch:** `main` em sincronia com `origin/main`.
+**VERSION / pyproject:** `2.1.4`. **Working tree:** clean.
+
+### Mudança — 2026-09-23
+
+- `ui/src/components/DirectorDashboard/DirectorDashboard.tsx`: o botão
+  `fixed top-3 right-4` com `X size={16}` (linha 829 original) agora é
+  renderizado **apenas quando `!embedded`**.
+- No modo embedded (aba Dashboard padrão), o botão era um affordance
+  morto: clicava em `setDashboardOpen(false)`, mas o gate
+  `if (!embedded && !open)` ignorava essa flag, então nada fechava.
+- Adicionado `aria-label="Close Dashboard"` (antes sem nome acessível).
+- No modo standalone (overlay fullscreen usado em outros pontos do
+  `App.tsx`), o X continua renderizando — quem precisa fechar ainda
+  consegue.
+- Diff: 13 insertions / 4 deletions em uma região.
+
+### Validação
+
+- `npm run test:store` ✅
+- `npm run test:control` ✅
+- Bundle novo: `index-CWkBY6T_.js` + `DirectorDashboard-CiylVX-m.js`.
+- Visual: aba Dashboard agora mostra só `heading + pipeline selector +
+  empty state` (sem botão X).
+
+### Estado operacional — 2026-09-23
+
+- Backend rodando em `http://127.0.0.1:7861/` (PID `2135405`).
+- `/health/version` → `{"name":"cue-studio","version":"2.1.4"}`.
 
 ## Atualização de retomada — 2026-09-22 (X close removido do WelcomeModal)
 
