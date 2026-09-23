@@ -1,6 +1,37 @@
 # Handoff — Cue Studio fork standalone (2026-09-22)
 
-## Atualização de retomada — 2026-09-22
+## Atualização de retomada — 2026-09-22 (X close removido do WelcomeModal)
+
+**HEAD verificado:** `d24a02d` — `ui: remove redundant X close button
+from WelcomeModal header`. **Tag:** `v2.1.4` movida para `d24a02d`.
+**Branch:** `main` em sincronia com `origin/main`. **VERSION /
+pyproject:** `2.1.4`. **Working tree:** clean.
+
+### Mudança — 2026-09-22
+
+- `ui/src/components/WelcomeModal.tsx`: removido o botão X (lucide
+  `X` 16px) do canto superior direito do modal de boas-vindas.
+- Motivo: o modal sobrepõe a aba Dashboard quando ativo, e o X
+  ficava visualmente em cima da área da aba — atrapalhando leitura.
+  Os dois caminhos de dismiss já existentes (clicar no backdrop ou no
+  botão "Get started") continuam funcionando.
+- Diff: `-import X +comentário explicativo`, 4 insertions / 4 deletions.
+- Validação:
+  - `npm run test:store` — todos os contratos passam.
+  - `npm run test:control` — snapshot isolation, scene split/merge,
+    boundary adjust, persisted review passam.
+  - Bundle novo: `index-BX_dagfG.js`. Busca por `aria-label="Close"`
+    no bundle servido: **0 ocorrências** (antes: 1).
+
+### Estado operacional — 2026-09-22 (após X removal)
+
+- Backend rodando em `http://127.0.0.1:7862/` (PID `2130392`).
+- `/health/version` → `{"name":"cue-studio","version":"2.1.4"}`.
+- Bundle servido: `assets/index-BX_dagfG.js`.
+- venv: `app/env/` (Python 3.11.15, torch 2.7.1+cu128).
+- GPU detectada: RTX 3060 12GB, driver 595.84, 1.1 GB VRAM em idle.
+
+## Atualização de retomada — 2026-09-22 (revert DirectorPanel)
 
 **HEAD verificado:** `0b4a0ec` — `fix(ui): revert DirectorPanel.tsx
 to a11c9ee — build was broken since 43600ac`. **Branch:** `main`
