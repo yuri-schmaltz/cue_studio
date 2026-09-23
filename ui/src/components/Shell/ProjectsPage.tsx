@@ -301,7 +301,12 @@ export function ProjectsPage() {
             const updated = formatUpdated(workspace.modified)
             const meta = `${summary} · ${files} ${files === 1 ? 'file' : 'files'}${updated ? ` · updated ${updated}` : ''}`
             return (
-            <article key={workspace.name} className={`project-card ${workspace.name === active ? 'is-current' : ''} ${workspace.setup?.pinned ? 'is-pinned' : ''}`}>
+            <article
+              key={workspace.name}
+              className={`project-card ${workspace.name === active ? 'is-current' : ''} ${workspace.setup?.pinned ? 'is-pinned' : ''}`}
+              onDoubleClick={() => { if (!busy) void open(workspace.name, 'director') }}
+              title="Double-click to open in Director"
+            >
               <div className={`project-banner ${skill === 'short_film' ? 'project-skill-film' : 'project-skill-music'}`}>
                 {workspace.setup?.cover_image ? (
                   <img
