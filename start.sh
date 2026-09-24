@@ -263,8 +263,9 @@ echo "[start] Lançando backend → log: $LOGFILE"
 # streaming layer-by-layer em vez de tentar carregar tudo.
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
 SERVER_NAME="$BIND_HOST" SERVER_PORT="$PORT" \
-nohup "$PY" -u launch.py $COMPILE_FLAG --vram-safety-coefficient 0.5 >"$LOGFILE" 2>&1 &
+nohup "$PY" -u launch.py $COMPILE_FLAG --vram-safety-coefficient 0.5 < /dev/null >"$LOGFILE" 2>&1 &
 BACKEND_PID=$!
+disown "$BACKEND_PID" 2>/dev/null || true
 echo "$BACKEND_PID" > "$PIDFILE"
 
 echo "[start] Backend PID: $BACKEND_PID"
