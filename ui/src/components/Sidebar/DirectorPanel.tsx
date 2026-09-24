@@ -1,5 +1,5 @@
 import { DirectorTimelineEditor } from './DirectorTimelineEditor'
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ChevronDown, ImageIcon, Play } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { DirectorActivityBadge } from './DirectorActivityBar'
@@ -44,6 +44,28 @@ function EnergyDot({ energy }: { energy: number }) {
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={`Energy: ${(energy * 100).toFixed(0)}%`} />
 }
 
+function ClipImageThumbnail({ file, clipIndex, sizeClass = "aspect-square rounded-lg border border-border" }: { file: File; clipIndex: number; sizeClass?: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const objectUrl = URL.createObjectURL(file)
+    setUrl(objectUrl)
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [file])
+
+  if (!url) return null
+
+  return (
+    <img
+      src={url}
+      alt={`Clip ${clipIndex + 1}`}
+      className={`w-full object-cover ${sizeClass}`}
+    />
+  )
+}
+
 export function DirectorPanel() {
   const step = useStore(s => s.directorStep)
   const loading = useStore(s => s.directorLoading)
@@ -79,10 +101,19 @@ export function DirectorPanel() {
   const autoMode = useStore(s => s.directorAutoMode)
   const setAutoMode = useStore(s => s.setDirectorAutoMode)
 
-  const refImagePreview = useMemo(
-    () => referenceImage ? URL.createObjectURL(referenceImage) : null,
-    [referenceImage]
-  )
+  const [refImagePreview, setRefImagePreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!referenceImage) {
+      setRefImagePreview(null)
+      return
+    }
+    const url = URL.createObjectURL(referenceImage)
+    setRefImagePreview(url)
+    return () => {
+      URL.revokeObjectURL(url)
+    }
+  }, [referenceImage])
 
   // Sample lyrics per speaker for identification
   const speakerSamples = useMemo(() => {
@@ -119,9 +150,14 @@ export function DirectorPanel() {
     if (file) handleFile(file)
   }, [handleFile])
 
-  // Compute total duration from planned clips
+  // Compute total duration and total beat count from planned clips
   const totalClipDuration = useMemo(
     () => plannedClips.length > 0 ? plannedClips[plannedClips.length - 1].end : 0,
+    [plannedClips]
+  )
+
+  const totalBeats = useMemo(
+    () => plannedClips.reduce((s, c) => s + c.beat_count, 0),
     [plannedClips]
   )
 
@@ -135,6 +171,15 @@ export function DirectorPanel() {
       .sort(([a], [b]) => Number(a) - Number(b))
       .map(([beats, count]) => `${count}x${beats}-beat`)
       .join(', ')
+  }, [plannedClips])
+
+  // Section clip counts memoized
+  const sectionCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const c of plannedClips) {
+      counts[c.section_label] = (counts[c.section_label] || 0) + 1
+    }
+    return counts
   }, [plannedClips])
 
   return (
@@ -379,7 +424,7 @@ export function DirectorPanel() {
                 {/* Proportional bar chart */}
                 <div className="flex gap-px h-8 rounded overflow-hidden">
                   {plannedClips.map((clip, i) => {
-                    const widthPct = Math.max((clip.beat_count / plannedClips.reduce((s, c) => s + c.beat_count, 0)) * 100, 1.5)
+                    const widthPct = Math.max((clip.beat_count / (totalBeats || 1)) * 100, 1.5)
                     const barColor = sectionBarColors[clip.section_label] || 'bg-gray-500'
                     return (
                       <div
@@ -404,7 +449,7 @@ export function DirectorPanel() {
                   <div>{beatDistribution}</div>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                     {Object.entries(sectionBarColors).map(([label, color]) => {
-                      const count = plannedClips.filter(c => c.section_label === label).length
+                      const count = sectionCounts[label] || 0
                       if (count === 0) return null
                       return (
                         <div key={label} className="flex items-center gap-1">
@@ -675,10 +720,10 @@ export function DirectorPanel() {
             <div className="grid grid-cols-3 gap-1.5 max-h-[300px] overflow-y-auto">
               {clipImages.map((img, i) => (
                 <div key={i} className="relative">
-                  <img
-                    src={URL.createObjectURL(img.file)}
-                    alt={`Clip ${img.clipIndex + 1}`}
-                    className="w-full aspect-square object-cover rounded-lg border border-border"
+                  <ClipImageThumbnail
+                    file={img.file}
+                    clipIndex={img.clipIndex}
+                    sizeClass="aspect-square rounded-lg border border-border"
                   />
                   <span className="absolute bottom-0.5 left-0.5 text-2xs bg-black/60 text-white px-1 py-0.5 rounded">
                     {img.clipIndex + 1}
@@ -719,10 +764,10 @@ export function DirectorPanel() {
             <div className="grid grid-cols-5 gap-1 mb-1">
               {clipImages.map((img, i) => (
                 <div key={i} className="relative">
-                  <img
-                    src={URL.createObjectURL(img.file)}
-                    alt={`Clip ${img.clipIndex + 1}`}
-                    className="w-full aspect-square object-cover rounded border border-border"
+                  <ClipImageThumbnail
+                    file={img.file}
+                    clipIndex={img.clipIndex}
+                    sizeClass="aspect-square rounded border border-border"
                   />
                   <span className="absolute bottom-0 left-0 text-2xs bg-black/60 text-white px-0.5 rounded-br">
                     {img.clipIndex + 1}
