@@ -1,4 +1,4 @@
-import { DirectorTimelineEditor } from './DirectorTimelineEditor'
+import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ChevronDown, ImageIcon, Play } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
@@ -184,7 +184,6 @@ export function DirectorPanel() {
 
   return (
     <div className="bg-bg-tertiary/50 border border-accent-blue/30 rounded-lg p-3 space-y-3">
-      <DirectorTimelineEditor />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
@@ -403,8 +402,11 @@ export function DirectorPanel() {
           {/* Clip structure visualization */}
           <div className="bg-bg-tertiary rounded-lg p-2 space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-text-secondary font-medium">{plannedClips.length} clips</span>
-              <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
+              <div className="flex items-center gap-2">
+                <span className="text-text-secondary font-medium">{plannedClips.length} clips</span>
+                <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
+              </div>
+              <DirectorTimelineIconButton />
             </div>
 
             {loading ? (
