@@ -1,6 +1,6 @@
 import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ChevronDown, ImageIcon, Play } from 'lucide-react'
+import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ImageIcon, Play } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { DirectorActivityBadge } from './DirectorActivityBar'
 import { DirectorErrorBanner } from './DirectorErrorBanner'
@@ -42,6 +42,31 @@ function SectionBadge({ label }: { label: string }) {
 function EnergyDot({ energy }: { energy: number }) {
   const color = energy > 0.6 ? 'bg-chip-red' : energy < 0.3 ? 'bg-chip-blue' : 'bg-chip-yellow'
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} title={`Energy: ${(energy * 100).toFixed(0)}%`} />
+}
+
+export const SPEAKER_CATEGORIES: Record<string, { label: string; color: string }> = {
+  vocals_male: { label: 'Vocal Masculino', color: 'bg-green-500/20 text-chip-green border-green-400/30' },
+  vocals_female: { label: 'Vocal Feminino', color: 'bg-pink-500/20 text-chip-pink border-pink-400/30' },
+  choir: { label: 'Coro / Coral', color: 'bg-purple-500/20 text-chip-purple border-purple-400/30' },
+  rapping: { label: 'Rap / Flow', color: 'bg-orange-500/20 text-chip-orange border-orange-400/30' },
+  duet: { label: 'Dueto', color: 'bg-cyan-500/20 text-chip-cyan border-cyan-400/30' },
+  other: { label: 'Outros / Instrumental', color: 'bg-gray-500/20 text-chip-gray border-gray-400/30' },
+}
+
+export function getAutoCategory(text?: string, role?: string): string {
+  if (role) {
+    if (role === 'rapping') return 'rapping'
+    if (role === 'singing') return 'vocals_female'
+    if (role === 'speaking') return 'vocals_male'
+  }
+  if (!text) return 'other'
+  const lower = text.toLowerCase()
+  if (/duet|dueto|dúo/i.test(lower)) return 'duet'
+  if (/chorus|coral|corais|grupo/i.test(lower)) return 'choir'
+  if (/(?<![_])rapping(?:ing)?/i.test(lower) || /\bdiss|flow|rap/i.test(lower)) return 'rapping'
+  if (/female|woman|mulher|girl|ela|ella/i.test(lower)) return 'vocals_female'
+  if (/male|man|homem|boy|ele|el/i.test(lower)) return 'vocals_male'
+  return 'other'
 }
 
 function ClipImageThumbnail({ file, clipIndex, sizeClass = "aspect-square rounded-lg border border-border" }: { file: File; clipIndex: number; sizeClass?: string }) {
@@ -218,61 +243,98 @@ export function DirectorPanel() {
 
       {/* Step 1: Upload */}
       {(step === 'upload' || step === 'analyze') && (
-        <div
-          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
-            dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
-          }`}
-        >
-          {loading ? (
-            <div className="flex flex-col items-center gap-2 py-2">
-              <Loader2 size={20} className="animate-spin text-accent-blue" />
-              <span className="text-xs text-text-muted text-center px-2">
-                {loadingMessage || 'Analyzing audio...'}
-              </span>
-            </div>
-          ) : audioFile ? (
-            <div className="flex flex-col items-center gap-1">
-              <Music size={16} className="text-text-muted" />
-              <span className="text-xs text-text-secondary truncate max-w-full">{audioFile.name}</span>
-            </div>
-          ) : (
-            <label className="cursor-pointer flex flex-col items-center gap-1.5">
-              <Upload size={18} className="text-text-muted" />
-              <span className="text-xs text-text-muted">Drop a song or click to upload</span>
-              <span className="text-2xs text-text-muted">wav, mp3, flac, ogg, m4a</span>
+        <div className="flex flex-col gap-2">
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`group relative w-full h-[45vh] min-h-[140px] border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center text-center rounded-lg p-4 overflow-hidden ${
+              dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
+            }`}
+          >
+            {loading ? (
+              <div className="flex flex-col items-center gap-2 py-4">
+                <Loader2 size={24} className="animate-spin text-accent-blue" />
+                <span className="text-xs text-text-muted text-center px-4">
+                  {loadingMessage || 'Analyzing audio...'}
+                </span>
+              </div>
+            ) : audioFile ? (
+              <div className="flex flex-col items-center gap-2 p-2">
+                <Music size={24} className="text-accent-blue animate-pulse" />
+                <span className="text-xs font-medium text-text-secondary truncate max-w-[240px]">{audioFile.name}</span>
+                <span className="text-2xs text-text-muted">Pronto para processamento</span>
+              </div>
+            ) : (
+              <label className="cursor-pointer flex flex-col items-center gap-2">
+                <Upload size={24} className="text-text-muted group-hover:text-accent-blue transition-colors mb-1" />
+                <span className="text-xs font-medium text-text-secondary">Arraste seu áudio aqui</span>
+                <span className="text-2xs text-text-muted">ou clique para selecionar (.wav, .mp3, .flac, .ogg, .m4a)</span>
+                <input
+                  type="file"
+                  accept={AUDIO_ACCEPT}
+                  className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0]
+                    if (file) handleFile(file)
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
+          {audioFile && (
+            <div className="bg-bg-tertiary rounded-lg p-2.5 space-y-1.5 text-xs border border-border">
+              <div className="flex items-center justify-between">
+                <span className="text-text-secondary font-medium">Bias de energia</span>
+                <span className={`text-xs font-mono ${(localBias ?? energyBias) > 0 ? 'text-chip-red' : (localBias ?? energyBias) < 0 ? 'text-chip-blue' : 'text-text-muted'}`}>
+                  {(localBias ?? energyBias) > 0 ? '+' : ''}{localBias ?? energyBias}
+                </span>
+              </div>
               <input
-                type="file"
-                accept={AUDIO_ACCEPT}
-                className="hidden"
+                type="range"
+                min={-2}
+                max={2}
+                step={1}
+                value={localBias ?? energyBias}
                 onChange={e => {
-                  const file = e.target.files?.[0]
-                  if (file) handleFile(file)
+                  const v = Number(e.target.value)
+                  setLocalBias(v)
+                  setEnergyBias(v)
                 }}
+                className="w-full h-1.5 bg-bg-secondary rounded-lg appearance-none cursor-pointer accent-accent-blue"
               />
-            </label>
+              <div className="flex items-center justify-between text-3xs text-text-muted">
+                <span>Cortes lentos (-2)</span>
+                <span>Cortes rápidos (+2)</span>
+              </div>
+            </div>
           )}
         </div>
       )}
 
       {/* Analysis summary (shown as context once past upload) */}
       {analysis && step !== 'upload' && step !== 'analyze' && (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <button
+            type="button"
             onClick={() => setShowAnalysisDetails(v => !v)}
-            className="flex items-center gap-3 text-xs text-text-muted w-full hover:text-text-secondary transition-colors"
+            className="flex items-center justify-between text-xs text-text-muted w-full hover:text-text-secondary bg-bg-secondary/40 hover:bg-bg-secondary/70 border border-border/80 rounded-lg px-2.5 py-1.5 transition-colors select-none"
           >
-            <ChevronDown size={10} className={`transition-transform ${showAnalysisDetails ? '' : '-rotate-90'}`} />
-            <span>{formatTime(analysis.duration)}</span>
-            <span>{analysis.bpm.toFixed(0)} BPM</span>
-            <span>{analysis.sections.length} sections</span>
-            {analysis.lyrics && <span>{analysis.lyrics.length} lyric segments</span>}
+            <div className="flex items-center gap-2">
+              <ChevronRight size={12} className={`text-accent-blue transition-transform duration-200 ${showAnalysisDetails ? 'rotate-90' : ''}`} />
+              <span className="font-medium text-text-primary text-2xs">Detalhes do Áudio</span>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-3xs">
+              <span className="px-1.5 py-0.5 rounded bg-accent-blue/15 text-accent-blue font-medium">{analysis.bpm.toFixed(0)} BPM</span>
+              <span>{formatTime(analysis.duration)}</span>
+              <span>{analysis.sections.length} seções</span>
+              {analysis.lyrics && <span>{analysis.lyrics.length} versos</span>}
+            </div>
           </button>
 
           {showAnalysisDetails && (
-            <div className="bg-bg-tertiary rounded-lg p-2 space-y-2 max-h-[250px] overflow-y-auto text-2xs">
+            <div className="bg-bg-tertiary rounded-lg p-2.5 space-y-2.5 max-h-[300px] overflow-y-auto text-2xs border border-border animate-in fade-in duration-150">
               {/* Sections */}
               <div>
                 <div className="text-text-muted uppercase tracking-wider mb-1 font-medium">Sections</div>
@@ -534,50 +596,66 @@ export function DirectorPanel() {
 
           {/* Speaker Mapping — shown when diarization found 2+ speakers */}
           {speakers.length >= 1 && (
-            <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider block mb-1">Speakers Detected</label>
-              <div className="space-y-2">
-                {speakerMappings.map((mapping) => (
-                  <div key={mapping.speakerId} className="bg-bg-tertiary rounded-lg p-2 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => insertSpeakerMention(mapping.speakerId)}
-                        className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
-                        title={`Insert @${mapping.speakerId} into description`}
-                      >
-                        {mapping.speakerId}
-                      </button>
-                      <input
-                        type="text"
-                        value={mapping.name}
-                        onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role)}
-                        placeholder="e.g. man in green hoodie"
-                        className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
-                      />
-                      <select
-                        value={mapping.role}
-                        onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
-                        className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
-                      >
-                        <option value="">role</option>
-                        <option value="rapping">rapping</option>
-                        <option value="singing">singing</option>
-                        <option value="speaking">speaking</option>
-                      </select>
-                    </div>
-                    {/* Sample lyrics for identification */}
-                    {speakerSamples[mapping.speakerId] && (
-                      <div className="text-2xs text-text-muted pl-1 italic">
-                        {speakerSamples[mapping.speakerId].map((line, li) => (
-                          <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-text-muted uppercase tracking-wider block">Speakers Detectados</label>
+                <span className="text-3xs text-text-muted">{speakers.length} {speakers.length === 1 ? 'voz' : 'vozes'}</span>
               </div>
-              <span className="text-2xs text-text-muted mt-1 block">
-                Name each speaker so the director knows who to show. Click a chip to insert into description.
+              <div className="space-y-2">
+                {speakerMappings.map((mapping, idx) => {
+                  const samples = speakerSamples[mapping.speakerId] || []
+                  const autoCategoryKey = getAutoCategory(samples[0] || mapping.name, mapping.role)
+                  const categoryInfo = SPEAKER_CATEGORIES[autoCategoryKey] || SPEAKER_CATEGORIES.other
+                  return (
+                    <div key={mapping.speakerId} className="group relative bg-bg-tertiary rounded-lg p-2.5 space-y-1.5 border border-border hover:border-accent-blue/40 transition-colors">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => insertSpeakerMention(mapping.speakerId)}
+                          className="text-2xs px-2 py-0.5 rounded-full bg-accent-blue/15 text-accent-blue hover:bg-accent-blue/25 shrink-0 transition-colors font-medium"
+                          title={`Inserir @${mapping.speakerId} no briefing`}
+                        >
+                          #{idx + 1} {mapping.speakerId}
+                        </button>
+
+                        <span className={`text-3xs px-1.5 py-0.5 rounded-full border ${categoryInfo.color} font-medium shrink-0`}>
+                          {categoryInfo.label}
+                        </span>
+
+                        <input
+                          type="text"
+                          value={mapping.name}
+                          onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role)}
+                          placeholder="Ex: homem de moletom verde"
+                          className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
+                        />
+
+                        <select
+                          value={mapping.role}
+                          onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
+                          className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
+                        >
+                          <option value="">papel</option>
+                          <option value="singing">cantando</option>
+                          <option value="rapping">rap / flow</option>
+                          <option value="speaking">falando</option>
+                        </select>
+                      </div>
+
+                      {/* Sample lyrics hover preview */}
+                      {samples.length > 0 && (
+                        <div className="text-2xs text-text-muted pl-1 italic border-l-2 border-accent-blue/30 mt-1">
+                          <div className="truncate text-text-secondary/80">
+                            &ldquo;{samples[0]}&rdquo;
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <span className="text-3xs text-text-muted mt-1 block">
+                Nomeie cada speaker para manter a coerência visual entre os planos. Clique no chip para mencionar na cena.
               </span>
             </div>
           )}
