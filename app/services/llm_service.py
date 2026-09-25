@@ -171,6 +171,9 @@ LLM_ARCHITECTURES = {
     # not functional loading, so refine if the real config differs.
     "gemma4-12b": {"layers": 48, "kv_heads": 8,  "head_dim": 256, "sliding_window": 4096, "global_layer_ratio": 1/6},
     "gemma4-27b": {"layers": 62, "kv_heads": 16, "head_dim": 128, "sliding_window": 4096, "global_layer_ratio": 1/6},
+    "qwen25-coder-14b": {"layers": 48, "kv_heads": 8, "head_dim": 128, "sliding_window": None, "global_layer_ratio": 1.0},
+    "qwen25-coder-32b": {"layers": 64, "kv_heads": 8, "head_dim": 128, "sliding_window": None, "global_layer_ratio": 1.0},
+    "qwen25-vl-7b": {"layers": 28, "kv_heads": 4, "head_dim": 128, "sliding_window": None, "global_layer_ratio": 1.0},
 }
 
 
@@ -589,6 +592,64 @@ MODEL_REGISTRY = {
             "repeat_last_n": 256,
         },
     },
+    "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF": {
+        "label": "Qwen 2.5 Coder 14B Q4_K_M (Fast Structured JSON)",
+        "gguf_file": "qwen2.5-coder-14b-instruct-q4_k_m.gguf",
+        "weights_gb": 8.98, "mmproj_gb": 0.0, "arch": "qwen25-coder-14b",
+        "optimal_role": "technical_json",
+        "thinking_style": "qwen",
+        "enable_thinking_by_default": False,
+        "sampling_defaults": {
+            "temperature": 0.2, "top_p": 0.85, "top_k": 20,
+            "repeat_penalty": 1.05,
+        },
+        "extra_flags": [
+            "-c", "32768",
+            "-np", "1",
+            "-fa", "on",
+            "--cache-type-k", "q4_0",
+            "--cache-type-v", "q4_0",
+        ],
+    },
+    "bartowski/Qwen2.5-Coder-32B-Instruct-GGUF": {
+        "label": "Qwen 2.5 Coder 32B IQ4_XS (Precision Structured Planning)",
+        "gguf_file": "Qwen2.5-Coder-32B-Instruct-IQ4_XS.gguf",
+        "weights_gb": 18.2, "mmproj_gb": 0.0, "arch": "qwen25-coder-32b",
+        "optimal_role": "technical_json",
+        "thinking_style": "qwen",
+        "enable_thinking_by_default": False,
+        "sampling_defaults": {
+            "temperature": 0.2, "top_p": 0.85, "top_k": 20,
+            "repeat_penalty": 1.05,
+        },
+        "extra_flags": [
+            "-c", "32768",
+            "-np", "1",
+            "-fa", "on",
+            "--cache-type-k", "q4_0",
+            "--cache-type-v", "q4_0",
+        ],
+    },
+    "Qwen/Qwen2.5-VL-7B-Instruct-GGUF": {
+        "label": "Qwen 2.5 VL 7B (Vision & Reference Inspector)",
+        "gguf_file": "qwen2.5-vl-7b-instruct-q4_k_m.gguf",
+        "mmproj_file": "mmproj-qwen2.5-vl-7b-f16.gguf",
+        "weights_gb": 4.8, "mmproj_gb": 1.2, "arch": "qwen25-vl-7b",
+        "supports_vision": True,
+        "optimal_role": "vision",
+        "thinking_style": "qwen",
+        "enable_thinking_by_default": False,
+        "sampling_defaults": {
+            "temperature": 0.6, "top_p": 0.9, "top_k": 40,
+        },
+        "extra_flags": [
+            "-c", "32768",
+            "-np", "1",
+            "-fa", "on",
+            "--cache-type-k", "q4_0",
+            "--cache-type-v", "q4_0",
+        ],
+    },
 }
 
 # Build size_hint strings once at module load. Re-runs if you `import importlib;
@@ -607,6 +668,9 @@ for _repo_id, _info in MODEL_REGISTRY.items():
 _PUBLIC_MODEL_ORDER = [
     "JonathanColetti/Qwen3.8-27B-Uncensored-GGUF",
     "Youssofal/Qwen3.6-27B-Abliterated-Heretic-Uncensored-GGUF",
+    "bartowski/Qwen2.5-Coder-32B-Instruct-GGUF",
+    "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF",
+    "Qwen/Qwen2.5-VL-7B-Instruct-GGUF",
     "Nesuwka/gemma-4-E2B-it-heretic-ara-Q4_K_M-GGUF",
     "Abhiray/gemma-4-E4B-it-heretic-GGUF",                         # default (Recommended)
     "Jiunsong/supergemma4-26b-uncensored-gguf-v2",
@@ -627,6 +691,8 @@ def get_available_models(provider: str = "local", remote_url: str = "", api_key:
             "label": MODEL_REGISTRY[repo_id]["label"],
             "size_hint": MODEL_REGISTRY[repo_id]["size_hint"],
             "provider": "local",
+            "optimal_role": MODEL_REGISTRY[repo_id].get("optimal_role", "general"),
+            "supports_vision": bool(MODEL_REGISTRY[repo_id].get("mmproj_file") or MODEL_REGISTRY[repo_id].get("supports_vision")),
         }
         for repo_id in _PUBLIC_MODEL_ORDER
         if repo_id in MODEL_REGISTRY
@@ -2239,6 +2305,7 @@ def generate(
     presence_penalty: float = 0.0,
     stop: Optional[list[str]] = None,
     json_schema: Optional[dict] = None,
+    grammar: Optional[str] = None,
 ) -> str:
     """Generate text via llama-server's OpenAI-compatible chat endpoint.
 
@@ -2275,7 +2342,7 @@ def generate(
     # marker, and the parser would file the entire output under
     # reasoning_content with empty content. Forcing enable_thinking=False
     # here makes _prepare_thinking skip every activation path.
-    if json_schema is not None:
+    if json_schema is not None or grammar is not None:
         enable_thinking = False
         thinking_budget = 0
 
@@ -2337,18 +2404,6 @@ def generate(
         thinking_budget=thinking_budget,
         reasoning_effort=reasoning_effort,
     )
-    # Hard stop sequences. The Director Pass 3 polish path uses this with
-    # `<think>` to abort generation the moment a Qwen3.5/3.6 model tries
-    # to enter thinking mode despite enable_thinking=False being requested.
-    # That cap caps wasted tokens at ~1 (the `<think>` token itself) instead
-    # of the previous ~1024 the model would burn before producing nothing.
-    #
-    # For registry entries with `disable_thinking: True`, automatically
-    # inject thinking-marker stop tokens so every call gets the same
-    # protection — covers Gemma 4 fine-tunes that auto-activate thinking
-    # mode despite chat_template_kwargs saying otherwise. Both Qwen-style
-    # (`<think>`) and Gemma-style (`<channel>`, `<|think|>`) markers are
-    # included since the supergemma fine-tune emits the latter format.
     combined_stop = list(stop) if stop else []
     if _active_registry_entry().get("disable_thinking", False):
         for tok in ("<think>", "<thinking>", "<|think|>", "<channel>", "<|channel|>"):
@@ -2357,16 +2412,25 @@ def generate(
     if combined_stop:
         payload["stop"] = combined_stop
 
-    # Grammar-constrained JSON output. llama-server compiles the schema to
-    # a GBNF grammar server-side ({"type": "json_object", "schema": ...} is
-    # the long-standing llama.cpp extension form). Local provider only —
-    # remote OpenAI-compatible endpoints vary in which response_format
-    # flavor they accept, so we degrade to an unconstrained call there.
+    # Direct GBNF grammar or Schema-constrained JSON output
+    if grammar is not None:
+        if _provider == "local":
+            payload["grammar"] = grammar
+        else:
+            print(f"[LLM] raw grammar requested but provider={_provider} (GBNF is local llama-server only)")
+
     if json_schema is not None:
         if _provider == "local":
             payload["response_format"] = {"type": "json_object", "schema": json_schema}
+        elif _provider == "openai":
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "cue_studio_response", "schema": json_schema, "strict": True},
+            }
+        elif _provider == "ollama":
+            payload["format"] = json_schema
         else:
-            print(f"[LLM] json_schema requested but provider={_provider} — sending unconstrained (grammar is local llama-server only)")
+            print(f"[LLM] json_schema requested but provider={_provider} — sending unconstrained")
 
     if _provider == "anthropic":
         return _generate_anthropic(messages, total_tokens, max(temperature, 0.01), top_p)
@@ -2463,6 +2527,7 @@ def generate_streaming(
     frequency_penalty: float = 0.0,
     presence_penalty: float = 0.0,
     json_schema: Optional[dict] = None,
+    grammar: Optional[str] = None,
 ) -> str:
     """Generate text using SSE streaming, populating the stream buffer in real-time.
 
@@ -2487,7 +2552,7 @@ def generate_streaming(
     # Grammar-constrained JSON mode requires thinking OFF — same rationale
     # as the matching block in generate(): the grammar masks sampling from
     # the first token, so a force-opened think block could never close.
-    if json_schema is not None:
+    if json_schema is not None or grammar is not None:
         enable_thinking = False
         thinking_budget = 0
 
@@ -2579,13 +2644,25 @@ def generate_streaming(
         existing = payload.get("stop") or []
         payload["stop"] = list(existing) + [t for t in stop_tokens if t not in existing]
 
-    # Grammar-constrained JSON output — local llama-server only (see the
-    # matching block in generate() for the full rationale).
+    # Direct GBNF grammar or Schema-constrained JSON output
+    if grammar is not None:
+        if _provider == "local":
+            payload["grammar"] = grammar
+        else:
+            print(f"[LLM] raw grammar requested but provider={_provider} (GBNF is local llama-server only)")
+
     if json_schema is not None:
         if _provider == "local":
             payload["response_format"] = {"type": "json_object", "schema": json_schema}
+        elif _provider == "openai":
+            payload["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {"name": "cue_studio_response", "schema": json_schema, "strict": True},
+            }
+        elif _provider == "ollama":
+            payload["format"] = json_schema
         else:
-            print(f"[LLM] json_schema requested but provider={_provider} — sending unconstrained (grammar is local llama-server only)")
+            print(f"[LLM] json_schema requested but provider={_provider} — sending unconstrained")
 
     # Diagnostic — log every payload field except `messages` so we can
     # compare what Maestro sends to llama-server vs what LM Studio sends

@@ -8437,6 +8437,72 @@ def llm_stream_status():
     return llm_service.get_stream_status()
 
 
+@api.get("/api/v1/llm/roles")
+def get_llm_roles():
+    """Return all configured LLM roles and routing status."""
+    from services import llm_router
+    return llm_router.get_all_role_configs()
+
+
+@api.post("/api/v1/llm/roles")
+async def update_llm_roles(request: Request):
+    """Configure role-based LLM routing."""
+    from services import llm_router
+    body = await request.json()
+    enabled = body.get("enabled", False)
+    llm_router.set_role_routing_enabled(enabled)
+    roles = body.get("roles", {})
+    for role_name, cfg in roles.items():
+        if isinstance(cfg, dict):
+            llm_router.set_role_config(
+                role=role_name,
+                provider=cfg.get("provider", "local"),
+                model_id=cfg.get("model_id", ""),
+                remote_url=cfg.get("remote_url", ""),
+                api_key=cfg.get("api_key", ""),
+                extra_options=cfg.get("extra_options"),
+            )
+    return {"status": "ok", **llm_router.get_all_role_configs()}
+
+
+@api.post("/api/v1/llm/test-connection")
+async def test_llm_connection(request: Request):
+    """Test connectivity, latency, and model availability for an external LLM server."""
+    import time
+    import requests
+    body = await request.json()
+    provider = str(body.get("provider", "openai")).lower()
+    remote_url = str(body.get("remote_url", "")).rstrip("/")
+    api_key = str(body.get("api_key", ""))
+
+    start_time = time.time()
+    try:
+        if provider == "ollama":
+            url = remote_url or "http://localhost:11434"
+            resp = requests.get(f"{url}/api/tags", timeout=5)
+            latency_ms = round((time.time() - start_time) * 1000, 1)
+            if resp.ok:
+                models = [m.get("name") for m in resp.json().get("models", [])]
+                return {"status": "ok", "latency_ms": latency_ms, "models": models}
+            return {"status": "error", "latency_ms": latency_ms, "error": f"HTTP {resp.status_code}"}
+        else:
+            headers = {}
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+            url = remote_url or "https://api.openai.com"
+            endpoint = f"{url}/v1/models" if not url.endswith("/v1") else f"{url}/models"
+            resp = requests.get(endpoint, headers=headers, timeout=5)
+            latency_ms = round((time.time() - start_time) * 1000, 1)
+            if resp.ok:
+                models = [m.get("id") for m in resp.json().get("data", [])]
+                return {"status": "ok", "latency_ms": latency_ms, "models": models}
+            return {"status": "error", "latency_ms": latency_ms, "error": f"HTTP {resp.status_code}"}
+    except Exception as e:
+        latency_ms = round((time.time() - start_time) * 1000, 1)
+        return {"status": "error", "latency_ms": latency_ms, "error": str(e)}
+
+
+
 def _ensure_llm_loaded():
     """Auto-load LLM if not already loaded. Reloads if configured model changed."""
     from services import llm_service

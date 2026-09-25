@@ -1437,6 +1437,21 @@ export interface LlmModelOption {
   id: string
   label: string
   size_hint: string
+  provider?: string
+  optimal_role?: string
+  supports_vision?: boolean
+}
+
+export interface LlmRoleConfig {
+  provider: string
+  model_id: string
+  remote_url?: string
+  api_key?: string
+}
+
+export interface LlmRolesState {
+  enabled: boolean
+  roles: Record<string, LlmRoleConfig>
 }
 
 export interface AudioBeat {
@@ -1495,6 +1510,8 @@ export interface SpeakerMapping {
   speakerId: string
   name: string
   role: 'rapping' | 'singing' | 'speaking' | ''
+  image?: File | null
+  imagePreview?: string | null
 }
 
 export interface ClipPlan {

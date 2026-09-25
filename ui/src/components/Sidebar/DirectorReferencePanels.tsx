@@ -24,7 +24,7 @@
  * ``AdditionalRefsSection`` via the ``imageOnly`` flag).
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useRef, useEffect } from 'react'
 import {
   X,
   MapPin,
@@ -34,6 +34,8 @@ import {
   ChevronDown,
   ChevronRight,
   ListVideo,
+  Play,
+  Square,
 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { DirectorActivityBadge } from './DirectorActivityBar'
@@ -557,6 +559,73 @@ export function StructureView({
   isActive: boolean
   isShortFilm?: boolean
 }) {
+  const audioFile = useStore(s => s.directorAudioFile)
+  const [playingClipIndex, setPlayingClipIndex] = useState<number | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [])
+
+  const handleTogglePlayClip = useCallback((index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    if (!audioFile) return
+
+    if (playingClipIndex === index) {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+      setPlayingClipIndex(null)
+      return
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+    }
+
+    const clip = plannedClips[index]
+    if (!clip) return
+
+    const url = URL.createObjectURL(audioFile)
+    const audio = new Audio(url)
+    audioRef.current = audio
+    audio.currentTime = Math.max(0, clip.start)
+
+    const onTimeUpdate = () => {
+      if (audio.currentTime >= clip.end) {
+        audio.pause()
+        URL.revokeObjectURL(url)
+        audioRef.current = null
+        setPlayingClipIndex(null)
+      }
+    }
+
+    const onEnded = () => {
+      URL.revokeObjectURL(url)
+      audioRef.current = null
+      setPlayingClipIndex(null)
+    }
+
+    audio.addEventListener('timeupdate', onTimeUpdate)
+    audio.addEventListener('ended', onEnded)
+
+    audio.play().then(() => {
+      setPlayingClipIndex(index)
+    }).catch(err => {
+      console.warn('[StructureView] Playback error:', err)
+      URL.revokeObjectURL(url)
+      audioRef.current = null
+      setPlayingClipIndex(null)
+    })
+  }, [audioFile, plannedClips, playingClipIndex])
+
   return (
     <div className="space-y-3">
       {/* The old "Here's the clip structure based on the audio analysis.
@@ -651,19 +720,35 @@ export function StructureView({
                   ? Math.max((clipDur / totalDur) * 100, 1.5)
                   : Math.max((clip.beat_count / plannedClips.reduce((s, c) => s + c.beat_count, 0)) * 100, 1.5)
                 const barColor = sectionBarColors[clip.section_label] || 'bg-gray-500'
+                const isPlaying = playingClipIndex === i
                 const tooltipLabel = isShortFilm
                   ? `Scene ${i + 1}: ${clip.section_label} (${clipDur.toFixed(1)}s)`
                   : `Clip ${i + 1}: ${clip.section_label}, ${clip.beat_count} beats (${clipDur.toFixed(1)}s)`
                 return (
                   <div
                     key={i}
-                    className={`${barColor} opacity-70 hover:opacity-100 transition-opacity relative group cursor-default`}
+                    onClick={e => handleTogglePlayClip(i, e)}
+                    className={`${barColor} ${
+                      isPlaying
+                        ? 'opacity-100 ring-2 ring-white ring-inset animate-pulse'
+                        : 'opacity-70 hover:opacity-100'
+                    } transition-all relative group cursor-pointer flex items-center justify-center`}
                     style={{ width: `${widthPct}%` }}
-                    title={tooltipLabel}
+                    title={audioFile ? `${tooltipLabel} (Clique para ${isPlaying ? 'parar' : 'ouvir'})` : tooltipLabel}
                   >
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-10 pointer-events-none">
-                      <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary whitespace-nowrap shadow-lg">
-                        {tooltipLabel}
+                    {isPlaying ? (
+                      <Square size={10} className="text-white fill-white drop-shadow z-10" />
+                    ) : (
+                      <Play size={10} className="text-white fill-white drop-shadow opacity-0 group-hover:opacity-90 transition-opacity z-10" />
+                    )}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 pointer-events-none">
+                      <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary whitespace-nowrap shadow-lg flex items-center gap-1">
+                        <span>{tooltipLabel}</span>
+                        {audioFile && (
+                          <span className="text-accent-blue font-medium ml-1">
+                            [{isPlaying ? 'Parar' : 'Ouvir'}]
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

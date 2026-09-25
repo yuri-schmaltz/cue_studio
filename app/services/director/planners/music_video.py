@@ -618,7 +618,30 @@ class MusicVideoPlanner(BasePlanner):
                     if lyrics_snippet else "instrumental"
                 )
 
-            ctx = f"Clip {i + 1}: {section}, {beat_count} beats, {vocal_info}.{performer_hint}"
+            # Strategy and audio reactivity for section
+            strategy = _SECTION_VISUAL_STRATEGY.get(section, {
+                "camera_default": "medium shot",
+                "movement_intensity": "moderate",
+                "energy": "steady",
+                "hints": "rhythmic pacing matching the music beat",
+            })
+            energy_level = strategy["energy"]
+            suggested_cam = strategy["camera_default"]
+            intensity = strategy["movement_intensity"]
+
+            # Camera continuity hint: note relationship with previous clip
+            continuity_hint = ""
+            if i > 0:
+                prev_section = (clips[i - 1].get("label") or "verse").lower()
+                if prev_section == section:
+                    continuity_hint = " Flow from previous angle (dynamic camera continuity, complementary angle or subtle push)."
+                else:
+                    continuity_hint = f" Dynamic cut/transition from preceding {prev_section} into {section}."
+
+            ctx = (
+                f"Clip {i + 1}: {section} [Energy: {energy_level}, Movement: {intensity}, Suggested Framing: {suggested_cam}], "
+                f"{beat_count} beats, {vocal_info}.{performer_hint}{continuity_hint}"
+            )
             contexts.append(ctx)
 
         return contexts
@@ -824,8 +847,10 @@ No visual reference was provided. Invent one consistent performer and setting th
 {reference_aesthetic_rules}
 
 MUSIC VIDEO RULES:
-- Chorus = high energy, bold framing. Verse = intimate, character focus.
-- Instrumental = environment, textures. Bridge = contrasting, unexpected.
+- Chorus = high energy, bold framing, fast rhythmic cuts and dynamic movement. Verse = intimate, character focus, steady flow.
+- Instrumental = environment, textures, sweeping perspective. Bridge = contrasting, surreal or unexpected mood.
+- Audio-reactivity: Reflect rhythm in the visual action (e.g. strobe pulses, synchronized body moves, speed of motion matching tempo).
+- Camera continuity: Plan smooth camera vectors between sequential shots of the same section, alternating between complementary angles (e.g. push-in followed by wide pullback or orbital motion) to give the video an authentic professional edit flow.
 - Vary visuals across clips. Performer must be visible when assigned.
 
 {music_video_rules}

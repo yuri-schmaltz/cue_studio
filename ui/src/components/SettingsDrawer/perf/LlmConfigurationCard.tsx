@@ -3,9 +3,10 @@
    home for runtime knobs). Keep the opts lists co-located so both
    surfaces stay in lockstep when a new provider / model is added. */
 import { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 import { ApiKeyField } from './ApiKeyField'
 import type { ServicesConfig, LlmStatus, LlmModelOption } from '../../../types'
+import { testLlmConnection } from '../../../api/client'
 import { PUBLIC_PROVIDERS } from './perfConstants'
 
 /** LLM Configuration card: provider, model, device, remote URL +

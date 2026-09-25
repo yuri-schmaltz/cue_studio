@@ -462,6 +462,108 @@ class BasePlanner(ABC):
         print("[Planner] JSON parse failed on retry, returning empty list")
         return []
 
+    def _call_llm_think_then_emit(
+        self,
+        user_prompt: str,
+        system_prompt: str,
+        json_schema: Optional[dict] = None,
+        max_tokens: int = 4096,
+        image_paths: Optional[list[str]] = None,
+        streaming: bool = True,
+        thinking_budget: int = 2048,
+    ) -> list[dict]:
+        """Execute a 2-stage 'Think-then-Emit' structured generation.
+
+        Stage 1: Generates a creative and technical breakdown / thinking plan in freeform text/Markdown.
+                 Allows deep thinking / reasoning without token conflict or grammar interference.
+        Stage 2: Takes the plan from Stage 1 and strictly converts it into schema-compliant JSON
+                 using grammar constraints and low temperature (0.2), guaranteeing valid syntax.
+        """
+        stage1_sys = (
+            system_prompt + "\n\n"
+            "STAGE 1 INSTRUCTION: Analyze the requirements, pacing, continuity, and scene goals. "
+            "Write a step-by-step director's breakdown in clear descriptive text/markdown. "
+            "Do NOT output JSON yet; focus on planning every detail."
+        )
+        stage1_user = (
+            user_prompt + "\n\n"
+            "Provide your complete director shot breakdown and timeline analysis in detail."
+        )
+
+        try:
+            from services.llm_router import is_role_routing_enabled, generate_for_role, ROLE_TECHNICAL, ROLE_CREATIVE
+        except ImportError:
+            is_role_routing_enabled = lambda: False
+
+        gen_fn = self._generate_streaming if (streaming and self._generate_streaming) else self._generate
+        if gen_fn is None:
+            raise RuntimeError("No LLM generate function provided to planner")
+
+        if is_role_routing_enabled():
+            plan_text = generate_for_role(
+                ROLE_CREATIVE,
+                stage1_user,
+                system_prompt=stage1_sys,
+                max_new_tokens=max_tokens,
+                temperature=0.7,
+                thinking_budget=thinking_budget,
+                image_paths=image_paths,
+            )
+        else:
+            plan_text = gen_fn(
+                prompt=stage1_user,
+                system_prompt=stage1_sys,
+                max_new_tokens=max_tokens,
+                temperature=0.7,
+                thinking_budget=thinking_budget,
+                image_paths=image_paths,
+            )
+
+        self._raise_if_planning_cancelled()
+
+        stage2_sys = (
+            "You are a strict JSON serialization engine for director shot timelines. "
+            "Based on the director's plan below, output ONLY a valid JSON array of shot objects "
+            "strictly adhering to the requested schema. No markdown fences, no explanation, no prose."
+        )
+        stage2_user = (
+            f"Director Plan:\n{plan_text}\n\n"
+            f"Original Requirements:\n{user_prompt}\n\n"
+            "Output the complete JSON array of shots now:"
+        )
+
+        emit_kwargs = {
+            "prompt": stage2_user,
+            "system_prompt": stage2_sys,
+            "max_new_tokens": max_tokens,
+            "temperature": 0.2,
+            "thinking_budget": 0,
+            "enable_thinking": False,
+            "json_schema": json_schema or _GENERIC_ARRAY_SCHEMA,
+            "frequency_penalty": 0.1,
+            "presence_penalty": 0.0,
+        }
+
+        if is_role_routing_enabled():
+            response_json = generate_for_role(ROLE_TECHNICAL, **emit_kwargs)
+        else:
+            response_json = gen_fn(**emit_kwargs)
+
+        self._raise_if_planning_cancelled()
+        parsed = self._parse_json_response(response_json)
+        if parsed is not None and len(parsed) > 0:
+            return parsed
+
+        # If strict emission parsing failed, fall back to standard _call_llm_json with retry
+        return self._call_llm_json(
+            user_prompt=user_prompt,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            json_schema=json_schema,
+            streaming=streaming,
+            image_paths=image_paths,
+        )
+
     def _parse_json_response(self, text: str) -> Optional[list[dict]]:
         """Extract and parse JSON array from LLM response text."""
         if not text:

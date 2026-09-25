@@ -625,14 +625,14 @@ export function DirectorPanel() {
                         <input
                           type="text"
                           value={mapping.name}
-                          onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role)}
+                          onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role, mapping.image, mapping.imagePreview)}
                           placeholder="Ex: homem de moletom verde"
                           className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
                         />
 
                         <select
                           value={mapping.role}
-                          onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
+                          onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role, mapping.image, mapping.imagePreview)}
                           className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
                         >
                           <option value="">papel</option>
@@ -640,6 +640,45 @@ export function DirectorPanel() {
                           <option value="rapping">rap / flow</option>
                           <option value="speaking">falando</option>
                         </select>
+
+                        {/* Speaker reference image */}
+                        {mapping.imagePreview ? (
+                          <div className="relative group/avatar shrink-0">
+                            <img
+                              src={mapping.imagePreview}
+                              alt={mapping.name || mapping.speakerId}
+                              className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
+                              title="Foto de referência do speaker"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, null, null)}
+                              className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity"
+                              title="Remover foto"
+                            >
+                              <X size={8} className="text-white" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label
+                            className="w-7 h-7 rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-secondary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                            title="Adicionar foto de referência para este speaker"
+                          >
+                            <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
+                            <input
+                              type="file"
+                              accept={IMAGE_ACCEPT}
+                              className="hidden"
+                              onChange={e => {
+                                const f = e.target.files?.[0]
+                                if (f) {
+                                  const preview = URL.createObjectURL(f)
+                                  setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, f, preview)
+                                }
+                              }}
+                            />
+                          </label>
+                        )}
                       </div>
 
                       {/* Sample lyrics hover preview */}

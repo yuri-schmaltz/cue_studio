@@ -1858,7 +1858,7 @@ export interface AppState {
    *  status is also cleared so the Stage does not straddle two
    *  skills mid-pipeline. */
   resetDirectorSkillOnly: () => void
-  directorSetSpeakerMapping: (speakerId: string, name: string, role: SpeakerMapping['role']) => void
+  directorSetSpeakerMapping: (speakerId: string, name: string, role: SpeakerMapping['role'], image?: File | null, imagePreview?: string | null) => void
   directorInsertSpeakerMention: (speakerId: string) => void
   directorUploadAndAnalyze: (file: File) => Promise<void>
   // Music Video: generate-the-track source + song setup
@@ -1943,7 +1943,7 @@ export interface AppState {
   directorGenerate: () => void
   directorReset: () => void
   directorEditClipPlan: (index: number, field: 'video_prompt' | 'image_prompt', value: string) => void
-  _uploadDirectorRefs: () => Promise<{ refImagePath: string | null; charPaths: string[]; locPaths: string[] }>
+  _uploadDirectorRefs: () => Promise<{ refImagePath: string | null; charPaths: string[]; locPaths: string[]; speakerImagePaths: Record<string, string> }>
 
   // Short Film Director
   shortFilmCharacters: ShortFilmCharacter[]
@@ -8202,10 +8202,18 @@ export const useStore = create<AppState>((set, get, store) => ({
     }, s.loraIdByFilename)
   },
 
-  directorSetSpeakerMapping: (speakerId, name, role) => {
+  directorSetSpeakerMapping: (speakerId, name, role, image, imagePreview) => {
     set(s => ({
       directorSpeakerMappings: s.directorSpeakerMappings.map(m =>
-        m.speakerId === speakerId ? { ...m, name, role } : m
+        m.speakerId === speakerId
+          ? {
+              ...m,
+              name,
+              role,
+              ...(image !== undefined ? { image } : {}),
+              ...(imagePreview !== undefined ? { imagePreview } : {}),
+            }
+          : m
       ),
     }))
   },
@@ -8847,7 +8855,19 @@ export const useStore = create<AppState>((set, get, store) => ({
     if (locPaths.length > s.directorLocationRefPaths.length) {
       set({ directorLocationRefPaths: locPaths })
     }
-    return { refImagePath, charPaths, locPaths }
+    // Upload speaker reference images
+    const speakerImagePaths: Record<string, string> = {}
+    for (const m of s.directorSpeakerMappings) {
+      if (m.image) {
+        try {
+          const uploaded = await api.uploadImage(m.image)
+          speakerImagePaths[m.speakerId] = uploaded.path
+        } catch (e) {
+          console.warn(`[Director] Failed to upload speaker reference image for ${m.speakerId}:`, e)
+        }
+      }
+    }
+    return { refImagePath, charPaths, locPaths, speakerImagePaths }
   },
 
   directorPlanPrompts: async () => {
@@ -9306,8 +9326,8 @@ export const useStore = create<AppState>((set, get, store) => ({
         set({ directorReferenceImage: anchorFile, directorReferenceImagePath: null })
       }
 
-      // Upload all reference images (main/anchor + character + location)
-      const { refImagePath: refPath, charPaths, locPaths } = await get()._uploadDirectorRefs()
+      // Upload all reference images (main/anchor + character + location + speakers)
+      const { refImagePath: refPath, charPaths, locPaths, speakerImagePaths } = await get()._uploadDirectorRefs()
       const allRefs = [refPath, ...charPaths, ...locPaths].filter(Boolean) as string[]
 
       const total = directorClipPlans.length + (anchorMade ? 1 : 0)
@@ -9326,8 +9346,17 @@ export const useStore = create<AppState>((set, get, store) => ({
         set({
           directorImageGenProgress: { current: base + i, total, currentClipLabel: clipLabel, status: 'generating' },
         })
+
+        // Determine refs for this clip: if clip has dominant_speaker with custom ref image, prioritize it
+        let clipRefs = allRefs
+        const dominantSpeaker = clip?.dominant_speaker
+        if (dominantSpeaker && speakerImagePaths[dominantSpeaker]) {
+          const speakerImg = speakerImagePaths[dominantSpeaker]
+          clipRefs = [speakerImg, ...allRefs.filter(r => r !== speakerImg)]
+        }
+
         try {
-          const { file, filename } = await genImage(plan.image_prompt, allRefs, clipLabel)
+          const { file, filename } = await genImage(plan.image_prompt, clipRefs, clipLabel)
           generatedImages.push({ clipIndex: i, prompt: plan.image_prompt, file, filename })
           set({ directorClipImages: [...generatedImages] })
         } catch (clipErr: unknown) {

@@ -2225,6 +2225,36 @@ export async function fetchLlmModels(): Promise<{ models: import('../types').Llm
   return res.json()
 }
 
+export async function fetchLlmRoles(): Promise<import('../types').LlmRolesState> {
+  const res = await fetch(`${BASE}/api/v1/llm/roles`)
+  if (!res.ok) throw new Error('Failed to fetch LLM roles')
+  return res.json()
+}
+
+export async function updateLlmRoles(data: import('../types').LlmRolesState): Promise<import('../types').LlmRolesState> {
+  const res = await fetch(`${BASE}/api/v1/llm/roles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error('Failed to update LLM roles')
+  return res.json()
+}
+
+export async function testLlmConnection(params: {
+  provider: string
+  remote_url?: string
+  api_key?: string
+}): Promise<{ status: string; latency_ms: number; models?: string[]; error?: string }> {
+  const res = await fetch(`${BASE}/api/v1/llm/test-connection`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) throw new Error('Connection test request failed')
+  return res.json()
+}
+
 export async function llmEnhancePrompt(params: {
   prompt: string
   mode?: string

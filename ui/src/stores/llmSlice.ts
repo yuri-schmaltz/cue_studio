@@ -36,22 +36,32 @@
  */
 
 import type { StateCreator } from 'zustand'
+import type { LlmModelOption, LlmStatus, LlmRolesState } from '../types'
 import {
   fetchLlmModels,
   fetchLlmStatus,
+  fetchLlmRoles,
+  updateLlmRoles,
+  testLlmConnection,
   loadLlm,
   unloadLlm,
 } from '../api/client'
-
-import type { LlmModelOption, LlmStatus } from '../types'
 import type { AppState } from './useStore'
 
 export type LlmSlice = {
   llmStatus: LlmStatus | null
   llmLoading: boolean
   llmModels: LlmModelOption[]
+  llmRoles: LlmRolesState | null
   loadLlmStatus: () => Promise<void>
   loadLlmModels: () => Promise<void>
+  loadLlmRoles: () => Promise<void>
+  saveLlmRoles: (data: LlmRolesState) => Promise<void>
+  testServerConnection: (params: {
+    provider: string
+    remote_url?: string
+    api_key?: string
+  }) => Promise<{ status: string; latency_ms: number; models?: string[]; error?: string }>
   loadLlm: () => Promise<void>
   unloadLlm: () => Promise<void>
 }
@@ -60,6 +70,7 @@ const initialState = {
   llmStatus: null as LlmStatus | null,
   llmLoading: false,
   llmModels: [] as LlmModelOption[],
+  llmRoles: null as LlmRolesState | null,
 }
 
 export const createLlmSlice: StateCreator<
@@ -90,6 +101,29 @@ export const createLlmSlice: StateCreator<
     } catch (e) {
       console.error('Failed to load LLM models:', e)
     }
+  },
+
+  loadLlmRoles: async () => {
+    try {
+      const roles = await fetchLlmRoles()
+      set({ llmRoles: roles })
+    } catch (e) {
+      console.error('Failed to load LLM roles:', e)
+    }
+  },
+
+  saveLlmRoles: async (data: LlmRolesState) => {
+    try {
+      const updated = await updateLlmRoles(data)
+      set({ llmRoles: updated })
+    } catch (e) {
+      console.error('Failed to save LLM roles:', e)
+      throw e
+    }
+  },
+
+  testServerConnection: async (params) => {
+    return await testLlmConnection(params)
   },
 
   loadLlm: async () => {

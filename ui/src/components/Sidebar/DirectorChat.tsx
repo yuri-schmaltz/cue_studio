@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Send, Users, FileText, ListVideo, Sparkles, BookOpen } from 'lucide-react'
+import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Send, Users, FileText, ListVideo, Sparkles, BookOpen, Film } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
@@ -2565,7 +2565,7 @@ export function StyleForm({
   speakers: string[]
   speakerMappings: ReturnType<typeof useStore.getState>['directorSpeakerMappings']
   speakerSamples: Record<string, string[]>
-  setSpeakerMapping: (speakerId: string, name: string, role: 'rapping' | 'singing' | 'speaking' | '') => void
+  setSpeakerMapping: (speakerId: string, name: string, role: 'rapping' | 'singing' | 'speaking' | '', image?: File | null, imagePreview?: string | null) => void
   insertSpeakerMention: (speakerId: string) => void
   isActive: boolean
   isShortFilm?: boolean
@@ -2628,13 +2628,13 @@ export function StyleForm({
                     <input
                       type="text"
                       value={mapping.name}
-                      onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role)}
+                      onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role, mapping.image, mapping.imagePreview)}
                       placeholder="e.g. man in green hoodie"
                       className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
                     />
                     <select
                       value={mapping.role}
-                      onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role)}
+                      onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role, mapping.image, mapping.imagePreview)}
                       className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
                     >
                       <option value="">role</option>
@@ -2642,6 +2642,45 @@ export function StyleForm({
                       {!isShortFilm && <option value="singing">singing</option>}
                       <option value="speaking">speaking</option>
                     </select>
+
+                    {/* Speaker Avatar Reference */}
+                    {mapping.imagePreview ? (
+                      <div className="relative group/avatar shrink-0">
+                        <img
+                          src={mapping.imagePreview}
+                          alt={mapping.name || mapping.speakerId}
+                          className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
+                          title="Reference image"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, null, null)}
+                          className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity"
+                          title="Remove image"
+                        >
+                          <X size={8} className="text-white" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        className="w-7 h-7 rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-secondary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                        title="Upload reference photo for this speaker"
+                      >
+                        <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
+                        <input
+                          type="file"
+                          accept={IMAGE_ACCEPT}
+                          className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (f) {
+                              const preview = URL.createObjectURL(f)
+                              setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, f, preview)
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
                   </div>
                   {speakerSamples[mapping.speakerId] && (
                     <div className="text-2xs text-text-muted pl-1 italic">
@@ -3032,8 +3071,11 @@ export function VideoPromptsReview({
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const pipelineId = useStore(s => s.pipelineId)
   const rerunClipVideo = useStore(s => s.rerunClipVideo)
+  const rejoinPipelineClips = useStore(s => s.rejoinPipelineClips)
   const clearDirectorError = useStore(s => s.clearDirectorError)
   const [queueConfirmation, setQueueConfirmation] = useState<string | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportMessage, setExportMessage] = useState<string | null>(null)
   // Same collapse threshold as ImagePromptsReview — past 12 clips,
   // truncate the list to keep the column manageable on big plans.
   const [showAllClips, setShowAllClips] = useState(false)
@@ -3054,6 +3096,21 @@ export function VideoPromptsReview({
       console.error('Per-clip video regenerate failed:', e)
     } finally {
       setRegeneratingIndex(null)
+    }
+  }
+
+  const handleExportFullVideo = async () => {
+    if (!pipelineId) return
+    setIsExporting(true)
+    setExportMessage(null)
+    try {
+      const res = await rejoinPipelineClips(pipelineId) as { filename?: string }
+      setExportMessage(`Vídeo exportado com sucesso: ${res?.filename || 'concluído'}`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Falha ao exportar vídeo'
+      setExportMessage(`Erro: ${msg}`)
+    } finally {
+      setIsExporting(false)
     }
   }
   const visibleClipCount = showAllClips
@@ -3170,19 +3227,16 @@ export function VideoPromptsReview({
                     </>
                   )}
                 </div>
-                {/* Per-clip Regenerate button — appears when the
-                    pipeline status is 'failed' AND the failure index
-                    matches this card. Saves the user from re-rolling
-                    the whole batch when only one video failed. */}
-                {status === 'failed' && !clipIsRegenerating && (
+                {/* Per-clip Re-roll / Regenerate button — available whenever pipelineId exists and clip is not generating */}
+                {pipelineId && !clipIsRegenerating && status !== 'generating' && (
                   <button
                     type="button"
                     onClick={() => regenerateClip(i)}
                     className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
-                    title={`Re-generate the video for Clip ${i + 1} only`}
+                    title={`Re-renderizar apenas o vídeo do Clip ${i + 1}`}
                     aria-label={`Regenerate Clip ${i + 1} video`}
                   >
-                    <RotateCcw size={10} /> Regenerate this clip
+                    <RotateCcw size={10} /> Re-roll deste clip
                   </button>
                 )}
                 {clipIsRegenerating && (
@@ -3320,6 +3374,25 @@ export function VideoPromptsReview({
             )}
           </>
         )}
+        {/* Export full joined video with music audio */}
+        {pipelineId && (
+          <button
+            type="button"
+            onClick={() => void handleExportFullVideo()}
+            disabled={isExporting || isGenerating}
+            className="w-full py-2 rounded-lg border border-accent-blue/40 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+            title="Concatenar todos os clipes e mixar a trilha de áudio original completa"
+          >
+            {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Film size={12} />}
+            {isExporting ? 'Exportando e mixando áudio...' : 'Exportar Vídeo Completo (Concat + Áudio)'}
+          </button>
+        )}
+        {exportMessage && (
+          <div className="rounded-md border border-border bg-bg-secondary px-2.5 py-1.5 text-2xs text-text-secondary">
+            {exportMessage}
+          </div>
+        )}
+
         <button
           onClick={applyToClips}
           className="w-full py-2 rounded-lg border border-border text-text-secondary text-xs font-medium hover:bg-bg-hover hover:text-text-primary transition-colors flex items-center justify-center gap-1.5"
