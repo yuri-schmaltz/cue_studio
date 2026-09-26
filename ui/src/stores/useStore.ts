@@ -9,7 +9,7 @@ import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
 import { canonicalDirectorSkill } from '../types'
 import type { DirectorError } from './directorError'
-import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
+import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, LlmRolesState, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
 import {
@@ -1658,8 +1658,16 @@ export interface AppState {
   llmStatus: LlmStatus | null
   llmLoading: boolean
   llmModels: LlmModelOption[]
+  llmRoles: LlmRolesState | null
   loadLlmStatus: () => Promise<void>
   loadLlmModels: () => Promise<void>
+  loadLlmRoles: () => Promise<void>
+  saveLlmRoles: (data: LlmRolesState) => Promise<void>
+  testServerConnection: (params: {
+    provider: string
+    remote_url?: string
+    api_key?: string
+  }) => Promise<{ status: string; latency_ms: number; models?: string[]; error?: string }>
   loadLlm: () => Promise<void>
   unloadLlm: () => Promise<void>
 
@@ -7224,6 +7232,7 @@ export const useStore = create<AppState>((set, get, store) => ({
   llmStatus: null,
   llmLoading: false,
   llmModels: [],
+  llmRoles: null,
   loadLlmStatus: async () => {
     try {
       const status = await api.fetchLlmStatus()
@@ -7239,6 +7248,30 @@ export const useStore = create<AppState>((set, get, store) => ({
     } catch (e) {
       console.error('Failed to load LLM models:', e)
     }
+  },
+  loadLlmRoles: async () => {
+    try {
+      const data = await api.fetchLlmRoles()
+      set({ llmRoles: data })
+    } catch (e) {
+      console.error('Failed to load LLM roles:', e)
+    }
+  },
+  saveLlmRoles: async (data: LlmRolesState) => {
+    try {
+      const updated = await api.updateLlmRoles(data)
+      set({ llmRoles: updated })
+    } catch (e) {
+      console.error('Failed to save LLM roles:', e)
+      throw e
+    }
+  },
+  testServerConnection: async (params: {
+    provider: string
+    remote_url?: string
+    api_key?: string
+  }) => {
+    return await api.testLlmConnection(params)
   },
   loadLlm: async () => {
     set({ llmLoading: true })

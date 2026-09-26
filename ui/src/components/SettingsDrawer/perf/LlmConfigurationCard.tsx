@@ -42,6 +42,8 @@ export function LlmConfigurationCard({
   const isMiniMax = provider === 'minimax'
   const isOllama = provider === 'ollama'
   const [refreshing, setRefreshing] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionResult, setConnectionResult] = useState<{ status: string; latency_ms: number; models?: string[]; error?: string } | null>(null)
 
   // Filter models by current provider (show local + remote of current provider)
   const filteredModels = llmModels.filter(m => {
@@ -54,6 +56,23 @@ export function LlmConfigurationCard({
     setRefreshing(true)
     await loadLlmModels()
     setRefreshing(false)
+  }
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true)
+    setConnectionResult(null)
+    try {
+      const res = await testLlmConnection({
+        provider,
+        remote_url: servicesConfig.llm_remote_url,
+        api_key: servicesConfig.llm_remote_api_key,
+      })
+      setConnectionResult(res)
+    } catch (e) {
+      setConnectionResult({ status: 'error', latency_ms: 0, error: String(e) })
+    } finally {
+      setTestingConnection(false)
+    }
   }
 
   return (
@@ -151,6 +170,29 @@ export function LlmConfigurationCard({
               </p>
             </div>
           )}
+
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={testingConnection}
+              className="text-xs px-2.5 py-1.5 rounded bg-bg-secondary border border-border hover:bg-bg-hover text-text-primary flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={testingConnection ? 'animate-spin' : ''} />
+              {testingConnection ? 'Testing Connection...' : 'Test Connection'}
+            </button>
+            {connectionResult && (
+              <div className={`mt-2 p-2 rounded text-xs flex items-center gap-2 ${connectionResult.status === 'ok' ? 'bg-indicator-success/10 text-indicator-success border border-indicator-success/30' : 'bg-indicator-danger/10 text-indicator-danger border border-indicator-danger/30'}`}>
+                {connectionResult.status === 'ok' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                <div className="flex-1">
+                  <div>{connectionResult.status === 'ok' ? `Connected (${connectionResult.latency_ms} ms)` : `Connection failed: ${connectionResult.error}`}</div>
+                  {connectionResult.models && connectionResult.models.length > 0 && (
+                    <div className="text-2xs opacity-80 mt-0.5">Found {connectionResult.models.length} model(s) available</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -176,11 +218,14 @@ export function LlmConfigurationCard({
           onChange={e => void updateConfig({ llm_model_id: e.target.value })}
           className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
         >
-          {filteredModels.map(m => (
-            <option key={m.id} value={m.id}>
-              {m.label} ({m.size_hint})
-            </option>
-          ))}
+          {filteredModels.map(m => {
+            const roleBadge = m.optimal_role === 'technical_json' ? ' [JSON/Coder]' : (m.supports_vision ? ' [Vision]' : '')
+            return (
+              <option key={m.id} value={m.id}>
+                {m.label} ({m.size_hint}){roleBadge}
+              </option>
+            )
+          })}
         </select>
         {isLocal && (
           <p className="text-2xs text-text-muted mt-1">
