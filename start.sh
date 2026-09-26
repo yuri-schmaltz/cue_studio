@@ -170,36 +170,95 @@ sys.exit(0 if valid else 1)
 PYPROC
 }
 
+open_browser_window() {
+  local target_url="$1"
+  if (( AUTO_OPEN != 1 )) || [[ "$BIND_HOST" != "127.0.0.1" && "$BIND_HOST" != "localhost" ]]; then
+    return 0
+  fi
+  if [[ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "[start] Sem sessão gráfica detectada; acesse $target_url manualmente."
+    return 0
+  fi
+
+  case "$(uname -s)" in
+    Darwin)
+      open -n "$target_url" >/dev/null 2>&1 || open "$target_url" >/dev/null 2>&1 || echo "[start] Não consegui abrir o navegador; acesse $target_url manualmente."
+      ;;
+    Linux)
+      # Detecta o navegador padrão para abrir sempre em janela à parte (--new-window)
+      local browser_cmd=""
+      local def_desktop=""
+      if command -v xdg-settings >/dev/null 2>&1; then
+        def_desktop="$(xdg-settings get default-web-browser 2>/dev/null || true)"
+      fi
+      if [[ -z "$def_desktop" ]] && command -v xdg-mime >/dev/null 2>&1; then
+        def_desktop="$(xdg-mime query default x-scheme-handler/http 2>/dev/null || true)"
+      fi
+
+      if [[ "$def_desktop" =~ brave ]]; then
+        browser_cmd="brave-browser"
+      elif [[ "$def_desktop" =~ chrome ]]; then
+        browser_cmd="google-chrome"
+      elif [[ "$def_desktop" =~ chromium ]]; then
+        browser_cmd="chromium"
+      elif [[ "$def_desktop" =~ edge ]]; then
+        browser_cmd="microsoft-edge"
+      elif [[ "$def_desktop" =~ firefox ]]; then
+        browser_cmd="firefox"
+      fi
+
+      if [[ -z "$browser_cmd" ]] || ! command -v "$browser_cmd" >/dev/null 2>&1; then
+        for candidate in x-www-browser brave-browser google-chrome chromium-browser chromium firefox; do
+          if command -v "$candidate" >/dev/null 2>&1; then
+            browser_cmd="$candidate"
+            break
+          fi
+        done
+      fi
+
+      local opened=0
+      if [[ -n "$browser_cmd" ]] && command -v "$browser_cmd" >/dev/null 2>&1; then
+        "$browser_cmd" --new-window "$target_url" >/dev/null 2>&1 &
+        opened=1
+      elif command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$target_url" >/dev/null 2>&1 && opened=1
+      elif command -v gio >/dev/null 2>&1; then
+        gio open "$target_url" >/dev/null 2>&1 && opened=1
+      fi
+
+      if (( opened == 0 )); then
+        echo "[start] AVISO: não foi possível abrir o navegador automaticamente; acesse $target_url"
+      fi
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      cmd.exe /c start "" "$target_url" >/dev/null 2>&1 || echo "[start] Não consegui abrir o navegador; acesse $target_url manualmente."
+      ;;
+    *)
+      echo "[start] OS não reconhecido; acesse $target_url manualmente."
+      ;;
+  esac
+}
+
 # --- 4. Reuse a matching server, or restart our verified process ---
 probe_url="http://127.0.0.1:${PORT}/"
 version_url="http://127.0.0.1:${PORT}/health/version"
 
 probe_running_version() {
-  # Returns the version string reported by /health/version, or empty
-  # string if unreachable / not Maestro / not JSON. Uses python3 (not
-  # python) to be predictable across distros — some systems have only
-  # python3 on PATH; some have a python shim without the json module.
   local body
   body=$(curl --noproxy '*' --fail -sS --max-time 2 "$version_url" 2>/dev/null || true)
   if [[ -z "$body" ]]; then
     return 0
   fi
-  python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("version", "") if d.get("name") == "maestro" else "")' <<<"$body" 2>/dev/null || true
+  python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("version", "") if d.get("name") in ("maestro", "cue-studio") else "")' <<<"$body" 2>/dev/null || true
 }
 
 probe_index_alive() {
-  # Lightweight index probe — returns 0 if a Maestro (any version) is up.
   curl --noproxy '*' --fail -sS -o /dev/null --max-time 1 "$probe_url" 2>/dev/null
 }
 
 if [[ "$FORCE_RESTART" -eq 0 ]] && probe_index_alive; then
   RUNNING_VERSION="$(probe_running_version || true)"
   if [[ -n "$RUNNING_VERSION" && "$RUNNING_VERSION" == "$EXPECTED_VERSION" ]]; then
-    # The running backend might have been started outside this launcher
-    # (e.g. manually or by a previous shell). If the pidfile exists but its
-    # PID is dead, overwrite it with a fresh marker so stop.sh finds a
-    # consistent target. Use 0 as a sentinel — the real PID lives in the
-    # process table; the pidfile just signals "an instance is alive on $PORT".
     if [[ -f "$PIDFILE" ]]; then
       OLD_PID=$(cat "$PIDFILE" 2>/dev/null || true)
       if ! [[ "$OLD_PID" =~ ^[0-9]+$ ]] || ! kill -0 "$OLD_PID" 2>/dev/null; then
@@ -207,7 +266,8 @@ if [[ "$FORCE_RESTART" -eq 0 ]] && probe_index_alive; then
       fi
     fi
     write_backend_port "$PORT"
-    echo "[start] (skipped) — Maestro v${RUNNING_VERSION} já está rodando na porta ${PORT}"
+    echo "[start] Cue Studio v${RUNNING_VERSION} já está rodando na porta ${PORT} ($probe_url)"
+    open_browser_window "$probe_url"
     exit 0
   fi
 fi
@@ -263,7 +323,7 @@ echo "[start] Lançando backend → log: $LOGFILE"
 # streaming layer-by-layer em vez de tentar carregar tudo.
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
 SERVER_NAME="$BIND_HOST" SERVER_PORT="$PORT" \
-nohup "$PY" -u launch.py $COMPILE_FLAG --vram-safety-coefficient 0.5 < /dev/null >"$LOGFILE" 2>&1 &
+setsid "$PY" -u launch.py $COMPILE_FLAG --vram-safety-coefficient 0.5 < /dev/null >"$LOGFILE" 2>&1 &
 BACKEND_PID=$!
 disown "$BACKEND_PID" 2>/dev/null || true
 echo "$BACKEND_PID" > "$PIDFILE"
@@ -339,18 +399,4 @@ echo "============================================================"
 #     available — under `nohup` from a cron job we shouldn't try.
 #
 # Failure is non-fatal: if no opener is found, just print a hint.
-if (( AUTO_OPEN == 1 )) && [[ "$BIND_HOST" == "127.0.0.1" || "$BIND_HOST" == "localhost" ]]; then
-  if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] || [[ "$(uname -s)" == "Darwin" ]]; then
-    case "$(uname -s)" in
-      Darwin)  open "$URL" >/dev/null 2>&1 || echo "[start] Não consegui abrir o navegador; acesse $URL manualmente." ;;
-      Linux)   command -v xdg-open >/dev/null 2>&1 && xdg-open "$URL" >/dev/null 2>&1 \
-                || command -v gio      >/dev/null 2>&1 && gio open "$URL" >/dev/null 2>&1 \
-                || echo "[start] AVISO: instale xdg-utils (xdg-open) para auto-abrir o navegador, ou acesse $URL." ;;
-      MINGW*|MSYS*|CYGWIN*) cmd.exe /c start "" "$URL" >/dev/null 2>&1 \
-                || echo "[start] Não consegui abrir o navegador; acesse $URL manualmente." ;;
-      *)       echo "[start] OS não reconhecido; acesse $URL manualmente." ;;
-    esac
-  else
-    echo "[start] Sem sessão gráfica detectada; acesse $URL manualmente."
-  fi
-fi
+open_browser_window "$URL"
