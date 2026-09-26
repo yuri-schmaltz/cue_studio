@@ -246,13 +246,12 @@ export function AdditionalRefsSection() {
        wrapper is preserved so the section still respects the 40vh
        ceiling and shows the only visible scrollbar in the chat
        column. */
-    <div className="mt-1.5 space-y-2 pl-1 max-h-[40vh] overflow-y-auto scrollbar-visible">
+    <div className="mt-1.5 space-y-2">
       {/* Two equal-width tabs styled as rounded buttons (matching the
           "Upload a track" / "References" pill aesthetic): each tab is
           a self-contained pill with border + rounded corners and a
-          small `gap-2` separates them. Active tab fills with the
-          accent colour border; inactive keeps the muted border so the
-          boundary reads without relying on colour alone. */}
+          small `gap-2` separates them. They stay fixed at the top
+          while only the content panel scrolls below. */}
       <div role="tablist" aria-label="Reference images"
         className="flex w-full gap-2">
         <button
@@ -262,15 +261,15 @@ export function AdditionalRefsSection() {
           onClick={() => setActiveRefTab('char')}
           className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
             activeRefTab === 'char'
-              ? 'border-accent-blue text-text-primary bg-bg-tertiary'
+              ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
               : 'border-border hover:border-border-light text-text-secondary hover:text-text-primary bg-bg-tertiary'
           }`}
         >
-          <Users size={11} className={activeRefTab === 'char' ? 'text-accent-blue shrink-0' : 'text-text-muted shrink-0'} />
+          <Users size={11} className={activeRefTab === 'char' ? 'text-white shrink-0' : 'text-text-muted shrink-0'} />
           <span>Character refs</span>
           {charCount > 0 && (
             <span className={`px-1.5 rounded-full text-[10px] leading-tight ${
-              activeRefTab === 'char' ? 'bg-accent-blue/15 text-accent-blue' : 'bg-bg-secondary text-text-muted'
+              activeRefTab === 'char' ? 'bg-white/20 text-white' : 'bg-bg-secondary text-text-muted'
             }`}>{charCount}</span>
           )}
         </button>
@@ -281,85 +280,52 @@ export function AdditionalRefsSection() {
           onClick={() => setActiveRefTab('loc')}
           className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
             activeRefTab === 'loc'
-              ? 'border-accent-blue text-text-primary bg-bg-tertiary'
+              ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
               : 'border-border hover:border-border-light text-text-secondary hover:text-text-primary bg-bg-tertiary'
           }`}
         >
-          <MapPin size={11} className={activeRefTab === 'loc' ? 'text-accent-blue shrink-0' : 'text-text-muted shrink-0'} />
+          <MapPin size={11} className={activeRefTab === 'loc' ? 'text-white shrink-0' : 'text-text-muted shrink-0'} />
           <span>Location refs</span>
           {locCount > 0 && (
             <span className={`px-1.5 rounded-full text-[10px] leading-tight ${
-              activeRefTab === 'loc' ? 'bg-accent-blue/15 text-accent-blue' : 'bg-bg-secondary text-text-muted'
+              activeRefTab === 'loc' ? 'bg-white/20 text-white' : 'bg-bg-secondary text-text-muted'
             }`}>{locCount}</span>
           )}
         </button>
       </div>
 
-      {/* Active tab's content panel — full width below the tab strip.
-          Each card stacks its reference photo on top and the label
-          input directly below so the eye reads top-to-bottom per ref.
-          When the active tab is empty we replace the verbose empty-
-          state text with a single square "Add references" card so the
-          eye reads the affordance at a glance — the card is a label
-          wrapping a hidden file input, so clicking / keyboard-activating
-          it opens the native file picker for the current tab's
-          reference type (image for character / location, audio for
-          voice). The + icon and the empty-state helper sit inside the
-          card so the surface reads as "tap to add" without needing a
-          separate Add button + caption combo. */}
-      <div role="tabpanel" className="space-y-1.5">
+      {/* Active tab's content panel — scrollable independently so the
+          tabs above stay pinned in place, and capped at max-h-[42vh]
+          to keep the gap minimal without ever overlapping the composer. */}
+      <div role="tabpanel" className="space-y-1.5 max-h-[42vh] overflow-y-auto scrollbar-visible">
         {activeRefTab === 'char' ? (
-          <>
-            {charRefs.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {charRefs.map((f, i) => (
-                  <DraggableRefRow key={`c${i}-${f.name}`} file={f} label={charLabels[i] || ''} index={i}
-                    onRemove={removeCharRef} onLabelChange={setCharLabel} onReorder={reorderCharRefs}
-                    placeholder="e.g. Thor - blonde, hammer" />
-                ))}
-                <RefAddCard
-                  testid="ref-add-card-char"
-                  title="Add character ref"
-                  onFiles={files => handleFiles(files, 'char')}
-                  accept={IMAGE_ACCEPT}
-                />
-              </div>
-            ) : (
-              <RefAddCard
-                testid="ref-add-card-char"
-                title="Add character ref"
-                hint="Drop close-up portraits for best identity lock"
-                onFiles={files => handleFiles(files, 'char')}
-                accept={IMAGE_ACCEPT}
-              />
-            )}
-          </>
+          <div className="grid grid-cols-4 gap-2">
+            {charRefs.map((f, i) => (
+              <DraggableRefRow key={`c${i}-${f.name}`} file={f} label={charLabels[i] || ''} index={i}
+                onRemove={removeCharRef} onLabelChange={setCharLabel} onReorder={reorderCharRefs}
+                placeholder="e.g. Thor" />
+            ))}
+            <RefAddCard
+              testid="ref-add-card-char"
+              title="Add ref"
+              onFiles={files => handleFiles(files, 'char')}
+              accept={IMAGE_ACCEPT}
+            />
+          </div>
         ) : (
-          <>
-            {locRefs.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {locRefs.map((f, i) => (
-                  <DraggableRefRow key={`l${i}-${f.name}`} file={f} label={locLabels[i] || ''} index={i}
-                    onRemove={removeLocRef} onLabelChange={setLocLabel} onReorder={reorderLocRefs}
-                    placeholder="e.g. backstage, leather couches" />
-                ))}
-                <RefAddCard
-                  testid="ref-add-card-loc"
-                  title="Add location ref"
-                  onFiles={files => handleFiles(files, 'loc')}
-                  accept={IMAGE_ACCEPT}
-                />
-              </div>
-            ) : (
-              <RefAddCard
-                testid="ref-add-card-loc"
-                title="Add location ref"
-                hint="Lock the look of recurring environments"
-                onFiles={files => handleFiles(files, 'loc')}
-                accept={IMAGE_ACCEPT}
-              />
-            )}
-          </>
+          <div className="grid grid-cols-4 gap-2">
+            {locRefs.map((f, i) => (
+              <DraggableRefRow key={`l${i}-${f.name}`} file={f} label={locLabels[i] || ''} index={i}
+                onRemove={removeLocRef} onLabelChange={setLocLabel} onReorder={reorderLocRefs}
+                placeholder="e.g. stage" />
+            ))}
+            <RefAddCard
+              testid="ref-add-card-loc"
+              title="Add ref"
+              onFiles={files => handleFiles(files, 'loc')}
+              accept={IMAGE_ACCEPT}
+            />
+          </div>
         )}
       </div>
 
@@ -404,24 +370,6 @@ export function AdditionalRefsSection() {
           </p>
         )}
       </div>}
-      {/* Why Voice ref may be missing — only shown when the model does
-          NOT support voice cloning so the user understands the section
-          isn't broken, just hidden by their current video model. The
-          previous italic helper line was replaced with a unified
-          square add-card so the visual affordance matches the
-          character / location tabs above: clicking it opens the native
-          file picker for an audio file, and the disabled state makes it
-          obvious the action would be a no-op for the current model. */}
-      {!showVoiceReference && (
-        <RefAddCard
-          testid="ref-add-card-voice-disabled"
-          title="Voice ref unavailable"
-          hint="Current model doesn't support voice cloning — switch to LTX or H3 Omni in Generation Options to enable."
-          onFiles={() => undefined}
-          accept={AUDIO_ACCEPT}
-          disabled
-        />
-      )}
     </div>
   )
 }
@@ -677,10 +625,12 @@ export function StructureView({
       )}
 
       <div className="bg-bg-tertiary rounded-lg p-2 space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-text-secondary font-medium">{plannedClips.length} {isShortFilm ? 'scenes' : 'clips'}</span>
-          <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
-        </div>
+        {plannedClips.length > 0 && (
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-text-secondary font-medium">{plannedClips.length} {isShortFilm ? 'scenes' : 'clips'}</span>
+            <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
+          </div>
+        )}
 
         {loading ? (
           /* Live activity badge — replaces the hard-coded
@@ -707,7 +657,7 @@ export function StructureView({
               No {isShortFilm ? 'scenes' : 'clips'} planned yet.
               {isActive
                 ? ` Press Send in the composer below to generate the ${isShortFilm ? 'scene' : 'clip'} structure.`
-                : ` Send a brief with a scene description to plan the ${isShortFilm ? 'scenes' : 'clip structure'}.`}
+                : ` Analysis will generate the ${isShortFilm ? 'scene' : 'clip'} structure once audio is processed.`}
             </span>
           </div>
         ) : (

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Send, Users, FileText, ListVideo, Sparkles, BookOpen, Film } from 'lucide-react'
+import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Send, Users, FileText, ListVideo, Sparkles, BookOpen, Film, Wand2 } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
@@ -833,50 +833,53 @@ export function DirectorChat() {
                   exclusive with the References content. */}
               {!isShortFilm && !referencesOpen && (
                 <>
-                  <AudioSourcePanel
-                    dragOver={dragOver}
-                    setDragOver={setDragOver}
-                    handleDrop={handleDrop}
-                    handleFile={handleFile}
-                    loading={loading && atStep('analyze')}
-                    loadingMessage={loadingMessage}
-                    audioFile={audioFile}
-                    isShortFilm={isShortFilm}
-                    musicSource={musicSource || 'upload'}
-                    pipelineLoading={loading}
-                  />
-                  {/* CLIP STRUCTURE card — moved from the middle column
-                      (DirectorPlanColumn) so the user sees the clip
-                      structure immediately below the upload card, in
-                      the same conversation surface. Only renders after
-                      the audio has been analyzed and the LLM has
-                      segmented the song. The gating mirrors what
-                      DirectorPlanColumn used to do so behaviour is
-                      identical. */}
-                  {!isStoryPath && (atStep('structure') || pastStep('structure')) && (
-                    <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2">
-                      <header className="flex items-center justify-between gap-2">
-                        <h3 className="text-xs text-text-muted uppercase tracking-wider">
-                          {isShortFilm ? 'Scene structure' : 'Clip structure'}
-                        </h3>
-                        <DirectorTimelineIconButton />
-                      </header>
-                      <StructureView
-                        plannedClips={plannedClips}
-                        energyBias={energyBias}
-                        localBias={localBias}
-                        setLocalBias={setLocalBias}
-                        sliderRef={sliderRef}
-                        setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
-                        loading={loading}
-                        totalClipDuration={totalClipDuration}
-                        beatDistribution={beatDistribution}
-                        confirmStructure={confirmStructure}
-                        isActive={atStep('structure')}
+                  <div className="grid grid-cols-3 gap-2 items-stretch">
+                    <div className="col-span-1 h-[116px]">
+                      <AudioSourcePanel
+                        dragOver={dragOver}
+                        setDragOver={setDragOver}
+                        handleDrop={handleDrop}
+                        handleFile={handleFile}
+                        loading={loading && atStep('analyze')}
+                        loadingMessage={loadingMessage}
+                        audioFile={audioFile}
                         isShortFilm={isShortFilm}
+                        musicSource={musicSource || 'upload'}
+                        pipelineLoading={loading}
                       />
-                    </section>
-                  )}
+                    </div>
+                    {/* CLIP STRUCTURE card — positioned in the same row
+                        immediately to the right of the drop/upload card,
+                        spanning columns 2 and 3 (directly below "Generate"
+                        and "References"). Kept visible in its empty state
+                        until analysis completes. */}
+                    {!isStoryPath && (
+                      <div className="col-span-2 h-[116px]">
+                        <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2 h-full flex flex-col justify-between overflow-y-auto">
+                          <header className="flex items-center justify-between gap-2 shrink-0">
+                            <h3 className="text-xs text-text-muted uppercase tracking-wider">
+                              {isShortFilm ? 'Scene structure' : 'Clip structure'}
+                            </h3>
+                            <DirectorTimelineIconButton />
+                          </header>
+                          <StructureView
+                            plannedClips={plannedClips}
+                            energyBias={energyBias}
+                            localBias={localBias}
+                            setLocalBias={setLocalBias}
+                            sliderRef={sliderRef}
+                            setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
+                            loading={loading}
+                            totalClipDuration={totalClipDuration}
+                            beatDistribution={beatDistribution}
+                            confirmStructure={confirmStructure}
+                            isActive={atStep('structure')}
+                            isShortFilm={isShortFilm}
+                          />
+                        </section>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Scene description card — moved from the middle
                       column (DirectorPlanColumn) so the user sees the
@@ -1067,20 +1070,16 @@ export function DirectorChat() {
           Removed the previous `border-t border-border` separator: it
           read as a stray hairline above the composer when the chat
           column already sits inside its own card with a visible
-          boundary. The pl-3/pr-3 (12px each side) matches the
-          SystemBubble's pl-3 inset above so the textarea + buttons
-          align with the reference / upload cards' content edge. */}
-      <div className="space-y-2 pl-3 pr-3">
-        <div className="flex items-center gap-2">
+          boundary. The textarea and buttons sit flush with the
+          parent card's padding, aligning flush with the reference / upload
+          cards above. */}
+      <div className="space-y-2">
+        <div className="flex items-stretch gap-2">
           {/* Scene/character description textarea — narrower than the
               full chat column so the action buttons can stack
-              vertically on the right. The textarea uses a fixed height
-              (h-[108px]) so it matches the 3-button stack on the right
-              (each button is p-2 × 16px icon = 32px tall; 3 × 32 + 2 × 6
-              gap = 108px). `items-center` on the row keeps both
-              children optically aligned (the textarea's content sits
-              on its first text line, the button column is vertically
-              centred beside it). */}
+              vertically on the right. The textarea and action stack share
+              the exact same height (108px) with items-stretch so the top
+              and bottom borders align 1:1 down to the pixel. */}
           <div className="relative flex-1 min-w-0">
             <AutoResizeTextarea
               value={mvGenerateSetup ? songDescription : chatInput}
@@ -1103,11 +1102,11 @@ export function DirectorChat() {
               }}
               placeholder={chatInputPlaceholder}
               disabled={!chatInputEnabled}
-              rows={3}
-              minHeight={108}
-              maxHeight={108}
+              rows={4}
+              minHeight={146}
+              maxHeight={146}
               aria-keyshortcuts="Shift+Enter"
-              className="w-full h-[108px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 pb-7 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+              className="w-full h-[146px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 pb-7 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
             />
             {/* Discoverability hint: subtle bottom-right caption that
                 only shows when the textarea is empty and the input is
@@ -1124,11 +1123,23 @@ export function DirectorChat() {
               </span>
             )}
           </div>
-          {/* Action stack — three square buttons stacked vertically so
-              they read as a primary action column beside the textarea.
-              `justify-center` keeps the buttons vertically centred
-              against the textarea's full height. */}
-          <div className="flex shrink-0 h-[108px] flex-col justify-center gap-1.5">
+          {/* Action stack — four square buttons stacked vertically beside
+              the textarea. Each button has an identical fixed square size
+              (h-8 w-8 / 32px × 32px) and the container uses `justify-between`
+              across `h-[146px]` so the 4 buttons align perfectly with each other
+              and with the textarea's top and bottom. */}
+          <div className="flex shrink-0 w-8 h-[146px] flex-col justify-between items-center">
+            <button
+              type="button"
+              onClick={() => {
+                // Assistente / Wizard IA placeholder
+              }}
+              className="w-8 h-8 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors shrink-0"
+              title="Assistente de Direção / Prompt Wizard"
+              aria-label="Assistente de Direção / Prompt Wizard"
+            >
+              <Wand2 size={16} />
+            </button>
             <ScriptAttachButton
               attached={attachedScript}
               loading={scriptLoading}
@@ -1137,7 +1148,7 @@ export function DirectorChat() {
             <button
               onClick={handleChatSubmit}
               disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim()}
-              className="p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-8 h-8 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
               title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
               aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
             >
@@ -1150,7 +1161,7 @@ export function DirectorChat() {
             <button
               onClick={() => void handleQueueDraft()}
               disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
-              className="p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-8 h-8 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
               title={
                 mvGenerateSetup
                   ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
@@ -1166,51 +1177,31 @@ export function DirectorChat() {
             </button>
           </div>
         </div>
-        {/* Script status — always rendered (even when empty) so the
-            composer row's vertical position stays fixed: removing the
-            card on clear would collapse the layout by ~28px and
-            visually nudge the textarea + buttons up. When no script
-            is attached we show a muted placeholder matching the
-            active card's footprint, including a disabled-looking
-            remove (×) button on the right. */}
-        <div
-          role="status"
-          aria-live="polite"
-          className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-2xs ${
-            attachedScript
-              ? 'border-accent-blue/30 bg-accent-blue/10 text-accent-blue'
-              : 'border-border bg-bg-tertiary text-text-muted'
-          }`}
-        >
-          <FileText size={11} className="shrink-0" />
-          <span className={`truncate min-w-0 flex-1 ${attachedScript ? '' : 'italic'}`}>
-            {attachedScript ? attachedScript.filename : 'No script attached — click the orange icon to drop a .txt / .md / .pdf'}
-          </span>
-          {attachedScript ? (
-            <>
-              <span className="text-text-muted shrink-0">
-                {attachedScript.charCount.toLocaleString()} chars
-                {attachedScript.truncated ? ' · truncated' : ''}
-              </span>
-              <button
-                type="button"
-                onClick={() => { setAttachedScript(null); setScriptError('') }}
-                aria-label="Remove script"
-                title="Remove script"
-                className="shrink-0 rounded p-0.5 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-              >
-                <X size={11} />
-              </button>
-            </>
-          ) : (
-            <span
-              aria-hidden="true"
-              className="shrink-0 rounded p-0.5 text-text-muted/50"
+        {attachedScript && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-1.5 rounded-md border border-accent-blue/30 bg-accent-blue/10 px-2 py-1 text-2xs text-accent-blue"
+          >
+            <FileText size={11} className="shrink-0" />
+            <span className="truncate min-w-0 flex-1">
+              {attachedScript.filename}
+            </span>
+            <span className="text-text-muted shrink-0">
+              {attachedScript.charCount.toLocaleString()} chars
+              {attachedScript.truncated ? ' · truncated' : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() => { setAttachedScript(null); setScriptError('') }}
+              aria-label="Remove script"
+              title="Remove script"
+              className="shrink-0 rounded p-0.5 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
             >
               <X size={11} />
-            </span>
-          )}
-        </div>
+            </button>
+          </div>
+        )}
         {scriptError && (
           <p className="text-2xs text-red-400" role="alert">{scriptError}</p>
         )}
@@ -1223,36 +1214,6 @@ export function DirectorChat() {
             {draftQueueConfirmation}
           </div>
         )}
-      </div>
-
-      {/* Rodapé do Composer — faixa fina que se estende até a base da
-          coluna. Mostra atalhos de teclado (Shift+Enter / Cmd+Ctrl+S)
-          e contagem da fila pendente. Usa `mt-auto` em vez de flex-1
-          para que o rodapé sempre fique imediatamente abaixo do
-          composer sem competir com a área de mensagens rolável acima
-          (que já é flex-1). A borda-t é hairline-thin e a cor
-          atenuada para não competir com a borda do card. */}
-      <div
-        className="mt-auto flex items-center justify-between gap-2 border-t border-border/30 px-3 py-1.5 text-2xs text-text-muted/80"
-        data-testid="director-chat-rodape"
-        aria-label="Composer shortcuts and queue status"
-      >
-        <span className="truncate">
-          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">Shift</kbd>
-          <span className="mx-1">+</span>
-          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">Enter</kbd>
-          <span className="mx-1.5">envia</span>
-          <span className="mx-1 text-text-muted/40">·</span>
-          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">Cmd/Ctrl</kbd>
-          <span className="mx-1">+</span>
-          <kbd className="rounded border border-border/60 bg-bg-tertiary px-1 py-px text-[10px] font-mono">S</kbd>
-          <span className="mx-1.5">adiciona à fila</span>
-        </span>
-        <span className="shrink-0 tabular-nums" aria-live="polite">
-          {directorQueueEntriesCount > 0
-            ? `${directorQueueEntriesCount} na fila`
-            : 'Fila vazia'}
-        </span>
       </div>
     </div>
   )
@@ -1381,7 +1342,7 @@ function UploadZone({
          card (next door in the 2-col grid) the same height so flex
          centering works in both. The parent card height is set here
          rather than inside each child branch. */
-      className={`border-2 border-dashed rounded-lg p-4 text-center min-h-[96px] flex items-center justify-center transition-colors relative ${
+      className={`border-2 border-dashed rounded-lg p-3 text-center h-full min-h-[96px] flex items-center justify-center transition-colors relative ${
         dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
       }`}
     >
@@ -1473,7 +1434,7 @@ function DirectorAudioSourceTabs({
   onReferencesToggle: () => void
 }) {
   return (
-    <div role="tablist" aria-label="Audio source tabs" className="flex items-stretch gap-1.5">
+    <div role="tablist" aria-label="Audio source tabs" className="grid grid-cols-3 gap-2">
       <button
         type="button"
         role="tab"
@@ -1482,13 +1443,13 @@ function DirectorAudioSourceTabs({
         title="Drop a song or video file from your machine"
         onClick={() => onMusicSourceChange('upload')}
         data-testid="director-tab-upload"
-        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border bg-bg-tertiary text-xs font-medium transition-colors ${
+        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
           value === 'upload' && !referencesOpen
-            ? 'border-accent-blue text-accent-blue'
-            : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
+            ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
+            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <Music size={13} className={value === 'upload' && !referencesOpen ? 'text-accent-blue' : 'text-text-muted'} />
+        <Music size={13} className={value === 'upload' && !referencesOpen ? 'text-white' : 'text-text-muted'} />
         <span>Upload</span>
       </button>
       <button
@@ -1499,13 +1460,13 @@ function DirectorAudioSourceTabs({
         title="Compose a song with the selected music model"
         onClick={() => onMusicSourceChange('generate')}
         data-testid="director-tab-generate"
-        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border bg-bg-tertiary text-xs font-medium transition-colors ${
+        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
           value === 'generate' && !referencesOpen
-            ? 'border-accent-blue text-accent-blue'
-            : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
+            ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
+            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <Sparkles size={13} className={value === 'generate' && !referencesOpen ? 'text-accent-blue' : 'text-text-muted'} />
+        <Sparkles size={13} className={value === 'generate' && !referencesOpen ? 'text-white' : 'text-text-muted'} />
         <span>Generate</span>
       </button>
       <button
@@ -1516,13 +1477,13 @@ function DirectorAudioSourceTabs({
         title="Open the visual anchors panel (reference photo + character / location / voice refs)"
         onClick={onReferencesToggle}
         data-testid="director-tab-references"
-        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border bg-bg-tertiary text-xs font-medium transition-colors ${
+        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
           referencesOpen
-            ? 'border-accent-blue text-accent-blue'
-            : 'border-border text-text-secondary hover:text-text-primary hover:border-border-light'
+            ? 'border-teal-600 bg-teal-600 text-white shadow-sm'
+            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <ImageIcon size={13} className={referencesOpen ? 'text-accent-blue' : 'text-text-muted'} />
+        <ImageIcon size={13} className={referencesOpen ? 'text-white' : 'text-text-muted'} />
         <span>References</span>
       </button>
     </div>
@@ -1611,18 +1572,15 @@ function ReferenceImageUpload({
   return (
     <div className="space-y-2">
       {referenceImage && refImagePreview ? (
-        /* Reference loaded state: the photo itself fills the card and
-           the caption sits at the bottom of the image. Center the
-           caption block by wrapping the inner label in a flex column
-           so the image (h-24) + caption read as one centered unit. The
-           "Uploaded" chip in the corner turns green once the backend
-           has accepted the file (directorReferenceImagePath is set). */
-        <div className="relative min-h-[96px] flex items-center justify-center">
-          <label className="cursor-pointer block w-full">
+        /* Reference loaded state: fits cleanly inside the card without
+           expanding its dimensions; `object-contain` preserves the full image
+           aspect ratio with clean rounded borders. */
+        <div className="relative h-[96px] flex items-center justify-center bg-bg-tertiary rounded-lg border border-border overflow-hidden">
+          <label className="cursor-pointer block w-full h-full">
             <img
               src={refImagePreview}
               alt="Reference"
-              className="w-full h-24 object-cover rounded-lg border border-border hover:border-accent-blue transition-colors"
+              className="w-full h-full object-contain"
               title="Click to change photo"
             />
             <input
@@ -1645,11 +1603,10 @@ function ReferenceImageUpload({
           </span>
         </div>
       ) : (
-        /* Empty state: min-h matches the audio card next door so the
-           2-col row reads as aligned; flex centering pulls the icon +
-           helper text to the visual middle of the card. */
+        /* Empty state: standard compact card height (96px); flex centering
+           pulls the icon + helper text cleanly to the visual middle. */
         <label
-          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center min-h-[96px] flex items-center justify-center transition-colors ${
+          className={`cursor-pointer block border-2 border-dashed rounded-lg p-3 text-center h-[96px] flex items-center justify-center transition-colors ${
             dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
           }`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -1698,7 +1655,7 @@ function ScriptAttachButton({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={loading}
-        className={`p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+        className={`w-8 h-8 shrink-0 flex items-center justify-center p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
           attached
             ? 'bg-accent-blue text-white hover:bg-accent-blue-hover'
             : 'bg-accent-blue/85 text-white hover:bg-accent-blue-hover'

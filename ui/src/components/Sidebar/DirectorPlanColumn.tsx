@@ -213,7 +213,7 @@ export function DirectorPlanColumn() {
         .map((seg) => `"${(seg.text || '').trim().slice(0, 60)}"`)
         .filter(Boolean)
       return (
-        <div className="h-full flex flex-col p-4 space-y-3" data-testid="director-plan-column-audio-summary">
+        <div className="h-full flex flex-col space-y-3" data-testid="director-plan-column-audio-summary">
           <div className="flex-1 space-y-3 min-h-0">
           <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-2">
             <h3 className="text-xs text-text-muted uppercase tracking-wider">
@@ -282,7 +282,7 @@ export function DirectorPlanColumn() {
        visible inset is 36px from the column's rounded border —
        generous enough to let the cards breathe without wasting
        vertical real estate. */
-    <div className="h-full flex flex-col p-4 space-y-3" data-testid="director-plan-column">
+    <div className="h-full flex flex-col space-y-3" data-testid="director-plan-column">
       {/* 1) Structure — moved to the chat column (DirectorChat). The
           plan column starts at the post-upload planning surface. */}
 
