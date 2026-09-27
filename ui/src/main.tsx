@@ -11,6 +11,36 @@ import { migrateAll } from './lib/legacyKeys'
 // localStorage makes this a no-op on subsequent boots.
 migrateAll()
 
+// Intercepta a tecla Tab globalmente em toda a interface para desativar a navegação
+// e movimentação entre elementos via tabulação.
+// Dentro de campos de texto (textarea/input), insere tabulação/indentação em vez de pular o foco.
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key !== 'Tab') return
+
+  const target = e.target as HTMLElement | null
+  const isTextarea = target instanceof HTMLTextAreaElement
+  const isInput = target instanceof HTMLInputElement && ['text', 'search', 'url'].includes(target.type)
+
+  if (isTextarea && !target.readOnly && !target.disabled) {
+    e.preventDefault()
+    const start = target.selectionStart
+    const end = target.selectionEnd
+    const val = target.value
+    target.value = val.substring(0, start) + '  ' + val.substring(end)
+    target.selectionStart = target.selectionEnd = start + 2
+    target.dispatchEvent(new Event('input', { bubbles: true }))
+    return
+  }
+
+  if (isInput && !target.readOnly && !target.disabled) {
+    e.preventDefault()
+    return
+  }
+
+  // Previne a navegação de foco padrão via Tab em botões, links, abas e containers
+  e.preventDefault()
+}, true)
+
 // Mobile browsers require persistent notifications from a service worker;
 // `new Notification()` is desktop-only on several engines, including iOS
 // WebKit. This worker deliberately does not cache application assets, so a
