@@ -2,214 +2,172 @@ import { Check, Loader2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useDirectorSlice } from '../../stores/directorSelectors'
 
-// ---------------------------------------------------------------------------
-// DirectorStatusPanel — single-line status strip mirroring what the
-// Director pipeline is doing right now (analyze, plan, generate images,
-// review, etc.). Extracted from DirectorStage so the App shell can render
-// it inside the bottom HardwareStatusBar (via the bar's `leftSlot`) —
-// the user asked to flatten the previous stacked card onto the same row
-// as GPU/VRAM/CPU/RAM/No model. Everything here renders on a single
-// horizontal line: 10 step pills + a counter chip + a cancel button.
-// The previous stacked card (label row + two-tone progress bar + chip
-// list) is gone — the chips themselves carry the progress information.
-// ---------------------------------------------------------------------------
-
-type StepMeta = {
+export type StepMeta = {
   id: string
   label: string
   description: (clipCount: number) => string
 }
 
 export const STATUS_STEPS: StepMeta[] = [
-  { id: 'upload', label: 'Upload', description: () => 'Receiving your audio and reference images' },
-  { id: 'analyze', label: 'Analyze', description: () => 'Transcribing dialogue, detecting speakers, mapping sections' },
-  { id: 'structure', label: 'Plan structure', description: (n) => n > 0
-      ? `Segmenting the song into ${n} ${n === 1 ? 'clip' : 'clips'} and beats`
-      : 'Segmenting the song into clips and beats' },
-  { id: 'style', label: 'Scene description', description: () => 'Confirming the creative brief (characters, mood, palette)' },
-  { id: 'plan', label: 'Image prompts', description: (n) => n > 0
-      ? `LLM writing one image prompt per clip (${n} total)`
-      : 'LLM writing one image prompt per clip' },
-  { id: 'review', label: 'Review image prompts', description: (n) => n > 0
-      ? `Reviewing the ${n} per-clip image prompts before generation`
-      : 'Reviewing the per-clip image prompts before generation' },
-  { id: 'generate_images', label: 'Generate images', description: (n) => n > 0
-      ? `Rendering the ${n} start ${n === 1 ? 'image' : 'images'} with the image model`
-      : 'Rendering the start images with the image model' },
-  { id: 'plan_video', label: 'Video prompts', description: (n) => n > 0
-      ? `LLM writing one video prompt per clip (${n} total)`
-      : 'LLM writing one video prompt per clip' },
-  { id: 'review_video', label: 'Review video prompts', description: (n) => n > 0
-      ? `Reviewing the ${n} per-clip video prompts before generation`
-      : 'Reviewing the per-clip video prompts before generation' },
-  // Final stage: the actual video generation. This step does not have a
-  // dedicated directorStep value in the store — once the user clicks
-  // Generate from the review_video stage, the system queues the Director
-  // pipeline and the queue page / status banner takes over reporting
-  // progress. Surfacing it here gives the user a complete mental model
-  // of the pipeline without having to mentally bridge from "review" to
-  // "actual generation happens somewhere else now".
-  { id: 'generate_videos', label: 'Generate videos', description: (n) => n > 0
-      ? `Rendering the ${n} final ${n === 1 ? 'video' : 'videos'} with the video model`
-      : 'Rendering the final videos with the video model' },
+  { id: 'upload', label: 'Upload', description: () => 'Recebendo áudio e referências' },
+  { id: 'analyze', label: 'Analyze', description: () => 'Transcrevendo áudio, detectando vozes e seções' },
+  { id: 'structure', label: 'Plan structure', description: (n) => n > 0 ? `Segmentando música em ${n} clipes e batidas` : 'Segmentando música em clipes e batidas' },
+  { id: 'style', label: 'Scene description', description: () => 'Definindo descrição da cena, personagens e estilo' },
+  { id: 'plan', label: 'Image prompts', description: (n) => n > 0 ? `LLM escrevendo prompts de imagem para ${n} clipes` : 'LLM escrevendo prompts de imagem' },
+  { id: 'review', label: 'Review image prompts', description: (n) => n > 0 ? `Revisando prompts de imagem dos ${n} clipes` : 'Revisando prompts de imagem' },
+  { id: 'generate_images', label: 'Generate images', description: (n) => n > 0 ? `Renderizando ${n} imagens iniciais` : 'Renderizando imagens iniciais' },
+  { id: 'plan_video', label: 'Video prompts', description: (n) => n > 0 ? `LLM escrevendo prompts de vídeo para ${n} clipes` : 'LLM escrevendo prompts de vídeo' },
+  { id: 'review_video', label: 'Review video prompts', description: (n) => n > 0 ? `Revisando prompts de vídeo dos ${n} clipes` : 'Revisando prompts de vídeo' },
+  { id: 'generate_videos', label: 'Generate videos', description: (n) => n > 0 ? `Renderizando ${n} vídeos finais` : 'Renderizando vídeos finais' },
 ]
 
 /**
- * Renders the pipeline status as a single-line strip. Designed to live
- * inside the bottom status bar (HardwareStatusBar's leftSlot) alongside
- * the GPU/VRAM/CPU/RAM/No model gauges. Layout:
+ * DirectorStatusPanel — Card de progresso conciso e informativo localizado
+ * na base da coluna central (DirectorPlanColumn).
  *
- *   [step pills with ✓ / spinner / · separators]  [2/10]  [×]
- *
- * Each step is colour-coded:
- *   - done     → emerald ✓ + secondary text
- *   - active   → blue spinner + primary text (and a tooltip with the
- *                current loadingMessage so the user can see what the
- *                backend is doing — "Transcribing audio…", "Loading
- *                model: gemma-4-E4B-it-heretic on cuda", etc.)
- *   - pending  → muted dot + muted text
- *
- * The strip returns null while the user has not progressed past the
- * upload step (and nothing is loading), keeping the bottom bar uncluttered
- * on first launch.
+ * Apresenta:
+ * 1. Linha de status do Pipeline (processando/ocioso) com mensagem dinâmica e cancelamento.
+ * 2. Indicador da Etapa atual com contagem (ex: 2/10: Analyze).
+ * 3. Barra de progresso segmentada em 10 etapas com tooltips informativos e cores de estado.
  */
 export function DirectorStatusPanel() {
   const step = useDirectorSlice('step')
   const loading = useDirectorSlice('loading')
   const loadingMessage = useDirectorSlice('loadingMessage')
-  const cancel = useStore(s => s.cancelDirectorV2Plan)
+  const cancel = useStore(s => s.cancelPlan)
   const plannedClipsCount = useStore(s => s.directorPlannedClips.length)
-  // The progress selector used to live inside a `{loading && (() => { ... })()}`
-  // IIFE on line 107 — a hooks-in-conditional anti-pattern that React
-  // enforces strictly. When `loading` flipped from false → true (which
-  // happens as soon as the user drops an audio file and the analyzer
-  // kicks off), the IIFE's body started running its first useStore
-  // call mid-render, bumping the hook count from 20 to 21 and tripping
-  // "Rendered more hooks than during the previous render" (minified
-  // error #310, blank screen). Lifting the selector to the top of the
-  // component keeps the hook count stable across every render.
   const imageGenProgress = useStore(s => s.directorImageGenProgress)
+  const isShortFilm = useStore(s => s.directorSkill === 'short_film')
 
-  const currentIndex = STATUS_STEPS.findIndex(s => s.id === step)
-  const hasActivity = loading || currentIndex > 0
-  if (!hasActivity) return null
+  const totalSteps = STATUS_STEPS.length
+  let currentIndex = STATUS_STEPS.findIndex(s => s.id === step)
+  if (currentIndex === -1) currentIndex = 0
 
   const activeStep = STATUS_STEPS[currentIndex] || STATUS_STEPS[0]
-  const completedCount = STATUS_STEPS.filter((_, i) => i < currentIndex).length
-  const totalSteps = STATUS_STEPS.length
+  const displayLabel = isShortFilm
+    ? activeStep.id === 'structure'
+      ? 'Scene structure'
+      : activeStep.id === 'style'
+        ? 'Story description'
+        : activeStep.label
+    : activeStep.label
 
   return (
-    <div
-      className="flex items-center gap-2 min-w-0"
+    <footer
+      className="mt-auto shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-4 py-2.5 space-y-2 select-none"
       data-testid="director-status-panel"
-      aria-live="polite"
-      aria-label={`Director pipeline: ${activeStep.label}, step ${Math.min(completedCount + (loading ? 1 : 0), totalSteps)} of ${totalSteps}`}
+      aria-label={`Progresso do pipeline: ${displayLabel}, etapa ${currentIndex + 1} de ${totalSteps}`}
     >
-      {/* Inline progress strip — only renders while loading so the bar
-          stays out of the way when idle. Shows current/total clip
-          counts (e.g. 2/3) when the pipeline exposes them, otherwise
-          the indeterminate shimmer (animate-pulse). The backend fills
-          in `directorImageGenProgress.current / total` for image
-          generation and similar fields for video generation; when
-          nothing is exposed yet, the bar still shows progress via the
-          chip animation alone. */}
-      {loading && (() => {
-        const determinate = Boolean(imageGenProgress?.total && imageGenProgress.total > 0)
-        const pct = determinate
-          ? Math.min(100, Math.round(((imageGenProgress?.current ?? 0) / (imageGenProgress?.total ?? 1)) * 100))
-          : 40
-        return (
-          <div
-            aria-hidden="true"
-            data-testid="director-status-progress"
-            className="relative h-1 w-16 rounded-full bg-bg-tertiary overflow-hidden shrink-0"
-          >
-            <div
-              className={`absolute inset-y-0 left-0 rounded-full transition-all duration-300 ${
-                determinate ? 'bg-accent-blue' : 'bg-accent-blue/60 animate-pulse'
-              }`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        )
-      })()}
-      {/* Compact status icon — mirrors the active/loading state so the
-          user sees a single visual cue before reading the chips. */}
-      {loading ? (
-        <Loader2 size={11} className="animate-spin text-accent-blue shrink-0" aria-hidden="true" />
-      ) : (
-        <Check size={11} className="text-emerald-400 shrink-0" aria-hidden="true" />
-      )}
+      {/* Linha 1: Status do Pipeline à esquerda, Etapa atual com contador à direita */}
+      <div className="flex items-center justify-between gap-3 text-2xs">
+        {/* Esquerda: Estado do Pipeline */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="flex items-center gap-1.5 shrink-0">
+            {loading ? (
+              <Loader2 size={12} className="animate-spin text-accent-blue shrink-0" aria-hidden="true" />
+            ) : (
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" aria-hidden="true" />
+            )}
+            <span className="text-text-muted">Pipeline:</span>
+            <span className={loading ? 'text-accent-blue font-semibold' : 'text-text-secondary font-medium'}>
+              {loading ? 'processando' : 'ocioso'}
+            </span>
+          </span>
 
-      {/* Inline step chips — each one a tiny ✓ / spinner / dot followed
-          by the label. `whitespace-nowrap` keeps everything on a single
-          line; if the bar ever gets narrower than the chip strip, the
-          outer flex parent can wrap (overflow handled by min-w-0 +
-          flex-shrink on the chips). */}
-      <ol className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
-        {STATUS_STEPS.map((s, i) => {
-          // Three visual states, derived strictly from the pipeline
-          // advance marker (currentIndex):
-          //   - active  : this step is currently running (loading=true
-          //               and the store has bumped us into this step).
-          //   - done    : we have already advanced past this step.
-          //   - pending : we haven't reached this step yet — OR the
-          //               store says we're here but with loading=false,
-          //               which means the user has only navigated the
-          //               UI to this step (e.g. opened a project mid-
-          //               flow) without the backend actually running
-              //               work. Showing ✓ in that case would lie.
-          const isActive = i === currentIndex && loading
-          const isDone = i < currentIndex
-          return (
-            <li
-              key={s.id}
-              className={`flex items-center gap-1 text-2xs whitespace-nowrap ${
-                isActive ? 'text-text-primary' : isDone ? 'text-text-secondary' : 'text-text-muted'
-              }`}
-              data-status={isActive ? 'active' : isDone ? 'done' : 'pending'}
-              title={
-                isActive && loadingMessage
-                  ? `${s.label} — ${loadingMessage}`
-                  : isActive
-                    ? s.description(plannedClipsCount)
-                    : s.label
-              }
+          {loading && (
+            <span
+              className="text-text-muted truncate max-w-[280px]"
+              title={loadingMessage || (imageGenProgress?.total ? `Imagem ${imageGenProgress.current}/${imageGenProgress.total}` : 'Processando…')}
             >
-              <span className="shrink-0">
-                {isActive ? (
-                  <Loader2 size={9} className="animate-spin text-accent-blue" />
-                ) : isDone ? (
-                  <Check size={9} className="text-emerald-400" />
-                ) : (
-                  <span className="block h-1.5 w-1.5 rounded-full bg-text-muted/40" />
-                )}
-              </span>
-              <span>{s.label}</span>
-            </li>
+              · {imageGenProgress?.total
+                ? `Imagem ${imageGenProgress.current}/${imageGenProgress.total}${imageGenProgress.currentClipLabel ? ` (${imageGenProgress.currentClipLabel})` : ''}`
+                : loadingMessage || 'Processando…'}
+            </span>
+          )}
+
+          {loading && (
+            <button
+              type="button"
+              onClick={() => { void cancel() }}
+              title="Interromper pipeline"
+              aria-label="Interromper pipeline"
+              className="shrink-0 p-0.5 rounded text-text-muted hover:text-red-400 hover:bg-bg-hover transition-colors ml-0.5"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </div>
+
+        {/* Direita: Nome da Etapa e chip com contagem 1/10 */}
+        <div className="flex items-center gap-1.5 shrink-0 text-2xs">
+          <span className="text-text-muted">Etapa:</span>
+          <span
+            className="text-text-primary font-medium truncate max-w-[180px]"
+            title={activeStep.description(plannedClipsCount)}
+          >
+            {displayLabel}
+          </span>
+          <span className="font-mono text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary border border-border/60 text-text-secondary font-medium tabular-nums ml-0.5">
+            {currentIndex + 1}/{totalSteps}
+          </span>
+        </div>
+      </div>
+
+      {/* Linha 2: Barra de progresso segmentada em 10 etapas */}
+      <div
+        className="flex items-center gap-1 w-full"
+        role="progressbar"
+        aria-valuenow={currentIndex + 1}
+        aria-valuemin={1}
+        aria-valuemax={totalSteps}
+        aria-label={`Etapa ${currentIndex + 1} de ${totalSteps}: ${displayLabel}`}
+      >
+        {STATUS_STEPS.map((s, idx) => {
+          const isDone = idx < currentIndex
+          const isCurrent = idx === currentIndex
+          const stepName = isShortFilm
+            ? s.id === 'structure'
+              ? 'Scene structure'
+              : s.id === 'style'
+                ? 'Story description'
+                : s.label
+            : s.label
+
+          const tooltipAlignClass = idx === 0
+            ? 'left-0 translate-x-0'
+            : idx === totalSteps - 1
+              ? 'right-0 translate-x-0'
+              : 'left-1/2 -translate-x-1/2'
+
+          return (
+            <div
+              key={s.id}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-300 relative group cursor-default ${
+                isDone
+                  ? 'bg-emerald-500'
+                  : isCurrent
+                    ? loading
+                      ? 'bg-accent-blue animate-pulse ring-1 ring-accent-blue/50'
+                      : 'bg-accent-blue'
+                    : 'bg-bg-tertiary border border-border/40'
+              }`}
+            >
+              {/* Tooltip flutuante no hover */}
+              <div
+                className={`absolute bottom-full ${tooltipAlignClass} mb-2 hidden group-hover:flex flex-col gap-0.5 bg-bg-primary border border-border rounded-md px-2.5 py-1 text-2xs text-text-primary whitespace-nowrap shadow-xl z-30 pointer-events-none`}
+              >
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span>{idx + 1}. {stepName}</span>
+                  {isDone && <Check size={10} className="text-emerald-400 shrink-0" />}
+                  {isCurrent && loading && <Loader2 size={10} className="animate-spin text-accent-blue shrink-0" />}
+                  {isCurrent && !loading && <span className="text-accent-blue text-[10px] font-semibold">(atual)</span>}
+                </div>
+                <span className="text-text-muted text-[10px] font-normal">{s.description(plannedClipsCount)}</span>
+              </div>
+            </div>
           )
         })}
-      </ol>
-
-      {/* Counter chip + cancel button — mirrors the previous stacked
-          card's right-hand cluster so the user still sees the global
-          position (2/10) and can abort the pipeline when loading. */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="text-2xs font-medium text-text-secondary tabular-nums px-1.5 py-0.5 rounded bg-bg-tertiary border border-border/60">
-          {Math.min(completedCount + (loading ? 1 : 0), totalSteps)}/{totalSteps}
-        </span>
-        {loading && (
-          <button
-            type="button"
-            onClick={() => cancel()}
-            title="Stop planning"
-            aria-label="Stop planning"
-            className="rounded-md p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-          >
-            <X size={11} />
-          </button>
-        )}
       </div>
-    </div>
+    </footer>
   )
 }

@@ -1,7 +1,5 @@
 import { Suspense, useEffect } from 'react'
 import { ApplicationHeader } from './components/Shell/ApplicationHeader'
-import { HardwareStatusBar } from './components/Sidebar/HardwareStatusBar'
-import { DirectorStatusPanel } from './components/Stages/DirectorStatusPanel'
 import { MainContent } from './components/MainContent/MainContent'
 import { RetakeDialog } from './components/RetakeDialog'
 import { OomRecoveryBanner } from './components/OomRecoveryBanner'
@@ -34,6 +32,7 @@ function App() {
   const loadLlmStatus = useStore(s => s.loadLlmStatus)
   const loadLlmModels = useStore(s => s.loadLlmModels)
   const loadPipelineList = useStore(s => s.loadPipelineList)
+  const loadSystemStats = useStore(s => s.loadSystemStats)
   const section = useStore(s => s.appSection)
 
   useEffect(() => {
@@ -46,7 +45,8 @@ function App() {
     loadLlmModels()
     loadPipelineList()
     reconnectJobs()
-  }, [loadModels, loadWorkspaces, loadOutputs, loadSystemConfig, loadServicesConfig, loadLlmStatus, loadLlmModels, loadPipelineList, reconnectJobs])
+    loadSystemStats()
+  }, [loadModels, loadWorkspaces, loadOutputs, loadSystemConfig, loadServicesConfig, loadLlmStatus, loadLlmModels, loadPipelineList, reconnectJobs, loadSystemStats])
 
   // Poll LLM status to stay in sync with backend auto-load/unload
   useEffect(() => {
@@ -69,12 +69,6 @@ function App() {
           {section === 'configurations' && <SettingsDrawer />}
         </Suspense>
       </div>
-      {/* The Director Planning/Studio toggle now lives inside
-          DirectorPage itself (sub-header next to the Style Bibles
-          button). The bottom status bar's leftSlot is reserved for
-          the Director pipeline progress strip so GPU/VRAM/CPU/RAM and
-          the per-step chips live on the same single row. */}
-      <HardwareStatusBar leftSlot={<DirectorStatusPanel />} />
       <Suspense fallback={null}>
         <LoraBrowser />
         <DirectorDashboard embedded={false} />

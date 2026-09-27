@@ -63,14 +63,17 @@ export function DirectorActivityBadge({
   const activityLabel = useStore(s => s.directorActivityLabel)
   const fallbackMessage = useStore(s => s.directorLoadingMessage)
   if (!loading) return null
-  const text = label || activityLabel || fallbackMessage || 'Working…'
+  const activeLabel = (activityLabel && activityLabel.toLowerCase() !== 'idle') ? activityLabel : null
+  const activeMessage = (fallbackMessage && fallbackMessage.toLowerCase() !== 'idle') ? fallbackMessage : null
+  const rawText = label || activeLabel || activeMessage || 'Analyzing'
+  const text = rawText.replace(/[.…]+$/, '')
   return (
     <div className={`relative flex items-center gap-1.5 text-2xs text-text-muted py-1 pr-5 ${className}`}>
       <Loader2 size={10} className="animate-spin" />
       <span>{text}…</span>
       <button
         type="button"
-        onClick={onCancel || (() => useStore.getState().cancelDirectorV2Plan())}
+        onClick={onCancel || (() => { void useStore.getState().cancelPlan() })}
         title={cancelTitle}
         aria-label={cancelTitle}
         className="absolute right-0 top-1/2 -translate-y-1/2 bg-bg-secondary rounded-full p-0.5 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
@@ -170,9 +173,9 @@ export function DirectorActivityBlock({ showCancel = true, className = '' }: Act
           <Loader2 size={14} className="animate-spin text-accent-purple shrink-0" />
           <div className="min-w-0">
             <div className="text-xs font-medium text-text-primary truncate">
-              {label || 'Working…'}
+              {(label && label.toLowerCase() !== 'idle') ? label : (message || 'Analyzing…')}
             </div>
-            {message && message !== label && (
+            {message && message !== label && message.toLowerCase() !== 'idle' && (
               <div className="text-2xs text-text-muted truncate" title={message}>
                 {message}
               </div>
@@ -182,7 +185,7 @@ export function DirectorActivityBlock({ showCancel = true, className = '' }: Act
         {showCancel && (
           <button
             type="button"
-            onClick={() => useStore.getState().cancelDirectorV2Plan()}
+            onClick={() => { void useStore.getState().cancelPlan() }}
             title="Cancel the Director run"
             aria-label="Cancel the Director run"
             className="shrink-0 bg-bg-tertiary rounded-full p-1 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
