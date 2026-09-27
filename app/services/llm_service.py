@@ -13,6 +13,7 @@ import threading
 import logging
 import requests
 from typing import Optional
+from contextlib import contextmanager
 
 from services.text_integrity import repair_text
 from services.h3_story_ledger import normalize_h3_dialogue_tags
@@ -67,7 +68,7 @@ _api_key: str = ""           # API key for OpenAI/Anthropic/MiniMax
 
 # Auto-unload idle timer
 _idle_timer: Optional[threading.Timer] = None
-_idle_timeout: float = 60.0  # seconds before auto-unload
+_idle_timeout: float = 300.0  # seconds before auto-unload (5 minutes)
 
 # Streaming state — accumulates tokens during generation
 _stream_buffer: str = ""
@@ -2060,6 +2061,37 @@ def load_model(
         _start_log_reader(_process)
 
 
+_active_requests: int = 0
+_active_requests_lock = threading.Lock()
+
+
+@contextmanager
+def track_active_llm_request():
+    """Track in-flight LLM requests to prevent premature auto-unload."""
+    _begin_request()
+    try:
+        yield
+    finally:
+        _end_request()
+
+
+def _begin_request():
+    """Mark an LLM request as active and cancel the idle timer."""
+    global _active_requests
+    with _active_requests_lock:
+        _active_requests += 1
+        _cancel_idle_timer()
+
+
+def _end_request():
+    """Mark an LLM request as finished and start the idle timer if all requests are done."""
+    global _active_requests
+    with _active_requests_lock:
+        _active_requests = max(0, _active_requests - 1)
+        if _active_requests == 0:
+            _reset_idle_timer()
+
+
 def _cancel_idle_timer():
     """Cancel any pending idle-unload timer."""
     global _idle_timer
@@ -2081,6 +2113,11 @@ def _auto_unload():
     """Called by the idle timer to unload the LLM after inactivity."""
     global _idle_timer
     _idle_timer = None
+    with _active_requests_lock:
+        if _active_requests > 0:
+            print(f"[LLM] Postponing auto-unload: {_active_requests} request(s) still active")
+            _reset_idle_timer()
+            return
     if is_loaded():
         print("[LLM] Auto-unloading after idle timeout")
         unload_model()
@@ -2331,9 +2368,8 @@ def generate(
     if not is_loaded():
         raise RuntimeError("LLM not loaded. Call load_model() first.")
 
-    # Cancel idle timer during active request — prevents auto-unload mid-generation.
-    # Timer is reset at the END of the request (after response is received).
-    _cancel_idle_timer()
+    # Track active request to prevent auto-unload mid-generation.
+    _begin_request()
 
     # Grammar-constrained JSON mode requires thinking OFF. The grammar
     # constrains sampling from the FIRST token, so any thinking the chat
@@ -2503,7 +2539,7 @@ def generate(
         _stream_buffer = full_raw
         _stream_done = True
 
-    _reset_idle_timer()
+    _end_request()
     return content.strip()
 
 
@@ -2566,9 +2602,8 @@ def generate_streaming(
     _last_thinking_text = ""
     _last_generation_metrics = {}
 
-    # Cancel idle timer during active request — prevents auto-unload mid-streaming.
-    # Timer is reset at the END of the request (after streaming completes).
-    _cancel_idle_timer()
+    # Track active request to prevent auto-unload mid-streaming.
+    _begin_request()
 
     total_tokens = max_new_tokens + thinking_budget
 
@@ -2766,12 +2801,14 @@ def generate_streaming(
                 continue
 
     except requests.exceptions.RequestException as e:
+        _end_request()
         # Server socket died mid-stream (common: subprocess crash). Surface
         # the real cause so the Director run reports it instead of hanging.
         with _stream_lock:
             _stream_done = True
         raise _diagnose_llm_request_failure(e) from e
     except Exception:
+        _end_request()
         with _stream_lock:
             _stream_done = True
         raise
@@ -2821,7 +2858,7 @@ def generate_streaming(
         _stream_buffer = full_raw  # keep full raw for the UI to show thinking
         _stream_done = True
 
-    _reset_idle_timer()
+    _end_request()
     return content.strip()
 
 

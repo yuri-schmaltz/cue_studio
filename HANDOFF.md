@@ -1,4 +1,102 @@
-# Handoff — Cue Studio fork standalone (2026-09-23)
+# Handoff — Cue Studio fork standalone (2026-09-27)
+
+## Atualização de retomada — 2026-09-27 (Director Prompt Wizard, Pipeline Cancellation, Multi-role LLM & Streaming UI)
+
+**HEAD verificado:** `9792a66` — `feat(director): integrate prompt wizard, restore audio cancel button and immediate clip structure planning`.
+**Branch:** `main` (em sincronia com `origin/main`).
+**Versão:** `2.1.4` (`VERSION`, `pyproject.toml`).
+**Working tree:** arquivos com melhorias de UI/LLM streaming pendentes de commit (ver seção detalhada abaixo).
+**Build UI:** ✅ `tsc -b && vite build` passando em 5.6s (`ui/dist/` íntegro).
+**Testes UI:** ✅ `npm run test:store` e `npm run test:control` passando 100%.
+**Backend ativo:** ✅ PID `362617` ouvindo em `http://127.0.0.1:7860/` (`/health/version` → 2.1.4, `/api/v1/director/skills` ativo).
+**LLM Server:** ✅ `llama-server` ativo (PID `672702`) rodando Gemma 4 Heretic com GPU offload e context de 64k.
+
+---
+
+### Resumo das Entregas Recentes (Commits 24/09 a 27/09)
+
+1. **`9792a66` — Prompt Wizard, Restauração de Cancelamento de Áudio e Planejamento Imediato de Clipes:**
+   - Integração do assistente/wizard de prompts no `DirectorChat.tsx` e `DirectorSongSetup.tsx`.
+   - Restauração de affordance claro para abortar/cancelar análise de áudio em andamento.
+   - Suporte a disparo imediato do planejamento estrutural de clipes diretamente após áudio/briefing.
+
+2. **`9ba6342` — Unificação do Cancelamento do Pipeline e Painel de Status de Estágios Modernizado:**
+   - Padronização do `AbortController` global/local através do `useStore` e sub-rotinas do pipeline.
+   - Refatoração do `DirectorStatusPanel.tsx` com visual moderno, badges de progresso consistentes e tratamento gracioso de abort pelo usuário.
+
+3. **`e726db1` — Acessibilidade e Produtividade em Textareas:**
+   - Desativação de navegação global intrusiva via tecla Tab em elementos comuns, permitindo indentação natural por Tab dentro de textareas (especialmente roteiro e descrições de cenas).
+
+4. **`b1f1879` — Alinhamento de Referências e Grid de 4 Colunas no Director:**
+   - Alinhamento de referências visuais e cards rente à caixa de texto de descrição de cena com gap reduzido.
+   - Layout de galeria/referências em grid de 4 colunas responsivo no painel lateral do Director.
+
+5. **`233e115` — Roteador Multi-Role LLM, Guide Retriever, Gramáticas GBNF e Teste de Conexão:**
+   - Implementação de `app/services/llm_router.py` permitindo diferentes provedores/modelos para papéis específicos (Planner, Storyteller, Prompt Enhancer).
+   - Suporte a recuperação de diretrizes de estilo cinematográfico via `guide_retriever.py`.
+   - Gramáticas GBNF estruturadas para saída JSON garantida (`json_array.gbnf`).
+   - Botão de teste de conexão com o LLM configurado nas configurações de performance da UI.
+   - Testes unitários dedicados em `tests/test_llm_router.py`, `tests/test_guide_retriever.py` e `tests/test_think_then_emit.py`.
+
+6. **`015024f` & `1308f48` — Robustez de Inicialização do Backend (`start.sh`):**
+   - Criação de nova sessão com `setsid`, redirecionamento de stdin de `/dev/null` e `disown` do processo backend.
+   - Evita terminação acidental do servidor por sinal `SIGHUP` ao fechar terminal e automatiza abertura do navegador em nova janela.
+
+7. **`e0947df` & `010bc20` — Áudio Scrubber, Múltiplos Personagens e Exportação Completa:**
+   - Áudio scrubber integrado para pré-escuta de segmentos de áudio associados a clipes.
+   - Associação de referências por múltiplos falantes/atores.
+   - Continuidade de câmera e prompt reativo ao áudio no planner de Music Video.
+   - Exportação unificada de vídeo completo montado.
+   - Restauração de categorias de speaker e zona de upload responsiva (45vh).
+
+---
+
+### Modificações Atuais em Andamento (Working Directory)
+
+Os seguintes arquivos possuem melhorias adicionais que foram testadas e validadas:
+
+- `app/services/llm_service.py`:
+  - Introdução do gerenciador de contexto `track_active_llm_request()` e contagem de requisições ativas (`_active_requests`) com lock de thread.
+  - Aumento do `_idle_timeout` padrão de 60s para 300s (5 minutos) para evitar descarregamento desnecessário do modelo durante fluxos contínuos.
+  - O descarregamento automático (`_auto_unload`) agora adia se ainda houver geração ou streaming ativo em paralelo.
+- `ui/src/components/Sidebar/DirectorActivityBar.tsx`:
+  - Visual aprimorado da barra de progresso indeterminada com animação fluida `.director-bar-indeterminate` e cores harmônicas roxas/violetas.
+  - Exibição de estado textual dinâmico indicando geração de planos com LLM e contagem de tokens formatada.
+- `ui/src/components/Stages/DirectorStatusPanel.tsx`:
+  - Limpeza de redundância visual: o sub-status só é exibido se trouxer contexto específico (ex: contagem de imagens ou fase detalhada), evitando duplicar mensagens genéricas como "processando...".
+- `ui/src/index.css`:
+  - Adição de tokens semânticos `--color-accent-purple` e classe de utilitário `.director-bar-indeterminate`.
+- `ui/src/stores/useStore.ts`:
+  - `_startDirectLlmStreamPolling()` agora associado às etapas de planejamento do Director (`directorPlanShortFilmStory`, `directorPlanShortFilmVideo`, `directorPlanShortFilmScenePrompts`, `_runDirectorV2VideoPlan`).
+  - Limpeza apropriada de labels de atividade, contadores e flag `llmStreamDone` ao término ou em caso de cancelamento/erro.
+
+---
+
+### Estado Operacional do Sistema (2026-09-27)
+
+| Recurso | Detalhes / Status |
+| --- | --- |
+| **Backend API** | ✅ Rodando no PID `362617` em `http://127.0.0.1:7860/` |
+| **LLM Local (llama-server)** | ✅ Rodando no PID `672702` (porta 36019) com Gemma 4 Heretic Q4_K_M + mmproj F16 |
+| **GPU / Driver** | ✅ NVIDIA GeForce RTX 3060 12GB (Driver 595.84, CUDA 13.2) |
+| **Frontend UI Build** | ✅ `tsc -b && vite build` validado sem erros (bundle gerado em `ui/dist/`) |
+| **Frontend Testes** | ✅ `npm run test:store` (5/5 contratos) e `npm run test:control` (2/2 suítes) passando |
+| **Python venv** | ✅ `app/env/` (Python 3.11 com dependências torch, diffusers, transformers, etc.) |
+
+---
+
+### Diretrizes e Próximos Passos para o Desenvolvimento
+
+1. **Commit das melhorias de streaming LLM e UI:**
+   - As modificações em `app/services/llm_service.py` e nos componentes de UI (`DirectorActivityBar`, `DirectorStatusPanel`, `index.css`, `useStore.ts`) estão estáveis, passaram nos testes e devem ser comitadas.
+2. **Decomposição Modular de `launch.py` e `useStore.ts`:**
+   - Continuar a extração gradual de rotas e slices para reduzir os arquivos monolíticos, sempre rodando `npm run test:store` e `npm run test:control` a cada alteração para prevenir regressões de ciclo/TDZ.
+3. **Refinamento do Short Film Flow:**
+   - Validar a geração iterativa de roteiro e beats com a nova gramática GBNF e o roteador multi-role LLM.
+4. **Verificação de Consistência de Prompts:**
+   - Testar o Guide Retriever em conjunto com os prompts de continuidade de câmera gerados para Music Video e Short Film.
+
+---
 
 ## Atualização de retomada — 2026-09-23 (Dashboard embedded X close gated)
 

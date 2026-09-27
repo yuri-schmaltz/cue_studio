@@ -52,6 +52,15 @@ export function DirectorStatusPanel() {
         : activeStep.label
     : activeStep.label
 
+  // Sub-status text displayed alongside the pipeline state. Only shown when there
+  // is specific contextual information (e.g. image progress or a descriptive phase),
+  // avoiding redundancy with the "processando" state label.
+  const subStatus = imageGenProgress?.total
+    ? `Imagem ${imageGenProgress.current}/${imageGenProgress.total}${imageGenProgress.currentClipLabel ? ` (${imageGenProgress.currentClipLabel})` : ''}`
+    : loadingMessage && !/^(processando|processing)[\.…]*$/i.test(loadingMessage.trim())
+      ? loadingMessage
+      : null
+
   return (
     <footer
       className="mt-auto shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-4 py-2.5 space-y-2 select-none"
@@ -74,14 +83,12 @@ export function DirectorStatusPanel() {
             </span>
           </span>
 
-          {loading && (
+          {loading && subStatus && (
             <span
               className="text-text-muted truncate max-w-[280px]"
-              title={loadingMessage || (imageGenProgress?.total ? `Imagem ${imageGenProgress.current}/${imageGenProgress.total}` : 'Processando…')}
+              title={subStatus}
             >
-              · {imageGenProgress?.total
-                ? `Imagem ${imageGenProgress.current}/${imageGenProgress.total}${imageGenProgress.currentClipLabel ? ` (${imageGenProgress.currentClipLabel})` : ''}`
-                : loadingMessage || 'Processando…'}
+              · {subStatus}
             </span>
           )}
 

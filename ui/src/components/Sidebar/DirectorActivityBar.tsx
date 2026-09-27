@@ -120,8 +120,8 @@ export function DirectorActivityProgressBar({
         <div
           className={`h-full rounded-full transition-[width] duration-300 ease-out ${
             indeterminate
-              ? 'w-full bg-gradient-to-r from-accent-purple/40 via-accent-purple to-accent-purple/40 bg-[length:200%_100%] animate-[director-bar-slide_1.2s_linear_infinite]'
-              : 'bg-accent-purple'
+              ? 'director-bar-indeterminate'
+              : 'bg-purple-600'
           }`}
           style={indeterminate ? undefined : { width: `${pct}%` }}
         />
@@ -170,7 +170,7 @@ export function DirectorActivityBlock({ showCancel = true, className = '' }: Act
     <div className={`bg-bg-secondary rounded-lg p-4 border border-border space-y-3 ${className}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <Loader2 size={14} className="animate-spin text-accent-purple shrink-0" />
+          <Loader2 size={14} className="animate-spin text-purple-400 shrink-0" />
           <div className="min-w-0">
             <div className="text-xs font-medium text-text-primary truncate">
               {(label && label.toLowerCase() !== 'idle') ? label : (message || 'Analyzing…')}
@@ -195,10 +195,14 @@ export function DirectorActivityBlock({ showCancel = true, className = '' }: Act
         )}
       </div>
       <DirectorActivityProgressBar fraction={fraction} caption={caption} />
-      {showStream && (
+      {showStream ? (
         <div className="text-2xs text-text-muted">
-          <span className="font-mono text-accent-blue/70">{tokenCount.toLocaleString()}</span>{' '}
+          <span className="font-mono text-purple-400">{tokenCount.toLocaleString()}</span>{' '}
           tokens streamed so far…
+        </div>
+      ) : (
+        <div className="text-2xs text-text-muted animate-pulse">
+          Generating scene plans with LLM…
         </div>
       )}
     </div>

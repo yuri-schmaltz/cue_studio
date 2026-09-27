@@ -2715,6 +2715,36 @@ function _directorUsesGeneratedShotImages(state: AppState): boolean {
   )
 }
 
+/**
+ * Lightweight poller for LLM stream status during direct Director planning actions.
+ * Updates llmStreamText and llmStreamDone so the activity bar displays live token counts.
+ */
+function _startDirectLlmStreamPolling(
+  set: (partial: Partial<AppState> | ((state: AppState) => Partial<AppState>)) => void,
+  get: () => AppState
+): () => void {
+  let active = true
+  const timer = setInterval(async () => {
+    if (!active) return
+    try {
+      const stream = await api.getLlmStreamStatus()
+      if (!active) return
+      if (stream.text && stream.text !== get().llmStreamText) {
+        set({ llmStreamText: stream.text, llmStreamDone: stream.done })
+      } else if (stream.done !== get().llmStreamDone) {
+        set({ llmStreamDone: stream.done })
+      }
+    } catch {
+      // Ignore network glitches during streaming poll
+    }
+  }, 1000)
+
+  return () => {
+    active = false
+    clearInterval(timer)
+  }
+}
+
 function _isOmniVideoModel(model: ModelDef | undefined): boolean {
   return Boolean(
     model?.omni_reference
@@ -8926,7 +8956,17 @@ export const useStore = create<AppState>((set, get, store) => ({
     _directorV2PlanController?.abort()
     const planController = new AbortController()
     _directorV2PlanController = planController
-    set({ directorLoading: true, directorError: null, directorStep: 'plan' })
+    set({
+      directorLoading: true,
+      directorError: null,
+      directorStep: 'plan',
+      directorActivityLabel: 'Planning with LLM',
+      directorLoadingMessage: 'Planning scene prompts with LLM...',
+      directorActivityFraction: NaN,
+      llmStreamText: '',
+      llmStreamDone: false,
+    })
+    const stopStreamPoll = _startDirectLlmStreamPolling(set, get)
     try {
       if (shouldPlanStructure) {
         set({ directorLoadingMessage: 'Planning clips from the analyzed timeline...' })
@@ -9001,6 +9041,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         directorClipPlans: plans,
         directorStep: generateShotImages ? 'review' : 'review_video',
         directorLoading: false,
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
       })
 
       // Auto mode follows the image selector: generate consistent scene starts
@@ -9017,13 +9060,28 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (e instanceof DOMException && e.name === 'AbortError') {
         // User cancelled — keep directorError clean so the UI doesn't show a
         // red toast, and snap back to the style step so they can edit and retry.
-        set({ directorLoading: false, directorError: null, directorStep: 'style' })
+        set({
+          directorLoading: false,
+          directorError: null,
+          directorStep: 'style',
+          directorActivityLabel: '',
+          directorActivityFraction: 0,
+          llmStreamDone: true,
+        })
         return
       }
       const msg = e instanceof Error ? e.message : 'Planning failed'
       console.error('Director planning failed:', e)
-      set({ directorLoading: false, directorError: msg, directorStep: 'style' })
+      set({
+        directorLoading: false,
+        directorError: msg,
+        directorStep: 'style',
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
+      })
     } finally {
+      stopStreamPoll()
       // Only clear if we're still the active controller — a fresh plan may
       // have already replaced us mid-flight and we shouldn't null it out.
       if (_directorV2PlanController === planController) {
@@ -9041,7 +9099,13 @@ export const useStore = create<AppState>((set, get, store) => ({
     // no one will read. Failure to reach the cancel endpoint is harmless —
     // the client-side abort already cuts the user-visible wait.
     void api.cancelDirectorV2Plan().catch(() => undefined)
-    set({ directorLoading: false, directorError: null })
+    set({
+      directorLoading: false,
+      directorError: null,
+      directorActivityLabel: 'Idle',
+      directorActivityFraction: 0,
+      llmStreamDone: true,
+    })
   },
 
   /**
@@ -9151,7 +9215,17 @@ export const useStore = create<AppState>((set, get, store) => ({
     _directorV2PlanController?.abort()
     const planController = new AbortController()
     _directorV2PlanController = planController
-    set({ directorLoading: true, directorError: null, directorStep: 'plan_video' })
+    set({
+      directorLoading: true,
+      directorError: null,
+      directorStep: 'plan_video',
+      directorActivityLabel: 'Planning video prompts',
+      directorLoadingMessage: 'Planning video prompts with LLM...',
+      directorActivityFraction: NaN,
+      llmStreamText: '',
+      llmStreamDone: false,
+    })
+    const stopStreamPoll = _startDirectLlmStreamPolling(set, get)
     try {
       // Build speaker_mappings
       const speakerMappings: Record<string, { name: string; role: string }> = {}
@@ -9185,6 +9259,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         directorClipPlans: updatedPlans,
         directorStep: 'review_video',
         directorLoading: false,
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
       })
 
       // Auto-mode: skip review, apply to editor and start generation
@@ -9195,13 +9272,28 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (e instanceof DOMException && e.name === 'AbortError') {
         // User cancelled — preserve already-rendered image prompts (they
         // live in directorClipPlans), and snap back so they can re-run.
-        set({ directorLoading: false, directorError: null, directorStep: 'generate_images' })
+        set({
+          directorLoading: false,
+          directorError: null,
+          directorStep: 'generate_images',
+          directorActivityLabel: '',
+          directorActivityFraction: 0,
+          llmStreamDone: true,
+        })
         return
       }
       const msg = e instanceof Error ? e.message : 'Video prompt planning failed'
       console.error('Director video planning failed:', e)
-      set({ directorLoading: false, directorError: msg, directorStep: 'generate_images' })
+      set({
+        directorLoading: false,
+        directorError: msg,
+        directorStep: 'generate_images',
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
+      })
     } finally {
+      stopStreamPoll()
       if (_directorV2PlanController === planController) {
         _directorV2PlanController = null
       }
@@ -9758,7 +9850,17 @@ export const useStore = create<AppState>((set, get, store) => ({
     const { directorPlannedClips, directorSceneDescription, directorAnalysis,
             shortFilmCharacters } = get()
     if (!directorPlannedClips.length || !directorSceneDescription.trim()) return
-    set({ directorLoading: true, directorError: null, directorStep: 'plan' })
+    set({
+      directorLoading: true,
+      directorError: null,
+      directorStep: 'plan',
+      directorActivityLabel: 'Planning with LLM',
+      directorLoadingMessage: 'Planning scene prompts with LLM...',
+      directorActivityFraction: NaN,
+      llmStreamText: '',
+      llmStreamDone: false,
+    })
+    const stopStreamPoll = _startDirectLlmStreamPolling(set, get)
     try {
       // Upload all reference images
       const { refImagePath, charPaths, locPaths } = await get()._uploadDirectorRefs()
@@ -9821,6 +9923,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         directorClipPlans: plans,
         directorStep: generateShotImages ? 'review' : 'review_video',
         directorLoading: false,
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
       })
 
       // Auto-mode: skip review
@@ -9834,7 +9939,16 @@ export const useStore = create<AppState>((set, get, store) => ({
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Planning failed'
       console.error('Short film planning failed:', e)
-      set({ directorLoading: false, directorError: msg, directorStep: 'style' })
+      set({
+        directorLoading: false,
+        directorError: msg,
+        directorStep: 'style',
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
+      })
+    } finally {
+      stopStreamPoll()
     }
   },
 
@@ -9842,7 +9956,17 @@ export const useStore = create<AppState>((set, get, store) => ({
     const { directorPlannedClips, directorSceneDescription, directorAnalysis,
             directorClipPlans, directorReferenceImagePath, shortFilmCharacters } = get()
     if (!directorPlannedClips.length || !directorClipPlans.length) return
-    set({ directorLoading: true, directorError: null, directorStep: 'plan_video' })
+    set({
+      directorLoading: true,
+      directorError: null,
+      directorStep: 'plan_video',
+      directorActivityLabel: 'Planning video prompts',
+      directorLoadingMessage: 'Planning video prompts with LLM...',
+      directorActivityFraction: NaN,
+      llmStreamText: '',
+      llmStreamDone: false,
+    })
+    const stopStreamPoll = _startDirectLlmStreamPolling(set, get)
     try {
       const speakerMappings: Record<string, { name: string; role: string }> = {}
       for (const m of get().directorSpeakerMappings) {
@@ -9873,6 +9997,9 @@ export const useStore = create<AppState>((set, get, store) => ({
         directorClipPlans: updatedPlans,
         directorStep: 'review_video',
         directorLoading: false,
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
       })
 
       if (get().directorAutoMode) {
@@ -9881,7 +10008,16 @@ export const useStore = create<AppState>((set, get, store) => ({
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Video prompt planning failed'
       console.error('Short film video planning failed:', e)
-      set({ directorLoading: false, directorError: msg, directorStep: 'generate_images' })
+      set({
+        directorLoading: false,
+        directorError: msg,
+        directorStep: 'generate_images',
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
+      })
+    } finally {
+      stopStreamPoll()
     }
   },
 
@@ -9889,7 +10025,17 @@ export const useStore = create<AppState>((set, get, store) => ({
     const { directorSceneDescription,
             shortFilmCharacters, shortFilmTargetDuration, shortFilmNarrative } = get()
     if (!directorSceneDescription.trim()) return
-    set({ directorLoading: true, directorError: null, directorStep: 'plan', llmStreamText: '', llmStreamDone: false })
+    set({
+      directorLoading: true,
+      directorError: null,
+      directorStep: 'plan',
+      directorActivityLabel: 'Planning short film',
+      directorLoadingMessage: 'Planning short film script and scenes with LLM...',
+      directorActivityFraction: NaN,
+      llmStreamText: '',
+      llmStreamDone: false,
+    })
+    const stopStreamPoll = _startDirectLlmStreamPolling(set, get)
     try {
       // Upload all reference images
       const { refImagePath, charPaths, locPaths } = await get()._uploadDirectorRefs()
@@ -9967,13 +10113,14 @@ export const useStore = create<AppState>((set, get, store) => ({
         }))
       }
 
-      set({ llmStreamDone: true })
-
       set({
         directorPlannedClips: storyClips || get().directorPlannedClips,
         directorClipPlans: plans,
         directorStep: generateShotImages ? 'review' : 'review_video',
         directorLoading: false,
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
       })
 
       // Auto-mode: skip review steps
@@ -9985,10 +10132,18 @@ export const useStore = create<AppState>((set, get, store) => ({
         }
       }
     } catch (e: unknown) {
-      set({ llmStreamDone: true })
       const msg = e instanceof Error ? e.message : 'Story planning failed'
       console.error('Short film story planning failed:', e)
-      set({ directorLoading: false, directorError: msg, directorStep: 'style' })
+      set({
+        directorLoading: false,
+        directorError: msg,
+        directorStep: 'style',
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        llmStreamDone: true,
+      })
+    } finally {
+      stopStreamPoll()
     }
   },
 
