@@ -35,6 +35,23 @@ import {
   saveModeSettings as _saveSettings,
   type SavedModeParams,
 } from './studioPersistence'
+import {
+  assetName as _assetName,
+  directorAssetItem as _directorAssetItem,
+  directorLoraState as _directorLoraState,
+  directorServePath as _directorServePath,
+  downloadNeedsPolling as _downloadNeedsPolling,
+  inferOutpaintAspect as _inferOutpaintAspect,
+  normalizeSlidingWindowOverlap as _normalizeSlidingWindowOverlap,
+  OUTPAINT_ASPECT_RATIOS as _OUTPAINT_ASPECT_RATIOS,
+  type OutpaintAspect,
+  record as _record,
+  repairNeedsPolling as _repairNeedsPolling,
+  restoreModeParams as _restoreModeParams,
+  snapshotModeParams as _snapshotModeParams,
+  stringArray as _stringArray,
+  waitForDownloadPoll as _waitForDownloadPoll,
+} from './utils'
 
 let _directorAnalysisSequence = 0
 
@@ -51,7 +68,6 @@ let _reviewSnapshot: AppState | null = null
 let _reviewRequestToken = 0
 
 const CIVIT_DOWNLOAD_POLL_MS = 2000
-const CIVIT_DOWNLOAD_COMPLETED_VISIBLE_MS = 30_000
 let _civitDownloadPollTask: Promise<void> | null = null
 let _civitDownloadPollController: AbortController | null = null
 let _civitDownloadPollRequested = false
@@ -152,63 +168,6 @@ function _saveH3WindowOverrides(overrides: Record<string, number>) {
     })
 }
 
-type OutpaintAspect = 'source' | '16:9' | '9:16' | '1:1' | '4:3' | '3:4'
-
-function _normalizeSlidingWindowOverlap(
-  value: number,
-  defaults?: Record<string, number> | null,
-): number {
-  if (!defaults) return Math.max(0, Math.round(value))
-  const minimum = defaults.overlap_min ?? 1
-  const maximum = defaults.overlap_max ?? Math.max(minimum, value)
-  const step = Math.max(1, defaults.overlap_step ?? 1)
-  const offset = defaults.overlap_offset ?? minimum
-  const normalized = offset + Math.round((value - offset) / step) * step
-  return Math.max(minimum, Math.min(maximum, normalized))
-}
-
-const _OUTPAINT_ASPECT_RATIOS: Array<[Exclude<OutpaintAspect, 'source'>, number]> = [
-  ['16:9', 16 / 9],
-  ['9:16', 9 / 16],
-  ['1:1', 1],
-  ['4:3', 4 / 3],
-  ['3:4', 3 / 4],
-]
-
-function _inferOutpaintAspect(width: number, height: number): OutpaintAspect | null {
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return null
-  const ratio = width / height
-  let nearest: Exclude<OutpaintAspect, 'source'> | null = null
-  let nearestError = Number.POSITIVE_INFINITY
-  for (const [aspect, target] of _OUTPAINT_ASPECT_RATIOS) {
-    const relativeError = Math.abs(ratio - target) / target
-    if (relativeError < nearestError) {
-      nearest = aspect
-      nearestError = relativeError
-    }
-  }
-  // Grid alignment can move either dimension by several pixels. Four percent
-  // safely recognizes those canvases without pretending an arbitrary ratio
-  // is one of the six choices supported by the composer.
-  return nearestError <= 0.04 ? nearest : null
-}
-
-function _repairNeedsPolling(repair: PipelineRepairState | null | undefined): boolean {
-  return !!repair && DIRECTOR_REPAIR_ACTIVE.has(repair.status)
-}
-
-function _record(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {}
-}
-
-function _stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string' && item.length > 0)
-    : []
-}
-
 function _omniEnhanceInventory(references: MiniMaxH3Reference[]): {
   imagePaths: string[]
   referenceContext?: string
@@ -279,48 +238,8 @@ function _omniEnhanceInventory(references: MiniMaxH3Reference[]): {
   return { imagePaths, referenceContext: referenceContext || undefined }
 }
 
-function _directorLoraState(value: unknown) {
-  const source = _record(value)
-  return {
-    activated_loras: _stringArray(source.activated_loras),
-    loras_multipliers: typeof source.loras_multipliers === 'string'
-      ? source.loras_multipliers : '',
-    loraWeights: _record(source.loraWeights) as Record<string, number[]>,
-    availableLoras: _stringArray(source.availableLoras),
-  }
-}
-
-function _assetName(path: string | null | undefined, fallback: string): string {
-  const normalized = String(path || '').replace(/\\/g, '/')
-  return normalized.split('/').filter(Boolean).pop() || fallback
-}
-
-function _directorAssetItem(
-  manifest: Record<string, unknown>,
-  key: string,
-  index?: number,
-): Record<string, unknown> {
-  const raw = manifest[key]
-  const value = index == null
-    ? raw
-    : Array.isArray(raw) ? raw[index] : undefined
-  return _record(value)
-}
-
-function _directorServePath(
-  manifest: Record<string, unknown>,
-  key: string,
-  fallbackPath?: string | null,
-  index?: number,
-): string | null {
-  const item = _directorAssetItem(manifest, key, index)
-  const served = typeof item.serve_path === 'string' ? item.serve_path : ''
-  if (served) return served
-  // Legacy projects usually stored a plain workspace filename. Absolute
-  // filesystem paths are deliberately reduced to their basename because the
-  // file endpoint never accepts arbitrary host paths.
-  return fallbackPath ? _assetName(fallbackPath, '') || null : null
-}
+// Pure helpers _directorLoraState / _assetName / _directorAssetItem / _directorServePath
+// moved to ./utils — see imports at the top of this file.
 
 async function _loadDirectorImageFile(
   servePath: string | null,
@@ -343,34 +262,10 @@ function _stopDirectorRepairPoll(pid: string): void {
   _directorRepairPolls.delete(pid)
 }
 
-function _downloadTimestampMs(value: number | null | undefined): number | null {
-  const timestamp = Number(value)
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return null
-  return timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp
-}
-
-function _downloadNeedsPolling(download: CivitAIDownload, now: number): boolean {
-  if (download.status === 'downloading') return true
-  if (download.status !== 'completed') return false
-  const completedAt = _downloadTimestampMs(download.completed_at)
-  return completedAt !== null && now - completedAt < CIVIT_DOWNLOAD_COMPLETED_VISIBLE_MS
-}
-
-function _waitForDownloadPoll(ms: number, signal: AbortSignal): Promise<void> {
-  return new Promise(resolve => {
-    if (signal.aborted) {
-      resolve()
-      return
-    }
-    const timer = window.setTimeout(done, ms)
-    function done() {
-      window.clearTimeout(timer)
-      signal.removeEventListener('abort', done)
-      resolve()
-    }
-    signal.addEventListener('abort', done, { once: true })
-  })
-}
+// Pure helpers _downloadTimestampMs / _downloadNeedsPolling / _waitForDownloadPoll
+// moved to ./utils — see imports at the top of this file.
+// Note: the visible-grace window constant (formerly CIVIT_DOWNLOAD_COMPLETED_VISIBLE_MS)
+// is now owned by utils.ts as a literal in downloadNeedsPolling.
 
 // Vite can replace this module without a full page unload. Abort the old
 // async loop so HMR never leaves an orphaned polling timer behind.
@@ -393,22 +288,8 @@ if (import.meta.hot) {
 // snapshot/restore helpers below stay here because they are part of the
 // mode-switch logic, not the persistence layer.
 
-function _snapshotModeParams(params: GenerateParams): SavedModeParams {
-  const snapshot: SavedModeParams = { ...params }
-  delete snapshot.model_type
-  delete snapshot.prompt
-  delete snapshot.activated_loras
-  delete snapshot.loras_multipliers
-  return snapshot
-}
-
-function _restoreModeParams(snapshot?: SavedModeParams): Partial<GenerateParams> {
-  const restored: SavedModeParams = { ...(snapshot || {}) }
-  delete restored.filmGrainIntensity
-  delete restored.filmGrainSaturation
-  delete restored.durationSeconds
-  return restored
-}
+// Pure helpers _snapshotModeParams / _restoreModeParams moved to ./utils
+// — see imports at the top of this file.
 
 /** Fetch a model's defaults from the backend and merge primary fields
  *  into params. Shared between `selectModel` (explicit model pick) and
