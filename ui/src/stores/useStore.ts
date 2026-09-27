@@ -8022,10 +8022,10 @@ export const useStore = create<AppState>((set, get, store) => ({
   setDirectorAnalyzeProgress: (progress) => set({ directorAnalyzeProgress: progress }),
   directorSpeakers: [],
   directorSpeakerMappings: [],
-  // Defaults per user preference (2026-06): Auto ON (hands-off pipeline is
+  // Defaults per user preference (2026-06 / 2026-09): Auto ON (hands-off pipeline is
   // the common flow), Seamless OFF (separate per-clip generations are easier
   // to retake/review than one rolling-window render).
-  directorAutoMode: false,
+  directorAutoMode: true,
   directorSeamless: false,
   directorShotImageGuidance: 'auto' as DirectorShotImageGuidance,
   directorLlmLog: [],

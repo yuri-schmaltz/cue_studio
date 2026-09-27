@@ -647,7 +647,7 @@ export function StructureView({
       </div>
 
       {/* Meta Row: beat distribution on the left, section legends on the right */}
-      <div className="flex items-center justify-between gap-2 text-2xs text-text-muted shrink-0 leading-tight pt-0.5">
+      <div className="flex items-center justify-between gap-2 text-2xs text-text-muted shrink-0 leading-tight">
         {!isShortFilm && (
           <span className="truncate font-medium text-text-secondary" title={beatDistribution}>
             {beatDistribution}

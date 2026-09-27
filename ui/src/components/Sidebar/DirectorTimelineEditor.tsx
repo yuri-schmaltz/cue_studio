@@ -33,9 +33,16 @@ export function DirectorTimelineEditor() {
   const { clips, open, setOpen, disabled, disabledReason } = useTimelineEditor()
   if (!clips.length) return null
   return <>
-    <button className="w-full rounded border border-accent-blue p-2 text-xs text-accent-blue" disabled={disabled}
+    <button
+      type="button"
+      className="w-full h-7 rounded border border-accent-blue/50 text-accent-blue hover:bg-accent-blue/10 flex items-center justify-center gap-1.5 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+      disabled={disabled}
       title={disabledReason}
-      onClick={() => setOpen(true)}>Edit scene timing · {clips.length} scenes</button>
+      onClick={() => setOpen(true)}
+    >
+      <Wand2 size={13} className="shrink-0" />
+      <span>Dividir / editar clipes ({clips.length})</span>
+    </button>
     {open && createPortal(<TimelineDialog close={() => setOpen(false)} />, document.body)}
   </>
 }

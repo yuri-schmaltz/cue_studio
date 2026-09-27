@@ -6,7 +6,7 @@ import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
 import { DirectorSongSetup } from './DirectorSongSetup'
 import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
-import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
+import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import {
   AdditionalRefsSection,
   StructureView,
@@ -183,7 +183,7 @@ function ReferenceImageStrengthSlider() {
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
 type DirectorStep = typeof STEP_ORDER[number]
 
-export type DirectorSidebarTab = 'upload' | 'generate' | 'references' | 'description'
+export type DirectorSidebarTab = 'music' | 'references' | 'description'
 
 function formatTime(s: number): string {
   const m = Math.floor(s / 60)
@@ -417,6 +417,7 @@ export function DirectorChat() {
   const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
   const insertSpeakerMention = useStore(s => s.directorInsertSpeakerMention)
   const autoMode = useStore(s => s.directorAutoMode)
+  const setAutoMode = useStore(s => s.setDirectorAutoMode)
   const skill = useStore(s => s.directorSkill)
   const musicSource = useStore(s => s.directorMusicSource)
   const setMusicSource = useStore(s => s.setDirectorMusicSource)
@@ -599,6 +600,31 @@ export function DirectorChat() {
     }
   }, [skill])
 
+  // Script/roteiro — owned by the parent so the composer (where the
+  // orange attach button lives) can render it alongside the Send button
+  // and stay in sync with the style-step surface that used to host it.
+  const [attachedScript, setAttachedScript] = useState<{
+    filename: string
+    charCount: number
+    truncated: boolean
+  } | null>(null)
+  const [scriptLoading, setScriptLoading] = useState(false)
+  const [scriptError, setScriptError] = useState('')
+  // Active tab in the Director chat column: 'music' | 'references' | 'description'
+  const [activeTab, setActiveTab] = useState<DirectorSidebarTab>(() => {
+    if (step === 'style' || pastStep('style')) return 'description'
+    return 'music'
+  })
+
+  // Automatically focus the Description tab when audio analysis completes and step becomes 'style'
+  const prevStepRef = useRef(step)
+  useEffect(() => {
+    if (prevStepRef.current !== 'style' && step === 'style') {
+      setActiveTab('description')
+    }
+    prevStepRef.current = step
+  }, [step])
+
   const handleChatSubmit = useCallback(() => {
     // Music Video "Generate a track": the chat is the song description, and
     // Send runs write-song → render track → analyze → plan → images → video.
@@ -606,8 +632,9 @@ export function DirectorChat() {
       if (songDescription.trim() && !loading) void generateTrack('now')
       return
     }
-    if (step === 'style' && chatInput.trim()) {
-      setSceneDescription(chatInput.trim())
+    const desc = chatInput.trim()
+    if ((step === 'style' || activeTab === 'description') && desc) {
+      setSceneDescription(desc)
       if (autoMode) {
         // Auto mode: run entire flow server-side via pipeline
         startDirectorPipeline()
@@ -619,7 +646,7 @@ export function DirectorChat() {
         planPrompts()
       }
     }
-  }, [mvGenerateSetup, songDescription, loading, generateTrack, step, chatInput, setSceneDescription, autoMode, startDirectorPipeline, isStoryPath, shortFilmPlanFromStory, isShortFilm, shortFilmPlanPrompts, planPrompts])
+  }, [mvGenerateSetup, songDescription, loading, generateTrack, step, activeTab, chatInput, setSceneDescription, autoMode, startDirectorPipeline, isStoryPath, shortFilmPlanFromStory, isShortFilm, shortFilmPlanPrompts, planPrompts])
 
   // Shared "attach a script" handler for the Story and Music Video paths.
   // Loads the extracted text into the scene description (and the composer)
@@ -637,32 +664,6 @@ export function DirectorChat() {
     setSceneDescription(text)
     setChatInput(text)
   }, [setSceneDescription, setChatInput])
-
-  // Script/roteiro — owned by the parent so the composer (where the
-  // orange attach button lives) can render it alongside the Send button
-  // and stay in sync with the style-step surface that used to host it.
-  const [attachedScript, setAttachedScript] = useState<{
-    filename: string
-    charCount: number
-    truncated: boolean
-  } | null>(null)
-  const [scriptLoading, setScriptLoading] = useState(false)
-  const [scriptError, setScriptError] = useState('')
-  // Active tab in the Director chat column: 'upload' | 'generate' | 'references' | 'description'
-  const [activeTab, setActiveTab] = useState<DirectorSidebarTab>(() => {
-    if (step === 'style' || pastStep('style')) return 'description'
-    if (musicSource === 'generate') return 'generate'
-    return 'upload'
-  })
-
-  // Automatically focus the Description tab when audio analysis completes and step becomes 'style'
-  const prevStepRef = useRef(step)
-  useEffect(() => {
-    if (prevStepRef.current !== 'style' && step === 'style') {
-      setActiveTab('description')
-    }
-    prevStepRef.current = step
-  }, [step])
   const handleScriptFile = useCallback(async (file: File) => {
     setScriptError('')
     setScriptLoading(true)
@@ -819,13 +820,27 @@ export function DirectorChat() {
 
   const renderComposer = (headerTitle?: string, fillSpace?: boolean) => (
     <div className={`space-y-2 ${fillSpace ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
-      {headerTitle && (
-        <header className="flex items-center justify-between gap-2 shrink-0">
+      <header className="flex items-center justify-between gap-2 shrink-0">
+        {headerTitle ? (
           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
             {headerTitle}
           </h3>
-        </header>
-      )}
+        ) : <div />}
+        <label
+          className="flex items-center gap-1.5 cursor-pointer select-none text-2xs text-text-muted hover:text-text-secondary transition-colors"
+          title="No Modo Automático, o Director executa o planejamento e dispara a geração dos vídeos sem pausas para aprovação manual"
+        >
+          <input
+            type="checkbox"
+            checked={autoMode}
+            onChange={e => setAutoMode(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-border accent-accent-blue cursor-pointer"
+          />
+          <span className={autoMode ? 'text-accent-blue font-medium' : 'text-text-muted'}>
+            Modo Automático
+          </span>
+        </label>
+      </header>
 
       {/* Field container */}
       <div className={`relative w-full ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
@@ -1019,36 +1034,79 @@ export function DirectorChat() {
                   activeTab={activeTab}
                   onTabChange={(t) => {
                     setActiveTab(t)
-                    if (t === 'upload' || t === 'generate') {
-                      setMusicSource(t)
-                    }
                   }}
                 />
               )}
 
-              {/* 1. UPLOAD TAB */}
-              {!isShortFilm && activeTab === 'upload' && (
+              {/* 1. MUSIC TAB (merged Upload + Generate) */}
+              {!isShortFilm && activeTab === 'music' && (
                 <div className="flex-1 min-h-0 flex flex-col gap-3">
-                  <div className="shrink-0">
-                    <AudioSourcePanel
-                      dragOver={dragOver}
-                      setDragOver={setDragOver}
-                      handleDrop={handleDrop}
-                      handleFile={handleFile}
-                      loading={loading && atStep('analyze')}
-                      loadingMessage={loadingMessage}
-                      audioFile={audioFile}
-                      isShortFilm={isShortFilm}
-                      musicSource="upload"
-                      pipelineLoading={loading}
-                    />
+                  {/* Music source toggle: Upload / Gerar */}
+                  <div className="shrink-0 flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setMusicSource('upload')}
+                      className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border text-xs font-medium transition-colors ${
+                        musicSource === 'upload'
+                          ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
+                          : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
+                      }`}
+                    >
+                      <Music size={12} className={musicSource === 'upload' ? 'text-white' : 'text-text-muted'} />
+                      <span>Upload</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMusicSource('generate')}
+                      className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border text-xs font-medium transition-colors ${
+                        musicSource === 'generate'
+                          ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
+                          : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
+                      }`}
+                    >
+                      <Sparkles size={12} className={musicSource === 'generate' ? 'text-white' : 'text-text-muted'} />
+                      <span>Gerar</span>
+                    </button>
                   </div>
 
-                  {/* IDENTIFIED VOICES & CHARACTERS card — always visible, non-collapsible */}
-                  <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2 shrink-0">
-                    <header className="flex items-center justify-between gap-2 shrink-0">
+                  {/* Row: 1/4 upload zone + 3/4 music model card */}
+                  <div className="shrink-0 flex gap-2">
+                    {/* 1/4 — Upload/Drop zone */}
+                    <div className="w-1/4 shrink-0">
+                      <UploadZone
+                        dragOver={dragOver}
+                        setDragOver={setDragOver}
+                        handleDrop={handleDrop}
+                        handleFile={handleFile}
+                        loading={loading && atStep('analyze')}
+                        loadingMessage={loadingMessage}
+                        audioFile={audioFile}
+                        isShortFilm={isShortFilm}
+                      />
+                    </div>
+                    {/* 3/4 — Music Model card */}
+                    <div className="flex-1 min-w-0">
+                      {musicSource === 'generate' && loading && !audioFile ? (
+                        <div className="h-full bg-bg-tertiary rounded-lg p-3 border border-border flex items-center justify-center gap-2.5">
+                          <Loader2 size={16} className="animate-spin text-violet-400" />
+                          <span className="text-xs text-text-secondary font-medium">
+                            {loadingMessage || 'Generating song…'}
+                          </span>
+                        </div>
+                      ) : (
+                        <DirectorSongSetup hideSongLength={musicSource === 'upload'} />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Generate mode: song description composer */}
+                  {mvGenerateSetup && !audioFile && renderComposer()}
+
+                  {/* Voices & Characters card */}
+                  <section className="h-[270px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col shrink-0">
+                    <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
                       <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                        IDENTIFIED VOICES & CHARACTERS
+                        IDENTIFIED VOICES &amp; CHARACTERS
                       </h3>
                       {speakers.length > 0 && (
                         <span className="text-2xs text-text-muted font-normal">
@@ -1056,7 +1114,7 @@ export function DirectorChat() {
                         </span>
                       )}
                     </header>
-                    <div id="chat-identified-voices-panel" className="space-y-2 pt-0.5 max-h-[160px] overflow-y-auto">
+                    <div id="chat-identified-voices-panel" className="flex-1 overflow-y-auto pr-0.5 space-y-2">
                       <StyleForm
                         speakers={speakers}
                         speakerMappings={speakerMappings}
@@ -1071,8 +1129,8 @@ export function DirectorChat() {
                   </section>
 
                   {!isStoryPath && (
-                    <section className="flex-1 min-h-[180px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col justify-between overflow-hidden">
-                      <header className="flex items-center justify-between gap-2 shrink-0 mb-1">
+                    <section className="flex-1 min-h-[110px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col justify-between overflow-hidden gap-2">
+                      <header className="flex items-center justify-between gap-2 shrink-0">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
                             {isShortFilm ? 'Scene structure' : 'Clip structure'}
@@ -1083,7 +1141,6 @@ export function DirectorChat() {
                             </span>
                           )}
                         </div>
-                        <DirectorTimelineIconButton />
                       </header>
                       <StructureView
                         plannedClips={plannedClips}
@@ -1099,105 +1156,10 @@ export function DirectorChat() {
                         isActive={atStep('structure')}
                         isShortFilm={isShortFilm}
                       />
+                      <DirectorTimelineEditor />
                     </section>
                   )}
                 </div>
-              )}
-
-              {/* 2. GENERATE TAB */}
-              {!isShortFilm && activeTab === 'generate' && (
-                <>
-                  {!audioFile ? (
-                    loading ? (
-                      <div className="bg-bg-tertiary rounded-lg p-6 border border-border flex items-center justify-center gap-2.5">
-                        <Loader2 size={16} className="animate-spin text-violet-400" />
-                        <span className="text-xs text-text-secondary font-medium">
-                          {loadingMessage || 'Generating song…'}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <DirectorSongSetup />
-                        {mvGenerateSetup && renderComposer()}
-                      </div>
-                    )
-                  ) : (
-                    <div className="flex-1 min-h-0 flex flex-col gap-3">
-                      <div className="shrink-0">
-                        <AudioSourcePanel
-                          dragOver={dragOver}
-                          setDragOver={setDragOver}
-                          handleDrop={handleDrop}
-                          handleFile={handleFile}
-                          loading={loading && atStep('analyze')}
-                          loadingMessage={loadingMessage}
-                          audioFile={audioFile}
-                          isShortFilm={isShortFilm}
-                          musicSource="generate"
-                          pipelineLoading={loading}
-                        />
-                      </div>
-
-                      {/* IDENTIFIED VOICES & CHARACTERS card */}
-                      <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2 shrink-0">
-                        <header className="flex items-center justify-between gap-2 shrink-0">
-                          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                            IDENTIFIED VOICES & CHARACTERS
-                          </h3>
-                          {speakers.length > 0 && (
-                            <span className="text-2xs text-text-muted font-normal">
-                              ({speakers.length})
-                            </span>
-                          )}
-                        </header>
-                        <div id="chat-identified-voices-panel-gen" className="space-y-2 pt-0.5 max-h-[160px] overflow-y-auto">
-                          <StyleForm
-                            speakers={speakers}
-                            speakerMappings={speakerMappings}
-                            speakerSamples={speakerSamples}
-                            setSpeakerMapping={setSpeakerMapping}
-                            insertSpeakerMention={insertSpeakerMention}
-                            isActive={atStep('style')}
-                            isShortFilm={isShortFilm}
-                            isStoryPath={isStoryPath}
-                          />
-                        </div>
-                      </section>
-
-                      {!isStoryPath && (
-                        <section className="flex-1 min-h-[180px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col justify-between overflow-hidden">
-                          <header className="flex items-center justify-between gap-2 shrink-0 mb-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
-                                {isShortFilm ? 'Scene structure' : 'Clip structure'}
-                              </h3>
-                              {plannedClips.length > 0 && (
-                                <span className="text-2xs text-text-muted font-normal shrink-0">
-                                  ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
-                                </span>
-                              )}
-                            </div>
-                            <DirectorTimelineIconButton />
-                          </header>
-                          <StructureView
-                            plannedClips={plannedClips}
-                            energyBias={energyBias}
-                            localBias={localBias}
-                            setLocalBias={setLocalBias}
-                            sliderRef={sliderRef}
-                            setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
-                            loading={loading}
-                            totalClipDuration={totalClipDuration}
-                            beatDistribution={beatDistribution}
-                            confirmStructure={confirmStructure}
-                            isActive={atStep('structure')}
-                            isShortFilm={isShortFilm}
-                          />
-                        </section>
-                      )}
-                    </div>
-                  )}
-                </>
               )}
 
               {/* 3. REFERENCES TAB */}
@@ -1449,10 +1411,10 @@ function UploadZone({
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      className={`rounded-lg transition-colors relative ${
+      className={`rounded-lg transition-colors relative w-full h-[96px] flex items-center justify-center shrink-0 ${
         audioFile
           ? 'border border-border bg-bg-tertiary/70 p-3'
-          : `border-2 border-dashed p-4 text-center min-h-[96px] flex items-center justify-center ${
+          : `border-2 border-dashed p-4 text-center ${
               dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
             }`
       }`}
@@ -1528,40 +1490,23 @@ function DirectorAudioSourceTabs({
   onTabChange: (tab: DirectorSidebarTab) => void
 }) {
   return (
-    <div role="tablist" aria-label="Director sidebar tabs" className="grid grid-cols-4 gap-1.5">
+    <div role="tablist" aria-label="Director sidebar tabs" className="grid grid-cols-3 gap-1.5">
       <button
         type="button"
         role="tab"
-        aria-selected={activeTab === 'upload'}
-        aria-label="Upload a track"
-        title="Drop a song or video file from your machine"
-        onClick={() => onTabChange('upload')}
-        data-testid="director-tab-upload"
+        aria-selected={activeTab === 'music'}
+        aria-label="Music — upload or generate a track"
+        title="Upload a song file or generate one with AI"
+        onClick={() => onTabChange('music')}
+        data-testid="director-tab-music"
         className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          activeTab === 'upload'
+          activeTab === 'music'
             ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
             : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <Music size={13} className={activeTab === 'upload' ? 'text-white' : 'text-text-muted'} />
-        <span className="truncate">Upload</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'generate'}
-        aria-label="Generate a track"
-        title="Compose a song with the selected music model"
-        onClick={() => onTabChange('generate')}
-        data-testid="director-tab-generate"
-        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          activeTab === 'generate'
-            ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
-            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
-        }`}
-      >
-        <Sparkles size={13} className={activeTab === 'generate' ? 'text-white' : 'text-text-muted'} />
-        <span className="truncate">Generate</span>
+        <Music size={13} className={activeTab === 'music' ? 'text-white' : 'text-text-muted'} />
+        <span className="truncate">Music</span>
       </button>
       <button
         type="button"
@@ -1601,59 +1546,7 @@ function DirectorAudioSourceTabs({
   )
 }
 
-/* Audio source panel — extracted so the parent DirectorChat can
-   swap it in/out without the rest of the layout caring about which
-   mode is active. The combobox + References button above own the
-   "which panel is showing" decision; this component just renders
-   whichever input the combobox picked. */
-function AudioSourcePanel({
-  dragOver, setDragOver, handleDrop, handleFile,
-  loading, loadingMessage, audioFile, isShortFilm,
-  musicSource, pipelineLoading,
-}: {
-  dragOver: boolean
-  setDragOver: (v: boolean) => void
-  handleDrop: (e: React.DragEvent) => void
-  handleFile: (file: File) => void
-  loading: boolean
-  loadingMessage: string | null
-  audioFile: File | null
-  isShortFilm?: boolean
-  musicSource: 'upload' | 'generate'
-  pipelineLoading: boolean
-}) {
-  // Generate mode without an audio file shows the song-description
-  // composer so the user can describe what they want before sending.
-  if (!isShortFilm && musicSource === 'generate' && !audioFile) {
-    if (pipelineLoading) return null
-    return <DirectorSongSetup />
-  }
-  // Upload mode (or Generate after an audio file has been written)
-  // shows the standard audio drop zone.
-  return (
-    <>
-      <UploadZone
-        dragOver={dragOver}
-        setDragOver={setDragOver}
-        handleDrop={handleDrop}
-        handleFile={handleFile}
-        loading={loading && loading}
-        loadingMessage={loadingMessage}
-        audioFile={audioFile}
-        isShortFilm={isShortFilm}
-      />
-      {/* Keep the newest track-generation activity at the bottom so
-          the chat scroll anchor reveals it. Only renders during an
-          active generate-mode run. */}
-      {!isShortFilm && musicSource === 'generate' && pipelineLoading && (
-        <div className="flex items-center gap-2 py-2">
-          <Loader2 size={14} className="animate-spin text-accent-blue" />
-          <span className="text-xs text-text-muted">{loadingMessage || 'Generating…'}</span>
-        </div>
-      )}
-    </>
-  )
-}
+
 
 function ReferenceImageUpload({
   referenceImage, refImagePreview, setReferenceImage,

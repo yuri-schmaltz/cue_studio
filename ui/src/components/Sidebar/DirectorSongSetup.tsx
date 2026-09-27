@@ -11,7 +11,7 @@ const DIRECTOR_MUSIC_MODEL_ORDER = [
 // itself is typed into the bottom composer (its Send button kicks off the whole
 // write-song → render → analyze → video chain), so this panel cleanly frames the
 // model selection, instrumental mode, and target song duration.
-export function DirectorSongSetup() {
+export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const models = useStore(s => s.models)
   const enabledModels = useStore(s => s.enabledModels)
@@ -148,83 +148,85 @@ export function DirectorSongSetup() {
       </div>
 
       {/* Row 2: Song duration presets & Custom exact duration */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <label className="text-xs text-text-muted uppercase tracking-wider font-medium">
-            Song length
-          </label>
-          <span className="text-xs text-text-secondary tabular-nums font-mono font-medium">
-            {formatDuration(duration, true)}
-          </span>
-        </div>
+      {!hideSongLength && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-xs text-text-muted uppercase tracking-wider font-medium">
+              Song length
+            </label>
+            <span className="text-xs text-text-secondary tabular-nums font-mono font-medium">
+              {formatDuration(duration, true)}
+            </span>
+          </div>
 
-        {/* Standard duration preset pills row */}
-        <div className="flex items-center gap-1.5">
-          {songPresets.map(p => {
-            const isActive = !isCustom && duration === p.seconds
-            return (
-              <button
-                key={p.label}
-                type="button"
-                onClick={() => handleSelectPreset(p.seconds)}
-                className={`flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors text-center truncate ${
-                  isActive
-                    ? 'border-violet-500 bg-violet-600/25 text-white shadow-sm'
-                    : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-light'
-                }`}
-              >
-                {p.label}
-              </button>
-            )
-          })}
-        </div>
+          {/* Standard duration preset pills row */}
+          <div className="flex items-center gap-1.5">
+            {songPresets.map(p => {
+              const isActive = !isCustom && duration === p.seconds
+              return (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => handleSelectPreset(p.seconds)}
+                  className={`flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors text-center truncate ${
+                    isActive
+                      ? 'border-violet-500 bg-violet-600/25 text-white shadow-sm'
+                      : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-light'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+          </div>
 
-        {/* Custom duration button + exact duration input row (always visible) */}
-        <div className="flex items-center gap-2 pt-0.5">
-          <button
-            type="button"
-            onClick={handleSelectCustom}
-            className={`px-3 py-1 rounded-md border text-xs font-medium transition-colors text-center shrink-0 ${
-              isCustom
-                ? 'border-violet-500 bg-violet-600/25 text-white shadow-sm'
-                : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-light'
-            }`}
-          >
-            Custom
-          </button>
-          <input
-            ref={inputRef}
-            type="text"
-            value={customText !== null ? customText : formatTimecode(duration).slice(3)}
-            onChange={e => {
-              setCustomText(e.target.value)
-              setIsCustom(true)
-            }}
-            onFocus={() => {
-              if (customText === null) {
-                setCustomText(formatTimecode(duration).slice(3))
-              }
-            }}
-            onBlur={handleCommitCustom}
-            onKeyDown={e => {
-              if (e.key === 'Enter') handleCommitCustom()
-              if (e.key === 'Escape') {
-                setCustomText(null)
-                if (isPresetMatch) setIsCustom(false)
-              }
-            }}
-            placeholder="02:00"
-            className={`w-20 bg-bg-secondary border rounded-md px-2.5 py-1 text-xs text-text-primary font-mono text-center focus:outline-none transition-colors ${
-              isCustom
-                ? 'border-violet-500 ring-1 ring-violet-500/30'
-                : 'border-border focus:border-violet-500'
-            }`}
-          />
-          <span className="text-2xs text-text-muted select-none">
-            Exact duration (max {formatDuration(maximumDuration, true)})
-          </span>
+          {/* Custom duration button + exact duration input row (always visible) */}
+          <div className="flex items-center gap-2 pt-0.5">
+            <button
+              type="button"
+              onClick={handleSelectCustom}
+              className={`px-3 py-1 rounded-md border text-xs font-medium transition-colors text-center shrink-0 ${
+                isCustom
+                  ? 'border-violet-500 bg-violet-600/25 text-white shadow-sm'
+                  : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-light'
+              }`}
+            >
+              Custom
+            </button>
+            <input
+              ref={inputRef}
+              type="text"
+              value={customText !== null ? customText : formatTimecode(duration).slice(3)}
+              onChange={e => {
+                setCustomText(e.target.value)
+                setIsCustom(true)
+              }}
+              onFocus={() => {
+                if (customText === null) {
+                  setCustomText(formatTimecode(duration).slice(3))
+                }
+              }}
+              onBlur={handleCommitCustom}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCommitCustom()
+                if (e.key === 'Escape') {
+                  setCustomText(null)
+                  if (isPresetMatch) setIsCustom(false)
+                }
+              }}
+              placeholder="02:00"
+              className={`w-20 bg-bg-secondary border rounded-md px-2.5 py-1 text-xs text-text-primary font-mono text-center focus:outline-none transition-colors ${
+                isCustom
+                  ? 'border-violet-500 ring-1 ring-violet-500/30'
+                  : 'border-border focus:border-violet-500'
+              }`}
+            />
+            <span className="text-2xs text-text-muted select-none">
+              Exact duration (max {formatDuration(maximumDuration, true)})
+            </span>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }
