@@ -1,5 +1,66 @@
 # Handoff — Cue Studio fork standalone (2026-09-27)
 
+## Atualização de retomada — 2026-09-27 tarde (Director UX: Music tab unificado, Auto Mode no composer e polish de botões)
+
+**HEAD verificado:** `f16101c` — `feat(director): merge Upload/Generate tabs into Music tab, add Auto Mode toggle to composer header and polish timeline editor button`.
+**Branch:** `main` (em sincronia com `origin/main`).
+**Versão:** `2.1.4`.
+**Working tree:** limpa.
+**Build UI:** ✅ `tsc -b && vite build` em 6.03s.
+**Testes UI:** ✅ `npm run test:store` e `npm run test:control` 100%.
+**Backend ativo:** ✅ PID `362617` em `http://127.0.0.1:7860/`.
+**LLM Server:** ✅ `llama-server` PID `672702` (Gemma 4 Heretic Q4_K_M, ctx 64k, GPU offload).
+
+### Mudanças — 2026-09-27 tarde
+
+#### `ui/src/components/Sidebar/DirectorChat.tsx`
+- As abas **Upload** e **Gerar** foram fundidas numa única aba **Music** com toggle inline `Upload | Gerar` dentro do painel. A navegação dupla para escolher fonte de áudio era desnecessariamente profunda.
+- O checkbox **Modo Automático** foi movido para o cabeçalho do composer. Destaque visual azul quando ligado.
+- `handleChatSubmit` dispara descrição de cena também quando `activeTab === 'description'`, não apenas `step === 'style'`.
+- Estado inicial `activeTab` default: `'music'` (em vez de derivar de `musicSource`).
+- Auto-foco na aba `'description'` ao transicionar para `step === 'style'` preservado.
+- Reordenação de declarações de estado para o topo do componente.
+
+#### `ui/src/components/Sidebar/DirectorSongSetup.tsx`
+- Nova prop `hideSongLength?: boolean` (default `false`). Quando `true`, oculta a seção de duração — útil quando a tab Music está incorporada e duração não é relevante.
+
+#### `ui/src/components/Sidebar/DirectorTimelineEditor.tsx`
+- Botão modernizado: `h-7`, ícone `Wand2` (size=13), hover `bg-accent-blue/10`, disabled `opacity-40`.
+- Label i18n: `"Dividir / editar clipes ({n})"`.
+
+#### `ui/src/components/Sidebar/DirectorReferencePanels.tsx`
+- `StructureView` meta-row: removido `pt-0.5` redundante.
+
+#### `ui/src/stores/useStore.ts`
+- `directorAutoMode` default alterado de `false` para `true`. O fluxo sem pausas é o caminho primário.
+
+### Validação — 2026-09-27 tarde
+
+| Verificação | Resultado |
+| --- | --- |
+| `npm run test:store` | ✅ 5/5 contratos |
+| `npm run test:control` | ✅ 2/2 suítes |
+| `tsc -b && vite build` | ✅ 6.03s, zero erros TypeScript |
+| `git push origin main` | ✅ `6786a84..f16101c` |
+
+### Estado operacional — 2026-09-27 tarde
+
+| Recurso | Status |
+| --- | --- |
+| Backend API | ✅ PID `362617` em `127.0.0.1:7860` |
+| LLM Server | ✅ PID `672702`, porta 36019, Gemma 4 Heretic Q4_K_M |
+| GPU | ✅ RTX 3060 12GB, CUDA 13.2, driver 595.84 |
+| Working tree | ✅ Limpa |
+
+### Próximos passos sugeridos
+
+1. **Smoke visual no navegador**: verificar flow `Music tab → Upload/Gerar toggle → Modo Automático → Iniciar`.
+2. **Decomposição modular**: `launch.py` e `useStore.ts` permanecem monolíticos (extração incremental em curso).
+3. **Short Film flow**: validar geração end-to-end com gramática GBNF e roteador multi-role LLM.
+4. **Responsividade do Director**: painel 3 colunas ainda não é mobile-first.
+
+---
+
 ## Atualização de retomada — 2026-09-27 (Director Prompt Wizard, Pipeline Cancellation, Multi-role LLM & Streaming UI)
 
 **HEAD verificado:** `9792a66` — `feat(director): integrate prompt wizard, restore audio cancel button and immediate clip structure planning`.
