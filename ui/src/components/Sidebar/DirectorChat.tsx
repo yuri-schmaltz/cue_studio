@@ -25,7 +25,7 @@ import { formatSeconds, recommendedWindowProfile } from './DurationSlider'
 import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
 import type { DirectorShotImageGuidance, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
-import { readDirectorScript } from '../../api/client'
+import { readDirectorScript, llmEnhancePrompt } from '../../api/client'
 import { StyleBiblesModal } from '../StyleBibles/StyleBiblesModal'
 
 // AUDIO_ACCEPT lists both audio formats AND video formats. When a video
@@ -182,6 +182,8 @@ function ReferenceImageStrengthSlider() {
 
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
 type DirectorStep = typeof STEP_ORDER[number]
+
+export type DirectorSidebarTab = 'upload' | 'generate' | 'references' | 'description'
 
 function formatTime(s: number): string {
   const m = Math.floor(s / 60)
@@ -349,6 +351,13 @@ export function DirectorChat() {
       .map(([beats, count]) => `${count}x${beats}-beat`)
       .join(', ')
   }, [plannedClips])
+
+  // Automatically plan clip structure if audio analysis exists but clips haven't been populated yet
+  useEffect(() => {
+    if (analysis && plannedClips.length === 0 && !loading) {
+      void useStore.getState().directorEnsureStructure()
+    }
+  }, [analysis, plannedClips.length, loading])
   const clipPlans = useStore(s => s.directorClipPlans)
   const selectedDirectorShotImageSupport = useStore(s => s.models.find(
     model => model.model_type === (s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'),
@@ -485,13 +494,16 @@ export function DirectorChat() {
   const [chatInput, setChatInput] = useState('')
   const [draftQueuePending, setDraftQueuePending] = useState(false)
   const [draftQueueConfirmation, setDraftQueueConfirmation] = useState<string | null>(null)
+  const videoModel = useStore(s => s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1')
+  const [wizardLoading, setWizardLoading] = useState(false)
+  const [lastOriginalText, setLastOriginalText] = useState<string | null>(null)
 
-  // Sync chatInput with store's sceneDescription when entering style step
+  // Sync chatInput with store's sceneDescription when entering style step or when store updates
   useEffect(() => {
-    if (step === 'style' && sceneDescription && !chatInput) {
+    if (sceneDescription && sceneDescription !== chatInput) {
       setChatInput(sceneDescription)
     }
-  }, [chatInput, sceneDescription, step])
+  }, [chatInput, sceneDescription])
 
   useEffect(() => {
     if (!draftQueueConfirmation) return
@@ -523,15 +535,6 @@ export function DirectorChat() {
     return samples
   }, [analysis?.lyrics])
 
-  // Scene description card collapse state — defaults to **collapsed**
-  // so the chat column doesn't bloat after the user submits the brief.
-  // The card still owns the speaker-mapping + scene-text inputs that
-  // need to be reachable when the user wants to revisit the brief, so
-  // the chevron in the header toggles it back open. Re-mounting the
-  // style step from a fresh project re-collapses it via the gating
-  // `(atStep('style') || pastStep('style'))` so behaviour is identical
-  // for every fresh project.
-  const [sceneDescriptionOpen, setSceneDescriptionOpen] = useState(false)
 
   const currentIndex = STEP_ORDER.indexOf(step)
   const pastStep = useCallback((s: DirectorStep) => currentIndex > STEP_ORDER.indexOf(s), [currentIndex])
@@ -645,11 +648,21 @@ export function DirectorChat() {
   } | null>(null)
   const [scriptLoading, setScriptLoading] = useState(false)
   const [scriptError, setScriptError] = useState('')
-  // Whether the "References" panel (photo + char/loc refs + voice)
-  // is currently expanded below the header row. Sits alongside the
-  // audio-source combobox as a peer affordance so the user can flip
-  // either control independently without a nested tab structure.
-  const [referencesOpen, setReferencesOpen] = useState(false)
+  // Active tab in the Director chat column: 'upload' | 'generate' | 'references' | 'description'
+  const [activeTab, setActiveTab] = useState<DirectorSidebarTab>(() => {
+    if (step === 'style' || pastStep('style')) return 'description'
+    if (musicSource === 'generate') return 'generate'
+    return 'upload'
+  })
+
+  // Automatically focus the Description tab when audio analysis completes and step becomes 'style'
+  const prevStepRef = useRef(step)
+  useEffect(() => {
+    if (prevStepRef.current !== 'style' && step === 'style') {
+      setActiveTab('description')
+    }
+    prevStepRef.current = step
+  }, [step])
   const handleScriptFile = useCallback(async (file: File) => {
     setScriptError('')
     setScriptLoading(true)
@@ -670,7 +683,51 @@ export function DirectorChat() {
     }
   }, [loadScriptIntoDescription])
 
-  const chatInputEnabled = (step === 'style' || mvGenerateSetup) && !loading
+  const handlePromptWizard = useCallback(async () => {
+    if (wizardLoading) return
+    setScriptError('')
+    const rawText = (mvGenerateSetup ? songDescription : chatInput).trim()
+    const promptSeed = rawText || (
+      mvGenerateSetup
+        ? 'An upbeat, emotive song with catchy melodies, modern production, and dynamic rhythm'
+        : isMusicVideo
+          ? (analysis?.bpm
+              ? `A cinematic music video for a ${Math.round(analysis.bpm)} BPM track with high production value, dynamic camera choreography and atmospheric lighting`
+              : 'A cinematic, visually stunning music video with dynamic camera movements, creative lighting, and rich visual storytelling')
+          : 'A cinematic short film scene with rich atmosphere, compelling character dynamics, detailed camera framing, and evocative lighting'
+    )
+
+    setWizardLoading(true)
+    try {
+      const res = await llmEnhancePrompt({
+        prompt: promptSeed,
+        mode: mvGenerateSetup ? 'audio' : 'video',
+        model_type: videoModel,
+        duration_seconds: isShortFilm ? shortFilmTargetDuration : (analysis?.duration ? Math.round(analysis.duration) : undefined),
+        planning_style: 'creative',
+      })
+      if (res?.enhanced) {
+        setLastOriginalText(rawText)
+        if (mvGenerateSetup) {
+          setSongDescription(res.enhanced)
+        } else {
+          setChatInput(res.enhanced)
+          if (step === 'style') {
+            setSceneDescription(res.enhanced)
+          }
+        }
+        setDraftQueueConfirmation('Ideia aprimorada com sucesso pelo Assistente de Direção!')
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Falha ao aprimorar ideia com IA'
+      console.error('Prompt wizard failed:', e)
+      setScriptError(msg)
+    } finally {
+      setWizardLoading(false)
+    }
+  }, [wizardLoading, mvGenerateSetup, songDescription, chatInput, isMusicVideo, analysis, isShortFilm, shortFilmTargetDuration, videoModel, setSongDescription, setChatInput, step, setSceneDescription])
+
+  const chatInputEnabled = (step === 'style' || mvGenerateSetup || activeTab === 'description') && !loading
 
   const handleQueueDraft = useCallback(async () => {
     const description = (mvGenerateSetup ? songDescription : chatInput).trim()
@@ -760,6 +817,155 @@ export function DirectorChat() {
     ? isShortFilm ? 'Adjust scene pacing above...' : 'Adjust clip structure above...'
     : 'Reviewing...'
 
+  const renderComposer = (headerTitle?: string, fillSpace?: boolean) => (
+    <div className={`space-y-2 ${fillSpace ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
+      {headerTitle && (
+        <header className="flex items-center justify-between gap-2 shrink-0">
+          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+            {headerTitle}
+          </h3>
+        </header>
+      )}
+
+      {/* Field container */}
+      <div className={`relative w-full ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
+        {fillSpace ? (
+          <textarea
+            value={mvGenerateSetup ? songDescription : chatInput}
+            onChange={e => {
+              const v = e.target.value
+              setDraftQueueConfirmation(null)
+              if (mvGenerateSetup) { setSongDescription(v); return }
+              setChatInput(v)
+              setSceneDescription(v)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && e.shiftKey && chatInputEnabled) {
+                e.preventDefault()
+                handleChatSubmit()
+              }
+            }}
+            placeholder={chatInputPlaceholder}
+            disabled={!chatInputEnabled}
+            aria-keyshortcuts="Shift+Enter"
+            className="w-full h-full bg-bg-tertiary border border-border rounded-lg p-3 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+          />
+        ) : (
+          <AutoResizeTextarea
+            value={mvGenerateSetup ? songDescription : chatInput}
+            onChange={e => {
+              const v = e.target.value
+              setDraftQueueConfirmation(null)
+              if (mvGenerateSetup) { setSongDescription(v); return }
+              setChatInput(v)
+              setSceneDescription(v)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && e.shiftKey && chatInputEnabled) {
+                e.preventDefault()
+                handleChatSubmit()
+              }
+            }}
+            placeholder={chatInputPlaceholder}
+            disabled={!chatInputEnabled}
+            rows={4}
+            minHeight={146}
+            maxHeight={146}
+            aria-keyshortcuts="Shift+Enter"
+            className="w-full h-[146px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+          />
+        )}
+      </div>
+
+      {/* Action buttons row — immediately below the field, 4 equal-width buttons filling 100% horizontal width */}
+      <div className="grid grid-cols-4 gap-2 w-full shrink-0">
+        <button
+          type="button"
+          onClick={() => void handlePromptWizard()}
+          disabled={!chatInputEnabled || wizardLoading}
+          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+          title={wizardLoading ? 'Aprimorando ideia com o Assistente de Direção...' : 'Assistente de Direção / Prompt Wizard'}
+          aria-label={wizardLoading ? 'Aprimorando ideia com o Assistente de Direção...' : 'Assistente de Direção / Prompt Wizard'}
+        >
+          {wizardLoading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Wand2 size={16} />
+          )}
+        </button>
+
+        <ScriptAttachButton
+          attached={attachedScript}
+          loading={scriptLoading}
+          onPick={handleScriptFile}
+          className="w-full h-9 shadow-sm"
+        />
+
+        <button
+          onClick={handleChatSubmit}
+          disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim() || (!mvGenerateSetup && step !== 'style' && !audioFile)}
+          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+          title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
+          aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
+        >
+          {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Send size={16} />
+          )}
+        </button>
+
+        <button
+          onClick={() => void handleQueueDraft()}
+          disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
+          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+          title={
+            mvGenerateSetup
+              ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
+              : `Add this complete Director project to the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
+          }
+          aria-label={directorQueueEditingEntryId ? 'Save Director queue changes' : `Add Director project to queue (${directorQueueEntriesCount} pending)`}
+        >
+          {draftQueuePending || directorQueueLoading
+            ? <Loader2 size={16} className="animate-spin" />
+            : draftQueueConfirmation
+              ? <Check size={16} />
+              : <ListVideo size={16} />}
+        </button>
+      </div>
+
+      {scriptError && (
+        <p className="text-2xs text-red-400 shrink-0" role="alert">{scriptError}</p>
+      )}
+      {draftQueueConfirmation && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-2xs leading-relaxed text-indicator-success flex items-center justify-between shrink-0"
+        >
+          <span>{draftQueueConfirmation}</span>
+          {lastOriginalText !== null && (
+            <button
+              type="button"
+              onClick={() => {
+                if (mvGenerateSetup) setSongDescription(lastOriginalText)
+                else {
+                  setChatInput(lastOriginalText)
+                  setSceneDescription(lastOriginalText)
+                }
+                setLastOriginalText(null)
+                setDraftQueueConfirmation(null)
+              }}
+              className="underline hover:text-white transition-colors ml-2 shrink-0 cursor-pointer text-text-primary"
+            >
+              Desfazer
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
   return (
     <div className="flex-1 flex flex-col min-h-0 min-w-0">
       {/* The chat column is now strictly inputs (path chooser,
@@ -783,7 +989,7 @@ export function DirectorChat() {
           DirectorStage overflow will absorb it. The scrollContainerRef
           is still maintained because the chat anchors scrolling
           programmatically on new messages / errors. */}
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 space-y-3">
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 flex flex-col space-y-3">
         {/* Short Film path chooser — render the prompt directly, no
             surrounding bubble, since the bubble was just decorative text. */}
         {isShortFilm && skill && !shortFilmPath && (
@@ -805,61 +1011,172 @@ export function DirectorChat() {
             decisions while technical settings sit beside it. */}
 
         {skill && (!isShortFilm || shortFilmPath === 'audio') && (atStep('upload') || atStep('analyze') || pastStep('analyze')) && (
-          <SystemBubble>
-            <div className="space-y-3">
-              {/* Music Video: header row with the audio-source combobox
-                  on the left (50%) and a "References" tab button on the
-                  right (50%). Both occupy the same row so the eye reads
-                  them as parallel affordances — the combobox chooses
-                  WHERE the audio comes from, the References tab opens
-                  the visual anchors panel. */}
+          <SystemBubble className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col space-y-3">
+              {/* Music Video: 4 tabs row (Upload, Generate, References, Description) */}
               {!isShortFilm && (
                 <DirectorAudioSourceTabs
-                  value={(musicSource || 'upload') as 'upload' | 'generate'}
-                  referencesOpen={referencesOpen}
-                  onMusicSourceChange={(v) => {
-                    setMusicSource(v)
-                    setReferencesOpen(false)
+                  activeTab={activeTab}
+                  onTabChange={(t) => {
+                    setActiveTab(t)
+                    if (t === 'upload' || t === 'generate') {
+                      setMusicSource(t)
+                    }
                   }}
-                  onReferencesToggle={() => setReferencesOpen(o => !o)}
                 />
               )}
-              {/* Audio source panel + CLIP STRUCTURE — both render
-                  ONLY when the References panel is closed. The user
-                  asked for clip structure to live in the same surface
-                  as the audio panel (the "audio window") and not
-                  follow the user into the References window. Gating
-                  both behind `!referencesOpen` keeps them mutually
-                  exclusive with the References content. */}
-              {!isShortFilm && !referencesOpen && (
-                <>
-                  <div className="grid grid-cols-3 gap-2 items-stretch">
-                    <div className="col-span-1 h-[116px]">
-                      <AudioSourcePanel
-                        dragOver={dragOver}
-                        setDragOver={setDragOver}
-                        handleDrop={handleDrop}
-                        handleFile={handleFile}
-                        loading={loading && atStep('analyze')}
-                        loadingMessage={loadingMessage}
-                        audioFile={audioFile}
+
+              {/* 1. UPLOAD TAB */}
+              {!isShortFilm && activeTab === 'upload' && (
+                <div className="flex-1 min-h-0 flex flex-col gap-3">
+                  <div className="shrink-0">
+                    <AudioSourcePanel
+                      dragOver={dragOver}
+                      setDragOver={setDragOver}
+                      handleDrop={handleDrop}
+                      handleFile={handleFile}
+                      loading={loading && atStep('analyze')}
+                      loadingMessage={loadingMessage}
+                      audioFile={audioFile}
+                      isShortFilm={isShortFilm}
+                      musicSource="upload"
+                      pipelineLoading={loading}
+                    />
+                  </div>
+
+                  {/* IDENTIFIED VOICES & CHARACTERS card — always visible, non-collapsible */}
+                  <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2 shrink-0">
+                    <header className="flex items-center justify-between gap-2 shrink-0">
+                      <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                        IDENTIFIED VOICES & CHARACTERS
+                      </h3>
+                      {speakers.length > 0 && (
+                        <span className="text-2xs text-text-muted font-normal">
+                          ({speakers.length})
+                        </span>
+                      )}
+                    </header>
+                    <div id="chat-identified-voices-panel" className="space-y-2 pt-0.5 max-h-[160px] overflow-y-auto">
+                      <StyleForm
+                        speakers={speakers}
+                        speakerMappings={speakerMappings}
+                        speakerSamples={speakerSamples}
+                        setSpeakerMapping={setSpeakerMapping}
+                        insertSpeakerMention={insertSpeakerMention}
+                        isActive={atStep('style')}
                         isShortFilm={isShortFilm}
-                        musicSource={musicSource || 'upload'}
-                        pipelineLoading={loading}
+                        isStoryPath={isStoryPath}
                       />
                     </div>
-                    {/* CLIP STRUCTURE card — positioned in the same row
-                        immediately to the right of the drop/upload card,
-                        spanning columns 2 and 3 (directly below "Generate"
-                        and "References"). Kept visible in its empty state
-                        until analysis completes. */}
-                    {!isStoryPath && (
-                      <div className="col-span-2 h-[116px]">
-                        <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2 h-full flex flex-col justify-between overflow-y-auto">
-                          <header className="flex items-center justify-between gap-2 shrink-0">
-                            <h3 className="text-xs text-text-muted uppercase tracking-wider">
-                              {isShortFilm ? 'Scene structure' : 'Clip structure'}
-                            </h3>
+                  </section>
+
+                  {!isStoryPath && (
+                    <section className="flex-1 min-h-[180px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col justify-between overflow-hidden">
+                      <header className="flex items-center justify-between gap-2 shrink-0 mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                            {isShortFilm ? 'Scene structure' : 'Clip structure'}
+                          </h3>
+                          {plannedClips.length > 0 && (
+                            <span className="text-2xs text-text-muted font-normal shrink-0">
+                              ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
+                            </span>
+                          )}
+                        </div>
+                        <DirectorTimelineIconButton />
+                      </header>
+                      <StructureView
+                        plannedClips={plannedClips}
+                        energyBias={energyBias}
+                        localBias={localBias}
+                        setLocalBias={setLocalBias}
+                        sliderRef={sliderRef}
+                        setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
+                        loading={loading}
+                        totalClipDuration={totalClipDuration}
+                        beatDistribution={beatDistribution}
+                        confirmStructure={confirmStructure}
+                        isActive={atStep('structure')}
+                        isShortFilm={isShortFilm}
+                      />
+                    </section>
+                  )}
+                </div>
+              )}
+
+              {/* 2. GENERATE TAB */}
+              {!isShortFilm && activeTab === 'generate' && (
+                <>
+                  {!audioFile ? (
+                    loading ? (
+                      <div className="bg-bg-tertiary rounded-lg p-6 border border-border flex items-center justify-center gap-2.5">
+                        <Loader2 size={16} className="animate-spin text-violet-400" />
+                        <span className="text-xs text-text-secondary font-medium">
+                          {loadingMessage || 'Generating song…'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <DirectorSongSetup />
+                        {mvGenerateSetup && renderComposer()}
+                      </div>
+                    )
+                  ) : (
+                    <div className="flex-1 min-h-0 flex flex-col gap-3">
+                      <div className="shrink-0">
+                        <AudioSourcePanel
+                          dragOver={dragOver}
+                          setDragOver={setDragOver}
+                          handleDrop={handleDrop}
+                          handleFile={handleFile}
+                          loading={loading && atStep('analyze')}
+                          loadingMessage={loadingMessage}
+                          audioFile={audioFile}
+                          isShortFilm={isShortFilm}
+                          musicSource="generate"
+                          pipelineLoading={loading}
+                        />
+                      </div>
+
+                      {/* IDENTIFIED VOICES & CHARACTERS card */}
+                      <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2 shrink-0">
+                        <header className="flex items-center justify-between gap-2 shrink-0">
+                          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                            IDENTIFIED VOICES & CHARACTERS
+                          </h3>
+                          {speakers.length > 0 && (
+                            <span className="text-2xs text-text-muted font-normal">
+                              ({speakers.length})
+                            </span>
+                          )}
+                        </header>
+                        <div id="chat-identified-voices-panel-gen" className="space-y-2 pt-0.5 max-h-[160px] overflow-y-auto">
+                          <StyleForm
+                            speakers={speakers}
+                            speakerMappings={speakerMappings}
+                            speakerSamples={speakerSamples}
+                            setSpeakerMapping={setSpeakerMapping}
+                            insertSpeakerMention={insertSpeakerMention}
+                            isActive={atStep('style')}
+                            isShortFilm={isShortFilm}
+                            isStoryPath={isStoryPath}
+                          />
+                        </div>
+                      </section>
+
+                      {!isStoryPath && (
+                        <section className="flex-1 min-h-[180px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col justify-between overflow-hidden">
+                          <header className="flex items-center justify-between gap-2 shrink-0 mb-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                                {isShortFilm ? 'Scene structure' : 'Clip structure'}
+                              </h3>
+                              {plannedClips.length > 0 && (
+                                <span className="text-2xs text-text-muted font-normal shrink-0">
+                                  ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
+                                </span>
+                              )}
+                            </div>
                             <DirectorTimelineIconButton />
                           </header>
                           <StructureView
@@ -877,91 +1194,37 @@ export function DirectorChat() {
                             isShortFilm={isShortFilm}
                           />
                         </section>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Scene description card — moved from the middle
-                      column (DirectorPlanColumn) so the user sees the
-                      speaker mapping + brief inputs right next to the
-                      upload/clip structure, in the same conversation
-                      surface. Defaults to **collapsed**: the chevron
-                      toggle in the header reveals the StyleForm /
-                      speaker-mapping inputs only when the user wants
-                      to revisit them. Past the style step the card
-                      stays reachable but compact so the chat column
-                      doesn't bloat. */}
-                  {(atStep('style') || pastStep('style')) && (
-                    <section className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-2">
-                      <header className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSceneDescriptionOpen(v => !v)}
-                          aria-expanded={sceneDescriptionOpen}
-                          aria-controls="chat-scene-description-panel"
-                          className="flex items-center gap-1 text-xs text-text-muted uppercase tracking-wider hover:text-text-secondary transition-colors min-w-0"
-                        >
-                          {sceneDescriptionOpen ? <ChevronDown size={11} className="shrink-0" /> : <ChevronRight size={11} className="shrink-0" />}
-                          <h3 className="truncate">Scene description</h3>
-                        </button>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {isShortFilm && (
-                            <span className="text-2xs text-text-muted">
-                              {shortFilmTargetDuration}s film
-                            </span>
-                          )}
-                          {/* Compact progress hint: a green dot + count
-                              mirrors the step badge so the user can see
-                              at-a-glance whether the brief is locked in
-                              without expanding the card. */}
-                          <span className="inline-flex items-center gap-1 text-2xs text-emerald-400">
-                            <Check size={10} />
-                            Complete
-                          </span>
-                        </div>
-                      </header>
-                      {sceneDescriptionOpen && (
-                        <div id="chat-scene-description-panel" className="space-y-3 pt-1">
-                          <StyleForm
-                            speakers={speakers}
-                            speakerMappings={speakerMappings}
-                            speakerSamples={speakerSamples}
-                            setSpeakerMapping={setSpeakerMapping}
-                            insertSpeakerMention={insertSpeakerMention}
-                            isActive={atStep('style')}
-                            isShortFilm={isShortFilm}
-                            isStoryPath={isStoryPath}
-                          />
-                          {isStoryPath && referenceImage && (
-                            <div className="flex items-center gap-2 text-2xs text-text-muted">
-                              <span>Reference attached · {shortFilmCharacters.length} characters</span>
-                            </div>
-                          )}
-                        </div>
                       )}
-                    </section>
+                    </div>
                   )}
                 </>
               )}
-              {!isShortFilm && referencesOpen && (
-                <div className="space-y-2">
-                  <DirectorReferenceInputs
-                    referenceImage={referenceImage}
-                    refImagePreview={refImagePreview}
-                    setReferenceImage={setReferenceImage}
-                    disabled={loading}
-                    imageOnly
-                  />
-                  {/* Character / Location / Voice refs moved here from
-                      the inline section above. They live alongside the
-                      reference photo because all visual anchors belong
-                      together in the user's mental model. The CLIP
-                      STRUCTURE card deliberately does NOT live here —
-                      it's an audio-surface artifact and stays in the
-                      audio window (see the !referencesOpen branch). */}
-                  <AdditionalRefsSection />
+
+              {/* 3. REFERENCES TAB */}
+              {!isShortFilm && activeTab === 'references' && (
+                <div className="flex-1 min-h-0 flex flex-col space-y-3">
+                  <div className="shrink-0">
+                    <DirectorReferenceInputs
+                      referenceImage={referenceImage}
+                      refImagePreview={refImagePreview}
+                      setReferenceImage={setReferenceImage}
+                      disabled={loading}
+                      imageOnly
+                    />
+                  </div>
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <AdditionalRefsSection />
+                  </div>
                 </div>
               )}
+
+              {/* 4. DESCRIPTION TAB */}
+              {!isShortFilm && activeTab === 'description' && (
+                <div className="flex-1 min-h-0 flex flex-col">
+                  {renderComposer('SCENE DESCRIPTION', true)}
+                </div>
+              )}
+
               {isShortFilm && referenceImage && (
                 <CharacterNaming
                   characters={shortFilmCharacters}
@@ -1066,155 +1329,8 @@ export function DirectorChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Chat input bar — parent card provides horizontal padding.
-          Removed the previous `border-t border-border` separator: it
-          read as a stray hairline above the composer when the chat
-          column already sits inside its own card with a visible
-          boundary. The textarea and buttons sit flush with the
-          parent card's padding, aligning flush with the reference / upload
-          cards above. */}
-      <div className="space-y-2">
-        <div className="flex items-stretch gap-2">
-          {/* Scene/character description textarea — narrower than the
-              full chat column so the action buttons can stack
-              vertically on the right. The textarea and action stack share
-              the exact same height (108px) with items-stretch so the top
-              and bottom borders align 1:1 down to the pixel. */}
-          <div className="relative flex-1 min-w-0">
-            <AutoResizeTextarea
-              value={mvGenerateSetup ? songDescription : chatInput}
-              onChange={e => {
-                const v = e.target.value
-                setDraftQueueConfirmation(null)
-                if (mvGenerateSetup) { setSongDescription(v); return }
-                setChatInput(v)
-                if (step === 'style') setSceneDescription(v)
-              }}
-              onKeyDown={e => {
-                // Reversed behavior (per user request): plain Enter inserts
-                // a newline (default textarea behavior, no preventDefault);
-                // Shift+Enter is what submits the brief so accidental
-                // presses mid-typing don't fire the pipeline.
-                if (e.key === 'Enter' && e.shiftKey && chatInputEnabled) {
-                  e.preventDefault()
-                  handleChatSubmit()
-                }
-              }}
-              placeholder={chatInputPlaceholder}
-              disabled={!chatInputEnabled}
-              rows={4}
-              minHeight={146}
-              maxHeight={146}
-              aria-keyshortcuts="Shift+Enter"
-              className="w-full h-[146px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 pb-7 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
-            />
-            {/* Discoverability hint: subtle bottom-right caption that
-                only shows when the textarea is empty and the input is
-                enabled. Reveals the non-obvious Shift+Enter (or
-                Cmd/Ctrl+Enter) shortcut to the user without competing
-                with the typed content. Hidden once the user starts
-                writing so it never overlaps their text. */}
-            {chatInputEnabled && !(mvGenerateSetup ? songDescription : chatInput).trim() && (
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute bottom-2 right-3 text-2xs text-text-muted/70 select-none"
-              >
-                Shift+Enter to start
-              </span>
-            )}
-          </div>
-          {/* Action stack — four square buttons stacked vertically beside
-              the textarea. Each button has an identical fixed square size
-              (h-8 w-8 / 32px × 32px) and the container uses `justify-between`
-              across `h-[146px]` so the 4 buttons align perfectly with each other
-              and with the textarea's top and bottom. */}
-          <div className="flex shrink-0 w-8 h-[146px] flex-col justify-between items-center">
-            <button
-              type="button"
-              onClick={() => {
-                // Assistente / Wizard IA placeholder
-              }}
-              className="w-8 h-8 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors shrink-0"
-              title="Assistente de Direção / Prompt Wizard"
-              aria-label="Assistente de Direção / Prompt Wizard"
-            >
-              <Wand2 size={16} />
-            </button>
-            <ScriptAttachButton
-              attached={attachedScript}
-              loading={scriptLoading}
-              onPick={handleScriptFile}
-            />
-            <button
-              onClick={handleChatSubmit}
-              disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim()}
-              className="w-8 h-8 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-              title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
-              aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
-            >
-              {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Send size={16} />
-              )}
-            </button>
-            <button
-              onClick={() => void handleQueueDraft()}
-              disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
-              className="w-8 h-8 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-              title={
-                mvGenerateSetup
-                  ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-                  : `Add this complete Director project to the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-              }
-              aria-label={directorQueueEditingEntryId ? 'Save Director queue changes' : `Add Director project to queue (${directorQueueEntriesCount} pending)`}
-            >
-              {draftQueuePending || directorQueueLoading
-                ? <Loader2 size={16} className="animate-spin" />
-                : draftQueueConfirmation
-                  ? <Check size={16} />
-                  : <ListVideo size={16} />}
-            </button>
-          </div>
-        </div>
-        {attachedScript && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-center gap-1.5 rounded-md border border-accent-blue/30 bg-accent-blue/10 px-2 py-1 text-2xs text-accent-blue"
-          >
-            <FileText size={11} className="shrink-0" />
-            <span className="truncate min-w-0 flex-1">
-              {attachedScript.filename}
-            </span>
-            <span className="text-text-muted shrink-0">
-              {attachedScript.charCount.toLocaleString()} chars
-              {attachedScript.truncated ? ' · truncated' : ''}
-            </span>
-            <button
-              type="button"
-              onClick={() => { setAttachedScript(null); setScriptError('') }}
-              aria-label="Remove script"
-              title="Remove script"
-              className="shrink-0 rounded p-0.5 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
-            >
-              <X size={11} />
-            </button>
-          </div>
-        )}
-        {scriptError && (
-          <p className="text-2xs text-red-400" role="alert">{scriptError}</p>
-        )}
-        {draftQueueConfirmation && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-2xs leading-relaxed text-indicator-success"
-          >
-            {draftQueueConfirmation}
-          </div>
-        )}
-      </div>
+      {/* Bottom composer — rendered for Short Film paths. Music Video hosts the composer inside the Description (or Generate) tab */}
+      {isShortFilm && renderComposer()}
     </div>
   )
 }
@@ -1310,7 +1426,7 @@ function PathChooser({ onSelect }: { onSelect: (path: ShortFilmPath) => void }) 
 }
 
 function UploadZone({
-  dragOver, setDragOver, handleDrop, handleFile, loading, loadingMessage, audioFile, isShortFilm,
+  dragOver, setDragOver, handleDrop, handleFile, loading, loadingMessage: _loadingMessage, audioFile, isShortFilm,
 }: {
   dragOver: boolean
   setDragOver: (v: boolean) => void
@@ -1324,11 +1440,6 @@ function UploadZone({
   audioFile: File | null
   isShortFilm?: boolean
 }) {
-  // Whether the audio file was already accepted by the backend
-  // (directorAudioPath populated after api.uploadImage succeeds).
-  // Renders a small "Uploaded" badge so the user knows the file is
-  // safe to swap or remove without losing the analysis result.
-  const audioPathConfirmed = useStore(s => !!s.directorAudioPath)
   // Store action that clears both the in-memory file and the durable
   // backend path so the next upload doesn't silently overwrite an old
   // analysis result on disk. Used by the remove button below.
@@ -1338,59 +1449,46 @@ function UploadZone({
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      /* min-h-[96px] keeps both the audio card and the reference photo
-         card (next door in the 2-col grid) the same height so flex
-         centering works in both. The parent card height is set here
-         rather than inside each child branch. */
-      className={`border-2 border-dashed rounded-lg p-3 text-center h-full min-h-[96px] flex items-center justify-center transition-colors relative ${
-        dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
+      className={`rounded-lg transition-colors relative ${
+        audioFile
+          ? 'border border-border bg-bg-tertiary/70 p-3'
+          : `border-2 border-dashed p-4 text-center min-h-[96px] flex items-center justify-center ${
+              dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
+            }`
       }`}
     >
-      {loading ? (
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 size={20} className="animate-spin text-accent-blue" />
-          {/* Sub-status (set by directorUploadAndAnalyze polling loop) takes
-              precedence over the static fallback. Reflects backend phase:
-              "Loading transcription model (first use downloads ~300MB)..." etc. */}
-          <span className="text-xs text-text-muted text-center px-2">
-            {loadingMessage || (isShortFilm ? 'Transcribing dialogue...' : 'Analyzing audio...')}
-          </span>
-        </div>
-      ) : audioFile ? (
-        /* audioFile state: stack the music icon and the filename on a
-           vertical axis, then center inside the min-h card so the
-           glyph + filename sit at the visual middle of the card. The
-           "Uploaded" chip in the corner turns green once the backend
-           has accepted the file (directorAudioPath is populated). */
+      {audioFile ? (
         <>
-          {/* Remove (×) button — anchored to the top-right corner so it
-              doesn't shift the centered filename / icon stack. Same
-              pattern used by ReferenceImageUpload and the script
-              status row, so the affordance is consistent across every
-              uploaded-card surface in the chat. */}
           <button
             type="button"
             onClick={() => clearAudio(null)}
             aria-label="Remove uploaded audio"
             title="Remove uploaded audio"
-            className="absolute top-1.5 right-1.5 rounded-md p-1 text-text-muted bg-bg-primary/70 hover:bg-bg-hover hover:text-text-primary transition-colors"
+            className="absolute top-2 right-2 rounded-md p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
           >
-            <X size={11} />
+            <X size={12} />
           </button>
-          <div className="flex flex-col items-center gap-1 px-6">
-            <Music size={16} className="text-text-muted" />
-            <span className="text-xs text-text-secondary truncate max-w-full">{audioFile.name}</span>
-            {audioPathConfirmed && (
-              <span className="mt-0.5 inline-flex items-center gap-1 text-2xs text-emerald-400">
-                <Check size={9} /> Uploaded
-              </span>
-            )}
+          <div className="flex items-center justify-center gap-2.5 px-6 w-full min-w-0">
+            <div className="w-7 h-7 rounded-md bg-accent-blue/15 text-accent-blue flex items-center justify-center shrink-0">
+              <Music size={14} />
+            </div>
+            <span
+              className="text-xs text-text-primary truncate font-medium"
+              title={audioFile.name}
+            >
+              {audioFile.name}
+            </span>
           </div>
         </>
+      ) : loading ? (
+        <div className="flex flex-col items-center gap-2 py-1">
+          <Loader2 size={20} className="animate-spin text-accent-blue" />
+        </div>
       ) : (
-        <label className="cursor-pointer flex flex-col items-center gap-1.5">
+        <label className="cursor-pointer flex flex-col items-center gap-1.5 w-full">
           <Music size={20} className="text-accent-blue/60" />
           <span className="text-xs text-text-secondary">{isShortFilm ? 'Drop dialogue audio or click to upload' : 'Drop a song or video or click to upload'}</span>
+          <span className="text-2xs text-text-muted">MP3, WAV, FLAC, MP4, M4A</span>
           <input
             type="file"
             accept={AUDIO_ACCEPT}
@@ -1423,68 +1521,81 @@ function UploadZone({
    selected announce the state to screen readers and integrate with
    keyboard nav (Tab cycles between tabs, Space/Enter activates). */
 function DirectorAudioSourceTabs({
-  value,
-  referencesOpen,
-  onMusicSourceChange,
-  onReferencesToggle,
+  activeTab,
+  onTabChange,
 }: {
-  value: 'upload' | 'generate'
-  referencesOpen: boolean
-  onMusicSourceChange: (v: 'upload' | 'generate') => void
-  onReferencesToggle: () => void
+  activeTab: DirectorSidebarTab
+  onTabChange: (tab: DirectorSidebarTab) => void
 }) {
   return (
-    <div role="tablist" aria-label="Audio source tabs" className="grid grid-cols-3 gap-2">
+    <div role="tablist" aria-label="Director sidebar tabs" className="grid grid-cols-4 gap-1.5">
       <button
         type="button"
         role="tab"
-        aria-selected={value === 'upload' && !referencesOpen}
+        aria-selected={activeTab === 'upload'}
         aria-label="Upload a track"
         title="Drop a song or video file from your machine"
-        onClick={() => onMusicSourceChange('upload')}
+        onClick={() => onTabChange('upload')}
         data-testid="director-tab-upload"
-        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          value === 'upload' && !referencesOpen
+        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
+          activeTab === 'upload'
             ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
             : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <Music size={13} className={value === 'upload' && !referencesOpen ? 'text-white' : 'text-text-muted'} />
-        <span>Upload</span>
+        <Music size={13} className={activeTab === 'upload' ? 'text-white' : 'text-text-muted'} />
+        <span className="truncate">Upload</span>
       </button>
       <button
         type="button"
         role="tab"
-        aria-selected={value === 'generate' && !referencesOpen}
+        aria-selected={activeTab === 'generate'}
         aria-label="Generate a track"
         title="Compose a song with the selected music model"
-        onClick={() => onMusicSourceChange('generate')}
+        onClick={() => onTabChange('generate')}
         data-testid="director-tab-generate"
-        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          value === 'generate' && !referencesOpen
+        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
+          activeTab === 'generate'
             ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
             : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <Sparkles size={13} className={value === 'generate' && !referencesOpen ? 'text-white' : 'text-text-muted'} />
-        <span>Generate</span>
+        <Sparkles size={13} className={activeTab === 'generate' ? 'text-white' : 'text-text-muted'} />
+        <span className="truncate">Generate</span>
       </button>
       <button
         type="button"
         role="tab"
-        aria-selected={referencesOpen}
+        aria-selected={activeTab === 'references'}
         aria-label="References panel"
         title="Open the visual anchors panel (reference photo + character / location / voice refs)"
-        onClick={onReferencesToggle}
+        onClick={() => onTabChange('references')}
         data-testid="director-tab-references"
-        className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          referencesOpen
+        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
+          activeTab === 'references'
             ? 'border-teal-600 bg-teal-600 text-white shadow-sm'
             : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
         }`}
       >
-        <ImageIcon size={13} className={referencesOpen ? 'text-white' : 'text-text-muted'} />
-        <span>References</span>
+        <ImageIcon size={13} className={activeTab === 'references' ? 'text-white' : 'text-text-muted'} />
+        <span className="truncate">References</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={activeTab === 'description'}
+        aria-label="Scene and character description"
+        title="Scene description, prompt wizard, and identified voices/characters"
+        onClick={() => onTabChange('description')}
+        data-testid="director-tab-description"
+        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
+          activeTab === 'description'
+            ? 'border-accent-blue bg-accent-blue text-white shadow-sm'
+            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
+        }`}
+      >
+        <FileText size={13} className={activeTab === 'description' ? 'text-white' : 'text-text-muted'} />
+        <span className="truncate">Description</span>
       </button>
     </div>
   )
@@ -1572,10 +1683,10 @@ function ReferenceImageUpload({
   return (
     <div className="space-y-2">
       {referenceImage && refImagePreview ? (
-        /* Reference loaded state: fits cleanly inside the card without
-           expanding its dimensions; `object-contain` preserves the full image
+        /* Reference loaded state: generous preview height (160px) to clearly
+           view the visual anchor; `object-contain` preserves the full image
            aspect ratio with clean rounded borders. */
-        <div className="relative h-[96px] flex items-center justify-center bg-bg-tertiary rounded-lg border border-border overflow-hidden">
+        <div className="relative h-[160px] flex items-center justify-center bg-bg-tertiary rounded-lg border border-border overflow-hidden">
           <label className="cursor-pointer block w-full h-full">
             <img
               src={refImagePreview}
@@ -1603,10 +1714,10 @@ function ReferenceImageUpload({
           </span>
         </div>
       ) : (
-        /* Empty state: standard compact card height (96px); flex centering
+        /* Empty state: comfortable card height (110px); flex centering
            pulls the icon + helper text cleanly to the visual middle. */
         <label
-          className={`cursor-pointer block border-2 border-dashed rounded-lg p-3 text-center h-[96px] flex items-center justify-center transition-colors ${
+          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center min-h-[110px] flex items-center justify-center transition-colors ${
             dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
           }`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -1614,8 +1725,9 @@ function ReferenceImageUpload({
           onDrop={onDrop}
         >
           <div className="flex flex-col items-center gap-1.5">
-            <ImageIcon size={20} className="text-accent-blue/60" />
+            <ImageIcon size={22} className="text-accent-blue/60" />
             <span className="text-xs text-text-secondary">Drop reference photo or click to upload</span>
+            <span className="text-2xs text-text-muted">PNG, JPG, WEBP</span>
           </div>
           <input
             type="file"
@@ -1638,10 +1750,12 @@ function ScriptAttachButton({
   attached,
   loading,
   onPick,
+  className = '',
 }: {
   attached: { filename: string; charCount: number; truncated: boolean } | null
   loading: boolean
   onPick: (file: File) => void
+  className?: string
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const title = attached
@@ -1655,11 +1769,11 @@ function ScriptAttachButton({
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={loading}
-        className={`w-8 h-8 shrink-0 flex items-center justify-center p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+        className={`flex items-center justify-center p-2 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
           attached
             ? 'bg-accent-blue text-white hover:bg-accent-blue-hover'
             : 'bg-accent-blue/85 text-white hover:bg-accent-blue-hover'
-        }`}
+        } ${className || 'w-8 h-8 shrink-0'}`}
         title={title}
         aria-label={attached ? `Script attached: ${attached.filename}` : 'Attach script'}
       >
@@ -2517,152 +2631,113 @@ function DirectorNegativePromptField() {
 
 
 export function StyleForm({
-  speakers, speakerMappings, speakerSamples, setSpeakerMapping, insertSpeakerMention, isActive, isShortFilm, isStoryPath,
+  speakers, speakerMappings, speakerSamples, setSpeakerMapping, insertSpeakerMention, isShortFilm, isStoryPath,
 }: {
   speakers: string[]
   speakerMappings: ReturnType<typeof useStore.getState>['directorSpeakerMappings']
   speakerSamples: Record<string, string[]>
   setSpeakerMapping: (speakerId: string, name: string, role: 'rapping' | 'singing' | 'speaking' | '', image?: File | null, imagePreview?: string | null) => void
   insertSpeakerMention: (speakerId: string) => void
-  isActive: boolean
+  isActive?: boolean
   isShortFilm?: boolean
   isStoryPath?: boolean
 }) {
-  // Collapsible Speakers Detected block — defaults to open so the
-  // speaker-to-name mapping is visible by default after analysis,
-  // but the user can fold it to focus on the scene textarea when
-  // they only need the chip-name workflow.
-  const [speakersOpen, setSpeakersOpen] = useState(true)
-  if (!isActive) {
+  if (!isStoryPath && speakers.length === 0) {
     return (
-      <div className="space-y-2">
-        <p className="text-xs text-text-muted">
-          {isStoryPath ? 'Story submitted. Planning scenes and writing prompts...'
-            : isShortFilm ? 'Story description submitted. Planning scenes...'
-            : 'Scene description submitted. Planning shots...'}
-        </p>
+      <div className="flex items-center gap-2 py-1 text-2xs text-text-muted">
+        <Users size={13} className="text-text-muted/50 shrink-0" />
+        <span>No voices or characters detected in audio (instrumental track).</span>
       </div>
     )
   }
 
   return (
     <div className="space-y-2">
-      {/* The "Describe the scene, characters, and visual style."
-          paragraph was redundant with the SECTION DESCRIPTION header
-          already rendered by DirectorPlanColumn — the user asked to
-          drop it so the card opens directly into the Speaker Mapping
-          / scene textarea inputs. The composer placeholder below
-          ("Describe the scene and characters...") carries the same
-          guidance without duplicating it as a static paragraph. */}
-
       {/* Speaker Mapping — hidden for story path (no audio = no detected speakers) */}
       {!isStoryPath && speakers.length >= 1 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setSpeakersOpen(v => !v)}
-            aria-expanded={speakersOpen}
-            className="flex items-center gap-1 text-xs text-text-muted uppercase tracking-wider w-full hover:text-text-secondary transition-colors mb-1"
-          >
-            {speakersOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-            <span>Speakers Detected</span>
-            <span className="text-2xs text-text-muted normal-case tracking-normal ml-1">
-              ({speakerMappings.length})
-            </span>
-          </button>
-          {speakersOpen && <>
-            <div className="space-y-2">
-              {speakerMappings.map((mapping) => (
-                <div key={mapping.speakerId} className="bg-bg-tertiary rounded-lg p-2 space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => insertSpeakerMention(mapping.speakerId)}
-                      className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
-                      title={`Insert @${mapping.speakerId} into description`}
-                    >
-                      {mapping.speakerId}
-                    </button>
-                    <input
-                      type="text"
-                      value={mapping.name}
-                      onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role, mapping.image, mapping.imagePreview)}
-                      placeholder="e.g. man in green hoodie"
-                      className="flex-1 bg-bg-secondary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
-                    />
-                    <select
-                      value={mapping.role}
-                      onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role, mapping.image, mapping.imagePreview)}
-                      className="bg-bg-secondary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
-                    >
-                      <option value="">role</option>
-                      {!isShortFilm && <option value="rapping">rapping</option>}
-                      {!isShortFilm && <option value="singing">singing</option>}
-                      <option value="speaking">speaking</option>
-                    </select>
+        <div className="space-y-2">
+          {speakerMappings.map((mapping) => (
+            <div key={mapping.speakerId} className="bg-bg-secondary border border-border/50 rounded-lg p-2 space-y-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => insertSpeakerMention(mapping.speakerId)}
+                  className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
+                  title={`Insert @${mapping.speakerId} into description`}
+                >
+                  {mapping.speakerId}
+                </button>
+                <input
+                  type="text"
+                  value={mapping.name}
+                  onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role, mapping.image, mapping.imagePreview)}
+                  placeholder="e.g. man in green hoodie"
+                  className="flex-1 bg-bg-tertiary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
+                />
+                <select
+                  value={mapping.role}
+                  onChange={e => setSpeakerMapping(mapping.speakerId, mapping.name, e.target.value as typeof mapping.role, mapping.image, mapping.imagePreview)}
+                  className="bg-bg-tertiary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue transition-colors"
+                >
+                  <option value="">role</option>
+                  {!isShortFilm && <option value="rapping">rapping</option>}
+                  {!isShortFilm && <option value="singing">singing</option>}
+                  <option value="speaking">speaking</option>
+                </select>
 
-                    {/* Speaker Avatar Reference */}
-                    {mapping.imagePreview ? (
-                      <div className="relative group/avatar shrink-0">
-                        <img
-                          src={mapping.imagePreview}
-                          alt={mapping.name || mapping.speakerId}
-                          className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
-                          title="Reference image"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, null, null)}
-                          className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity"
-                          title="Remove image"
-                        >
-                          <X size={8} className="text-white" />
-                        </button>
-                      </div>
-                    ) : (
-                      <label
-                        className="w-7 h-7 rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-secondary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
-                        title="Upload reference photo for this speaker"
-                      >
-                        <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
-                        <input
-                          type="file"
-                          accept={IMAGE_ACCEPT}
-                          className="hidden"
-                          onChange={e => {
-                            const f = e.target.files?.[0]
-                            if (f) {
-                              const preview = URL.createObjectURL(f)
-                              setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, f, preview)
-                            }
-                          }}
-                        />
-                      </label>
-                    )}
+                {/* Speaker Avatar Reference */}
+                {mapping.imagePreview ? (
+                  <div className="relative group/avatar shrink-0">
+                    <img
+                      src={mapping.imagePreview}
+                      alt={mapping.name || mapping.speakerId}
+                      className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
+                      title="Reference image"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, null, null)}
+                      className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity"
+                      title="Remove image"
+                    >
+                      <X size={8} className="text-white" />
+                    </button>
                   </div>
-                  {speakerSamples[mapping.speakerId] && (
-                    <div className="text-2xs text-text-muted pl-1 italic">
-                      {speakerSamples[mapping.speakerId].map((line, li) => (
-                        <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
-                      ))}
-                    </div>
-                  )}
+                ) : (
+                  <label
+                    className="w-7 h-7 rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-tertiary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                    title="Upload reference photo for this speaker"
+                  >
+                    <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
+                    <input
+                      type="file"
+                      accept={IMAGE_ACCEPT}
+                      className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0]
+                        if (f) {
+                          const preview = URL.createObjectURL(f)
+                          setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, f, preview)
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+              {speakerSamples[mapping.speakerId] && (
+                <div className="text-2xs text-text-muted pl-1 italic">
+                  {speakerSamples[mapping.speakerId].map((line, li) => (
+                    <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-            <span className="text-2xs text-text-muted mt-1 block">
-              Name each speaker so the director knows who to show. Click a chip to insert into description.
-            </span>
-          </>}
+          ))}
+          <span className="text-2xs text-text-muted mt-1 block">
+            Name each speaker so the director knows who to show. Click a chip to insert into description.
+          </span>
         </div>
       )}
-
-      <p className="text-xs text-text-muted">
-        {isStoryPath
-          ? 'Describe your story in the input below and press send. The AI will plan everything.'
-          : isShortFilm
-            ? 'Type your story description in the input below and press send.'
-            : 'Type your scene description in the input below and press send.'}
-      </p>
     </div>
   )
 }

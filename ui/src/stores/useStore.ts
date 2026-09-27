@@ -8336,18 +8336,28 @@ export const useStore = create<AppState>((set, get, store) => ({
   directorUploadAndAnalyze: async (file) => {
     set({
       directorLoading: true,
+      directorActivityLabel: 'Analyzing',
       directorLoadingMessage: 'Uploading audio...',
       directorError: null,
       directorAudioFile: file,
       directorStep: 'analyze',
     })
+    const analysisSequence = ++_directorAnalysisSequence
+    const analyzeController = new AbortController()
+    _directorAnalyzeController = analyzeController
     try {
-      const uploaded = await api.uploadAudio(file)
+      const uploaded = await api.uploadAudio(file, analyzeController.signal)
+      if (analysisSequence !== _directorAnalysisSequence) return
       await get().directorAnalyzeAndPlan(uploaded.path, { transcribe: true })
     } catch (e: unknown) {
+      if (analysisSequence !== _directorAnalysisSequence) return
       const msg = e instanceof Error ? e.message : 'Upload failed'
       console.error('Director upload failed:', e)
-      set({ directorLoading: false, directorLoadingMessage: null, directorError: msg, directorStep: 'upload' })
+      set({ directorLoading: false, directorLoadingMessage: null, directorActivityLabel: 'Idle', directorError: msg, directorStep: 'upload' })
+    } finally {
+      if (analysisSequence === _directorAnalysisSequence && _directorAnalyzeController === analyzeController) {
+        _directorAnalyzeController = null
+      }
     }
   },
 
@@ -8360,6 +8370,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     set({
       directorAudioPath: audioPath,
       directorLoading: true,
+      directorActivityLabel: 'Analyzing',
       directorLoadingMessage: 'Analyzing audio...',
       directorError: null,
       directorStep: 'analyze',
@@ -8442,27 +8453,16 @@ export const useStore = create<AppState>((set, get, store) => ({
       }))
       set({ directorSpeakers: speakers, directorSpeakerMappings: speakerMappings })
 
-      const skipStructure = get().directorSkill === 'music_video'
-      // Music Video waits until the visual description is submitted before
-      // materializing the timeline used by the visual planner. Audio
-      // analysis remains available here, but its provisional beat map must
-      // not become the final scene breakdown before the user describes it.
-      if (skipStructure) {
-        set({
-          directorPlannedClips: [],
-          directorStep: 'style',
-          directorLoading: false,
-          directorLoadingMessage: null,
-        })
-        return
-      }
-
-      // Short Film audio keeps the existing manual structure review flow.
+      // Plan beat-aligned clip structure right after analysis
       set({ directorLoadingMessage: 'Planning clip structure...' })
       const structure = await get().directorEnsureStructure()
+      const isMusicVideo = get().directorSkill === 'music_video'
       set({
         directorPlannedClips: structure.clips,
-        directorStep: 'structure',
+        // Music Video advances directly to scene description ('style'), keeping
+        // the planned clips visible in the CLIP STRUCTURE preview card. Short Film
+        // stops on 'structure' for manual review.
+        directorStep: isMusicVideo ? 'style' : 'structure',
         directorLoading: false,
         directorLoadingMessage: null,
       })
@@ -8556,6 +8556,9 @@ export const useStore = create<AppState>((set, get, store) => ({
       directorTrackGenerating: true,
       directorError: null,
       directorLoading: true,
+      directorActivityLabel: (!style || !lyrics) && description
+        ? 'Writing song'
+        : 'Generating music',
       directorLoadingMessage: (!style || !lyrics) && description
         ? 'Writing song…'
         : 'Preparing music generation…',
@@ -9049,7 +9052,8 @@ export const useStore = create<AppState>((set, get, store) => ({
    * was actually running. Safe to call when nothing is running.
    */
   cancelDirectorAnalyze: () => {
-    if (!_directorAnalyzeController && !_directorAnalyzeStopPoll) return false
+    const isAnalyzing = _directorAnalyzeController !== null || _directorAnalyzeStopPoll !== null || get().directorStep === 'analyze'
+    if (!isAnalyzing) return false
     const controller = _directorAnalyzeController
     const stop = _directorAnalyzeStopPoll
     _directorAnalyzeController = null
@@ -9066,6 +9070,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     set({
       directorLoading: false,
       directorLoadingMessage: null,
+      directorActivityLabel: 'Idle',
       directorError: null,
       directorStep: 'upload',
     })
@@ -9629,6 +9634,7 @@ export const useStore = create<AppState>((set, get, store) => ({
   shortFilmUploadAndAnalyze: async (file) => {
     set({
       directorLoading: true,
+      directorActivityLabel: 'Analyzing',
       directorLoadingMessage: 'Uploading audio...',
       directorError: null,
       directorAudioFile: file,
@@ -9637,6 +9643,8 @@ export const useStore = create<AppState>((set, get, store) => ({
     // Same polling pattern as directorUploadAndAnalyze — see comment
     // there for the full rationale on /api/v1/audio/analyze/status.
     const analysisSequence = ++_directorAnalysisSequence
+    const analyzeController = new AbortController()
+    _directorAnalyzeController = analyzeController
     const progress = trackAnalysisProgress(
       api.fetchAudioAnalyzeStatus,
       value => set({
@@ -9653,9 +9661,11 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (analyzePoll !== null) clearInterval(analyzePoll)
       analyzePoll = null
       progress.cancel()
+      _directorAnalyzeStopPoll = null
     }
+    _directorAnalyzeStopPoll = stopAnalyzePolling
     try {
-      const uploaded = await api.uploadAudio(file)
+      const uploaded = await api.uploadAudio(file, analyzeController.signal)
       set({ directorAudioPath: uploaded.path, directorLoadingMessage: 'Analyzing audio...' })
 
       startAnalyzePolling()
@@ -9663,7 +9673,7 @@ export const useStore = create<AppState>((set, get, store) => ({
         audio_path: uploaded.path,
         transcribe: true,
         extract_vocals: true,
-      })
+      }, analyzeController.signal)
       if (analysisSequence !== _directorAnalysisSequence) return
       progress.finish('done')
       stopAnalyzePolling()
@@ -9715,9 +9725,13 @@ export const useStore = create<AppState>((set, get, store) => ({
       progress.finish('error')
       const msg = e instanceof Error ? e.message : 'Analysis failed'
       console.error('Short film analysis failed:', e)
-      set({ directorLoading: false, directorLoadingMessage: null, directorError: msg, directorStep: 'upload' })
+      set({ directorLoading: false, directorLoadingMessage: null, directorActivityLabel: 'Idle', directorError: msg, directorStep: 'upload' })
     } finally {
       stopAnalyzePolling()
+      if (_directorAnalyzeController === analyzeController) {
+        _directorAnalyzeController = null
+      }
+      _directorAnalyzeStopPoll = null
     }
   },
 
@@ -12312,7 +12326,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     // 1. If a Director v2 plan is in flight, abort the fetch + flip
     //    the server-side cancel event. cancelDirectorV2Plan() already
     //    does both — wrap it so a failure here doesn't break the rest.
-    if (state.directorLoading && (state.directorStep === 'plan' || state.directorStep === 'plan_video')) {
+    if (_directorV2PlanController || (state.directorLoading && (state.directorStep === 'plan' || state.directorStep === 'plan_video'))) {
       try {
         get().cancelDirectorV2Plan()
         result.cancelledV2Plan = true
@@ -12364,6 +12378,10 @@ export const useStore = create<AppState>((set, get, store) => ({
       result.cancelledImageGen = get().cancelDirectorImageGen()
     } catch (e) {
       console.error('cancelPlan: image-gen cancel failed:', e)
+    }
+
+    if (get().directorLoading) {
+      set({ directorLoading: false, directorLoadingMessage: null, directorActivityLabel: 'Idle' })
     }
 
     return result

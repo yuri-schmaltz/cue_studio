@@ -950,7 +950,7 @@ export function DirectorPanel() {
           <span className="text-xs text-text-muted">Writing image prompts...</span>
           <button
             type="button"
-            onClick={() => useStore.getState().cancelDirectorV2Plan()}
+            onClick={() => { void useStore.getState().cancelPlan() }}
             title="Stop planning"
             aria-label="Stop planning"
             className="absolute top-1 right-1 bg-bg-secondary rounded-full p-1 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
@@ -965,7 +965,7 @@ export function DirectorPanel() {
           <span className="text-xs text-text-muted">Writing video prompts...</span>
           <button
             type="button"
-            onClick={() => useStore.getState().cancelDirectorV2Plan()}
+            onClick={() => { void useStore.getState().cancelPlan() }}
             title="Stop planning"
             aria-label="Stop planning"
             className="absolute top-1 right-1 bg-bg-secondary rounded-full p-1 border border-border text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"

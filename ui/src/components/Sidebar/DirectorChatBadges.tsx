@@ -111,9 +111,15 @@ export function ShotStatus({
  * every event now sits on a left rule, regardless of who emitted
  * it, so the eye scans a single timeline.
  */
-export function SystemBubble({ children }: { children: ReactNode }) {
+export function SystemBubble({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="pl-3 py-2 border-l-2 border-border/60 space-y-2">
+    <div className={`pl-3 py-2 border-l-2 border-border/60 space-y-2 ${className}`}>
       {children}
     </div>
   )
@@ -124,9 +130,15 @@ export function SystemBubble({ children }: { children: ReactNode }) {
  * is identical to ``SystemBubble`` so alignment stays consistent
  * across event sizes.
  */
-export function UserBubble({ children }: { children: ReactNode }) {
+export function UserBubble({
+  children,
+  className = '',
+}: {
+  children: ReactNode
+  className?: string
+}) {
   return (
-    <div className="pl-3 py-2 border-l-2 border-accent-blue/40 space-y-1">
+    <div className={`pl-3 py-2 border-l-2 border-accent-blue/40 space-y-1 ${className}`}>
       {children}
     </div>
   )

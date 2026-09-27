@@ -32,13 +32,12 @@ import {
   Mic,
   Plus,
   ChevronDown,
-  ChevronRight,
   ListVideo,
   Play,
   Square,
+  Loader2,
 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
-import { DirectorActivityBadge } from './DirectorActivityBar'
 import { SectionBadge, EnergyDot } from './DirectorChatBadges'
 
 // Constants and helpers lifted from ``DirectorChat.tsx`` so the
@@ -295,9 +294,9 @@ export function AdditionalRefsSection() {
       </div>
 
       {/* Active tab's content panel — scrollable independently so the
-          tabs above stay pinned in place, and capped at max-h-[42vh]
-          to keep the gap minimal without ever overlapping the composer. */}
-      <div role="tabpanel" className="space-y-1.5 max-h-[42vh] overflow-y-auto scrollbar-visible">
+          tabs above stay pinned in place, with generous vertical room
+          now that the composer was moved to the Description tab. */}
+      <div role="tabpanel" className="space-y-1.5 max-h-[58vh] overflow-y-auto scrollbar-visible">
         {activeRefTab === 'char' ? (
           <div className="grid grid-cols-4 gap-2">
             {charRefs.map((f, i) => (
@@ -492,7 +491,7 @@ export function AnalysisSummary({
 
 export function StructureView({
   plannedClips, energyBias, localBias, setLocalBias, sliderRef, setEnergyBias,
-  loading, totalClipDuration, beatDistribution, confirmStructure, isActive, isShortFilm,
+  loading, totalClipDuration: _totalClipDuration, beatDistribution, confirmStructure, isActive, isShortFilm,
 }: {
   plannedClips: ReturnType<typeof useStore.getState>['directorPlannedClips']
   energyBias: number
@@ -508,6 +507,7 @@ export function StructureView({
   isShortFilm?: boolean
 }) {
   const audioFile = useStore(s => s.directorAudioFile)
+  const loadingMessage = useStore(s => s.directorLoadingMessage)
   const [playingClipIndex, setPlayingClipIndex] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -574,22 +574,102 @@ export function StructureView({
     })
   }, [audioFile, plannedClips, playingClipIndex])
 
+  if (loading && plannedClips.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-1.5 min-h-0 py-1">
+        <Loader2 size={20} className="animate-spin text-accent-blue shrink-0" />
+        <span className="text-xs text-text-muted text-center px-2">
+          {loadingMessage || (isShortFilm ? 'Transcribing dialogue...' : 'Analyzing audio...')}
+        </span>
+      </div>
+    )
+  }
+
+  if (plannedClips.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4 text-center text-text-muted min-h-0">
+        <ListVideo size={22} className="shrink-0 text-text-muted/60" />
+        <span className="text-xs leading-relaxed max-w-[280px]">
+          No {isShortFilm ? 'scenes' : 'clips'} planned yet.
+          {audioFile
+            ? ` Planning ${isShortFilm ? 'scenes' : 'clips'} from the audio analysis...`
+            : ` Upload audio to analyze and generate the ${isShortFilm ? 'scene' : 'clip'} structure.`}
+        </span>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-3">
-      {/* The old "Here's the clip structure based on the audio analysis.
-          Adjust the cut speed if needed." paragraph was redundant with the
-          CLIP STRUCTURE header above and the slider label below. The user
-          asked to drop it from the audio-analysis card so the structure
-          preview reads as a clean visual block without instructional prose. */}
+    <div className="flex-1 flex flex-col justify-between gap-2 min-h-0 pt-0.5">
+      {/* Clip Bars */}
+      <div className="flex gap-0.5 h-8 rounded-lg overflow-hidden w-full shrink-0 bg-bg-secondary p-1">
+        {plannedClips.map((clip, i) => {
+          const clipDur = clip.end - clip.start
+          const totalDur = plannedClips.reduce((s, c) => s + (c.end - c.start), 0)
+          const widthPct = isShortFilm
+            ? Math.max((clipDur / totalDur) * 100, 1.5)
+            : Math.max((clip.beat_count / plannedClips.reduce((s, c) => s + c.beat_count, 0)) * 100, 1.5)
+          const barColor = sectionBarColors[clip.section_label] || 'bg-gray-500'
+          const isPlaying = playingClipIndex === i
+          const tooltipLabel = isShortFilm
+            ? `Scene ${i + 1}: ${clip.section_label} (${clipDur.toFixed(1)}s)`
+            : `Clip ${i + 1}: ${clip.section_label}, ${clip.beat_count} beats (${clipDur.toFixed(1)}s)`
+          return (
+            <div
+              key={i}
+              onClick={e => handleTogglePlayClip(i, e)}
+              className={`${barColor} ${
+                isPlaying
+                  ? 'opacity-100 ring-2 ring-white ring-inset animate-pulse'
+                  : 'opacity-70 hover:opacity-100'
+              } transition-all relative group cursor-pointer flex items-center justify-center h-full rounded-sm`}
+              style={{ width: `${widthPct}%` }}
+              title={audioFile ? `${tooltipLabel} (Clique para ${isPlaying ? 'parar' : 'ouvir'})` : tooltipLabel}
+            >
+              {isPlaying ? (
+                <Square size={10} className="text-white fill-white drop-shadow z-10" />
+              ) : (
+                <Play size={10} className="text-white fill-white drop-shadow opacity-0 group-hover:opacity-90 transition-opacity z-10" />
+              )}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 pointer-events-none">
+                <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary whitespace-nowrap shadow-lg flex items-center gap-1">
+                  <span>{tooltipLabel}</span>
+                  {audioFile && (
+                    <span className="text-accent-blue font-medium ml-1">
+                      [{isPlaying ? 'Parar' : 'Ouvir'}]
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Meta Row: beat distribution on the left, section legends on the right */}
+      <div className="flex items-center justify-between gap-2 text-2xs text-text-muted shrink-0 leading-tight pt-0.5">
+        {!isShortFilm && (
+          <span className="truncate font-medium text-text-secondary" title={beatDistribution}>
+            {beatDistribution}
+          </span>
+        )}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {Object.entries(sectionBarColors).map(([label, color]) => {
+            const count = plannedClips.filter(c => c.section_label === label).length
+            if (count === 0) return null
+            return (
+              <div key={label} className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-sm ${color}`} />
+                <span>{label} ({count})</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {isActive && (
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs text-text-muted uppercase tracking-wider">{isShortFilm ? 'Scene Pacing' : 'Cut Speed'}</label>
-            <span className="text-xs text-text-secondary">
-              {(localBias ?? energyBias) > 0 ? '+' : ''}{localBias ?? energyBias}
-            </span>
-          </div>
+        <div className="flex items-center justify-between gap-2.5 pt-1.5 text-2xs shrink-0 border-t border-border/40 mt-0.5">
+          <span className="text-text-muted shrink-0 font-medium">{isShortFilm ? 'Pacing' : 'Speed'}: {(localBias ?? energyBias) > 0 ? '+' : ''}{localBias ?? energyBias}</span>
           <input
             type="range"
             min={-2}
@@ -615,124 +695,16 @@ export function StructureView({
               setLocalBias(null)
               sliderRef.current = null
             }}
-            className="w-full"
+            className="flex-1 h-1 accent-accent-blue"
           />
-          <div className="flex items-center justify-between mt-1 text-2xs text-text-muted">
-            <span>{isShortFilm ? 'Longer scenes' : 'Slower cuts'}</span>
-            <span>{isShortFilm ? 'Shorter scenes' : 'Faster cuts'}</span>
-          </div>
+          <button
+            onClick={confirmStructure}
+            disabled={loading || plannedClips.length === 0}
+            className="px-2.5 py-0.5 rounded bg-accent-blue text-white text-2xs font-medium hover:bg-accent-blue-hover transition-colors shrink-0"
+          >
+            Continue
+          </button>
         </div>
-      )}
-
-      <div className="bg-bg-tertiary rounded-lg p-2 space-y-2">
-        {plannedClips.length > 0 && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-text-secondary font-medium">{plannedClips.length} {isShortFilm ? 'scenes' : 'clips'}</span>
-            <span className="text-text-muted">{formatTime(totalClipDuration)} total</span>
-          </div>
-        )}
-
-        {loading ? (
-          /* Live activity badge — replaces the hard-coded
-             "Recalculating..." string that used to sit here. Reads
-             directorActivityLabel from the store (derived from the
-             live pipeline status) so the label reflects the actual
-             phase (Planning with LLM…, Polishing prompts…,
-             Generating start image 3/13…). Cancel button reuses
-             cancelDirectorV2Plan() which aborts the HTTP request
-             AND tells the backend to short-circuit the worker
-             thread. */
-          <DirectorActivityBadge cancelTitle="Stop the Director run" />
-        ) : plannedClips.length === 0 ? (
-          /* Empty state — shown when the structure step is reached but
-             no clips have been generated yet (e.g. the user attached
-             a script that reset the analysis but never re-ran Send,
-             or opened an existing project where the analysis was
-             never persisted). Replaces the previous misleading "0
-             clips / 0:00 total" that looked like an empty result
-             instead of an uninitialised state. */
-          <div className="flex items-start gap-2 py-1 text-2xs text-text-muted">
-            <ListVideo size={12} className="shrink-0 mt-px text-text-muted" />
-            <span className="leading-snug">
-              No {isShortFilm ? 'scenes' : 'clips'} planned yet.
-              {isActive
-                ? ` Press Send in the composer below to generate the ${isShortFilm ? 'scene' : 'clip'} structure.`
-                : ` Analysis will generate the ${isShortFilm ? 'scene' : 'clip'} structure once audio is processed.`}
-            </span>
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-px h-8 rounded overflow-hidden">
-              {plannedClips.map((clip, i) => {
-                const clipDur = clip.end - clip.start
-                const totalDur = plannedClips.reduce((s, c) => s + (c.end - c.start), 0)
-                const widthPct = isShortFilm
-                  ? Math.max((clipDur / totalDur) * 100, 1.5)
-                  : Math.max((clip.beat_count / plannedClips.reduce((s, c) => s + c.beat_count, 0)) * 100, 1.5)
-                const barColor = sectionBarColors[clip.section_label] || 'bg-gray-500'
-                const isPlaying = playingClipIndex === i
-                const tooltipLabel = isShortFilm
-                  ? `Scene ${i + 1}: ${clip.section_label} (${clipDur.toFixed(1)}s)`
-                  : `Clip ${i + 1}: ${clip.section_label}, ${clip.beat_count} beats (${clipDur.toFixed(1)}s)`
-                return (
-                  <div
-                    key={i}
-                    onClick={e => handleTogglePlayClip(i, e)}
-                    className={`${barColor} ${
-                      isPlaying
-                        ? 'opacity-100 ring-2 ring-white ring-inset animate-pulse'
-                        : 'opacity-70 hover:opacity-100'
-                    } transition-all relative group cursor-pointer flex items-center justify-center`}
-                    style={{ width: `${widthPct}%` }}
-                    title={audioFile ? `${tooltipLabel} (Clique para ${isPlaying ? 'parar' : 'ouvir'})` : tooltipLabel}
-                  >
-                    {isPlaying ? (
-                      <Square size={10} className="text-white fill-white drop-shadow z-10" />
-                    ) : (
-                      <Play size={10} className="text-white fill-white drop-shadow opacity-0 group-hover:opacity-90 transition-opacity z-10" />
-                    )}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 pointer-events-none">
-                      <div className="bg-bg-primary border border-border rounded px-1.5 py-1 text-2xs text-text-secondary whitespace-nowrap shadow-lg flex items-center gap-1">
-                        <span>{tooltipLabel}</span>
-                        {audioFile && (
-                          <span className="text-accent-blue font-medium ml-1">
-                            [{isPlaying ? 'Parar' : 'Ouvir'}]
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="text-2xs text-text-muted space-y-1">
-              {!isShortFilm && <div>{beatDistribution}</div>}
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                {Object.entries(sectionBarColors).map(([label, color]) => {
-                  const count = plannedClips.filter(c => c.section_label === label).length
-                  if (count === 0) return null
-                  return (
-                    <div key={label} className="flex items-center gap-1">
-                      <span className={`w-2 h-2 rounded-sm ${color}`} />
-                      <span>{label} ({count})</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-
-      {isActive && (
-        <button
-          onClick={confirmStructure}
-          disabled={loading || plannedClips.length === 0}
-          className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-        >
-          <ChevronRight size={12} /> Continue
-        </button>
       )}
     </div>
   )
