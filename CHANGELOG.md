@@ -1,5 +1,28 @@
 # Cue Studio Changelog
 
+## v2.2.0 — 2026-09-28 (MCP server preview)
+
+- **MCP server.** External agents (Cursor, Cline, Claude Code, custom scripts)
+  can now drive Cue Studio through `POST /api/v1/mcp` using the Model Context
+  Protocol over streamable-HTTP (JSON-RPC 2.0). Five read-mostly tools exposed:
+  `system_capabilities`, `llm_status`, `llm_test_connection`,
+  `director_list_pipelines`, `director_get_pipeline`. Disabled by default;
+  enable via `CUE_MCP_TOKEN` env var, persistent file at
+  `~/.cue_studio/mcp.json`, or follow-up UI toggle. See
+  [docs/MCP_SERVER.md](docs/MCP_SERVER.md) for client examples and the full
+  error model.
+- **54 new pytest tests** covering the token store (17), the JSON-RPC
+  dispatcher (24), and the FastAPI router (13). No regressions in other
+  test modules.
+- **Dual-module singleton fix.** The router imports the shared `McpAccess`
+  singleton via `importlib` resolution so `launch.py` (cwd=`app/`) and
+  pytest (cwd=repo root) share the same instance.
+
+Part of the HocusPocus migration plan; see
+[docs/MIGRATION_HOCUSPOCUS.md](docs/MIGRATION_HOCUSPOCUS.md). Mutations
+(start/cancel pipeline, install LoRA, etc.) land in v2.3.0 with capability
+gating and an SQLite request journal.
+
 > **Rebrand — 2026-09-15.** Maestro is now **Cue Studio**. The product
 > identity, feature set, theme family, and backend pipeline are
 > unchanged. The rebrand refreshes the visual identity (warm-cinematic
