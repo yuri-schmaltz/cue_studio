@@ -117,6 +117,8 @@ def build_default_registry() -> ToolRegistry:
     """
     from . import mcp_tools_impl  # local import: avoid heavy deps at import time
 
+    from . import mcp_tools_impl  # local import: avoid heavy deps at import time
+
     registry = ToolRegistry()
 
     # system_capabilities — read-only, baseline
