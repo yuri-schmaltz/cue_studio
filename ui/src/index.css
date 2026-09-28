@@ -1145,6 +1145,19 @@ input[type="range"]::-webkit-slider-thumb {
  * chat column below the row height (it's an opt-in min-content), but
  * at desktop widths every column now stretches to the bottom edge of
  * the stage. */
+/* Medias tab — gallery (2/3) + inspector (1/3). 2fr/1fr grid keeps the
+   inspector column readable on ultra-wide displays (it doesn't sprawl
+   past ~520px) while still dedicating the bulk of the surface to the
+   asset grid. Below ~1100px the inspector collapses under the gallery
+   so neither column gets unusable width on a laptop split-screen. */
+.media-gallery-layout { display:grid; grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr); gap:0; min-height:0; }
+.media-gallery-column { display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+.media-inspector-column { display:flex; flex-direction:column; min-height:0; }
+@media (max-width: 1100px) {
+  .media-gallery-layout { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); }
+  .media-inspector-column { border-left: 0 !important; border-top: 1px solid var(--color-border); max-height: 60vh; }
+}
+
 .director-stage-columns { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); flex:1; min-height:0; gap:12px; overflow:hidden; align-items: stretch; }
 /* Director columns share a uniform inner padding so cards (Upload,
    Generate, CLIP STRUCTURE, Generation Options) line up at the same

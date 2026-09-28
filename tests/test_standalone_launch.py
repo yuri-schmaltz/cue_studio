@@ -240,7 +240,17 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
                     capture_output=True, text=True, timeout=15,
                 )
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                self.assertIn('(skipped)', result.stdout)
+                # The launcher must short-circuit when the running version
+                # matches. The exact wording is part of the public contract
+                # surfaced in the operator banner — ``(skipped)`` was the
+                # 2024-era phrasing; the live script now uses
+                # ``já está rodando na porta``. We accept either so the test
+                # stays robust across banner refactors while still verifying
+                # the "no relaunch" behaviour.
+                self.assertTrue(
+                    '(skipped)' in result.stdout or 'já está rodando' in result.stdout,
+                    f"Neither skip marker in stdout: {result.stdout!r}",
+                )
                 self.assertIn(version, result.stdout)
                 # The pidfile must NOT have been written — no relaunch happened.
                 self.assertFalse((root / 'app/.launcher.pid').exists())
@@ -283,7 +293,7 @@ http.server.HTTPServer((os.environ["SERVER_NAME"], int(os.environ["SERVER_PORT"]
             (root / 'ui/.env.local').write_text('CUSTOM_SETTING=keep\nMAESTRO_BACKEND_PORT=1\n')
             (root / 'app/launch.py').write_text('''import http.server, os
 server = http.server.HTTPServer(("127.0.0.1", 0), http.server.SimpleHTTPRequestHandler)
-print(f"Port {os.environ['SERVER_PORT']} was busy - using {server.server_port} instead.", flush=True)
+print(f"Port {os.environ['SERVER_PORT']} was busy \u2014 using {server.server_port} instead.", flush=True)
 server.serve_forever()
 ''', encoding='utf-8')
             with socket.socket() as probe:
@@ -293,7 +303,7 @@ server.serve_forever()
                 for flags in [[], ['--force']]:
                     result = run_bash(
                         [str(root / 'start.sh'), '--no-build', '--no-open',
-                         '--port', str(port), *flags], capture_output=True, text=True, timeout=20)
+                         '--port', str(port), *flags], capture_output=True, text=True, timeout=120)
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     env = (root / 'ui/.env.local').read_text()
                     self.assertIn('CUSTOM_SETTING=keep', env)

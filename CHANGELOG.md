@@ -1,5 +1,203 @@
 # Cue Studio Changelog
 
+## v2.5.2 — 2026-09-29 (housekeeping — UI bulk actions + fixture isolation)
+
+- **Media gallery bulk actions** (`ui/src/components/MainContent/MainContent.tsx`,
+  `MediaGallery.tsx`, `MediaInspector.tsx`, `useStore.ts`):
+  - New `MediaGallery`/`MediaInspector` split replaces the old
+    `ThumbnailGallery`/`MediaFeedItem`/`VideoInfoBar`/`VideoPlayer`
+    quartet. The gallery owns click-to-inspect; the inspector renders
+    the currently selected asset's metadata. Selection state is
+    independent so the user can tick a batch without losing focus.
+  - New `bulkDeleteSelectedOutputs()` action wires select-all,
+    shift-range, and bulk-delete into the store. Sequential deletes
+    for now (cheap for tens of items); can swap to a `/bulk` endpoint
+    later without changing call sites.
+  - `webWorker.ts`/`layout.worker.ts` deleted — gallery no longer uses
+    a web worker for layout.
+- **`_friendly_pipeline_name` hardening** (`app/services/director_pipeline.py`,
+  `ui/src/components/DirectorDashboard/DirectorDashboard.tsx`):
+  - Falls back to `Workflow: run <stamp>` (single colon) instead of
+    stacking two `·` separators back to back when the scene description
+    is empty. Mirrored on the frontend fallback so the dropdown stays
+    consistent.
+  - `display_name` is now derived on read instead of stored in the
+    pipeline state, so helper improvements (stopwords, truncation,
+    fallback format) propagate to old pipelines without a migration.
+- **`list_pipeline_states` recursion** (`app/services/director_pipeline.py`):
+  - The dashboard scan now descends one extra level into
+    `<out>/.director/<pid>/` so pipelines registered via the v2 plan
+    `register_only=True` path become discoverable from the Dashboard,
+    fixing browser-refresh recovery for that flow.
+- **Fixture isolation fix** (`tests/test_dashboard_friendly_name.py`):
+  - The helper that re-execs `_friendly_pipeline_name` from source
+    used to install `services`/`models` stubs into `sys.modules`
+    **without rolling them back**. Subsequent test modules doing
+    `from services.X import ...` received the empty stub instead of
+    the real package, surfacing as `AttributeError: module 'services'
+    has no attribute 'director'` in adjacent suites. The helper now
+    tracks which stubs it installed and removes them in a `finally`
+    block, restoring anything that was there before.
+- **`test_standalone_launch` bit-rot fixes**:
+  - `test_ensure_service_skips_when_version_matches` now accepts
+    either the legacy `(skipped)` phrasing or the current
+    "já está rodando na porta X" banner.
+  - `test_fallback_preserves_env_and_managed_restart` uses the
+    em-dash (`\u2014`) in its fake `launch.py` output so it matches
+    the `start.sh` log-scanner regex.
+  - Timeout raised from 20s to 120s for the `start.sh` real-process
+    bring-up (some CI environments need >60s to bind).
+- **Tests**: full repo gauntlet is now **605 passed, 0 failed**
+  (was 559 passed + 36 failed from fixture isolation + 2 from
+  bit-rot). 12 tests previously failing in
+  `test_dashboard_friendly_name` adjacent cascade are now green.
+
+## v2.5.1 — 2026-09-29 (Video Editor — security hardening)
+
+- **Path-traversal guard** on `VideoEditor.export(output_path=...)`:
+  rejects any path that does not resolve inside the editor root.
+  Prevents the HTTP `/api/v1/editor/projects/{id}/export` endpoint
+  from being used to make ffmpeg write to `/tmp`, `/etc`, or any
+  arbitrary filesystem location. Raises `EditorError` (mapped to
+  HTTP 400).
+- **Editor root resolution** now follows the Cue Studio workspace
+  layout: `CUE_EDITOR_DIR` env var → `wgp.server_config["services"]
+  ["projects_root_path"]` (if it exists) → `wgp.server_config["save_path"]`
+  → `~/.cue_studio/editor`. Projects now live next to the rest of the
+  workspace tree instead of in a separate shadow directory.
+- **Router `Body(default=None)`** instead of `default_factory=ExportIn`
+  so `POST /export` with an empty body uses the default path (no
+  spurious `null` payload from pydantic).
+- **7 new tests** (path-traversal rejection x3, root-follows-save-path,
+  router 400 on bad path, MCP 400 on bad path, empty-body default).
+  Total migration test surface: **254 passing**.
+
+## v2.5.0 — 2026-09-29 (Video Editor — backend preview)
+
+- **Video Editor (backend).** Durable per-workspace timeline of clips
+  with CRUD + export. New module `services.video_editor` (≈400 LOC) with:
+    - project create/list/get/delete
+    - clip add / remove / reorder / trim / split
+    - export via the existing `wgp.concatenate_multi_clip_videos`
+      ffmpeg concat-FILTER pipeline
+    - atomic JSON persistence (`tmp + fsync + os.replace`)
+    - sanitization on load (state whitelist, label cap, clip-end
+      coercion, NaN/negative guard)
+- **HTTP API** at `/api/v1/editor`:
+    - `GET  /api/v1/editor/projects` list
+    - `POST /api/v1/editor/projects` create
+    - `GET  /api/v1/editor/projects/{id}` get
+    - `DELETE /api/v1/editor/projects/{id}` delete
+    - `POST /api/v1/editor/projects/{id}/clips` add
+    - `DELETE /api/v1/editor/projects/{id}/clips/{clip_id}` remove
+    - `POST /api/v1/editor/projects/{id}/clips/reorder` reorder
+    - `POST /api/v1/editor/projects/{id}/clips/{clip_id}/trim` trim
+    - `POST /api/v1/editor/projects/{id}/clips/{clip_id}/split` split
+    - `POST /api/v1/editor/projects/{id}/export` export to mp4
+- **Two new MCP tools** (`editor_list_projects`, `editor_export`).
+  Surface is now 12 read-mostly entries.
+- **57 new pytest tests** across 3 files (service 33, router 17, MCP 7).
+  0 regressions. `ffmpeg_available()` and `ffprobe_duration()` helpers
+  ship alongside the service.
+- The timeline UI is deferred to a follow-up effort (Phase D-full)
+  because the original HocusPocus editor is a 4-5 sprint undertaking;
+  the HTTP/MCP surface is stable and ready to drive a custom UI today.
+- See `docs/VIDEO_EDITOR.md` for the full reference.
+
+## v2.4.0 — 2026-09-28 (Wizard in-app LLM agent)
+
+- **Wizard agent.** Durable per-workspace orchestration checkpoints
+  driven by the local LLM. Two new modules:
+    - `services.wizard_workflows` — atomic JSON store with revision
+      counter, sanitization (sensitive key redaction, depth limits,
+      null byte stripping), 0o600 POSIX, 100 workflows cap.
+    - `services.wizard_supervisor` — deterministic FSM that calls
+      `llm_router.generate_for_role` for each pending step. Validates
+      LLM output against the step's `required` keys; retries up to
+      `max_attempts` before marking the step `failed`.
+- **HTTP API** at `/api/v1/wizard`:
+    - `GET  /api/v1/wizard/workflows` list (limit)
+    - `GET  /api/v1/wizard/workflows/{id}` one
+    - `POST /api/v1/wizard/workflows` create
+    - `POST /api/v1/wizard/workflows/{id}/steps` add step
+    - `POST /api/v1/wizard/workflows/{id}/run` run one step
+    - `POST /api/v1/wizard/workflows/{id}/run-all` run pending steps
+    - `DELETE /api/v1/wizard/workflows/{id}` delete
+- **Three new MCP tools** (`wizard_list_workflows`, `wizard_get_workflow`,
+  `wizard_run_step`). The tool surface is now 10 read-mostly entries.
+- **56 new pytest tests** across 3 files (workflows 27, supervisor 15,
+  router 14). 0 regressions.
+- **Dual-module singleton fix** also applied to `routers/wizard.py`
+  using the same `importlib.find_spec` pattern as routers/mcp.py and
+  routers/productions.py.
+
+See [docs/WIZARD.md](docs/WIZARD.md) for the API + state machine +
+sanitization rules + operational notes.
+
+Part of the HocusPocus migration plan; see
+[docs/MIGRATION_HOCUSPOCUS.md](docs/MIGRATION_HOCUSPOCUS.md). Phase D
+(Video Editor) is the next item but is recommended as a future
+release — see MIGRATION_HOCUSPOCUS.md for rationale.
+
+## v2.3.0 — 2026-09-28 (Production Run state machine)
+
+- **Production Run persistence.** Director pipelines now persist to SQLite
+  via a new `services.production_store.ProductionStore` (WAL mode,
+  foreign keys ON, thread-safe). Three tables: `productions`, `runs`,
+  `production_events`. A pipeline that crashes mid-stage can be resumed
+  after restart; retries create new Run rows with `attempt += 1` so the
+  catalog keeps the full retry history.
+- **HTTP API** at `/api/v1/productions`:
+    - `GET  /api/v1/productions` list (filter by status, limit)
+    - `GET  /api/v1/productions/{id}` one production + its runs
+    - `GET  /api/v1/productions/{id}/runs`
+    - `GET  /api/v1/productions/{id}/events` audit log
+    - `POST /api/v1/productions/{id}/resume` resume from last completed
+    - `POST /api/v1/productions/{id}/retake` retake one stage
+- **Two new MCP tools** added to the v2.2.0 server: `productions_list`
+  and `production_get`. The tool surface is now 7 read-mostly entries.
+- **Facade module** `services.production_resume.ProductionResume` glues
+  the store with the existing `director_pipeline.resume_pipeline` so the
+  audit + retry semantics live in one place.
+- **Read-model shaper** `services.production_adapter` (port from
+  HocusPocus production_run.py) with deterministic stable ids: production
+  id is keyed on `pipeline_id`, run id on `(pipeline_id, attempt)` so
+  retries create distinct rows.
+- **80 new pytest tests** across 4 files (adapter 24, store 22, resume
+  13, router 13, MCP tools 8). 0 regressions.
+- **Dual-module singleton fix** also applied to `production_resume` so
+  launch.py and pytest share the same `ProductionStore` instance.
+
+See [docs/PRODUCTION_RUN.md](docs/PRODUCTION_RUN.md) for the API +
+schema + retention policy.
+
+Part of the HocusPocus migration plan; see
+[docs/MIGRATION_HOCUSPOCUS.md](docs/MIGRATION_HOCUSPOCUS.md). Next:
+Phase C — Wizard in-app agent.
+
+## v2.2.0 — 2026-09-28 (MCP server preview)
+
+- **MCP server.** External agents (Cursor, Cline, Claude Code, custom scripts)
+  can now drive Cue Studio through `POST /api/v1/mcp` using the Model Context
+  Protocol over streamable-HTTP (JSON-RPC 2.0). Five read-mostly tools exposed:
+  `system_capabilities`, `llm_status`, `llm_test_connection`,
+  `director_list_pipelines`, `director_get_pipeline`. Disabled by default;
+  enable via `CUE_MCP_TOKEN` env var, persistent file at
+  `~/.cue_studio/mcp.json`, or follow-up UI toggle. See
+  [docs/MCP_SERVER.md](docs/MCP_SERVER.md) for client examples and the full
+  error model.
+- **54 new pytest tests** covering the token store (17), the JSON-RPC
+  dispatcher (24), and the FastAPI router (13). No regressions in other
+  test modules.
+- **Dual-module singleton fix.** The router imports the shared `McpAccess`
+  singleton via `importlib` resolution so `launch.py` (cwd=`app/`) and
+  pytest (cwd=repo root) share the same instance.
+
+Part of the HocusPocus migration plan; see
+[docs/MIGRATION_HOCUSPOCUS.md](docs/MIGRATION_HOCUSPOCUS.md). Mutations
+(start/cancel pipeline, install LoRA, etc.) land in v2.3.0 with capability
+gating and an SQLite request journal.
+
 > **Rebrand — 2026-09-15.** Maestro is now **Cue Studio**. The product
 > identity, feature set, theme family, and backend pipeline are
 > unchanged. The rebrand refreshes the visual identity (warm-cinematic

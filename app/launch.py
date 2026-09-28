@@ -10877,6 +10877,48 @@ try:
 except Exception as _workspaces_import_err:
     log.debug("[workspaces] router unavailable: %s", _workspaces_import_err)
 
+# MCP server (/api/v1/mcp) — read-mostly tool surface for external agents
+# (Cursor, Cline, Claude Code). Mounted after the LLM/Director routers so it
+# benefits from the existing rate-limit and auth middleware. Disabled by
+# default; enable via Settings → Integrations or CUE_MCP_TOKEN env var.
+import logging as _mcp_logging
+_mcp_log = _mcp_logging.getLogger("cue_studio.mcp.mount")
+try:
+    from routers.mcp import build_mcp_router
+    api.include_router(build_mcp_router())
+    _mcp_log.info("[mcp] router mounted at /api/v1/mcp")
+except Exception as _mcp_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[mcp] router unavailable: %s", _mcp_import_err)
+
+# Production Run router (/api/v1/productions) — durable Production + Run
+# catalog with resume + retake endpoints. Phase B of the HocusPocus
+# migration; see docs/MIGRATION_HOCUSPOCUS.md.
+try:
+    from routers.productions import build_productions_router
+    api.include_router(build_productions_router())
+    _mcp_log.info("[productions] router mounted at /api/v1/productions")
+except Exception as _productions_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[productions] router unavailable: %s", _productions_import_err)
+
+# Wizard router (/api/v1/wizard/*) — durable per-workspace orchestration
+# with LLM supervisor. Phase C of the HocusPocus migration.
+try:
+    from routers.wizard import build_wizard_router
+    api.include_router(build_wizard_router())
+    _mcp_log.info("[wizard] router mounted at /api/v1/wizard")
+except Exception as _wizard_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[wizard] router unavailable: %s", _wizard_import_err)
+
+# Video Editor router (/api/v1/editor/*) — backend timeline CRUD + export
+# via the existing ffmpeg concat helper. Phase D-min (backend only) of
+# the HocusPocus migration; see docs/VIDEO_EDITOR.md.
+try:
+    from routers.video_editor import build_video_editor_router
+    api.include_router(build_video_editor_router())
+    _mcp_log.info("[video_editor] router mounted at /api/v1/editor")
+except Exception as _ve_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[video_editor] router unavailable: %s", _ve_import_err)
+
 # Backwards-compat re-exports — the existing test suite reaches
 # into ``launch`` for the workspace helpers. Keep the names
 # reachable so the cutover doesn't break the test surface.
