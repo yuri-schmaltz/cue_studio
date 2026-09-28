@@ -26,6 +26,36 @@ from typing import Any
 from .production_adapter import adapt_pipeline_record
 from .production_store import ProductionStore
 
+# Dual-context import: this module is loaded from both `app.services.*`
+# (pytest) and `services.*` (launch.py). Use the same importlib trick as
+# routers/mcp.py to guarantee a single shared module instance per process
+# so the ProductionStore singleton is consistent across both contexts.
+import importlib
+import importlib.util
+import sys
+
+
+def _resolve(short: str, full: str):
+    for name in (full, short):
+        if name in sys.modules:
+            return sys.modules[name]
+    for full_name in (full, short):
+        spec = importlib.util.find_spec(full_name)
+        if spec is not None:
+            return importlib.import_module(full_name)
+    raise ImportError(f"Cannot resolve {short}")
+
+
+# Pin the store + adapter modules to whichever instance is already loaded.
+_store_module = _resolve(
+    "app.services.production_store", "services.production_store"
+)
+_adapter_module = _resolve(
+    "app.services.production_adapter", "services.production_adapter"
+)
+ProductionStore = _store_module.ProductionStore
+adapt_pipeline_record = _adapter_module.adapt_pipeline_record
+
 
 log = logging.getLogger("cue_studio.production_resume")
 
@@ -116,8 +146,14 @@ class ProductionResume:
         Looks across runs that share the pipeline_id by examining the
         ``correlations.pipeline_id`` field — the canonical bridge between
         the in-memory pipeline dict and the persisted runs table.
+
+        Also accepts a production id (production_legacy_...) and looks up
+        the latest run for that production directly.
         """
+        import json
+
         with self._store.connect() as conn:
+            # First try by correlations.pipeline_id (the legacy bridge)
             row = conn.execute(
                 """
                 SELECT payload FROM runs
@@ -127,10 +163,38 @@ class ProductionResume:
                 """,
                 (pipeline_id,),
             ).fetchone()
+            if row is not None:
+                return json.loads(row["payload"])
+            # Fall back: treat as production id and pick the latest run
+            row = conn.execute(
+                """
+                SELECT payload FROM runs
+                WHERE production_id = ?
+                ORDER BY attempt DESC, updated_at DESC
+                LIMIT 1
+                """,
+                (pipeline_id,),
+            ).fetchone()
         if row is None:
             return None
+        return json.loads(row["payload"])
+
+    def get_run_for_production(self, production_id: str) -> dict[str, Any] | None:
+        """Return the latest run for a production_id (production_legacy_...)."""
         import json
 
+        with self._store.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT payload FROM runs
+                WHERE production_id = ?
+                ORDER BY attempt DESC, updated_at DESC
+                LIMIT 1
+                """,
+                (production_id,),
+            ).fetchone()
+        if row is None:
+            return None
         return json.loads(row["payload"])
 
     def list_failures(self, *, limit: int = 20) -> list[dict[str, Any]]:
@@ -270,6 +334,7 @@ class ProductionResume:
         out_dir: str,
         stage_name: str,
     ) -> ResumeResult:
+        # Accept either a pipeline_id or a production_id from the URL.
         previous = self.get_pipeline_state(pipeline_id)
         if previous is None:
             return ResumeResult(
