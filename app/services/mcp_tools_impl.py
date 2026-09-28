@@ -192,6 +192,74 @@ def production_get(arguments: Mapping[str, Any]) -> dict[str, Any]:
     return {"production": production, "runs": runs}
 
 
+# ---------------------------------------------------------------- Wizard tools
+
+
+def _get_wizard_store():
+    """Resolve the default WizardWorkflowStore (lazy import for early boot)."""
+    from app.services.wizard_workflows import WizardWorkflowStore  # type: ignore
+
+    return WizardWorkflowStore()
+
+
+def wizard_list_workflows(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """List Wizard workflows (durable orchestration checkpoints).
+
+    Read-mostly — returns the workflow catalog with optional limit. The
+    supervisor itself is a write tool (``wizard_run_step``); agents should
+    use this listing to discover in-flight workflows before driving them.
+    """
+    try:
+        limit = int(arguments.get("limit") or 50)
+    except (TypeError, ValueError) as exc:
+        raise McpToolError(f"limit must be an integer: {exc}") from exc
+    limit = max(1, min(limit, 100))
+
+    try:
+        store = _get_wizard_store()
+        workflows = store.list(limit=limit)
+    except Exception as exc:  # pragma: no cover — defensive
+        return {"count": 0, "workflows": [], "error": str(exc)}
+    return {"count": len(workflows), "workflows": workflows}
+
+
+def wizard_get_workflow(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Fetch one Wizard workflow by id."""
+    workflow_id = arguments.get("workflow_id")
+    if not isinstance(workflow_id, str) or not workflow_id:
+        raise McpToolError("workflow_id is required")
+    try:
+        store = _get_wizard_store()
+        workflow = store.get(workflow_id)
+    except Exception as exc:  # pragma: no cover — defensive
+        raise McpToolError(f"Failed to read workflow: {exc}") from exc
+    if workflow is None:
+        raise McpToolError(f"Workflow not found: {workflow_id}")
+    return workflow
+
+
+def wizard_run_step(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Run one step in a Wizard workflow.
+
+    Read-mostly endpoint that drives the existing supervisor. Returns a
+    ``StepResult`` dict with the same shape the HTTP ``/api/v1/wizard/run``
+    endpoint exposes.
+    """
+    workflow_id = arguments.get("workflow_id")
+    if not isinstance(workflow_id, str) or not workflow_id:
+        raise McpToolError("workflow_id is required")
+    step_name = arguments.get("step_name")
+
+    from app.services.wizard_supervisor import WizardSupervisor  # type: ignore
+
+    try:
+        supervisor = WizardSupervisor()
+        result = supervisor.run_step(workflow_id, step_name=step_name)
+    except Exception as exc:
+        raise McpToolError(f"Failed to run step: {exc}") from exc
+    return result.to_dict()
+
+
 # ---------------------------------------------------------------- System tools
 
 

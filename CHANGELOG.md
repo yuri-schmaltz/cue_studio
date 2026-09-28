@@ -1,5 +1,40 @@
 # Cue Studio Changelog
 
+## v2.4.0 — 2026-09-28 (Wizard in-app LLM agent)
+
+- **Wizard agent.** Durable per-workspace orchestration checkpoints
+  driven by the local LLM. Two new modules:
+    - `services.wizard_workflows` — atomic JSON store with revision
+      counter, sanitization (sensitive key redaction, depth limits,
+      null byte stripping), 0o600 POSIX, 100 workflows cap.
+    - `services.wizard_supervisor` — deterministic FSM that calls
+      `llm_router.generate_for_role` for each pending step. Validates
+      LLM output against the step's `required` keys; retries up to
+      `max_attempts` before marking the step `failed`.
+- **HTTP API** at `/api/v1/wizard`:
+    - `GET  /api/v1/wizard/workflows` list (limit)
+    - `GET  /api/v1/wizard/workflows/{id}` one
+    - `POST /api/v1/wizard/workflows` create
+    - `POST /api/v1/wizard/workflows/{id}/steps` add step
+    - `POST /api/v1/wizard/workflows/{id}/run` run one step
+    - `POST /api/v1/wizard/workflows/{id}/run-all` run pending steps
+    - `DELETE /api/v1/wizard/workflows/{id}` delete
+- **Three new MCP tools** (`wizard_list_workflows`, `wizard_get_workflow`,
+  `wizard_run_step`). The tool surface is now 10 read-mostly entries.
+- **56 new pytest tests** across 3 files (workflows 27, supervisor 15,
+  router 14). 0 regressions.
+- **Dual-module singleton fix** also applied to `routers/wizard.py`
+  using the same `importlib.find_spec` pattern as routers/mcp.py and
+  routers/productions.py.
+
+See [docs/WIZARD.md](docs/WIZARD.md) for the API + state machine +
+sanitization rules + operational notes.
+
+Part of the HocusPocus migration plan; see
+[docs/MIGRATION_HOCUSPOCUS.md](docs/MIGRATION_HOCUSPOCUS.md). Phase D
+(Video Editor) is the next item but is recommended as a future
+release — see MIGRATION_HOCUSPOCUS.md for rationale.
+
 ## v2.3.0 — 2026-09-28 (Production Run state machine)
 
 - **Production Run persistence.** Director pipelines now persist to SQLite

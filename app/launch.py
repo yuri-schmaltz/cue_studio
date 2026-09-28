@@ -10900,6 +10900,15 @@ try:
 except Exception as _productions_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[productions] router unavailable: %s", _productions_import_err)
 
+# Wizard router (/api/v1/wizard/*) — durable per-workspace orchestration
+# with LLM supervisor. Phase C of the HocusPocus migration.
+try:
+    from routers.wizard import build_wizard_router
+    api.include_router(build_wizard_router())
+    _mcp_log.info("[wizard] router mounted at /api/v1/wizard")
+except Exception as _wizard_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[wizard] router unavailable: %s", _wizard_import_err)
+
 # Backwards-compat re-exports — the existing test suite reaches
 # into ``launch`` for the workspace helpers. Keep the names
 # reachable so the cutover doesn't break the test surface.

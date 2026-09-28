@@ -283,6 +283,77 @@ def build_default_registry() -> ToolRegistry:
         )
     )
 
+    # wizard_list_workflows — read-only
+    registry.register(
+        ToolSpec(
+            name="wizard_list_workflows",
+            description=(
+                "List Wizard workflows (durable orchestration checkpoints "
+                "for the in-app Wizard agent). Returns at most ``limit`` "
+                "entries, newest first."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 100,
+                        "description": "Maximum entries (default 50).",
+                    },
+                },
+                "additionalProperties": False,
+            },
+            handler=mcp_tools_impl.wizard_list_workflows,
+        )
+    )
+
+    # wizard_get_workflow — read-only
+    registry.register(
+        ToolSpec(
+            name="wizard_get_workflow",
+            description=(
+                "Fetch one Wizard workflow by id, including its steps, "
+                "context, and current state."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "workflow_id": {"type": "string", "minLength": 1},
+                },
+                "required": ["workflow_id"],
+                "additionalProperties": False,
+            },
+            handler=mcp_tools_impl.wizard_get_workflow,
+        )
+    )
+
+    # wizard_run_step — read-mostly (drives the supervisor)
+    registry.register(
+        ToolSpec(
+            name="wizard_run_step",
+            description=(
+                "Run one step of a Wizard workflow via the local LLM "
+                "supervisor. If ``step_name`` is omitted, the next pending "
+                "step is run. Returns a StepResult dict describing "
+                "outcome, state, and (when successful) the LLM output."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "workflow_id": {"type": "string", "minLength": 1},
+                    "step_name": {
+                        "type": "string",
+                        "description": "Optional: run a specific step by name.",
+                    },
+                },
+                "required": ["workflow_id"],
+                "additionalProperties": False,
+            },
+            handler=mcp_tools_impl.wizard_run_step,
+        )
+    )
+
     return registry
 
 
