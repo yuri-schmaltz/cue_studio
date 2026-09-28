@@ -109,7 +109,7 @@ async def test_editor_export_missing_project_id(dispatch, editor_root) -> None:
 
 @pytest.mark.asyncio
 async def test_editor_export_runs_wgp_concat(
-    dispatch, editor_root, tmp_path: Path, monkeypatch,
+    dispatch, editor_root, monkeypatch,
 ) -> None:
     from app.services.video_editor import VideoEditor
 
@@ -120,7 +120,8 @@ async def test_editor_export_runs_wgp_concat(
 
     calls = _stub_wgp(monkeypatch)
 
-    out = tmp_path / "joined.mp4"
+    # output_path must live inside editor.root (path-traversal guard).
+    out = ed.root / "joined.mp4"
     resp = await dispatch({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
                             "params": {"name": "editor_export",
                                        "arguments": {"project_id": project["id"],
@@ -131,6 +132,28 @@ async def test_editor_export_runs_wgp_concat(
     assert result["state"] == "completed"
     assert result["output_path"] == str(out)
     assert calls == [{"clips": ["/tmp/a.mp4", "/tmp/b.mp4"], "out": str(out)}]
+
+
+@pytest.mark.asyncio
+async def test_editor_export_rejects_path_outside_root(
+    dispatch, editor_root, monkeypatch,
+) -> None:
+    from app.services.video_editor import VideoEditor
+
+    ed = VideoEditor(editor_root)
+    project = ed.create_project(title="Reel")
+    ed.add_clip(project["id"], {"media_path": "/tmp/a.mp4"})
+
+    # Stub wgp so the rejection happens at the editor layer, not the helper.
+    _stub_wgp(monkeypatch)
+
+    resp = await dispatch({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                            "params": {"name": "editor_export",
+                                       "arguments": {"project_id": project["id"],
+                                                     "output_path": "/tmp/escape.mp4"}}})
+    payload = resp.payload or {}
+    body = payload.get("error") or payload["result"]["content"][0]["text"]
+    assert "output_path" in str(body) or "editor root" in str(body)
 
 
 @pytest.mark.asyncio

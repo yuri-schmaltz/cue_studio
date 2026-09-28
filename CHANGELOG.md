@@ -1,5 +1,25 @@
 # Cue Studio Changelog
 
+## v2.5.1 — 2026-09-29 (Video Editor — security hardening)
+
+- **Path-traversal guard** on `VideoEditor.export(output_path=...)`:
+  rejects any path that does not resolve inside the editor root.
+  Prevents the HTTP `/api/v1/editor/projects/{id}/export` endpoint
+  from being used to make ffmpeg write to `/tmp`, `/etc`, or any
+  arbitrary filesystem location. Raises `EditorError` (mapped to
+  HTTP 400).
+- **Editor root resolution** now follows the Cue Studio workspace
+  layout: `CUE_EDITOR_DIR` env var → `wgp.server_config["services"]
+  ["projects_root_path"]` (if it exists) → `wgp.server_config["save_path"]`
+  → `~/.cue_studio/editor`. Projects now live next to the rest of the
+  workspace tree instead of in a separate shadow directory.
+- **Router `Body(default=None)`** instead of `default_factory=ExportIn`
+  so `POST /export` with an empty body uses the default path (no
+  spurious `null` payload from pydantic).
+- **7 new tests** (path-traversal rejection x3, root-follows-save-path,
+  router 400 on bad path, MCP 400 on bad path, empty-body default).
+  Total migration test surface: **254 passing**.
+
 ## v2.5.0 — 2026-09-29 (Video Editor — backend preview)
 
 - **Video Editor (backend).** Durable per-workspace timeline of clips

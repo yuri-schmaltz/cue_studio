@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from app.services import video_editor as video_editor_module
 from app.services.video_editor import EditorError, PROJECT_STATES, VideoEditor
 
 
@@ -259,7 +260,8 @@ def test_export_runs_ffmpeg_concat(editor: VideoEditor, tmp_path: Path, monkeypa
     project = editor.add_clip(project["id"], {"media_path": str(a)})
     project = editor.add_clip(project["id"], {"media_path": str(b)})
 
-    out = tmp_path / "joined.mp4"
+    # output_path must live inside editor.root (path-traversal guard).
+    out = editor.root / "joined.mp4"
     result = editor.export(project["id"], output_path=str(out))
     assert result["state"] == "completed"
     assert result["output_path"] == str(out)
@@ -271,6 +273,58 @@ def test_export_runs_ffmpeg_concat(editor: VideoEditor, tmp_path: Path, monkeypa
 def test_ffmpeg_available_reflects_path(editor: VideoEditor, monkeypatch) -> None:
     monkeypatch.setenv("FFMPEG_BINARY", "/no/such/binary")
     assert editor.ffmpeg_available() is False
+
+
+# ------------------------------------------------------- path-traversal guard
+
+
+def test_export_rejects_output_outside_root(editor: VideoEditor) -> None:
+    """``export(output_path=...)`` must not let ffmpeg write outside root."""
+    p = editor.create_project()
+    p = editor.add_clip(p["id"], _clip())
+    with pytest.raises(EditorError):
+        editor.export(p["id"], output_path="/tmp/escape.mp4")
+
+
+def test_export_rejects_parent_traversal(editor: VideoEditor) -> None:
+    p = editor.create_project()
+    p = editor.add_clip(p["id"], _clip())
+    with pytest.raises(EditorError):
+        editor.export(p["id"], output_path=str(editor.root / ".." / "escape.mp4"))
+
+
+def test_export_accepts_path_inside_root(editor: VideoEditor, monkeypatch) -> None:
+    """A path that resolves inside ``editor.root`` is accepted."""
+    import sys
+    import types
+
+    def fake_concat(clip_paths, output_path, **_kw):
+        Path(output_path).write_bytes(b"x")
+        return True
+
+    fake = types.ModuleType("app.wgp")
+    fake.concatenate_multi_clip_videos = fake_concat  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "app.wgp", fake)
+    p = editor.create_project()
+    p = editor.add_clip(p["id"], _clip())
+    target = editor.root / "subdir" / "out.mp4"
+    result = editor.export(p["id"], output_path=str(target))
+    assert result["state"] == "completed"
+    assert result["output_path"] == str(target)
+
+
+def test_default_root_honors_save_path_env(monkeypatch) -> None:
+    """When ``save_path`` exists in wgp.server_config, root follows it."""
+    import sys
+    import types
+
+    fake = types.ModuleType("wgp")
+    fake.server_config = {"save_path": "/srv/cue/outputs"}  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "wgp", fake)
+    monkeypatch.delenv("CUE_EDITOR_DIR", raising=False)
+    # Avoid the configured-path branch (which requires isdir).
+    root = video_editor_module._default_root()
+    assert str(root).endswith("outputs/editor")
 
 
 # ----------------------------------------------------------------- sanitization

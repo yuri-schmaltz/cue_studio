@@ -60,11 +60,35 @@ PROJECT_STATES = frozenset({"prepared", "running", "completed", "failed", "cance
 
 
 def _default_root() -> Path:
-    """Where editor projects are persisted."""
-    config_dir = os.environ.get("CUE_CONFIG_DIR", "").strip() or os.path.join(
-        os.path.expanduser("~"), ".cue_studio",
-    )
-    return Path(config_dir) / "editor"
+    """Where editor projects are persisted.
+
+    Priority order:
+      1. ``CUE_EDITOR_DIR`` env var (explicit override; used in tests and CI)
+      2. ``<wgp.server_config["services"]["projects_root_path"]>/editor`` if
+         that path exists, otherwise
+      3. ``<wgp.server_config["save_path"]>/editor`` (the legacy outputs/ root)
+      4. ``~/.cue_studio/editor`` as a final fallback
+
+    The middle two branches keep editor projects on disk next to the rest of
+    the Cue Studio workspace tree (matching ``get_projects_root()``) instead
+    of in a separate ``~/.cue_studio`` shadow directory.
+    """
+    explicit = os.environ.get("CUE_EDITOR_DIR", "").strip()
+    if explicit:
+        return Path(explicit)
+    try:
+        from wgp import server_config  # type: ignore  # lazy
+    except Exception:
+        server_config = None
+    if isinstance(server_config, Mapping):
+        services = server_config.get("services") or {}
+        configured = (services.get("projects_root_path") or "").strip()
+        if configured and os.path.isdir(configured):
+            return Path(configured) / "editor"
+        save_path = (server_config.get("save_path") or "outputs").strip()
+        if save_path:
+            return Path(save_path) / "editor"
+    return Path(os.path.expanduser("~")) / ".cue_studio" / "editor"
 
 
 def _safe_id() -> str:
@@ -318,6 +342,12 @@ class VideoEditor:
         """Concatenate the project's clips into one mp4 via ffmpeg concat FILTER.
 
         Returns the updated project with ``output_path`` set.
+
+        If ``output_path`` is provided it must resolve to a path **inside**
+        ``self.root`` (the editor's storage directory). Any attempt to point
+        at ``/etc/passwd``, ``/tmp/...``, or a path containing ``..`` is
+        rejected with ``EditorError`` to keep the ffmpeg subprocess from
+        touching arbitrary filesystem locations.
         """
         with self._lock:
             project = self._load(project_id)
@@ -327,7 +357,17 @@ class VideoEditor:
             if not clips:
                 raise EditorError("Cannot export a project with no clips")
 
-            target = Path(output_path) if output_path else self._root / f"{project['id']}.mp4"
+            if output_path:
+                target = Path(output_path).expanduser().resolve()
+                try:
+                    target.relative_to(self._root.resolve())
+                except ValueError as exc:
+                    raise EditorError(
+                        f"output_path must live inside the editor root "
+                        f"({self._root}); got {target}"
+                    ) from exc
+            else:
+                target = self._root / f"{project['id']}.mp4"
             target.parent.mkdir(parents=True, exist_ok=True)
             # Build the ffmpeg command via the trusted wgp helper.
             try:

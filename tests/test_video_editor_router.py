@@ -166,8 +166,8 @@ def test_split_clip(editor_client) -> None:
     assert len(r.json()["clips"]) == 2
 
 
-def test_export_project_via_stub_wgp(editor_client, monkeypatch, tmp_path: Path) -> None:
-    client, _ = editor_client
+def test_export_project_via_stub_wgp(editor_client, monkeypatch) -> None:
+    client, ed = editor_client
     pid = client.post("/api/v1/editor/projects", json={"title": "x"}).json()["id"]
     client.post(
         f"/api/v1/editor/projects/{pid}/clips",
@@ -184,7 +184,8 @@ def test_export_project_via_stub_wgp(editor_client, monkeypatch, tmp_path: Path)
     fake.concatenate_multi_clip_videos = fake_concat  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "app.wgp", fake)
 
-    out = tmp_path / "joined.mp4"
+    # output_path must live inside editor.root (path-traversal guard).
+    out = ed.root / "joined.mp4"
     r = client.post(
         f"/api/v1/editor/projects/{pid}/export",
         json={"output_path": str(out)},
@@ -192,6 +193,49 @@ def test_export_project_via_stub_wgp(editor_client, monkeypatch, tmp_path: Path)
     assert r.status_code == 200, r.text
     assert r.json()["state"] == "completed"
     assert out.exists()
+
+
+def test_export_rejects_path_outside_root(editor_client, monkeypatch) -> None:
+    client, _ = editor_client
+    pid = client.post("/api/v1/editor/projects", json={"title": "x"}).json()["id"]
+    client.post(
+        f"/api/v1/editor/projects/{pid}/clips",
+        json={"media_path": "/a.mp4"},
+    )
+    # Stub wgp so we don't accidentally exercise real ffmpeg on the rejected path.
+    fake = types.ModuleType("app.wgp")
+    fake.concatenate_multi_clip_videos = lambda *a, **k: True  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "app.wgp", fake)
+
+    r = client.post(
+        f"/api/v1/editor/projects/{pid}/export",
+        json={"output_path": "/tmp/escape.mp4"},
+    )
+    assert r.status_code == 400
+    assert "inside the editor root" in r.text or "output_path" in r.text
+
+
+def test_export_with_empty_body_defaults_to_root(editor_client, monkeypatch) -> None:
+    """An empty body defaults output_path to ``<editor.root>/<id>.mp4``."""
+    client, ed = editor_client
+    pid = client.post("/api/v1/editor/projects", json={"title": "x"}).json()["id"]
+    client.post(
+        f"/api/v1/editor/projects/{pid}/clips",
+        json={"media_path": "/a.mp4"},
+    )
+    fake = types.ModuleType("app.wgp")
+
+    def fake_concat(clip_paths, output_path, **_kw):
+        Path(output_path).write_bytes(b"ok")
+        return True
+
+    fake.concatenate_multi_clip_videos = fake_concat  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "app.wgp", fake)
+
+    r = client.post(f"/api/v1/editor/projects/{pid}/export", json={})
+    assert r.status_code == 200, r.text
+    default_target = ed.root / f"{pid}.mp4"
+    assert default_target.exists()
 
 
 def test_export_empty_project_400(editor_client) -> None:

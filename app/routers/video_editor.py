@@ -136,10 +136,14 @@ def build_video_editor_router(get_editor):
     # --------------------------------------------------------------- export
 
     @router.post("/projects/{project_id}/export")
-    def export_project(project_id: str, payload: ExportIn = Body(default=ExportIn())) -> dict[str, Any]:
+    def export_project(
+        project_id: str,
+        payload: ExportIn | None = Body(default=None),
+    ) -> dict[str, Any]:
         from app.services.video_editor import EditorError
+        output_path = payload.output_path if payload else None
         try:
-            return _ed().export(project_id, output_path=payload.output_path)
+            return _ed().export(project_id, output_path=output_path)
         except EditorError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
