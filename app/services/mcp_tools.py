@@ -230,6 +230,59 @@ def build_default_registry() -> ToolRegistry:
         )
     )
 
+    # productions_list — read-only
+    registry.register(
+        ToolSpec(
+            name="productions_list",
+            description=(
+                "List Production Run entries (durable Director pipeline "
+                "history) with optional status filter. Returns at most "
+                "``limit`` entries, newest first."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": (
+                            "Filter by latest-run status (e.g. 'running', "
+                            "'completed', 'failed', 'cancelled')."
+                        ),
+                    },
+                    "limit": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 500,
+                        "description": "Maximum entries (default 50).",
+                    },
+                },
+                "additionalProperties": False,
+            },
+            handler=mcp_tools_impl.productions_list,
+        )
+    )
+
+    # production_get — read-only
+    registry.register(
+        ToolSpec(
+            name="production_get",
+            description=(
+                "Fetch one Production Run by id, including all its runs "
+                "(each retry attempt). Use to inspect a failed production "
+                "before asking the user to resume or retake."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "production_id": {"type": "string", "minLength": 1},
+                },
+                "required": ["production_id"],
+                "additionalProperties": False,
+            },
+            handler=mcp_tools_impl.production_get,
+        )
+    )
+
     return registry
 
 

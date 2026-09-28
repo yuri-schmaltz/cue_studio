@@ -1,5 +1,41 @@
 # Cue Studio Changelog
 
+## v2.3.0 — 2026-09-28 (Production Run state machine)
+
+- **Production Run persistence.** Director pipelines now persist to SQLite
+  via a new `services.production_store.ProductionStore` (WAL mode,
+  foreign keys ON, thread-safe). Three tables: `productions`, `runs`,
+  `production_events`. A pipeline that crashes mid-stage can be resumed
+  after restart; retries create new Run rows with `attempt += 1` so the
+  catalog keeps the full retry history.
+- **HTTP API** at `/api/v1/productions`:
+    - `GET  /api/v1/productions` list (filter by status, limit)
+    - `GET  /api/v1/productions/{id}` one production + its runs
+    - `GET  /api/v1/productions/{id}/runs`
+    - `GET  /api/v1/productions/{id}/events` audit log
+    - `POST /api/v1/productions/{id}/resume` resume from last completed
+    - `POST /api/v1/productions/{id}/retake` retake one stage
+- **Two new MCP tools** added to the v2.2.0 server: `productions_list`
+  and `production_get`. The tool surface is now 7 read-mostly entries.
+- **Facade module** `services.production_resume.ProductionResume` glues
+  the store with the existing `director_pipeline.resume_pipeline` so the
+  audit + retry semantics live in one place.
+- **Read-model shaper** `services.production_adapter` (port from
+  HocusPocus production_run.py) with deterministic stable ids: production
+  id is keyed on `pipeline_id`, run id on `(pipeline_id, attempt)` so
+  retries create distinct rows.
+- **80 new pytest tests** across 4 files (adapter 24, store 22, resume
+  13, router 13, MCP tools 8). 0 regressions.
+- **Dual-module singleton fix** also applied to `production_resume` so
+  launch.py and pytest share the same `ProductionStore` instance.
+
+See [docs/PRODUCTION_RUN.md](docs/PRODUCTION_RUN.md) for the API +
+schema + retention policy.
+
+Part of the HocusPocus migration plan; see
+[docs/MIGRATION_HOCUSPOCUS.md](docs/MIGRATION_HOCUSPOCUS.md). Next:
+Phase C — Wizard in-app agent.
+
 ## v2.2.0 — 2026-09-28 (MCP server preview)
 
 - **MCP server.** External agents (Cursor, Cline, Claude Code, custom scripts)

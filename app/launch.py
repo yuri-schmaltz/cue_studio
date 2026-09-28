@@ -10890,6 +10890,16 @@ try:
 except Exception as _mcp_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[mcp] router unavailable: %s", _mcp_import_err)
 
+# Production Run router (/api/v1/productions) — durable Production + Run
+# catalog with resume + retake endpoints. Phase B of the HocusPocus
+# migration; see docs/MIGRATION_HOCUSPOCUS.md.
+try:
+    from routers.productions import build_productions_router
+    api.include_router(build_productions_router())
+    _mcp_log.info("[productions] router mounted at /api/v1/productions")
+except Exception as _productions_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[productions] router unavailable: %s", _productions_import_err)
+
 # Backwards-compat re-exports — the existing test suite reaches
 # into ``launch`` for the workspace helpers. Keep the names
 # reachable so the cutover doesn't break the test surface.

@@ -146,6 +146,52 @@ def _safe_get_pipelines_dict(director_module: Any) -> dict[str, Any]:
         return {}
 
 
+# ---------------------------------------------------------------- Production tools
+
+
+def _get_production_store():
+    """Resolve the default ProductionStore (lazy import for early boot)."""
+    from app.services.production_store import ProductionStore  # type: ignore
+
+    return ProductionStore()
+
+
+def productions_list(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """List productions with optional status filter.
+
+    Read-mostly — delegates to ``services.production_store.list_productions``.
+    """
+    status = arguments.get("status")
+    try:
+        limit = int(arguments.get("limit") or 50)
+    except (TypeError, ValueError) as exc:
+        raise McpToolError(f"limit must be an integer: {exc}") from exc
+    limit = max(1, min(limit, 500))
+
+    try:
+        store = _get_production_store()
+        productions = store.list_productions(status=status, limit=limit)
+    except Exception as exc:  # pragma: no cover — defensive
+        return {"count": 0, "productions": [], "error": str(exc)}
+    return {"count": len(productions), "productions": productions}
+
+
+def production_get(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Fetch one production by id, including its runs."""
+    production_id = arguments.get("production_id")
+    if not isinstance(production_id, str) or not production_id:
+        raise McpToolError("production_id is required")
+    try:
+        store = _get_production_store()
+        production = store.get_production(production_id)
+    except Exception as exc:  # pragma: no cover — defensive
+        raise McpToolError(f"Failed to read production: {exc}") from exc
+    if production is None:
+        raise McpToolError(f"Production not found: {production_id}")
+    runs = store.list_runs(production_id)
+    return {"production": production, "runs": runs}
+
+
 # ---------------------------------------------------------------- System tools
 
 
