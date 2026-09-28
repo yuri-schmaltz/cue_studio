@@ -1,4 +1,4 @@
-import { Check, Loader2, X } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useDirectorSlice } from '../../stores/directorSelectors'
 
@@ -9,32 +9,31 @@ export type StepMeta = {
 }
 
 export const STATUS_STEPS: StepMeta[] = [
-  { id: 'upload', label: 'Upload', description: () => 'Recebendo áudio e referências' },
-  { id: 'analyze', label: 'Analyze', description: () => 'Transcrevendo áudio, detectando vozes e seções' },
-  { id: 'structure', label: 'Plan structure', description: (n) => n > 0 ? `Segmentando música em ${n} clipes e batidas` : 'Segmentando música em clipes e batidas' },
-  { id: 'style', label: 'Scene description', description: () => 'Definindo descrição da cena, personagens e estilo' },
-  { id: 'plan', label: 'Image prompts', description: (n) => n > 0 ? `LLM escrevendo prompts de imagem para ${n} clipes` : 'LLM escrevendo prompts de imagem' },
-  { id: 'review', label: 'Review image prompts', description: (n) => n > 0 ? `Revisando prompts de imagem dos ${n} clipes` : 'Revisando prompts de imagem' },
-  { id: 'generate_images', label: 'Generate images', description: (n) => n > 0 ? `Renderizando ${n} imagens iniciais` : 'Renderizando imagens iniciais' },
-  { id: 'plan_video', label: 'Video prompts', description: (n) => n > 0 ? `LLM escrevendo prompts de vídeo para ${n} clipes` : 'LLM escrevendo prompts de vídeo' },
-  { id: 'review_video', label: 'Review video prompts', description: (n) => n > 0 ? `Revisando prompts de vídeo dos ${n} clipes` : 'Revisando prompts de vídeo' },
-  { id: 'generate_videos', label: 'Generate videos', description: (n) => n > 0 ? `Renderizando ${n} vídeos finais` : 'Renderizando vídeos finais' },
+  { id: 'upload', label: 'Upload', description: () => 'Receiving audio and references' },
+  { id: 'analyze', label: 'Analyze', description: () => 'Transcribing audio, detecting voices and sections' },
+  { id: 'structure', label: 'Plan structure', description: (n) => n > 0 ? `Segmenting music into ${n} clips and beats` : 'Segmenting music into clips and beats' },
+  { id: 'style', label: 'Scene description', description: () => 'Defining scene description, characters and style' },
+  { id: 'plan', label: 'Image prompts', description: (n) => n > 0 ? `LLM writing image prompts for ${n} clips` : 'LLM writing image prompts' },
+  { id: 'review', label: 'Review image prompts', description: (n) => n > 0 ? `Reviewing image prompts of ${n} clips` : 'Reviewing image prompts' },
+  { id: 'generate_images', label: 'Generate images', description: (n) => n > 0 ? `Rendering ${n} initial images` : 'Rendering initial images' },
+  { id: 'plan_video', label: 'Video prompts', description: (n) => n > 0 ? `LLM writing video prompts for ${n} clips` : 'LLM writing video prompts' },
+  { id: 'review_video', label: 'Review video prompts', description: (n) => n > 0 ? `Reviewing video prompts of ${n} clips` : 'Reviewing video prompts' },
+  { id: 'generate_videos', label: 'Generate videos', description: (n) => n > 0 ? `Rendering ${n} final videos` : 'Rendering final videos' },
 ]
 
 /**
- * DirectorStatusPanel — Card de progresso conciso e informativo localizado
- * na base da coluna central (DirectorPlanColumn).
+ * DirectorStatusPanel — Concise, informative progress card anchored to the
+ * bottom of the central column (DirectorPlanColumn).
  *
- * Apresenta:
- * 1. Linha de status do Pipeline (processando/ocioso) com mensagem dinâmica e cancelamento.
- * 2. Indicador da Etapa atual com contagem (ex: 2/10: Analyze).
- * 3. Barra de progresso segmentada em 10 etapas com tooltips informativos e cores de estado.
+ * Presents:
+ * 1. Pipeline status line (idle/busy) with dynamic message.
+ * 2. Current step indicator with count (e.g. 2/10: Analyze).
+ * 3. Segmented 10-step progress bar with informative tooltips and state colors.
  */
 export function DirectorStatusPanel() {
   const step = useDirectorSlice('step')
   const loading = useDirectorSlice('loading')
   const loadingMessage = useDirectorSlice('loadingMessage')
-  const cancel = useStore(s => s.cancelPlan)
   const plannedClipsCount = useStore(s => s.directorPlannedClips.length)
   const imageGenProgress = useStore(s => s.directorImageGenProgress)
   const isShortFilm = useStore(s => s.directorSkill === 'short_film')
@@ -54,10 +53,10 @@ export function DirectorStatusPanel() {
 
   // Sub-status text displayed alongside the pipeline state. Only shown when there
   // is specific contextual information (e.g. image progress or a descriptive phase),
-  // avoiding redundancy with the "processando" state label.
+  // avoiding redundancy with the busy state label rendered just to the left.
   const subStatus = imageGenProgress?.total
-    ? `Imagem ${imageGenProgress.current}/${imageGenProgress.total}${imageGenProgress.currentClipLabel ? ` (${imageGenProgress.currentClipLabel})` : ''}`
-    : loadingMessage && !/^(processando|processing)[\.…]*$/i.test(loadingMessage.trim())
+    ? `Image ${imageGenProgress.current}/${imageGenProgress.total}${imageGenProgress.currentClipLabel ? ` (${imageGenProgress.currentClipLabel})` : ''}`
+    : loadingMessage && !/^(processing|busy|loading)[\.…]*$/i.test(loadingMessage.trim())
       ? loadingMessage
       : null
 
@@ -79,7 +78,7 @@ export function DirectorStatusPanel() {
             )}
             <span className="text-text-muted">Pipeline:</span>
             <span className={loading ? 'text-accent-blue font-semibold' : 'text-text-secondary font-medium'}>
-              {loading ? 'processando' : 'ocioso'}
+              {loading ? '' : 'idle'}
             </span>
           </span>
 
@@ -91,29 +90,27 @@ export function DirectorStatusPanel() {
               · {subStatus}
             </span>
           )}
-
-          {loading && (
-            <button
-              type="button"
-              onClick={() => { void cancel() }}
-              title="Interromper pipeline"
-              aria-label="Interromper pipeline"
-              className="shrink-0 p-0.5 rounded text-text-muted hover:text-red-400 hover:bg-bg-hover transition-colors ml-0.5"
-            >
-              <X size={11} />
-            </button>
-          )}
         </div>
 
-        {/* Direita: Nome da Etapa e chip com contagem 1/10 */}
+        {/* Right: Step name, inline description during loading
+            (replaces the tooltip that only appeared on chip hover) and
+            count 1/10. When idle the description stays hidden — only
+            o label + chip, mantendo o painel enxuto. */}
         <div className="flex items-center gap-1.5 shrink-0 text-2xs">
-          <span className="text-text-muted">Etapa:</span>
           <span
             className="text-text-primary font-medium truncate max-w-[180px]"
             title={activeStep.description(plannedClipsCount)}
           >
             {displayLabel}
           </span>
+          {loading && (
+            <span
+              className="text-text-muted truncate max-w-[260px]"
+              title={activeStep.description(plannedClipsCount)}
+            >
+              · {activeStep.description(plannedClipsCount)}
+            </span>
+          )}
           <span className="font-mono text-2xs px-1.5 py-0.5 rounded bg-bg-tertiary border border-border/60 text-text-secondary font-medium tabular-nums ml-0.5">
             {currentIndex + 1}/{totalSteps}
           </span>

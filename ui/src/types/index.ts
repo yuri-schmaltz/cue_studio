@@ -1919,6 +1919,8 @@ export interface PipelineListItem {
   clip_count: number
   output_count: number
   scene_description: string
+  /** Auto-derived human label, e.g. "Music Video · Sunset Drive". */
+  display_name?: string | null
   workspace: string
   thumbnail_url?: string | null
   repair_status?: PipelineRepairStatus | null

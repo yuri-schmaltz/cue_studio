@@ -491,7 +491,7 @@ export function AnalysisSummary({
 
 export function StructureView({
   plannedClips, energyBias, localBias, setLocalBias, sliderRef, setEnergyBias,
-  loading, totalClipDuration: _totalClipDuration, beatDistribution, confirmStructure, isActive, isShortFilm,
+  loading, totalClipDuration: _totalClipDuration, confirmStructure, isActive, isShortFilm,
 }: {
   plannedClips: ReturnType<typeof useStore.getState>['directorPlannedClips']
   energyBias: number
@@ -501,7 +501,6 @@ export function StructureView({
   setEnergyBias: (bias: number) => Promise<void>
   loading: boolean
   totalClipDuration: number
-  beatDistribution: string
   confirmStructure: () => void
   isActive: boolean
   isShortFilm?: boolean
@@ -600,7 +599,7 @@ export function StructureView({
   }
 
   return (
-    <div className="flex-1 flex flex-col justify-between gap-2 min-h-0 pt-0.5">
+    <div className="flex flex-col gap-2 min-h-0 pt-0.5">
       {/* Clip Bars */}
       <div className="flex gap-0.5 h-8 rounded-lg overflow-hidden w-full shrink-0 bg-bg-secondary p-1">
         {plannedClips.map((clip, i) => {
@@ -644,27 +643,6 @@ export function StructureView({
             </div>
           )
         })}
-      </div>
-
-      {/* Meta Row: beat distribution on the left, section legends on the right */}
-      <div className="flex items-center justify-between gap-2 text-2xs text-text-muted shrink-0 leading-tight">
-        {!isShortFilm && (
-          <span className="truncate font-medium text-text-secondary" title={beatDistribution}>
-            {beatDistribution}
-          </span>
-        )}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {Object.entries(sectionBarColors).map(([label, color]) => {
-            const count = plannedClips.filter(c => c.section_label === label).length
-            if (count === 0) return null
-            return (
-              <div key={label} className="flex items-center gap-1">
-                <span className={`w-2 h-2 rounded-sm ${color}`} />
-                <span>{label} ({count})</span>
-              </div>
-            )
-          })}
-        </div>
       </div>
 
       {isActive && (

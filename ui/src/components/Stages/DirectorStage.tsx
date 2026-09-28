@@ -124,8 +124,8 @@ export function DirectorStage() {
         </section>
         <aside className="director-stage-options" aria-label="Director generation options">
           {/* DirectorGenerationOptions owns its own locked-vs-unlocked body.
-              The header (with the Style Bibles shortcut and the Básico /
-              Avançado toggle) renders unconditionally so the Style Bibles
+              The header (with the Style Bibles shortcut and the Basic /
+              Expert toggle) renders unconditionally so the Style Bibles
               button stays reachable from the moment the Director opens,
               even before the user uploads audio. */}
           <DirectorGenerationOptions />

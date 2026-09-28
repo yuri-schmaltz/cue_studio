@@ -192,77 +192,13 @@ export function DirectorPlanColumn() {
     // — the actual call-to-action for picking a skill lives in the
     // chat column on the left, so repeating it here is redundant.
     //
-    // But the middle column being totally blank during the analyze
-    // step is a UX dead-zone — the user looks right and sees nothing.
-    // When we already have an analysis result, surface the headline
-    // numbers (BPM, beats, sections, lyrics preview) so the column
-    // becomes useful immediately and the user has a clear "the audio
-    // analysis succeeded" signal before the plan surfaces render.
-    //
-    // NOTE: `analysis` is the same selector already read near the top
-    // of this component (line ~58). React hooks are positional, so
-    // re-declaring it here would shift the hook count between renders
-    // and trip "Rendered fewer hooks than expected" the moment
-    // `showPlanSurfaces` flips from false → true after analyze. Use
-    // the top-level binding instead.
-    const hasAnalysis = Boolean(analysis && (
-      analysis.bpm || (analysis.sections && analysis.sections.length)
-    ))
-    if (hasAnalysis) {
-      const lyricsPreview = (analysis?.lyrics || [])
-        .slice(0, 3)
-        .map((seg) => `"${(seg.text || '').trim().slice(0, 60)}"`)
-        .filter(Boolean)
-      return (
-        <div className="h-full flex flex-col space-y-3" data-testid="director-plan-column-audio-summary">
-          <div className="flex-1 space-y-3 min-h-0">
-          <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-2">
-            <h3 className="text-xs text-text-muted uppercase tracking-wider">
-              Audio analysis
-            </h3>
-            <div className="grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <div className="text-lg font-semibold text-text-primary tabular-nums">
-                  {analysis?.bpm?.toFixed(1) ?? '—'}
-                </div>
-                <div className="text-2xs text-text-muted">BPM</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-text-primary tabular-nums">
-                  {analysis?.beats?.length ?? 0}
-                </div>
-                <div className="text-2xs text-text-muted">Beats</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-text-primary tabular-nums">
-                  {analysis?.sections?.length ?? 0}
-                </div>
-                <div className="text-2xs text-text-muted">
-                  {analysis?.sections?.length === 1 ? 'Section' : 'Sections'}
-                </div>
-              </div>
-            </div>
-            {lyricsPreview.length > 0 && (
-              <div className="pt-2 border-t border-border/60 space-y-1">
-                <div className="text-2xs text-text-muted uppercase tracking-wider">
-                  Lyrics preview
-                </div>
-                <ul className="space-y-0.5 text-2xs text-text-secondary italic">
-                  {lyricsPreview.map((line, i) => (
-                    <li key={i} className="truncate">{line}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </section>
-          <p className="text-2xs text-text-muted text-center leading-relaxed">
-            Drop a brief in the chat column to start planning clips.
-          </p>
-          </div>
-          <DirectorStatusPanel />
-        </div>
-      )
-    }
+    // The audio-analysis summary card (BPM / beats / sections / lyrics
+    // preview) used to surface here too, but the user asked to remove
+    // it from the central column entirely — the analysis state is
+    // already implied by the pipeline status panel + the chat column's
+    // CLIP STRUCTURE card, so duplicating the numbers on the right
+    // was just visual noise. Drop straight to the empty placeholder
+    // until the plan surfaces take over.
     return (
       <div className="h-full flex flex-col" data-testid="director-plan-empty">
         <div className="flex-1 flex items-center justify-center p-6 text-center">
@@ -347,10 +283,14 @@ export function DirectorPlanColumn() {
 
       {/* 5) Image generation — progress + the actual images that came
           back from the image model. Each card is tagged with the clip
-          index so the user can mentally pair it with the prompt above. */}
-      {usesShotImages && (atStep('generate_images') || pastStep('generate_images')) && (
+          index so the user can mentally pair it with the prompt above.
+          Merged with the planning card above into a single
+          "Image and video prompts" container so the central column
+          doesn't show two stacked headers during the transition from
+          LLM planning to image generation. */}
+      {usesShotImages && (atStep('generate_images') || pastStep('generate_images')) && !(pastStep('plan') || atStep('plan')) && !(usesShotImages && (atStep('review') || pastStep('review'))) && (
         <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider">Generated images</h3>
+          <h3 className="text-xs text-text-muted uppercase tracking-wider">Image and video prompts</h3>
           <ImageGenView
             loading={loading}
             imageGenProgress={imageGenProgress}

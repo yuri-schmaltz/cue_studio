@@ -263,13 +263,13 @@ export function DirectorPanel() {
               <div className="flex flex-col items-center gap-2 p-2">
                 <Music size={24} className="text-accent-blue animate-pulse" />
                 <span className="text-xs font-medium text-text-secondary truncate max-w-[240px]">{audioFile.name}</span>
-                <span className="text-2xs text-text-muted">Pronto para processamento</span>
+                <span className="text-2xs text-text-muted">Ready for processing</span>
               </div>
             ) : (
               <label className="cursor-pointer flex flex-col items-center gap-2">
                 <Upload size={24} className="text-text-muted group-hover:text-accent-blue transition-colors mb-1" />
-                <span className="text-xs font-medium text-text-secondary">Arraste seu áudio aqui</span>
-                <span className="text-2xs text-text-muted">ou clique para selecionar (.wav, .mp3, .flac, .ogg, .m4a)</span>
+                <span className="text-xs font-medium text-text-secondary">Drop your audio here</span>
+                <span className="text-2xs text-text-muted">or click to select (.wav, .mp3, .flac, .ogg, .m4a)</span>
                 <input
                   type="file"
                   accept={AUDIO_ACCEPT}
@@ -305,8 +305,8 @@ export function DirectorPanel() {
                 className="w-full h-1.5 bg-bg-secondary rounded-lg appearance-none cursor-pointer accent-accent-blue"
               />
               <div className="flex items-center justify-between text-3xs text-text-muted">
-                <span>Cortes lentos (-2)</span>
-                <span>Cortes rápidos (+2)</span>
+                <span>Slow cuts (-2)</span>
+                <span>Fast cuts (+2)</span>
               </div>
             </div>
           )}
@@ -323,13 +323,13 @@ export function DirectorPanel() {
           >
             <div className="flex items-center gap-2">
               <ChevronRight size={12} className={`text-accent-blue transition-transform duration-200 ${showAnalysisDetails ? 'rotate-90' : ''}`} />
-              <span className="font-medium text-text-primary text-2xs">Detalhes do Áudio</span>
+              <span className="font-medium text-text-primary text-2xs">Audio Details</span>
             </div>
             <div className="flex items-center gap-2 font-mono text-3xs">
               <span className="px-1.5 py-0.5 rounded bg-accent-blue/15 text-accent-blue font-medium">{analysis.bpm.toFixed(0)} BPM</span>
               <span>{formatTime(analysis.duration)}</span>
-              <span>{analysis.sections.length} seções</span>
-              {analysis.lyrics && <span>{analysis.lyrics.length} versos</span>}
+              <span>{analysis.sections.length} sections</span>
+              {analysis.lyrics && <span>{analysis.lyrics.length} lines</span>}
             </div>
           </button>
 
@@ -648,13 +648,13 @@ export function DirectorPanel() {
                               src={mapping.imagePreview}
                               alt={mapping.name || mapping.speakerId}
                               className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
-                              title="Foto de referência do speaker"
+                              title="Speaker reference photo"
                             />
                             <button
                               type="button"
                               onClick={() => setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, null, null)}
                               className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover/avatar:opacity-100 transition-opacity"
-                              title="Remover foto"
+                              title="Remove photo"
                             >
                               <X size={8} className="text-white" />
                             </button>
@@ -662,7 +662,7 @@ export function DirectorPanel() {
                         ) : (
                           <label
                             className="w-7 h-7 rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-secondary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
-                            title="Adicionar foto de referência para este speaker"
+                            title="Add reference photo for this speaker"
                           >
                             <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
                             <input
@@ -694,7 +694,7 @@ export function DirectorPanel() {
                 })}
               </div>
               <span className="text-3xs text-text-muted mt-1 block">
-                Nomeie cada speaker para manter a coerência visual entre os planos. Clique no chip para mencionar na cena.
+                Name each speaker to keep visual consistency between shots. Click the chip to mention them in the scene.
               </span>
             </div>
           )}

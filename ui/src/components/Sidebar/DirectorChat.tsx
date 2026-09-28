@@ -17,7 +17,6 @@ import {
   EnergyDot,
   ShotStatus,
   SystemBubble,
-  UserBubble,
 } from './DirectorChatBadges'
 import { DirectorErrorBanner } from './DirectorErrorBanner'
 
@@ -343,14 +342,6 @@ export function DirectorChat() {
   const [localBias, setLocalBias] = useState<number | null>(null)
   const sliderRef = useRef<number | null>(null)
   const totalClipDuration = plannedClips.length > 0 ? plannedClips[plannedClips.length - 1].end : 0
-  const beatDistribution = useMemo(() => {
-    const counts: Record<number, number> = {}
-    for (const c of plannedClips) counts[c.beat_count] = (counts[c.beat_count] || 0) + 1
-    return Object.entries(counts)
-      .sort(([a], [b]) => Number(a) - Number(b))
-      .map(([beats, count]) => `${count}x${beats}-beat`)
-      .join(', ')
-  }, [plannedClips])
 
   // Automatically plan clip structure if audio analysis exists but clips haven't been populated yet
   useEffect(() => {
@@ -717,10 +708,10 @@ export function DirectorChat() {
             setSceneDescription(res.enhanced)
           }
         }
-        setDraftQueueConfirmation('Ideia aprimorada com sucesso pelo Assistente de Direção!')
+        setDraftQueueConfirmation('Idea enhanced successfully by the Director Assistant!')
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Falha ao aprimorar ideia com IA'
+      const msg = e instanceof Error ? e.message : 'Failed to enhance idea with AI'
       console.error('Prompt wizard failed:', e)
       setScriptError(msg)
     } finally {
@@ -805,7 +796,7 @@ export function DirectorChat() {
     : step === 'upload' || step === 'analyze'
     ? isMvGenerate
       ? 'Generating your music video…'
-      : isShortFilm ? 'Upload dialogue audio to begin...' : 'Upload audio to begin...'
+      : isShortFilm ? 'Describe the scene and characters...' : 'Describe the scene and characters...'
     : step === 'style'
     ? isStoryPath
       ? 'Describe the story... e.g., Two detectives argue over evidence in a dark office.'
@@ -826,20 +817,6 @@ export function DirectorChat() {
             {headerTitle}
           </h3>
         ) : <div />}
-        <label
-          className="flex items-center gap-1.5 cursor-pointer select-none text-2xs text-text-muted hover:text-text-secondary transition-colors"
-          title="No Modo Automático, o Director executa o planejamento e dispara a geração dos vídeos sem pausas para aprovação manual"
-        >
-          <input
-            type="checkbox"
-            checked={autoMode}
-            onChange={e => setAutoMode(e.target.checked)}
-            className="w-3.5 h-3.5 rounded border-border accent-accent-blue cursor-pointer"
-          />
-          <span className={autoMode ? 'text-accent-blue font-medium' : 'text-text-muted'}>
-            Modo Automático
-          </span>
-        </label>
       </header>
 
       {/* Field container */}
@@ -892,15 +869,36 @@ export function DirectorChat() {
         )}
       </div>
 
-      {/* Action buttons row — immediately below the field, 4 equal-width buttons filling 100% horizontal width */}
-      <div className="grid grid-cols-4 gap-2 w-full shrink-0">
+      {/* Action buttons row — immediately below the field, 5 equal-width
+          buttons filling 100% horizontal width. The leftmost button
+          toggles "Auto Mode" so the user can flip it on/off from
+          the same surface where they fire the Director project; it
+          highlights in accent-blue when active and falls back to a
+          neutral border when inactive. */}
+      <div className="grid grid-cols-5 gap-2 w-full shrink-0">
+        <button
+          type="button"
+          onClick={() => setAutoMode(!autoMode)}
+          title="In Auto Mode, the Director runs planning and triggers video generation without pausing for manual approval"
+          aria-label={`Auto Mode ${autoMode ? 'on' : 'off'}`}
+          aria-pressed={autoMode}
+          className={`w-full h-9 flex items-center justify-center p-2 rounded-lg transition-colors shadow-sm border ${
+            autoMode
+              ? 'bg-accent-blue border-accent-blue text-white hover:bg-accent-blue-hover'
+              : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary hover:border-border-light'
+          }`}
+        >
+          <Sparkles size={12} />
+          <span className="text-2xs font-semibold uppercase tracking-wider">Auto</span>
+        </button>
+
         <button
           type="button"
           onClick={() => void handlePromptWizard()}
           disabled={!chatInputEnabled || wizardLoading}
           className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-          title={wizardLoading ? 'Aprimorando ideia com o Assistente de Direção...' : 'Assistente de Direção / Prompt Wizard'}
-          aria-label={wizardLoading ? 'Aprimorando ideia com o Assistente de Direção...' : 'Assistente de Direção / Prompt Wizard'}
+          title={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
+          aria-label={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
         >
           {wizardLoading ? (
             <Loader2 size={16} className="animate-spin" />
@@ -973,7 +971,7 @@ export function DirectorChat() {
               }}
               className="underline hover:text-white transition-colors ml-2 shrink-0 cursor-pointer text-text-primary"
             >
-              Desfazer
+              Undo
             </button>
           )}
         </div>
@@ -1027,52 +1025,70 @@ export function DirectorChat() {
 
         {skill && (!isShortFilm || shortFilmPath === 'audio') && (atStep('upload') || atStep('analyze') || pastStep('analyze')) && (
           <SystemBubble className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 min-h-0 flex flex-col space-y-3">
-              {/* Music Video: 4 tabs row (Upload, Generate, References, Description) */}
-              {!isShortFilm && (
-                <DirectorAudioSourceTabs
-                  activeTab={activeTab}
-                  onTabChange={(t) => {
-                    setActiveTab(t)
-                  }}
-                />
-              )}
-
-              {/* 1. MUSIC TAB (merged Upload + Generate) */}
+            {/* On the Description tab the inner column would be empty
+                (the composer is rendered as a sibling below), so we
+                hide it. Otherwise its flex-1 would steal half the
+                SystemBubble height, leaving a large blank gap above
+                the composer. Music/References keep the column. */}
+            {activeTab !== 'description' && (
+              <div className="flex-1 min-h-0 flex flex-col space-y-3">
+                {!isShortFilm && (
+                  <DirectorAudioSourceTabs
+                    activeTab={activeTab}
+                    onTabChange={(t) => {
+                      setActiveTab(t)
+                    }}
+                  />
+                )}
+                {/* 1. MUSIC TAB (single Upload + Generate surface) */}
+              {/* 1. MUSIC TAB (single Upload + Generate surface) */}
               {!isShortFilm && activeTab === 'music' && (
                 <div className="flex-1 min-h-0 flex flex-col gap-3">
-                  {/* Music source toggle: Upload / Gerar */}
-                  <div className="shrink-0 flex gap-1.5">
+                  {/* Upload / Generate sub-tabs. musicSource is the
+                      store key that already controlled the audio source
+                      for Music Video before the refactor — null means
+                      "no choice yet", which falls back to 'upload' by
+                      default to preserve the legacy behavior. */}
+                  <div role="tablist" aria-label="Music source" className="shrink-0 grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={(musicSource ?? 'upload') === 'upload'}
                       onClick={() => setMusicSource('upload')}
-                      className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border text-xs font-medium transition-colors ${
-                        musicSource === 'upload'
-                          ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
-                          : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
+                      className={`flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs font-medium transition-colors border ${
+                        (musicSource ?? 'upload') === 'upload'
+                          ? 'bg-accent-blue/15 border-accent-blue/50 text-accent-blue'
+                          : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary hover:border-border-light'
                       }`}
                     >
-                      <Music size={12} className={musicSource === 'upload' ? 'text-white' : 'text-text-muted'} />
-                      <span>Upload</span>
+                      <Upload size={12} />
+                      Upload
                     </button>
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={musicSource === 'generate'}
                       onClick={() => setMusicSource('generate')}
-                      className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md border text-xs font-medium transition-colors ${
+                      className={`flex items-center justify-center gap-1.5 h-8 rounded-lg text-xs font-medium transition-colors border ${
                         musicSource === 'generate'
-                          ? 'border-violet-600 bg-violet-600 text-white shadow-sm'
-                          : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
+                          ? 'bg-violet-500/15 border-violet-500/50 text-violet-400'
+                          : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary hover:border-border-light'
                       }`}
                     >
-                      <Sparkles size={12} className={musicSource === 'generate' ? 'text-white' : 'text-text-muted'} />
-                      <span>Gerar</span>
+                      <Wand2 size={12} />
+                      Generate
                     </button>
                   </div>
 
-                  {/* Row: 1/4 upload zone + 3/4 music model card */}
-                  <div className="shrink-0 flex gap-2">
-                    {/* 1/4 — Upload/Drop zone */}
-                    <div className="w-1/4 shrink-0">
+                  {/* Surface exclusive per sub-tab: Upload renders only
+                      the UploadZone; Generate renders only the Music Model
+                      card (DirectorSongSetup), where the user picks the
+                      music generator (ACE-Step, MiniMax-Music3, etc).
+                      The 1+2 grid is gone — each sub-tab has its own
+                      96px-tall surface, aligned with the References tab
+                      card. */}
+                  {(musicSource ?? 'upload') === 'upload' ? (
+                    <div className="shrink-0">
                       <UploadZone
                         dragOver={dragOver}
                         setDragOver={setDragOver}
@@ -1084,9 +1100,9 @@ export function DirectorChat() {
                         isShortFilm={isShortFilm}
                       />
                     </div>
-                    {/* 3/4 — Music Model card */}
-                    <div className="flex-1 min-w-0">
-                      {musicSource === 'generate' && loading && !audioFile ? (
+                  ) : (
+                    <div className="shrink-0 h-[96px]">
+                      {loading && !audioFile ? (
                         <div className="h-full bg-bg-tertiary rounded-lg p-3 border border-border flex items-center justify-center gap-2.5">
                           <Loader2 size={16} className="animate-spin text-violet-400" />
                           <span className="text-xs text-text-secondary font-medium">
@@ -1094,13 +1110,45 @@ export function DirectorChat() {
                           </span>
                         </div>
                       ) : (
-                        <DirectorSongSetup hideSongLength={musicSource === 'upload'} />
+                        <DirectorSongSetup hideSongLength={false} />
                       )}
                     </div>
-                  </div>
+                  )}
 
-                  {/* Generate mode: song description composer */}
-                  {mvGenerateSetup && !audioFile && renderComposer()}
+                  {/* Clip Structure card moved above the Voices & Characters card so
+                      the planning surface (clips, pacing) sits visually
+                      closer to the model/upload row, and the speaker
+                      panel sits right above the description composer. */}
+                  {!isStoryPath && (
+                    <section className="shrink-0 min-h-[110px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
+                      <header className="flex items-center justify-between gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                            {isShortFilm ? 'Scene structure' : 'Clip structure'}
+                          </h3>
+                          {plannedClips.length > 0 && (
+                            <span className="text-2xs text-text-muted font-normal shrink-0">
+                              ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
+                            </span>
+                          )}
+                        </div>
+                      </header>
+                      <StructureView
+                        plannedClips={plannedClips}
+                        energyBias={energyBias}
+                        localBias={localBias}
+                        setLocalBias={setLocalBias}
+                        sliderRef={sliderRef}
+                        setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
+                        loading={loading}
+                        totalClipDuration={totalClipDuration}
+                        confirmStructure={confirmStructure}
+                        isActive={atStep('structure')}
+                        isShortFilm={isShortFilm}
+                      />
+                      <DirectorTimelineEditor />
+                    </section>
+                  )}
 
                   {/* Voices & Characters card */}
                   <section className="h-[270px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col shrink-0">
@@ -1127,38 +1175,6 @@ export function DirectorChat() {
                       />
                     </div>
                   </section>
-
-                  {!isStoryPath && (
-                    <section className="flex-1 min-h-[110px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col justify-between overflow-hidden gap-2">
-                      <header className="flex items-center justify-between gap-2 shrink-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
-                            {isShortFilm ? 'Scene structure' : 'Clip structure'}
-                          </h3>
-                          {plannedClips.length > 0 && (
-                            <span className="text-2xs text-text-muted font-normal shrink-0">
-                              ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
-                            </span>
-                          )}
-                        </div>
-                      </header>
-                      <StructureView
-                        plannedClips={plannedClips}
-                        energyBias={energyBias}
-                        localBias={localBias}
-                        setLocalBias={setLocalBias}
-                        sliderRef={sliderRef}
-                        setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
-                        loading={loading}
-                        totalClipDuration={totalClipDuration}
-                        beatDistribution={beatDistribution}
-                        confirmStructure={confirmStructure}
-                        isActive={atStep('structure')}
-                        isShortFilm={isShortFilm}
-                      />
-                      <DirectorTimelineEditor />
-                    </section>
-                  )}
                 </div>
               )}
 
@@ -1180,12 +1196,12 @@ export function DirectorChat() {
                 </div>
               )}
 
-              {/* 4. DESCRIPTION TAB */}
-              {!isShortFilm && activeTab === 'description' && (
-                <div className="flex-1 min-h-0 flex flex-col">
-                  {renderComposer('SCENE DESCRIPTION', true)}
-                </div>
-              )}
+              {/* 4. DESCRIPTION TAB was consolidated: the description
+                  composer is now anchored to the bottom of the chat
+                  column (rendered inside the same SystemBubble below)
+                  so it is reachable from any active tab. The tab
+                  itself remains in the header for navigation; it just
+                  no longer owns the composer. */}
 
               {isShortFilm && referenceImage && (
                 <CharacterNaming
@@ -1194,6 +1210,33 @@ export function DirectorChat() {
                 />
               )}
             </div>
+            )}
+
+            {/* Composer fills the Description tab entirely — no
+                horizontal divider, no anchoring to the bottom, no
+                competing surfaces. The wrapper passes fillSpace=true
+                so the textarea inside renderComposer stretches to
+                take every remaining pixel below the Auto Mode header.
+                The tabs row above is hidden on this tab so the
+                composer does not share vertical space with it. */}
+            {activeTab === 'description' && (
+              <div className="flex-1 min-h-0 flex flex-col space-y-3">
+                <DirectorAudioSourceTabs
+                  activeTab={activeTab}
+                  onTabChange={(t) => setActiveTab(t)}
+                />
+                {/* Composer do Description tab. flex-1 + min-h-0 deixa
+                    let the block grow to fill all available vertical
+                    space above the tabs; the inner textarea
+                    (renderComposer with fillSpace=true) uses h-full
+                    to stretch to the bottom. No border-t — the line
+                    horizontal entre as abas e o textarea foi removida
+                    porque duplicava visualmente o separador do card. */}
+                <div className="flex-1 min-h-0 flex flex-col pt-2.5 -mb-2">
+                  {renderComposer(undefined, true)}
+                </div>
+              </div>
+            )}
           </SystemBubble>
         )}
 
@@ -1271,15 +1314,6 @@ export function DirectorChat() {
             </div>
           </SystemBubble>
         )}
-        {isStoryPath && pastStep('style') && referenceImage && refImagePreview && (
-          <UserBubble>
-            <div className="flex items-center gap-2 text-xs text-text-primary">
-              <img src={refImagePreview} alt="Ref" className="w-8 h-8 object-cover rounded border border-border" />
-              <span>{shortFilmTargetDuration}s film</span>
-            </div>
-          </UserBubble>
-        )}
-
         {/* Plan / review / generate steps (StyleForm textarea + speakers,
             planning streams, image prompts review, image gen progress,
             plan_video stream, video prompts review) all moved to the
@@ -1411,7 +1445,7 @@ function UploadZone({
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      className={`rounded-lg transition-colors relative w-full h-[96px] flex items-center justify-center shrink-0 ${
+      className={`rounded-lg transition-colors relative w-full h-[96px] flex items-center justify-center shrink-0 overflow-hidden ${
         audioFile
           ? 'border border-border bg-bg-tertiary/70 p-3'
           : `border-2 border-dashed p-4 text-center ${
@@ -1419,6 +1453,16 @@ function UploadZone({
             }`
       }`}
     >
+      {/* Watermark: lucide Music glyph rendered as a faint backdrop so the
+          card has visual identity even before any file is dropped or after
+          one is loaded. Positioned absolute + pointer-events-none so it
+          never intercepts drag/drop or click events. */}
+      <Music
+        aria-hidden="true"
+        size={56}
+        strokeWidth={1.25}
+        className="pointer-events-none absolute inset-0 m-auto text-text-muted/10"
+      />
       {audioFile ? (
         <>
           <button
@@ -1431,9 +1475,6 @@ function UploadZone({
             <X size={12} />
           </button>
           <div className="flex items-center justify-center gap-2.5 px-6 w-full min-w-0">
-            <div className="w-7 h-7 rounded-md bg-accent-blue/15 text-accent-blue flex items-center justify-center shrink-0">
-              <Music size={14} />
-            </div>
             <span
               className="text-xs text-text-primary truncate font-medium"
               title={audioFile.name}
@@ -1447,10 +1488,8 @@ function UploadZone({
           <Loader2 size={20} className="animate-spin text-accent-blue" />
         </div>
       ) : (
-        <label className="cursor-pointer flex flex-col items-center gap-1.5 w-full">
-          <Music size={20} className="text-accent-blue/60" />
-          <span className="text-xs text-text-secondary">{isShortFilm ? 'Drop dialogue audio or click to upload' : 'Drop a song or video or click to upload'}</span>
-          <span className="text-2xs text-text-muted">MP3, WAV, FLAC, MP4, M4A</span>
+        <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full">
+          <span className="text-xs text-text-secondary text-center px-1">{isShortFilm ? 'Drop dialogue audio or click to upload' : 'Drop a song or video or click to upload'}</span>
           <input
             type="file"
             accept={AUDIO_ACCEPT}
@@ -1576,15 +1615,19 @@ function ReferenceImageUpload({
   return (
     <div className="space-y-2">
       {referenceImage && refImagePreview ? (
-        /* Reference loaded state: generous preview height (160px) to clearly
-           view the visual anchor; `object-contain` preserves the full image
-           aspect ratio with clean rounded borders. */
-        <div className="relative h-[160px] flex items-center justify-center bg-bg-tertiary rounded-lg border border-border overflow-hidden">
+        /* Reference loaded state: card locks at h-[160px] and uses
+           object-cover with bg-bg-tertiary as fallback so the image
+           fills the whole rectangle without black bars on the sides
+           (which appeared with object-contain when the image was
+           wider than tall). The "click to change" label disappears
+           once the image is confirmed on the backend — the "Uploaded"
+           chip continues to show at the bottom. */
+        <div className="relative h-[160px] w-full bg-bg-tertiary rounded-lg border border-border overflow-hidden shrink-0">
           <label className="cursor-pointer block w-full h-full">
             <img
               src={refImagePreview}
               alt="Reference"
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
               title="Click to change photo"
             />
             <input
@@ -1607,10 +1650,12 @@ function ReferenceImageUpload({
           </span>
         </div>
       ) : (
-        /* Empty state: comfortable card height (110px); flex centering
-           pulls the icon + helper text cleanly to the visual middle. */
+        /* Empty state: fixed 96px height matches the Music tab's
+           UploadZone so the two upload cards line up perfectly across
+           Music and References. Flex centering keeps the icon + helper
+           text visually in the middle. */
         <label
-          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center min-h-[110px] flex items-center justify-center transition-colors ${
+          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center h-[96px] flex items-center justify-center transition-colors ${
             dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
           }`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -2261,7 +2306,7 @@ function DirectorGenerationOptionsHeader({
     <header className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
       <div className="flex items-center gap-2">
         <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-          Opções de Geração
+          Generation Options
         </h3>
         <button
           type="button"
@@ -2275,7 +2320,7 @@ function DirectorGenerationOptionsHeader({
           Style Bibles
         </button>
       </div>
-      {/* Toggle Básico vs Avançado */}
+      {/* Toggle Basic vs Expert */}
       <div className="inline-flex p-0.5 rounded-md bg-bg-tertiary border border-border/60 text-2xs">
         <button
           type="button"
@@ -2286,7 +2331,7 @@ function DirectorGenerationOptionsHeader({
               : 'text-text-muted hover:text-text-primary'
           }`}
         >
-          Básico
+          Basic
         </button>
         <button
           type="button"
@@ -2297,15 +2342,15 @@ function DirectorGenerationOptionsHeader({
               : 'text-text-muted hover:text-text-primary'
           }`}
         >
-          Avançado
+          Expert
         </button>
       </div>
     </header>
   )
 }
 
-/** Wrapper that owns the generation-options state (Básico vs
- *  Avançado, Style Bibles modal) and renders the always-visible
+/** Wrapper that owns the generation-options state (Basic vs
+ *  Expert, Style Bibles modal) and renders the always-visible
  *  header plus the conditional body. The body is the locked preview
  *  before audio upload and the full option accordion after. Splitting
  *  the header out keeps the Style Bibles button accessible in both
@@ -2324,7 +2369,7 @@ export function DirectorGenerationOptions() {
     const model = s.models.find(item => item.model_type === selected)
     return directorModelUsesFixedMediaStrength(selected, model?.architecture)
   })
-  // Rodapé selectors — kept as primitives so Zustand's default ===
+  // Footer selectors — kept as primitives so Zustand's default ===
   // equality check works (otherwise returning a fresh object each call
   // would trigger an infinite re-render). Each selector picks one
   // scalar, so the column re-renders only when the model changes or
@@ -2357,15 +2402,16 @@ export function DirectorGenerationOptions() {
       {/* Body: locked preview before upload, full controls after. */}
       {audioFile ? (
         <div className="flex-1 space-y-3 min-h-0 overflow-y-auto pr-1 -mr-1">
-          {/* Controles de LoRAs (sempre úteis) */}
+          {/* LoRA controls (always useful) */}
           <DirectorLoraAccordion />
 
-          {/* Em modo Básico, os parâmetros profundos de atenção e multiplicadores ficam recolhidos; em Expert, abertos para edição */}
+          {/* In Basic mode, the deep attention and multiplier parameters stay
+              collapsed; in Expert mode, they expand for editing. */}
           {optionsViewMode === 'expert' ? (
             <DirectorAdvancedAccordion />
           ) : (
             <div className="rounded-lg border border-border/40 bg-bg-tertiary/40 p-2 text-2xs text-text-muted text-center">
-              Modo Básico ativo: parâmetros de atenção e latência usam as melhores recomendações automáticas do modelo.
+              Basic mode active: attention and latency parameters use the model's best automatic recommendations.
             </div>
           )}
 
@@ -2402,13 +2448,14 @@ export function DirectorGenerationOptions() {
   )
 }
 
-/** Rodapé da coluna de Opções de Geração — faixa fina que se estende
- *  até a base da coluna mostrando o modelo de vídeo selecionado
- *  (resolvido para o nome amigável do `ModelDef`) e o uso de VRAM
- *  atual/total quando o GPU está disponível. `mt-auto` empurra o
- *  rodapé para o fundo do flex column independente do tamanho do
- *  body (accordion recolhido ou expandido). A borda-t hairline-thin
- *  separa o rodapé do conteúdo sem competir com a borda do card. */
+/** Footer of the Generation Options column — thin strip that extends
+ *  to the bottom of the column showing the selected video model
+ *  (resolved to the friendly name from `ModelDef`) and the current/total
+ *  VRAM usage when the GPU is available. `mt-auto` pushes the footer to
+ *  the bottom of the flex column regardless of the size of the body
+ *  (collapsed or expanded accordion). The hairline-thin top border
+ *  separates the footer from the content without competing with the
+ *  card's border. */
 function DirectorGenerationOptionsRodape({
   modelName,
   architecture,
@@ -2445,7 +2492,7 @@ function DirectorGenerationOptionsRodape({
             </span>
           </>
         ) : (
-          <span className="text-text-muted/60">VRAM indisponível</span>
+          <span className="text-text-muted/60">VRAM unavailable</span>
         )}
       </span>
     </div>
@@ -2453,7 +2500,7 @@ function DirectorGenerationOptionsRodape({
 }
 
 /** Header-only variant so DirectorStage can render the column chrome
- *  (title + Style Bibles shortcut + Básico/Avançado toggle) before
+ *  (title + Style Bibles shortcut + Basic/Expert toggle) before
  *  audio is uploaded without showing the locked-preview placeholder.
  *  Currently unused; kept exported so callers that want the chrome
  *  without the body can opt in. */
@@ -2539,7 +2586,7 @@ export function StyleForm({
     return (
       <div className="flex items-center gap-2 py-1 text-2xs text-text-muted">
         <Users size={13} className="text-text-muted/50 shrink-0" />
-        <span>No voices or characters detected in audio (instrumental track).</span>
+        <span>Instrumental track — no voices detected.</span>
       </div>
     )
   }
@@ -2598,7 +2645,7 @@ export function StyleForm({
                   </div>
                 ) : (
                   <label
-                    className="w-7 h-7 rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-tertiary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                    className="w-[26px] h-[26px] rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-tertiary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors self-center"
                     title="Upload reference photo for this speaker"
                   >
                     <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
@@ -2626,9 +2673,6 @@ export function StyleForm({
               )}
             </div>
           ))}
-          <span className="text-2xs text-text-muted mt-1 block">
-            Name each speaker so the director knows who to show. Click a chip to insert into description.
-          </span>
         </div>
       )}
     </div>
@@ -2725,9 +2769,12 @@ export function ImagePromptsReview({
         )}
       </div>
 
-      {/* No inner scroll — the chat panel handles scrolling. The list
-          extends to the natural total height of all clip cards. */}
-      <div className="space-y-2">
+      {/* Fixed-height list: 3 clip cards visible at once, vertical
+          scrollbar for the rest. max-h matches ~3 cards (~120px each
+          = ~360px) plus a little breathing room; overflow-y-auto keeps
+          the card stack predictable in the central column instead of
+          stretching the whole chat panel. */}
+      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
         {clipPlans.slice(0, visibleClipCount).map((plan, i) => {
           const clip = plannedClips[i]
           const image = clipImages.find(item => item.clipIndex === i)
@@ -3030,10 +3077,10 @@ export function VideoPromptsReview({
     setExportMessage(null)
     try {
       const res = await rejoinPipelineClips(pipelineId) as { filename?: string }
-      setExportMessage(`Vídeo exportado com sucesso: ${res?.filename || 'concluído'}`)
+      setExportMessage(`Video exported successfully: ${res?.filename || 'done'}`)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Falha ao exportar vídeo'
-      setExportMessage(`Erro: ${msg}`)
+      const msg = err instanceof Error ? err.message : 'Failed to export video'
+      setExportMessage(`Error: ${msg}`)
     } finally {
       setIsExporting(false)
     }
@@ -3158,10 +3205,10 @@ export function VideoPromptsReview({
                     type="button"
                     onClick={() => regenerateClip(i)}
                     className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
-                    title={`Re-renderizar apenas o vídeo do Clip ${i + 1}`}
+                    title={`Re-render only Clip ${i + 1} video`}
                     aria-label={`Regenerate Clip ${i + 1} video`}
                   >
-                    <RotateCcw size={10} /> Re-roll deste clip
+                    <RotateCcw size={10} /> Re-roll this clip
                   </button>
                 )}
                 {clipIsRegenerating && (
@@ -3240,7 +3287,7 @@ export function VideoPromptsReview({
                     value={plan.video_prompt}
                     onChange={e => editClipPlan(i, 'video_prompt', e.target.value)}
                     rows={3}
-                    placeholder="Descreva o movimento de câmera e ação do vídeo..."
+                    placeholder="Describe the camera movement and video action..."
                     className="w-full bg-bg-secondary border border-border rounded px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors"
                   />
                 </div>
@@ -3306,10 +3353,10 @@ export function VideoPromptsReview({
             onClick={() => void handleExportFullVideo()}
             disabled={isExporting || isGenerating}
             className="w-full py-2 rounded-lg border border-accent-blue/40 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-            title="Concatenar todos os clipes e mixar a trilha de áudio original completa"
+            title="Concatenate all clips and mix the full original audio track"
           >
             {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Film size={12} />}
-            {isExporting ? 'Exportando e mixando áudio...' : 'Exportar Vídeo Completo (Concat + Áudio)'}
+            {isExporting ? 'Exporting and mixing audio...' : 'Export Full Video (Concat + Audio)'}
           </button>
         )}
         {exportMessage && (

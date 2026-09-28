@@ -1070,6 +1070,79 @@ _STYLE_DESCRIBE_PROMPT = (
 )
 
 
+_PIPELINE_TYPE_LABELS = {
+    "music_video": "Music Video",
+    "short_film_audio": "Short Film",
+    "short_film_story": "Short Film",
+    "viral_video": "Viral Video",
+    "podcast": "Podcast",
+    "tutorial": "Tutorial",
+}
+
+# Prepositions / articles to drop when picking a friendly title fragment.
+# Keeps the "headline" punchy and avoids "...the and a..." noise.
+_PIPELINE_TITLE_STOPWORDS = frozenset({
+    "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into",
+    "of", "on", "onto", "or", "over", "so", "the", "to", "up", "with", "yet",
+})
+
+
+def _friendly_pipeline_name(
+    pipeline_type: str,
+    scene_description: str,
+    created_at: Optional[float],
+) -> str:
+    """Build a short, human-friendly pipeline label for the Dashboard.
+
+    Returns something like ``"Music Video · Sunset Drive"`` or, when the
+    scene description is empty, ``"Music Video · Run 28 Sep 14:32"``.
+    The label is intentionally short so the Dashboard ``<select>`` stays
+    scannable; full detail still lives in the pipeline card.
+    """
+    workflow_label = _PIPELINE_TYPE_LABELS.get(
+        str(pipeline_type or "").strip(),
+        str(pipeline_type or "").replace("_", " ").strip().title() or "Director",
+    )
+
+    desc = re.sub(r"\s+", " ", str(scene_description or "").strip())
+    title = ""
+    if desc:
+        # First sentence / first line only — a description that begins with a
+        # title-case clause should still surface it as the "headline".
+        head = desc.split(".")[0].split("\n")[0].strip(" -:;\"'")
+        # Strip quote marks the planner often leaves around the title.
+        head = head.strip("“”‘’\"'")
+        # Title-case while preserving already-uppercase abbreviations.
+        words = []
+        for token in head.split(" "):
+            cleaned = token.strip(",;:()[]")
+            if not cleaned:
+                continue
+            if cleaned.isupper() and len(cleaned) <= 5:
+                words.append(cleaned)
+            else:
+                words.append(cleaned[:1].upper() + cleaned[1:])
+        # Drop the leading stopwords so "The morning drive" → "Morning Drive".
+        while words and words[0].lower().strip(",;:()[]") in _PIPELINE_TITLE_STOPWORDS:
+            words.pop(0)
+        candidate = " ".join(words).strip(" ,;:.-—")
+        if candidate and len(candidate) >= 2:
+            title = candidate[:48].rstrip(" ,;:.-—")
+            if len(candidate) > 48:
+                title = title.rsplit(" ", 1)[0] + "…"
+
+    if not title:
+        if created_at:
+            stamp = time.strftime(
+                "%d %b %H:%M", time.localtime(float(created_at))
+            ).lstrip("0").replace(" 0", " ")
+            title = f"Run · {stamp}"
+        else:
+            title = "Untitled run"
+
+    return f"{workflow_label} · {title}"
+
+
 def _normalize_style_phrase(raw: str) -> str:
     """Reduce the vision LLM's style answer to a clean, prefix-able phrase.
 
@@ -1305,6 +1378,17 @@ def _save_pipeline_state_locked(pid: str) -> bool:
         "workspace": p.get("workspace") or "default",
         "pipeline_type": params.get("pipeline_type", "music_video"),
         "scene_description": params.get("scene_description", ""),
+        # Auto-derived human label for the Dashboard selector. Kept on
+        # the state so it stays stable across reloads even if the user
+        # never edits the scene description. Pipeline chips in the UI
+        # rely on this — falling back to the type/date pair would make
+        # multiple "Music Video · Run 28 Sep 14:32" entries impossible
+        # to distinguish at a glance.
+        "display_name": _friendly_pipeline_name(
+            params.get("pipeline_type", "music_video"),
+            params.get("scene_description", ""),
+            p.get("created_at"),
+        ),
         "reference_image_path": params.get("reference_image_path"),
         # A no-reference run creates its own visual anchor inside the output
         # directory.  Keep the basename separate from the user's input path so
@@ -1450,6 +1534,11 @@ def list_pipeline_states(out_dir: str) -> list[dict]:
                         "clip_count": len(data.get("clips", [])),
                         "output_count": len(data.get("output_files", [])),
                         "scene_description": (data.get("scene_description", "") or "")[:100],
+                        "display_name": data.get("display_name") or _friendly_pipeline_name(
+                            data.get("pipeline_type", ""),
+                            data.get("scene_description", "") or "",
+                            data.get("created_at"),
+                        ),
                         "workspace": os.path.basename(scan_dir) if scan_dir != out_dir else "default",
                         "repair_status": (data.get("repair") or {}).get("status"),
                         "_filepath": filepath,
@@ -4878,6 +4967,15 @@ def start_pipeline(params: dict) -> str:
     # happened after planning, so a process crash during the longest LLM pass
     # left nothing for the Dashboard to reopen or resume.
     _save_pipeline_state(pid)
+
+    # Register-only mode: record the pipeline so a browser refresh can
+    # recover it, but skip the worker. Used by the v2 plan endpoint when
+    # the Director orchestrates planning + image gen itself instead of
+    # delegating to the full pipeline worker. The pipeline stays in
+    # `running` so the frontend can keep polling; subsequent phases
+    # (render / validate) update the state through the regular channels.
+    if params.get("register_only"):
+        return pid
 
     # Non-daemon so pipeline survives browser disconnect during overnight runs.
     _start_pipeline_worker(pid)

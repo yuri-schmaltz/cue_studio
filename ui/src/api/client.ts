@@ -21,14 +21,15 @@ export function setApiKey(token: string | null): void {
       localStorage.removeItem(API_KEY_STORAGE_KEY)
     }
   } catch {
-    // LocalStorage indisponível em alguns ambientes restritos
+    // LocalStorage unavailable in some restricted environments
   }
 }
 
-// Monkey-patch nativo do fetch no escopo do client para garantir que todas as chamadas
-// transparentemente recebam o Bearer token quando configurado. O patch só roda em
-// ambientes com `window` (browser); em Node (testes unitários que bundleam o store)
-// o fetch do runtime permanece intacto para que bundlers consigam resolver o módulo.
+// Native fetch monkey-patch scoped to the client to ensure every call
+// transparently receives the Bearer token when configured. The patch only
+// runs in environments with `window` (browser); in Node (unit tests that
+// bundle the store) the runtime fetch stays intact so bundlers can resolve
+// the module.
 if (typeof window !== 'undefined') {
   const _originalFetch = window.fetch.bind(window)
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -1371,12 +1372,23 @@ export interface DirectorV2PlanRequest {
   style?: string
   prompt_type?: string
   director_flags?: Record<string, boolean>
+  /** When provided, the backend also registers a Director pipeline
+   *  (register_only=True) so a browser refresh mid-plan can recover.
+   *  `params` is forwarded to start_pipeline as-is. */
+  register_pipeline?: {
+    enable: boolean
+    params: Record<string, unknown>
+  }
 }
 
 export interface DirectorV2PlanResponse {
   clip_plans: Array<{ video_prompt: string; image_prompt: string }>
   production_plan: ProductionPlan
   skill_type: string
+  /** Optional Director pipeline_id registered for this v2 plan.
+   *  When present, the frontend can use it to attach the existing
+   *  pipeline record so a browser refresh mid-plan can recover state. */
+  pipeline_id?: string | null
 }
 
 export async function directorV2Plan(

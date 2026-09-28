@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../../stores/useStore'
-import { formatDuration, formatTimecode, parseTimecode } from '../../lib/durationPlanning'
+import { formatTimecode, parseTimecode } from '../../lib/durationPlanning'
 
 const DIRECTOR_MUSIC_MODEL_ORDER = [
   'ace_step_v1_5_xl_sft_lm_4b',
   'minimax_music3',
 ]
 
-// Director Music Video — "Generate a track" up-front options. The description
-// itself is typed into the bottom composer (its Send button kicks off the whole
-// write-song → render → analyze → video chain), so this panel cleanly frames the
-// model selection, instrumental mode, and target song duration.
+// Director Music Video — single card that frames the music model selection,
+// the instrumental toggle, and the custom exact duration. The composer below
+// owns the descriptive prompt; this panel intentionally stays narrow.
+//
+// Layout: model <select> (with a per-model category chip under each option)
+// shares the same row as the exact-time input, so the whole "pick a model +
+// pick a length" decision fits on one line. The historical preset row
+// (30s/1m/2m/…) was removed to make room for the inline time field.
 export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?: boolean }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const models = useStore(s => s.models)
@@ -22,32 +26,23 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
   const setInstrumental = useStore(s => s.setDirectorSongInstrumental)
   const duration = useStore(s => s.directorSongDuration)
   const setDuration = useStore(s => s.setDirectorSongDuration)
+  // _customText is local draft state for the mm:ss field. We commit on blur
+  // or Enter; Escape reverts the draft to whatever the store currently holds.
+  const [customText, setCustomText] = useState<string | null>(null)
+  const isCustom = customText !== null
 
   const musicModels = DIRECTOR_MUSIC_MODEL_ORDER
     .map(modelType => models.find(model => model.model_type === modelType))
     .filter(model => model != null)
     .filter(model => enabledModels.has(model.model_type))
     .filter(model => !model.nsfw_only || nsfwMode)
+
   const effectiveModel = musicModels.some(model => model.model_type === musicModel)
     ? musicModel
     : (musicModels[0]?.model_type || '')
   const selectedModel = musicModels.find(model => model.model_type === effectiveModel)
   const isMusic3 = selectedModel?.architecture === 'minimax_music3'
   const maximumDuration = isMusic3 ? 300 : 360
-
-  const songPresets = [
-    { label: '30s', seconds: 30 },
-    { label: '1m', seconds: 60 },
-    { label: '2m', seconds: 120 },
-    { label: '3m', seconds: 180 },
-    { label: '4m', seconds: 240 },
-    { label: '5m', seconds: 300 },
-    ...(maximumDuration >= 360 ? [{ label: '6m', seconds: 360 }] : []),
-  ]
-
-  const isPresetMatch = songPresets.some(p => p.seconds === duration)
-  const [isCustom, setIsCustom] = useState(!isPresetMatch)
-  const [customText, setCustomText] = useState<string | null>(null)
 
   useEffect(() => {
     if (effectiveModel && effectiveModel !== musicModel) {
@@ -59,19 +54,6 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
     const bounded = Math.min(maximumDuration, Math.max(5, duration))
     if (bounded !== duration) setDuration(bounded)
   }, [duration, maximumDuration, setDuration])
-
-  const handleSelectPreset = (secs: number) => {
-    setIsCustom(false)
-    setCustomText(null)
-    setDuration(secs)
-  }
-
-  const handleSelectCustom = () => {
-    setIsCustom(true)
-    setCustomText(formatTimecode(duration).slice(3))
-    inputRef.current?.focus()
-    inputRef.current?.select()
-  }
 
   const handleCommitCustom = () => {
     const text = (customText ?? formatTimecode(duration).slice(3)).trim()
@@ -87,10 +69,12 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
 
   return (
     <section
-      className="bg-bg-tertiary rounded-lg p-3 border border-border space-y-3"
+      className="h-full min-h-[96px] bg-bg-tertiary rounded-lg p-3 border border-border space-y-1.5"
       aria-label="Song generation settings"
     >
-      {/* Row 1: Model selector + Instrumental toggle */}
+      {/* Row: model <select> + exact-time mm:ss input share one line.
+          The category chip below the row gives each model its own hint
+          without occupying a second row of vertical real estate. */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
           <label
@@ -112,31 +96,56 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
 
         {musicModels.length > 0 ? (
           <>
-            <select
-              id="music-model-select"
-              value={effectiveModel}
-              onChange={e => setMusicModel(e.target.value)}
-              className="w-full bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:border-violet-500 transition-colors"
-            >
-              {musicModels.map(model => (
-                <option key={model.model_type} value={model.model_type}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-            <div className="flex items-center justify-between gap-2 text-2xs text-text-muted px-0.5">
-              <span
-                className="truncate"
-                title={selectedModel?.selector_help || selectedModel?.description}
+            <div className="flex items-center gap-2">
+              <select
+                id="music-model-select"
+                value={effectiveModel}
+                onChange={e => setMusicModel(e.target.value)}
+                className="flex-1 min-w-0 bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:border-violet-500 transition-colors"
               >
-                {isMusic3
-                  ? 'Fast melody & vocal generation · 5m max'
-                  : 'Quality-focused CFG with 4B LM · 6m max'}
-              </span>
-              {selectedModel?.is_downloaded === false && (
-                <span className="shrink-0 text-amber-400 font-medium">
-                  Downloads on first use
-                </span>
+                {musicModels.map(model => {
+                  // The bare model name is enough to identify the option
+                  // inside the closed <select>. The category line ("Quality-
+                  // focused CFG with 4B LM" / "Fast melody & vocal
+                  // generation") lives in a separate row below so the
+                  // selected option text never spills over the dropdown.
+                  return (
+                    <option key={model.model_type} value={model.model_type}>
+                      {model.name}
+                    </option>
+                  )
+                })}
+              </select>
+              {!hideSongLength && (
+                <input
+                  ref={inputRef}
+                  type="text"
+                  aria-label="Custom song length"
+                  title="Custom song length (mm:ss)"
+                  value={customText !== null ? customText : formatTimecode(duration).slice(3)}
+                  onChange={e => {
+                    setCustomText(e.target.value)
+                  }}
+                  onFocus={() => {
+                    if (customText === null) {
+                      setCustomText(formatTimecode(duration).slice(3))
+                    }
+                    requestAnimationFrame(() => inputRef.current?.select())
+                  }}
+                  onBlur={handleCommitCustom}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleCommitCustom()
+                    if (e.key === 'Escape') {
+                      setCustomText(null)
+                    }
+                  }}
+                  placeholder="02:00"
+                  className={`w-20 shrink-0 bg-bg-secondary border rounded-md px-2 py-1 text-xs text-text-primary font-mono text-center focus:outline-none transition-colors ${
+                    isCustom
+                      ? 'border-violet-500 ring-1 ring-violet-500/30'
+                      : 'border-border focus:border-violet-500'
+                  }`}
+                />
               )}
             </div>
           </>
@@ -146,87 +155,6 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
           </p>
         )}
       </div>
-
-      {/* Row 2: Song duration presets & Custom exact duration */}
-      {!hideSongLength && (
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <label className="text-xs text-text-muted uppercase tracking-wider font-medium">
-              Song length
-            </label>
-            <span className="text-xs text-text-secondary tabular-nums font-mono font-medium">
-              {formatDuration(duration, true)}
-            </span>
-          </div>
-
-          {/* Standard duration preset pills row */}
-          <div className="flex items-center gap-1.5">
-            {songPresets.map(p => {
-              const isActive = !isCustom && duration === p.seconds
-              return (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => handleSelectPreset(p.seconds)}
-                  className={`flex-1 py-1.5 rounded-md border text-xs font-medium transition-colors text-center truncate ${
-                    isActive
-                      ? 'border-violet-500 bg-violet-600/25 text-white shadow-sm'
-                      : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-light'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Custom duration button + exact duration input row (always visible) */}
-          <div className="flex items-center gap-2 pt-0.5">
-            <button
-              type="button"
-              onClick={handleSelectCustom}
-              className={`px-3 py-1 rounded-md border text-xs font-medium transition-colors text-center shrink-0 ${
-                isCustom
-                  ? 'border-violet-500 bg-violet-600/25 text-white shadow-sm'
-                  : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-light'
-              }`}
-            >
-              Custom
-            </button>
-            <input
-              ref={inputRef}
-              type="text"
-              value={customText !== null ? customText : formatTimecode(duration).slice(3)}
-              onChange={e => {
-                setCustomText(e.target.value)
-                setIsCustom(true)
-              }}
-              onFocus={() => {
-                if (customText === null) {
-                  setCustomText(formatTimecode(duration).slice(3))
-                }
-              }}
-              onBlur={handleCommitCustom}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleCommitCustom()
-                if (e.key === 'Escape') {
-                  setCustomText(null)
-                  if (isPresetMatch) setIsCustom(false)
-                }
-              }}
-              placeholder="02:00"
-              className={`w-20 bg-bg-secondary border rounded-md px-2.5 py-1 text-xs text-text-primary font-mono text-center focus:outline-none transition-colors ${
-                isCustom
-                  ? 'border-violet-500 ring-1 ring-violet-500/30'
-                  : 'border-border focus:border-violet-500'
-              }`}
-            />
-            <span className="text-2xs text-text-muted select-none">
-              Exact duration (max {formatDuration(maximumDuration, true)})
-            </span>
-          </div>
-        </div>
-      )}
     </section>
   )
 }

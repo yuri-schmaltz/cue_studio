@@ -10919,6 +10919,29 @@ async def director_v2_plan(request: Request):
     plan_id = str(uuid.uuid4())
     cancel_event = _v2_plan_cancel.register(plan_id)
 
+    # Register an official Director pipeline so a browser refresh can
+    # recover planning progress and generated images via the standard
+    # /api/v1/director/pipeline/{pid} channel. register_only=True skips
+    # the heavy worker thread — v2 plan orchestrates its own planning +
+    # image gen, so we only need the registry entry + on-disk state.
+    # Best-effort: any failure here must NOT block the plan itself,
+    # since planning is what the user explicitly asked for.
+    pipeline_id: Optional[str] = None
+    register_payload = body.get("register_pipeline")
+    if isinstance(register_payload, dict) and register_payload.get("enable"):
+        try:
+            from services import director_pipeline as _director_pipeline_module
+            # Defer registration until the pipeline module is initialized so
+            # its internal wgp reference is populated. Calling start_pipeline
+            # too early raises NameError because _wgp lives in the module.
+            await asyncio.to_thread(_init_pipeline)
+            pipeline_id = await asyncio.to_thread(
+                _director_pipeline_module.start_pipeline,
+                {**register_payload.get("params", {}), "register_only": True},
+            )
+        except Exception as e:  # noqa: BLE001 — diagnostic only
+            print(f"[Director] Failed to register pipeline for v2 plan: {e}")
+
     try:
         _ensure_llm_loaded()
 
@@ -11001,6 +11024,11 @@ async def director_v2_plan(request: Request):
             "production_plan": plan.to_dict(),
             "skill_type": skill_type,
             "plan_id": plan_id,
+            # Echo the registered pipeline_id (or None if the client opted
+            # out / registration failed). The frontend uses this to call
+            # `reattachDirectorPipeline` so a browser refresh mid-v2-plan
+            # can resume cleanly.
+            "pipeline_id": pipeline_id,
         }
 
     except InterruptedError as exc:

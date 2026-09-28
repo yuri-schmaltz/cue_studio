@@ -8885,7 +8885,11 @@ export const useStore = create<AppState>((set, get, store) => ({
       let plans: Array<{ video_prompt: string; image_prompt: string }>
 
       if (useV2) {
-        // Director v2: structured planning → rendering → validation
+        // Director v2: structured planning → rendering → validation.
+        // Also register an official Director pipeline (register_only) so
+        // a browser refresh mid-plan can recover via the standard
+        // /api/v1/director/pipeline/{pid} channel. Best-effort — a
+        // registration failure must not block planning.
         const result = await api.directorV2Plan({
           skill_type: get().directorSkill || 'music_video',
           clips: directorPlannedClips,
@@ -8896,7 +8900,38 @@ export const useStore = create<AppState>((set, get, store) => ({
           ...extraRefs,
           speaker_mappings: Object.keys(speakerMappings).length > 0 ? speakerMappings : undefined,
           prompt_type: promptType,
+          register_pipeline: {
+            enable: true,
+            params: {
+              workspace: get().activeWorkspace || '',
+              auto_mode: get().directorAutoMode ?? true,
+              skill_type: get().directorSkill || 'music_video',
+              pipeline_type: get().directorSkill || 'music_video',
+            },
+          },
         }, { signal: planController.signal })
+        // Adopt the registered pipeline_id so subsequent phases (image
+        // gen / video gen) attach to the same registry entry. Refresh
+        // recovery depends on this linkage being in place before the
+        // user closes the tab.
+        if (result.pipeline_id) {
+          _directorPipelineAttachToken += 1
+          const attachToken = _directorPipelineAttachToken
+          void api.fetchPipelineStatus(result.pipeline_id).then(status => {
+            if (attachToken !== _directorPipelineAttachToken) return
+            const active = DIRECTOR_PIPELINE_ACTIVE.has(status.status)
+            set(state => ({
+              pipelineId: result.pipeline_id,
+              directorProjectId: state.directorProjectId || result.pipeline_id,
+              directorSourcePipelineId: result.pipeline_id,
+              pipelineStatus: status,
+              pipelinePolling: active,
+            }))
+            if (active) get().pollPipelineStatus()
+          }).catch(e => {
+            console.warn('[Director] Failed to attach registered pipeline:', e)
+          })
+        }
         plans = result.clip_plans.map(p => ({
           video_prompt: p.video_prompt || '',
           image_prompt: p.image_prompt || '',
@@ -12297,6 +12332,24 @@ export const useStore = create<AppState>((set, get, store) => ({
         })
         return
       }
+      // If v2 plan already registered an official pipeline (e.g. via
+      // directorPlanPrompts → register_only), continue that pipeline
+      // instead of creating a second registry entry. Otherwise the
+      // Dashboard would show two orphans for the same project.
+      const existingPid = get().pipelineId
+      const existingStatus = get().pipelineStatus?.status
+      if (existingPid && existingStatus
+          && !['completed', 'failed', 'cancelled'].includes(existingStatus)) {
+        await api.continuePipeline(existingPid, undefined)
+        set({
+          pipelinePolling: true,
+          directorStep: 'plan',
+          directorLoading: true,
+          directorError: null,
+        })
+        get().pollPipelineStatus()
+        return
+      }
       const { pipeline_id } = await api.startPipeline(pipelineParams)
       _directorPipelineAttachToken += 1
       set({
@@ -12311,8 +12364,25 @@ export const useStore = create<AppState>((set, get, store) => ({
       })
       get().pollPipelineStatus()
     } catch (e) {
+      // Backend rejected the start (typically HTTP 400 with a `detail` from
+      // the Director pipeline validation, e.g. "Saved Director shot N
+      // requires X frames, but Auto allows one Y-frame ..."). Without this
+      // reset the frontend would stay stuck in `directorLoading: true` with
+      // no pipelineId to poll, hiding the real reason behind a generic
+      // spinner. Clear every bit of start state and surface the backend's
+      // own error message so the user can act on it.
       const msg = e instanceof Error ? e.message : 'Pipeline failed to start'
-      set({ directorError: msg, directorQueueLoading: false })
+      console.error('[Director] Pipeline start rejected:', e)
+      set({
+        directorError: msg,
+        directorLoading: false,
+        directorQueueLoading: false,
+        directorActivityLabel: '',
+        directorActivityFraction: 0,
+        pipelinePolling: false,
+        // Keep directorStep where the user was (style / review / …) so
+        // they can edit + retry instead of being yanked back to upload.
+      })
     }
   },
 

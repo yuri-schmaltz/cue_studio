@@ -11,9 +11,9 @@ import { migrateAll } from './lib/legacyKeys'
 // localStorage makes this a no-op on subsequent boots.
 migrateAll()
 
-// Intercepta a tecla Tab globalmente em toda a interface para desativar a navegação
-// e movimentação entre elementos via tabulação.
-// Dentro de campos de texto (textarea/input), insere tabulação/indentação em vez de pular o foco.
+// Intercept the Tab key globally across the whole interface to disable tab-
+// based focus navigation. Inside text fields (textarea/input), inserts a
+// tab/indent character instead of moving focus.
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key !== 'Tab') return
 
@@ -37,7 +37,7 @@ window.addEventListener('keydown', (e: KeyboardEvent) => {
     return
   }
 
-  // Previne a navegação de foco padrão via Tab em botões, links, abas e containers
+  // Prevent the default Tab focus traversal on buttons, links, tabs and containers
   e.preventDefault()
 }, true)
 

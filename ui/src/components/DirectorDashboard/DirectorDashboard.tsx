@@ -45,6 +45,62 @@ function formatDate(ts: number): string {
   })
 }
 
+/** Mirror of backend _friendly_pipeline_name — used as a defensive fallback
+ *  for state files written before the field existed. Keep in sync with
+ *  app/services/director_pipeline.py::_friendly_pipeline_name. */
+const PIPELINE_TYPE_LABELS: Record<string, string> = {
+  music_video: 'Music Video',
+  short_film_audio: 'Short Film',
+  short_film_story: 'Short Film',
+  viral_video: 'Viral Video',
+  podcast: 'Podcast',
+  tutorial: 'Tutorial',
+}
+
+function pipelineTypeLabel(type: string): string {
+  const key = (type || '').trim()
+  if (PIPELINE_TYPE_LABELS[key]) return PIPELINE_TYPE_LABELS[key]
+  const fallback = key.replace(/_/g, ' ').trim()
+  return fallback ? fallback.charAt(0).toUpperCase() + fallback.slice(1) : 'Director'
+}
+
+function fallbackPipelineName(type: string, sceneDescription: string, createdAt: number): string {
+  const workflow = pipelineTypeLabel(type)
+  const desc = (sceneDescription || '').replace(/\s+/g, ' ').trim()
+  // First sentence / first line — matches backend heuristic.
+  const head = (desc.split('.')[0] || '').split('\n')[0].trim()
+  let title = ''
+  if (head) {
+    title = head
+      .split(' ')
+      .map(w => (w.length > 1 && w === w.toUpperCase() && /^[A-Z0-9]+$/.test(w))
+        ? w : w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ')
+    if (title.length > 48) {
+      title = title.slice(0, 48).replace(/\s+\S*$/, '') + '…'
+    }
+  }
+  if (!title) {
+    const stamp = new Date(createdAt * 1000)
+    const day = stamp.getDate()
+    const month = stamp.toLocaleString(undefined, { month: 'short' })
+    const hh = String(stamp.getHours()).padStart(2, '0')
+    const mm = String(stamp.getMinutes()).padStart(2, '0')
+    title = `Run · ${day} ${month} ${hh}:${mm}`
+  }
+  return `${workflow} · ${title}`
+}
+
+function getPipelineDisplayName(item: {
+  display_name?: string | null
+  pipeline_type: string
+  scene_description: string
+  created_at: number
+}): string {
+  const trimmed = (item.display_name || '').trim()
+  return trimmed || fallbackPipelineName(item.pipeline_type, item.scene_description, item.created_at)
+}
+
 function PipelineProgressBar({ pipeline }: { pipeline: SavedPipelineState }) {
   const phases = [
     { key: 'planning', label: 'LLM Planning', time: pipeline.llm_log?.planning_time_sec },
@@ -646,10 +702,11 @@ function DirectorDashboardInner({ embedded = false }: { embedded?: boolean }) {
         >
           <option value="">Select pipeline...</option>
           {pipelineList.map(p => (
-            <option key={p.id} value={p.id}>
+            <option key={p.id} value={p.id} title={`${formatDate(p.created_at)} · ${pipelineTypeLabel(p.pipeline_type)} · ${p.clip_count} clips · ${p.status}`}>
               {p.repair_status ? `[repair: ${p.repair_status}] ` : ''}
-              {formatDate(p.created_at)} — {p.pipeline_type} ({p.clip_count} clips) [{p.status}]
-              {p.scene_description ? ` — ${p.scene_description}` : ''}
+              {getPipelineDisplayName(p)}
+              {' · '}{formatDate(p.created_at)}
+              {' · '}{p.clip_count} clip{p.clip_count === 1 ? '' : 's'}
             </option>
           ))}
         </select>
