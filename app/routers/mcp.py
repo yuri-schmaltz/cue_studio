@@ -23,9 +23,41 @@ from typing import Any, Awaitable, Callable, Mapping, Sequence
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from app.services.mcp_access import get_default as get_default_access
-from app.services.mcp_dispatcher import make_dispatch
-from app.services.mcp_tools import get_default_registry
+# Import resolution: this module is loaded from two contexts.
+#   - launch.py: cwd is app/, so 'from services.x import ...' resolves.
+#   - pytest: conftest.py adds BOTH app/ and the repo root to sys.path.
+#     Tests that use 'from app.services.x import ...' get the
+#     `app.services.x` module; this router that uses 'from services.x'
+#     gets the bare `services.x` module. Both resolve but to two distinct
+#     module instances, breaking the McpAccess singleton.
+# To guarantee a single shared instance, find whichever one is already
+# imported and prefer it; otherwise prefer the 'app.services' form because
+# the project's tests + launcher code consistently use that path.
+import importlib
+import importlib.util
+import sys
+
+
+def _resolve_module(short: str, full: str):
+    for name in (full, short):
+        if name in sys.modules:
+            return sys.modules[name]
+    for full_name in (full, short):
+        spec = importlib.util.find_spec(full_name)
+        if spec is not None:
+            return importlib.import_module(full_name)
+    raise ImportError(f"Cannot resolve {short} (or {full})")
+
+
+get_default_access = _resolve_module(
+    "app.services.mcp_access", "services.mcp_access"
+).__dict__["get_default"]
+make_dispatch = _resolve_module(
+    "app.services.mcp_dispatcher", "services.mcp_dispatcher"
+).__dict__["make_dispatch"]
+get_default_registry = _resolve_module(
+    "app.services.mcp_tools", "services.mcp_tools"
+).__dict__["get_default_registry"]
 
 
 _logger = logging.getLogger("cue_studio.mcp.router")
