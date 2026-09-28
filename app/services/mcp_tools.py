@@ -354,6 +354,56 @@ def build_default_registry() -> ToolRegistry:
         )
     )
 
+    # editor_list_projects — read-only
+    registry.register(
+        ToolSpec(
+            name="editor_list_projects",
+            description=(
+                "List Video Editor projects (durable timelines) sorted "
+                "by most-recently-updated. Read-only — returns project "
+                "metadata including clip count, state, and output path."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 200,
+                        "description": "Maximum projects to return (default 50).",
+                    },
+                },
+                "additionalProperties": False,
+            },
+            handler=mcp_tools_impl.editor_list_projects,
+        )
+    )
+
+    # editor_export — read-mostly (writes an mp4 next to the project)
+    registry.register(
+        ToolSpec(
+            name="editor_export",
+            description=(
+                "Concatenate a Video Editor project's clips into a single "
+                "mp4 via the existing ffmpeg concat FILTER pipeline. "
+                "Returns the updated project metadata with the output path."
+            ),
+            input_schema={
+                "type": "object",
+                "properties": {
+                    "project_id": {"type": "string", "minLength": 1},
+                    "output_path": {
+                        "type": "string",
+                        "description": "Optional override for the mp4 output path.",
+                    },
+                },
+                "required": ["project_id"],
+                "additionalProperties": False,
+            },
+            handler=mcp_tools_impl.editor_export,
+        )
+    )
+
     return registry
 
 

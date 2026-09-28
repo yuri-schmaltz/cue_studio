@@ -1,5 +1,37 @@
 # Cue Studio Changelog
 
+## v2.5.0 — 2026-09-29 (Video Editor — backend preview)
+
+- **Video Editor (backend).** Durable per-workspace timeline of clips
+  with CRUD + export. New module `services.video_editor` (≈400 LOC) with:
+    - project create/list/get/delete
+    - clip add / remove / reorder / trim / split
+    - export via the existing `wgp.concatenate_multi_clip_videos`
+      ffmpeg concat-FILTER pipeline
+    - atomic JSON persistence (`tmp + fsync + os.replace`)
+    - sanitization on load (state whitelist, label cap, clip-end
+      coercion, NaN/negative guard)
+- **HTTP API** at `/api/v1/editor`:
+    - `GET  /api/v1/editor/projects` list
+    - `POST /api/v1/editor/projects` create
+    - `GET  /api/v1/editor/projects/{id}` get
+    - `DELETE /api/v1/editor/projects/{id}` delete
+    - `POST /api/v1/editor/projects/{id}/clips` add
+    - `DELETE /api/v1/editor/projects/{id}/clips/{clip_id}` remove
+    - `POST /api/v1/editor/projects/{id}/clips/reorder` reorder
+    - `POST /api/v1/editor/projects/{id}/clips/{clip_id}/trim` trim
+    - `POST /api/v1/editor/projects/{id}/clips/{clip_id}/split` split
+    - `POST /api/v1/editor/projects/{id}/export` export to mp4
+- **Two new MCP tools** (`editor_list_projects`, `editor_export`).
+  Surface is now 12 read-mostly entries.
+- **57 new pytest tests** across 3 files (service 33, router 17, MCP 7).
+  0 regressions. `ffmpeg_available()` and `ffprobe_duration()` helpers
+  ship alongside the service.
+- The timeline UI is deferred to a follow-up effort (Phase D-full)
+  because the original HocusPocus editor is a 4-5 sprint undertaking;
+  the HTTP/MCP surface is stable and ready to drive a custom UI today.
+- See `docs/VIDEO_EDITOR.md` for the full reference.
+
 ## v2.4.0 — 2026-09-28 (Wizard in-app LLM agent)
 
 - **Wizard agent.** Durable per-workspace orchestration checkpoints

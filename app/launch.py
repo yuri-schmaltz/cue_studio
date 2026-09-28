@@ -10909,6 +10909,16 @@ try:
 except Exception as _wizard_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[wizard] router unavailable: %s", _wizard_import_err)
 
+# Video Editor router (/api/v1/editor/*) — backend timeline CRUD + export
+# via the existing ffmpeg concat helper. Phase D-min (backend only) of
+# the HocusPocus migration; see docs/VIDEO_EDITOR.md.
+try:
+    from routers.video_editor import build_video_editor_router
+    api.include_router(build_video_editor_router())
+    _mcp_log.info("[video_editor] router mounted at /api/v1/editor")
+except Exception as _ve_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[video_editor] router unavailable: %s", _ve_import_err)
+
 # Backwards-compat re-exports — the existing test suite reaches
 # into ``launch`` for the workspace helpers. Keep the names
 # reachable so the cutover doesn't break the test surface.

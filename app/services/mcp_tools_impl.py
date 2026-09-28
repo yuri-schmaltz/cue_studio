@@ -290,5 +290,55 @@ def system_capabilities(_arguments: Mapping[str, Any]) -> dict[str, Any]:
         "llm": True,
         "director": True,
         "gallery": True,
+        "video_editor": True,
     }
     return snapshot
+
+
+# ---------------------------------------------------------------- Video Editor tools
+
+
+def _get_editor():
+    """Resolve the default VideoEditor singleton (lazy import for early boot)."""
+    from app.services.video_editor import VideoEditor  # type: ignore
+
+    return VideoEditor()
+
+
+def editor_list_projects(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """List Video Editor projects (durable timelines).
+
+    Read-only — returns the most-recent projects first. Useful for agents
+    that want to discover timelines before exporting them.
+    """
+    try:
+        limit = int(arguments.get("limit") or 50)
+    except (TypeError, ValueError) as exc:
+        raise McpToolError(f"limit must be an integer: {exc}") from exc
+    limit = max(1, min(limit, 200))
+
+    try:
+        editor = _get_editor()
+        projects = editor.list_projects(limit=limit)
+    except Exception as exc:  # pragma: no cover — defensive
+        return {"count": 0, "projects": [], "error": str(exc)}
+    return {"count": len(projects), "projects": projects}
+
+
+def editor_export(arguments: Mapping[str, Any]) -> dict[str, Any]:
+    """Export one Video Editor project to an mp4 via ffmpeg concat FILTER.
+
+    Read-mostly — writes a new file under ``CUE_CONFIG_DIR/editor/<id>.mp4``
+    (or ``output_path`` if provided). Returns the updated project metadata.
+    """
+    project_id = arguments.get("project_id")
+    if not isinstance(project_id, str) or not project_id:
+        raise McpToolError("project_id is required")
+    output_path = arguments.get("output_path")
+
+    try:
+        editor = _get_editor()
+        project = editor.export(project_id, output_path=output_path)
+    except Exception as exc:
+        raise McpToolError(f"Failed to export project: {exc}") from exc
+    return project
