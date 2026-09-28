@@ -1,13 +1,12 @@
-import { useRef, useCallback, useState, useEffect, useMemo, type JSX } from 'react'
+import { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { Film, Play, Square, FolderOpen, Plus, Check, Loader2, X, BookMarked, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { TabFilter } from './TabFilter'
-import { ThumbnailGallery } from './ThumbnailGallery'
-import { MediaFeedItem } from './MediaFeedItem'
+import { MediaGallery } from './MediaGallery'
+import { MediaInspector } from './MediaInspector'
 import { DirectorReview } from '../DirectorDashboard/DirectorReview'
 import { useStore } from '../../stores/useStore'
 import { formatEstimatedClock, formatEtaDuration } from '../../lib/format'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
-import { runOnWorker } from '../../lib/webWorker'
 import type { GenerationJob } from '../../types'
 
 export function WorkspaceSelector() {
@@ -135,15 +134,6 @@ export function WorkspaceSelector() {
     </div>
   )
 }
-
-// How many items to render beyond the viewport in each direction
-const OVERSCAN = 5
-// Info bar height + border/padding
-const INFO_BAR_HEIGHT = 48
-// aspect-video = 56.25% of width (16:9)
-const ASPECT_RATIO = 0.5625
-// Gap between items (tailwind space-y-3 = 12px)
-const GAP = 12
 
 function stripTimeSuffix(msg: string): string {
   return msg.replace(/\s*\|\s*\d+:\d+.*$/, '').trim()
@@ -488,7 +478,6 @@ export function PipelinePlaceholder() {
     </div>
   )
 }
-
 export function MainContent() {
   const standalone = useStore(s => s.appSection === 'medias')
   const outputs = useStore(s => s.filteredOutputs())
@@ -500,6 +489,15 @@ export function MainContent() {
   const dismissJob = useStore(s => s.dismissJob)
   const activeIndex = useStore(s => s.selectedOutput)
   const setSelectedOutput = useStore(s => s.setSelectedOutput)
+  const outputsTotal = useStore(s => s.outputsTotal)
+  const loadMoreOutputs = useStore(s => s.loadMoreOutputs)
+  const selectedNames = useStore(s => s.mediaGallerySelectedNames)
+  const selectAllMediaGallery = useStore(s => s.selectAllMediaGallery)
+  const clearMediaGallerySelection = useStore(s => s.clearMediaGallerySelection)
+  const toggleMediaGallerySelection = useStore(s => s.toggleMediaGallerySelection)
+  const toggleMediaGallerySelectionRange = useStore(s => s.toggleMediaGallerySelectionRange)
+  const bulkDeleteSelected = useStore(s => s.bulkDeleteSelectedOutputs)
+
   // Waiting work now lives in the universal top-bar queue. Keep the gallery
   // focused on media plus useful live/error cards instead of large blank
   // placeholders for every job that has not started yet.
@@ -514,372 +512,152 @@ export function MainContent() {
     [isEnhancing, jobs],
   )
 
-  const feedRef = useRef<HTMLDivElement>(null)
-  const scrollTargetIndex = useRef<number | null>(null)
-  const centerSelectionFrame = useRef<number | null>(null)
-
-  const activateIndex = useCallback((index: number) => {
-    if (index < 0 || index >= useStore.getState().filteredOutputs().length) return
-    // Avoid re-fetching the same output metadata on every scroll event.
+  // ── Gallery ↔ inspector wiring ─────────────────────────────────
+  // The gallery owns click-to-inspect (set selectedOutput). The
+  // selection set is independent so the user can tick a batch without
+  // losing the currently-inspected asset.
+  const handleInspect = useCallback((index: number) => {
     if (useStore.getState().selectedOutput !== index) {
       setSelectedOutput(index)
     }
   }, [setSelectedOutput])
 
-  const selectViewportCenteredItem = useCallback(() => {
-    centerSelectionFrame.current = null
-    if (scrollTargetIndex.current !== null) return
+  const handleToggleSelected = useCallback((name: string) => {
+    toggleMediaGallerySelection(name)
+  }, [toggleMediaGallerySelection])
 
-    const feedEl = feedRef.current
-    if (!feedEl) return
-    const viewport = feedEl.getBoundingClientRect()
-    const viewportCenterY = viewport.top + viewport.height / 2
+  const handleToggleRange = useCallback((fromIndex: number, toIndex: number) => {
+    const list = useStore.getState().filteredOutputs()
+    const fromName = list[fromIndex]?.name
+    const toName = list[toIndex]?.name
+    if (!fromName || !toName) return
+    toggleMediaGallerySelectionRange(fromName, toName)
+  }, [toggleMediaGallerySelectionRange])
 
-    // Playback is a stronger intent signal than passive scrolling. Keep a
-    // currently playing, still-visible clip selected so a pending scroll frame
-    // cannot immediately mute/pause the item the user just started.
-    const playingMedia = Array.from(
-      feedEl.querySelectorAll<HTMLMediaElement>('[data-gallery-media="true"]'),
-    ).find(media => !media.paused && !media.ended)
-    const playingItem = playingMedia?.closest<HTMLElement>('[data-feed-index]')
-    if (playingItem) {
-      const rect = playingItem.getBoundingClientRect()
-      if (Math.min(rect.bottom, viewport.bottom) > Math.max(rect.top, viewport.top)) {
-        const index = Number(playingItem.dataset.feedIndex)
-        if (Number.isInteger(index)) {
-          activateIndex(index)
-          return
-        }
-      }
-    }
+  const handleSelectAll = useCallback(() => {
+    selectAllMediaGallery(outputs.map(o => o.name))
+  }, [selectAllMediaGallery, outputs])
 
-    // The viewport center sits below the first card when the gallery is at its
-    // hard top (especially on phones with a tall viewport), so center-based
-    // selection alone can incorrectly highlight card two. At either scroll
-    // boundary, prefer the first/last actually visible output. Direct playback
-    // remains stronger intent and is handled above.
-    const visibleItems = Array.from(
-      feedEl.querySelectorAll<HTMLElement>('[data-feed-index]'),
-    ).filter((item) => {
-      const rect = item.getBoundingClientRect()
-      return Math.min(rect.bottom, viewport.bottom) > Math.max(rect.top, viewport.top)
-    })
-    const boundaryTolerance = 3
-    if (feedEl.scrollTop <= boundaryTolerance && visibleItems.length > 0) {
-      const firstIndex = Math.min(...visibleItems.map(item => Number(item.dataset.feedIndex)))
-      if (Number.isInteger(firstIndex)) {
-        activateIndex(firstIndex)
-        return
-      }
-    }
-    if (
-      feedEl.scrollHeight - feedEl.scrollTop - feedEl.clientHeight <= boundaryTolerance
-      && visibleItems.length > 0
-    ) {
-      const lastIndex = Math.max(...visibleItems.map(item => Number(item.dataset.feedIndex)))
-      if (Number.isInteger(lastIndex)) {
-        activateIndex(lastIndex)
-        return
-      }
-    }
+  const handleClearSelection = useCallback(() => {
+    clearMediaGallerySelection()
+  }, [clearMediaGallerySelection])
 
-    let bestIndex: number | null = null
-    let bestEdgeDistance = Number.POSITIVE_INFINITY
-    let bestCenterDistance = Number.POSITIVE_INFINITY
-
-    feedEl.querySelectorAll<HTMLElement>('[data-feed-index]').forEach((item) => {
-      const index = Number(item.dataset.feedIndex)
-      if (!Number.isInteger(index)) return
-      const rect = item.getBoundingClientRect()
-      const visibleTop = Math.max(rect.top, viewport.top)
-      const visibleBottom = Math.min(rect.bottom, viewport.bottom)
-      if (visibleBottom <= visibleTop) return
-
-      // Prefer the card intersected by the viewport's horizontal center line.
-      // The item-center distance breaks ties for unusually tall/overlapping
-      // layouts and keeps the behavior intuitive during responsive resizing.
-      const edgeDistance = viewportCenterY < rect.top
-        ? rect.top - viewportCenterY
-        : viewportCenterY > rect.bottom
-          ? viewportCenterY - rect.bottom
-          : 0
-      const centerDistance = Math.abs((rect.top + rect.bottom) / 2 - viewportCenterY)
-      if (
-        edgeDistance < bestEdgeDistance
-        || (edgeDistance === bestEdgeDistance && centerDistance < bestCenterDistance)
-      ) {
-        bestIndex = index
-        bestEdgeDistance = edgeDistance
-        bestCenterDistance = centerDistance
-      }
-    })
-
-    if (bestIndex !== null) activateIndex(bestIndex)
-  }, [activateIndex])
-
-  const scheduleCenteredSelection = useCallback(() => {
-    if (centerSelectionFrame.current !== null) return
-    centerSelectionFrame.current = requestAnimationFrame(selectViewportCenteredItem)
-  }, [selectViewportCenteredItem])
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const [bulkConfirm, setBulkConfirm] = useState(false)
+  const bulkConfirmTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => () => {
-    if (centerSelectionFrame.current !== null) {
-      cancelAnimationFrame(centerSelectionFrame.current)
-    }
+    if (bulkConfirmTimeout.current) clearTimeout(bulkConfirmTimeout.current)
   }, [])
 
-  // Virtualization state
-  const [scrollTop, setScrollTop] = useState(0)
-  const [containerHeight, setContainerHeight] = useState(800)
-  const [containerWidth, setContainerWidth] = useState(800)
-  const [measureEpoch, setMeasureEpoch] = useState(0)
-  const measuredHeights = useRef<Map<number, number>>(new Map())
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedNames.size === 0) return
+    if (!bulkConfirm) {
+      setBulkConfirm(true)
+      clearTimeout(bulkConfirmTimeout.current)
+      bulkConfirmTimeout.current = setTimeout(() => setBulkConfirm(false), 3000)
+      return
+    }
+    clearTimeout(bulkConfirmTimeout.current)
+    setBulkConfirm(false)
+    setBulkBusy(true)
+    try {
+      await bulkDeleteSelected()
+    } finally {
+      setBulkBusy(false)
+    }
+  }, [selectedNames.size, bulkConfirm, bulkDeleteSelected])
 
-  // Dynamic estimated item height based on actual container width
-  const estimatedItemHeight = Math.round(containerWidth * ASPECT_RATIO) + INFO_BAR_HEIGHT
-
-  // Total height of all job placeholders at top
-  const placeholderTotalHeight = galleryJobs.length > 0
-    ? galleryJobs.length * estimatedItemHeight + (galleryJobs.length - 1) * GAP + GAP
-    : 0
-
-  // Measure container on mount and resize; clear stale heights on width change
+  // Whenever the filter or outputs list mutates, drop selections that
+  // no longer point at a visible item. Avoids "ghost" names haunting the
+  // bulk-action toolbar after a search/filter change.
   useEffect(() => {
-    const el = feedRef.current
-    if (!el) return
-    let prevWidth = 0
-    const ro = new ResizeObserver((entries) => {
-      const rect = entries[0].contentRect
-      setContainerHeight(rect.height)
-      const newWidth = rect.width
-      setContainerWidth(newWidth)
-      if (prevWidth && Math.abs(newWidth - prevWidth) > 2) {
-        measuredHeights.current.clear()
-      }
-      prevWidth = newWidth
-      scheduleCenteredSelection()
+    const visibleNames = new Set(outputs.map(o => o.name))
+    let changed = false
+    const next = new Set<string>()
+    selectedNames.forEach(name => {
+      if (visibleNames.has(name)) next.add(name)
+      else changed = true
     })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [scheduleCenteredSelection])
+    if (changed) useStore.setState({ mediaGallerySelectedNames: next })
+  }, [outputs, selectedNames])
 
-  const getItemHeight = useCallback((index: number) => {
-    return measuredHeights.current.get(index) ?? estimatedItemHeight
-  }, [estimatedItemHeight])
-
-  const { startIndex, endIndex, totalHeight, itemOffsets } = useMemo(() => {
-    // Measurement changes must invalidate the virtual layout even though the
-    // actual values live in a ref rather than in React state.
-    void measureEpoch
-    const count = outputs.length
-    const offsets: number[] = new Array(count)
-    let cumulative = placeholderTotalHeight
-
-    for (let i = 0; i < count; i++) {
-      offsets[i] = cumulative
-      cumulative += getItemHeight(i) + GAP
-    }
-    const total = cumulative - (count > 0 ? GAP : 0)
-
-    let lo = 0, hi = count - 1
-    const viewStart = scrollTop - OVERSCAN * estimatedItemHeight
-    while (lo < hi) {
-      const mid = (lo + hi) >>> 1
-      if (offsets[mid] + getItemHeight(mid) < viewStart) lo = mid + 1
-      else hi = mid
-    }
-    const start = Math.max(0, lo)
-
-    const viewEnd = scrollTop + containerHeight + OVERSCAN * estimatedItemHeight
-    let end = start
-    while (end < count && offsets[end] < viewEnd) end++
-
-    return {
-      startIndex: start,
-      endIndex: Math.min(end, count),
-      totalHeight: Math.max(total, placeholderTotalHeight),
-      itemOffsets: offsets,
-    }
-  }, [outputs.length, scrollTop, containerHeight, getItemHeight, placeholderTotalHeight, estimatedItemHeight, measureEpoch])
-
-  const handleItemMeasured = useCallback((index: number, height: number) => {
-    const prev = measuredHeights.current.get(index)
-    if (prev !== height) {
-      measuredHeights.current.set(index, height)
-      setMeasureEpoch(e => e + 1)
-      scheduleCenteredSelection()
-    }
-  }, [scheduleCenteredSelection])
-
-  const handlePlaybackStart = useCallback((index: number, media: HTMLMediaElement) => {
-    activateIndex(index)
-    // One audible gallery player at a time. This avoids the only meaningful
-    // downside of auto-unmuting: two clips talking over one another.
-    feedRef.current?.querySelectorAll<HTMLMediaElement>('[data-gallery-media="true"]').forEach((candidate) => {
-      if (candidate === media) return
-      candidate.pause()
-      candidate.muted = true
-    })
-    media.muted = false
-  }, [activateIndex])
-
-  const handleThumbnailClick = useCallback((index: number) => {
-    setSelectedOutput(index)
-    scrollTargetIndex.current = index
-    const feedEl = feedRef.current
-    if (!feedEl) return
-
-    // ── Why this is two phases ──
-    // The virtualizer only renders items inside [startIndex, endIndex].
-    // Items outside that window have NEVER been measured — their height
-    // is an estimate. Summing the estimates to compute an offset for a
-    // distant target accumulates error linearly with distance: a click
-    // 200 items away can land hundreds of px off.
-    //
-    // The previous implementation did a single smooth scrollTo to the
-    // estimated offset. As items entered the viewport mid-animation,
-    // they got measured and the total height shifted under the
-    // animation, so the smooth scroll landed on the wrong item. The
-    // 800ms guard then expired and the IntersectionObserver picked up
-    // a wrong-active item → thumbnail strip auto-scrolled away from
-    // what the user clicked → infinite oscillation.
-    //
-    // The fix:
-    //   Phase 1: INSTANT jump to the estimated offset. This is allowed
-    //            to be slightly wrong; its only job is to bring the
-    //            target item into the virtualizer's render window so
-    //            it actually mounts in the DOM.
-    //   Phase 2: requestAnimationFrame wait until the DOM contains an
-    //            element with `data-feed-index="${index}"`, then call
-    //            scrollIntoView on it for pixel-precise alignment.
-    //            By the time the element exists, its height has been
-    //            measured, so this final align is accurate.
-    //   Guard:   scrollTargetIndex.current is held until phase 2
-    //            finishes (not a fixed timeout). The gallery-level center
-    //            selector ignores scroll events while this is non-null,
-    //            so no wrong-active selection can leak through.
-    //   Re-entrancy: a stale align loop checks scrollTargetIndex
-    //            against its captured target on every frame and bails
-    //            if a newer click overrode it.
-
-    // Workerized offset calculation: the sum over potentially
-    // hundreds of items blocks the main thread on a large gallery.
-    // The worker returns a Promise that resolves to the offset; if
-    // Worker is unavailable (SSR / jsdom), we fall back to the
-    // synchronous reduce inline so the gallery still scrolls.
-    const itemHeights = Array.from({ length: index }, (_, i) => getItemHeight(i))
-    const fallback = () => {
-      const sum = itemHeights.reduce((a, b) => a + b + 8 /* GAP */, 0)
-      return placeholderTotalHeight + sum
-    }
-    runOnWorker<number, { index: number; placeholderTotalHeight: number; itemHeights: number[] }>(
-      'gallery.computeOffset',
-      { index, placeholderTotalHeight, itemHeights },
-      fallback,
-    ).then((offset) => {
-      feedEl.scrollTo({ top: offset, behavior: 'auto' })
-    })
-
-    const targetIndexAtStart = index
-    let attempts = 0
-    const MAX_ATTEMPTS = 30 // ~500ms at 60fps
-    const align = () => {
-      // Newer click overrode our target — bail.
-      if (scrollTargetIndex.current !== targetIndexAtStart) return
-      attempts++
-      const targetEl = feedEl.querySelector(`[data-feed-index="${index}"]`) as HTMLElement | null
-      if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'auto', block: 'start' })
-        // One more frame so any post-mount measurement settles
-        // before we release the guard.
-        requestAnimationFrame(() => {
-          if (scrollTargetIndex.current === targetIndexAtStart) {
-            scrollTargetIndex.current = null
-            scheduleCenteredSelection()
-          }
-        })
-      } else if (attempts < MAX_ATTEMPTS) {
-        requestAnimationFrame(align)
-      } else {
-        // Item didn't mount within the budget — release the guard so
-        // the user isn't stuck. Rare; happens if outputs.length changed
-        // mid-flight or the index is out of range.
-        if (scrollTargetIndex.current === targetIndexAtStart) {
-          scrollTargetIndex.current = null
-          scheduleCenteredSelection()
-        }
-      }
-    }
-    requestAnimationFrame(align)
-  }, [setSelectedOutput, getItemHeight, placeholderTotalHeight, scheduleCenteredSelection])
-
-  // Infinite scroll: load more when near the bottom
-  const loadingMore = useRef(false)
-  const handleFeedScroll = useCallback(() => {
-    const el = feedRef.current
-    if (!el) return
-    setScrollTop(el.scrollTop)
-    scheduleCenteredSelection()
-    // Trigger load-more when within 2 screens of the bottom
-    const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-    if (distanceToBottom < el.clientHeight * 2 && !loadingMore.current) {
-      const store = useStore.getState()
-      if (store.outputs.length < store.outputsTotal) {
-        loadingMore.current = true
-        store.loadMoreOutputs().finally(() => { loadingMore.current = false })
-      }
-    }
-  }, [scheduleCenteredSelection])
-
-  useEffect(() => {
-    measuredHeights.current.clear()
-    scheduleCenteredSelection()
-  }, [outputs.length, scheduleCenteredSelection])
-
-  const visibleItems = useMemo(() => {
-    const items: JSX.Element[] = []
-    for (let i = startIndex; i < endIndex; i++) {
-      const file = outputs[i]
-      if (!file) continue
-      items.push(
-        <MediaFeedItem
-          key={file.name}
-          file={file}
-          index={i}
-          isActive={activeIndex === i}
-          onActivate={activateIndex}
-          onPlaybackStart={handlePlaybackStart}
-          onMeasured={handleItemMeasured}
-          style={{
-            position: 'absolute',
-            top: itemOffsets[i],
-            left: 0,
-            right: 0,
-          }}
-        />
-      )
-    }
-    return items
-  }, [startIndex, endIndex, outputs, activeIndex, activateIndex, handlePlaybackStart, handleItemMeasured, itemOffsets])
+  const hasMore = outputs.length < outputsTotal
 
   return (
     <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
       <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border px-4">
         <TabFilter />
-
       </div>
 
-      {/* Content area: feed + thumbnails */}
-      <div className="flex-1 flex flex-row gap-0 overflow-hidden relative">
-        {/* Scrollable media feed */}
-        <div
-          ref={feedRef}
-          className="flex-1 overflow-y-auto p-3 md:p-4"
-          onScroll={handleFeedScroll}
-        >
-          {/* Pipeline + Job placeholders at top (not virtualized — small count) */}
-          <div className="space-y-3 mb-3">
+      {/* Sub-toolbar: bulk selection actions */}
+      {outputs.length > 0 && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-bg-secondary/60 px-4 py-2 text-xs">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+              aria-label="Select all visible items"
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              onClick={handleClearSelection}
+              disabled={selectedNames.size === 0}
+              className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="Clear selection"
+            >
+              Clear
+            </button>
+            <span className="text-2xs text-text-muted">
+              {selectedNames.size === 0
+                ? `${outputs.length} loaded`
+                : `${selectedNames.size} selected of ${outputs.length}`}
+            </span>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              disabled={selectedNames.size === 0 || bulkBusy}
+              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 transition-colors disabled:cursor-not-allowed ${
+                bulkConfirm
+                  ? 'border-red-500/60 bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                  : selectedNames.size > 0
+                    ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                    : 'border-border bg-bg-tertiary text-text-muted'
+              } ${bulkBusy ? 'opacity-60' : ''}`}
+              title={
+                bulkConfirm
+                  ? `Click again to permanently delete ${selectedNames.size} item${selectedNames.size === 1 ? '' : 's'}`
+                  : `Delete ${selectedNames.size} selected item${selectedNames.size === 1 ? '' : 's'}`
+              }
+              aria-label={
+                bulkConfirm
+                  ? `Confirm delete ${selectedNames.size} items`
+                  : `Delete ${selectedNames.size} selected items`
+              }
+            >
+              {bulkBusy
+                ? <Loader2 size={12} className="animate-spin" />
+                : <Trash2 size={12} />}
+              {bulkConfirm
+                ? `Confirm delete (${selectedNames.size})`
+                : `Delete selected (${selectedNames.size})`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Content area: gallery (left, 2/3) + inspector (right, 1/3) */}
+      <div className="flex-1 flex flex-row gap-0 overflow-hidden relative media-gallery-layout">
+        {/* Scrollable media gallery */}
+        <div className="media-gallery-column min-w-0 flex-1 overflow-hidden">
+          {/* Pipeline + Job placeholders at top */}
+          <div className="space-y-3 p-3 md:p-4 pb-0">
             <PipelinePlaceholder />
             {galleryJobs.map((j, i) => (
               <JobPlaceholder
@@ -891,21 +669,9 @@ export function MainContent() {
             ))}
           </div>
 
-          {/* Position container for virtualized output items */}
-          <div className="relative" style={{ height: totalHeight - placeholderTotalHeight }}>
-            {visibleItems.map(item => {
-              // Adjust top positions to be relative to this container (subtract placeholder height)
-              const adjustedStyle = {
-                ...item.props.style,
-                top: (item.props.style?.top as number) - placeholderTotalHeight,
-              }
-              return { ...item, props: { ...item.props, style: adjustedStyle } }
-            })}
-          </div>
-
           {/* Loading state */}
           {outputsLoading && outputs.length === 0 && (
-            <div className="flex items-center justify-center min-h-[300px]">
+            <div className="flex items-center justify-center min-h-[300px] px-3 md:px-4">
               <div className="flex flex-col items-center gap-3 text-text-muted">
                 <Loader2 size={24} className="animate-spin text-accent-blue" />
                 <p className="text-sm">Indexing workspace...</p>
@@ -953,13 +719,24 @@ export function MainContent() {
               </div>
             )
           })()}
+
+          {outputs.length > 0 && (
+            <MediaGallery
+              selectedIndex={activeIndex}
+              selectedNames={selectedNames}
+              onInspect={handleInspect}
+              onToggleSelected={handleToggleSelected}
+              onToggleRange={handleToggleRange}
+              onLoadMore={() => { void loadMoreOutputs() }}
+              hasMore={hasMore}
+            />
+          )}
         </div>
 
-        {/* Thumbnail sidebar */}
-        <ThumbnailGallery
-          activeIndex={activeIndex}
-          onThumbnailClick={handleThumbnailClick}
-        />
+        {/* Inspector / large-preview panel */}
+        <div className="media-inspector-column shrink-0 overflow-hidden border-l border-border">
+          <MediaInspector />
+        </div>
       </div>
     </main>
   )

@@ -18,7 +18,6 @@ interface Props {
  *  render in the same session never re-decodes the video. */
 function GalleryThumbnail({ file }: { file: OutputFile }) {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -29,7 +28,7 @@ function GalleryThumbnail({ file }: { file: OutputFile }) {
       })
     }
     return () => { cancelled = true }
-  }, [file.url, file.name, file.type, retryCount])
+  }, [file.url, file.name, file.type])
 
   // Image: native <img> handles its own cache; no JS retry. Falls back to
   // an icon on error.

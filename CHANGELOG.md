@@ -1,5 +1,57 @@
 # Cue Studio Changelog
 
+## v2.5.2 — 2026-09-29 (housekeeping — UI bulk actions + fixture isolation)
+
+- **Media gallery bulk actions** (`ui/src/components/MainContent/MainContent.tsx`,
+  `MediaGallery.tsx`, `MediaInspector.tsx`, `useStore.ts`):
+  - New `MediaGallery`/`MediaInspector` split replaces the old
+    `ThumbnailGallery`/`MediaFeedItem`/`VideoInfoBar`/`VideoPlayer`
+    quartet. The gallery owns click-to-inspect; the inspector renders
+    the currently selected asset's metadata. Selection state is
+    independent so the user can tick a batch without losing focus.
+  - New `bulkDeleteSelectedOutputs()` action wires select-all,
+    shift-range, and bulk-delete into the store. Sequential deletes
+    for now (cheap for tens of items); can swap to a `/bulk` endpoint
+    later without changing call sites.
+  - `webWorker.ts`/`layout.worker.ts` deleted — gallery no longer uses
+    a web worker for layout.
+- **`_friendly_pipeline_name` hardening** (`app/services/director_pipeline.py`,
+  `ui/src/components/DirectorDashboard/DirectorDashboard.tsx`):
+  - Falls back to `Workflow: run <stamp>` (single colon) instead of
+    stacking two `·` separators back to back when the scene description
+    is empty. Mirrored on the frontend fallback so the dropdown stays
+    consistent.
+  - `display_name` is now derived on read instead of stored in the
+    pipeline state, so helper improvements (stopwords, truncation,
+    fallback format) propagate to old pipelines without a migration.
+- **`list_pipeline_states` recursion** (`app/services/director_pipeline.py`):
+  - The dashboard scan now descends one extra level into
+    `<out>/.director/<pid>/` so pipelines registered via the v2 plan
+    `register_only=True` path become discoverable from the Dashboard,
+    fixing browser-refresh recovery for that flow.
+- **Fixture isolation fix** (`tests/test_dashboard_friendly_name.py`):
+  - The helper that re-execs `_friendly_pipeline_name` from source
+    used to install `services`/`models` stubs into `sys.modules`
+    **without rolling them back**. Subsequent test modules doing
+    `from services.X import ...` received the empty stub instead of
+    the real package, surfacing as `AttributeError: module 'services'
+    has no attribute 'director'` in adjacent suites. The helper now
+    tracks which stubs it installed and removes them in a `finally`
+    block, restoring anything that was there before.
+- **`test_standalone_launch` bit-rot fixes**:
+  - `test_ensure_service_skips_when_version_matches` now accepts
+    either the legacy `(skipped)` phrasing or the current
+    "já está rodando na porta X" banner.
+  - `test_fallback_preserves_env_and_managed_restart` uses the
+    em-dash (`\u2014`) in its fake `launch.py` output so it matches
+    the `start.sh` log-scanner regex.
+  - Timeout raised from 20s to 120s for the `start.sh` real-process
+    bring-up (some CI environments need >60s to bind).
+- **Tests**: full repo gauntlet is now **605 passed, 0 failed**
+  (was 559 passed + 36 failed from fixture isolation + 2 from
+  bit-rot). 12 tests previously failing in
+  `test_dashboard_friendly_name` adjacent cascade are now green.
+
 ## v2.5.1 — 2026-09-29 (Video Editor — security hardening)
 
 - **Path-traversal guard** on `VideoEditor.export(output_path=...)`:

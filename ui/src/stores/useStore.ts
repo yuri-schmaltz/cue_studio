@@ -1520,6 +1520,19 @@ export interface AppState {
   refreshOutputs: () => Promise<void>
   toggleFavorite: (name: string) => Promise<void>
 
+  // Media gallery (medias tab) — selection state for bulk actions.
+  // Lives in the store so the gallery and inspector agree on which files
+  // are checked even if the user scrolls through one and acts on the
+  // other. Cleared when the user navigates away or the underlying
+  // outputs list mutates significantly.
+  mediaGallerySelectedNames: Set<string>
+  setMediaGallerySelectedNames: (next: Set<string>) => void
+  toggleMediaGallerySelection: (name: string) => void
+  toggleMediaGallerySelectionRange: (fromName: string, toName: string) => void
+  selectAllMediaGallery: (names: string[]) => void
+  clearMediaGallerySelection: () => void
+  bulkDeleteSelectedOutputs: () => Promise<{ deleted: number; failed: number }>
+
   // Output metadata (lazy-loaded for selected output)
   selectedOutputMeta: OutputMetadata | null
   metadataLoading: boolean
@@ -11831,6 +11844,13 @@ export const useStore = create<AppState>((set, get, store) => ({
       const allOutputs = get().outputs.filter(o => o.name !== output.name)
       const newIdx = Math.min(idx, Math.max(0, allOutputs.length - 1))
       set({ outputs: allOutputs, selectedOutput: newIdx })
+      // Prune the gallery selection set so deleted names don't linger.
+      const selection = get().mediaGallerySelectedNames
+      if (selection.has(output.name)) {
+        const next = new Set(selection)
+        next.delete(output.name)
+        set({ mediaGallerySelectedNames: next })
+      }
       // Load metadata for new selection
       const newFiltered = get().filteredOutputs()
       if (newFiltered[newIdx]) {
@@ -11841,6 +11861,102 @@ export const useStore = create<AppState>((set, get, store) => ({
     } catch (e) {
       console.error('Failed to delete output:', e)
     }
+  },
+
+  mediaGallerySelectedNames: new Set<string>(),
+  setMediaGallerySelectedNames: (next) => {
+    set({ mediaGallerySelectedNames: next })
+  },
+  toggleMediaGallerySelection: (name) => {
+    const current = get().mediaGallerySelectedNames
+    const next = new Set(current)
+    if (next.has(name)) next.delete(name)
+    else next.add(name)
+    set({ mediaGallerySelectedNames: next })
+  },
+  toggleMediaGallerySelectionRange: (fromName, toName) => {
+    const list = get().filteredOutputs()
+    const fromIdx = list.findIndex(o => o.name === fromName)
+    const toIdx = list.findIndex(o => o.name === toName)
+    if (fromIdx === -1 || toIdx === -1) return
+    const start = Math.min(fromIdx, toIdx)
+    const end = Math.max(fromIdx, toIdx)
+    const next = new Set(get().mediaGallerySelectedNames)
+    // Standard "shift-select" semantics: every card in the range becomes
+    // selected regardless of its previous state. Matches Finder / Explorer.
+    for (let i = start; i <= end; i++) {
+      const file = list[i]
+      if (file) next.add(file.name)
+    }
+    set({ mediaGallerySelectedNames: next })
+  },
+  selectAllMediaGallery: (names) => {
+    set({ mediaGallerySelectedNames: new Set(names) })
+  },
+  clearMediaGallerySelection: () => {
+    set({ mediaGallerySelectedNames: new Set() })
+  },
+  bulkDeleteSelectedOutputs: async () => {
+    const selection = get().mediaGallerySelectedNames
+    const names = Array.from(selection)
+    if (names.length === 0) return { deleted: 0, failed: 0 }
+
+    // Filter to names actually present in the current filtered list — if
+    // the user changed filter mid-action, some selections may no longer be
+    // visible and shouldn't trigger a server delete we can't reason about.
+    const filtered = get().filteredOutputs()
+    const filteredNames = new Set(filtered.map(o => o.name))
+    const targets = names.filter(n => filteredNames.has(n))
+    if (targets.length === 0) {
+      set({ mediaGallerySelectedNames: new Set() })
+      return { deleted: 0, failed: 0 }
+    }
+
+    // Sequential deletes. Cheap for tens of items; if it grows to hundreds
+    // we can swap to a /bulk endpoint without changing the call sites.
+    let deleted = 0
+    let failed = 0
+    const browsingUploads = get().browsingUploads
+    const workspace = browsingUploads ? '__uploads__' : undefined
+    const survivors = new Set(targets)
+    for (const name of targets) {
+      try {
+        if (browsingUploads) {
+          await api.deleteUpload(name)
+        } else {
+          await api.deleteOutput(name, workspace)
+        }
+        survivors.delete(name)
+        deleted++
+      } catch (e) {
+        console.error('Bulk delete failed for', name, e)
+        failed++
+      }
+    }
+
+    // Apply the survivors back into the local outputs array in one shot.
+    if (deleted > 0) {
+      const removed = new Set(targets.filter(n => !survivors.has(n)))
+      const allOutputs = get().outputs.filter(o => !removed.has(o.name))
+      const filteredAfter = get().filteredOutputs().filter(o => !removed.has(o.name))
+      const idx = get().selectedOutput
+      const newIdx = Math.min(idx, Math.max(0, filteredAfter.length - 1))
+      const newSelection = new Set(get().mediaGallerySelectedNames)
+      removed.forEach(name => newSelection.delete(name))
+      set({
+        outputs: allOutputs,
+        selectedOutput: newIdx,
+        mediaGallerySelectedNames: newSelection,
+      })
+      const nextVisible = filteredAfter[newIdx]
+      if (nextVisible) {
+        get().loadOutputMetadata(nextVisible.name)
+      } else {
+        set({ selectedOutputMeta: null })
+      }
+    }
+
+    return { deleted, failed }
   },
 
   // ── Director Pipeline (server-side) ──────────────────────────────

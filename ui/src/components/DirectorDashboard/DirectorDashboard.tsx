@@ -86,7 +86,9 @@ function fallbackPipelineName(type: string, sceneDescription: string, createdAt:
     const month = stamp.toLocaleString(undefined, { month: 'short' })
     const hh = String(stamp.getHours()).padStart(2, '0')
     const mm = String(stamp.getMinutes()).padStart(2, '0')
-    title = `Run · ${day} ${month} ${hh}:${mm}`
+    // Mirrors backend's "Workflow: run <stamp>" form so the dropdown never
+    // shows two consecutive "·" separators when scene description is empty.
+    return `${workflow}: run ${day} ${month} ${hh}:${mm}`
   }
   return `${workflow} · ${title}`
 }

@@ -1095,7 +1095,7 @@ def _friendly_pipeline_name(
     """Build a short, human-friendly pipeline label for the Dashboard.
 
     Returns something like ``"Music Video · Sunset Drive"`` or, when the
-    scene description is empty, ``"Music Video · Run 28 Sep 14:32"``.
+    scene description is empty, ``"Music Video: run 28 Sep 14:32"``.
     The label is intentionally short so the Dashboard ``<select>`` stays
     scannable; full detail still lives in the pipeline card.
     """
@@ -1136,9 +1136,10 @@ def _friendly_pipeline_name(
             stamp = time.strftime(
                 "%d %b %H:%M", time.localtime(float(created_at))
             ).lstrip("0").replace(" 0", " ")
-            title = f"Run · {stamp}"
-        else:
-            title = "Untitled run"
+            # Fall back to a single colon-separated form so the dropdown
+            # never renders two stacked "·" separators back to back.
+            return f"{workflow_label}: run {stamp}"
+        return f"{workflow_label}: untitled run"
 
     return f"{workflow_label} · {title}"
 
@@ -1378,17 +1379,6 @@ def _save_pipeline_state_locked(pid: str) -> bool:
         "workspace": p.get("workspace") or "default",
         "pipeline_type": params.get("pipeline_type", "music_video"),
         "scene_description": params.get("scene_description", ""),
-        # Auto-derived human label for the Dashboard selector. Kept on
-        # the state so it stays stable across reloads even if the user
-        # never edits the scene description. Pipeline chips in the UI
-        # rely on this — falling back to the type/date pair would make
-        # multiple "Music Video · Run 28 Sep 14:32" entries impossible
-        # to distinguish at a glance.
-        "display_name": _friendly_pipeline_name(
-            params.get("pipeline_type", "music_video"),
-            params.get("scene_description", ""),
-            p.get("created_at"),
-        ),
         "reference_image_path": params.get("reference_image_path"),
         # A no-reference run creates its own visual anchor inside the output
         # directory.  Keep the basename separate from the user's input path so
@@ -1486,16 +1476,31 @@ def _normalize_interrupted_repair(state: dict, pid: str) -> bool:
 
 
 def list_pipeline_states(out_dir: str) -> list[dict]:
-    """Scan directory for saved pipeline state files. Returns summary list."""
+    """Scan directory for saved pipeline state files. Returns summary list.
+
+    The scan descends into ``.director/<pid>/`` subfolders so pipelines
+    registered via the v2 plan register-only path become discoverable
+    from the Dashboard. Without this recursion the listing misses any
+    pipeline whose ``start_pipeline`` saved into ``<out>/.director/<pid>/``
+    instead of the workspace root, breaking browser-refresh recovery.
+    """
     results = []
     if not os.path.isdir(out_dir):
         return results
-    # Scan top-level and workspace subdirectories
+    # Scan top-level, workspace subdirectories, and any .director/<pid>/
+    # subtree (one level deeper) where register-only pipelines live.
     dirs_to_scan = [out_dir]
     for name in os.listdir(out_dir):
         sub = os.path.join(out_dir, name)
-        if os.path.isdir(sub):
-            dirs_to_scan.append(sub)
+        if not os.path.isdir(sub):
+            continue
+        dirs_to_scan.append(sub)
+        # Walk one extra level into .director/<pid>/ to pick up pipelines
+        # whose state.json was written by register_only=True.
+        for pid_name in os.listdir(sub):
+            pid_dir = os.path.join(sub, pid_name)
+            if os.path.isdir(pid_dir):
+                dirs_to_scan.append(pid_dir)
 
     for scan_dir in dirs_to_scan:
         for fname in os.listdir(scan_dir):
@@ -1534,7 +1539,10 @@ def list_pipeline_states(out_dir: str) -> list[dict]:
                         "clip_count": len(data.get("clips", [])),
                         "output_count": len(data.get("output_files", [])),
                         "scene_description": (data.get("scene_description", "") or "")[:100],
-                        "display_name": data.get("display_name") or _friendly_pipeline_name(
+                        # Derive on read so helper improvements (stopwords,
+                        # truncation, fallback format) propagate to old
+                        # pipelines without a migration step.
+                        "display_name": _friendly_pipeline_name(
                             data.get("pipeline_type", ""),
                             data.get("scene_description", "") or "",
                             data.get("created_at"),
