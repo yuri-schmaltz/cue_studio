@@ -2088,25 +2088,34 @@ function DirectorAdvancedAccordion() {
 
             {(activeDirectorVideoOptions?.director_memory_policy
               || activeDirectorVideoOptions?.sliding_window_memory_policy)
-              && nativeShotChoices.length > 0 && (
+              && (nativeShotChoices.length > 0 || activeDirectorVideoOptions?.sliding_window) && (
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <label className="text-xs text-text-secondary">Maximum planned shot</label>
-                  <select
-                    value={manualMaxShotFrames ?? ''}
-                    onChange={event => setMaxShotFrames(
-                      videoModel,
-                      event.target.value ? Number(event.target.value) : null,
-                    )}
-                    className="bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none focus:border-accent-blue"
-                  >
-                    <option value="">Auto</option>
-                    {nativeShotChoices.map(frames => (
-                      <option key={frames} value={frames}>
-                        {formatSeconds(frames / (activeDirectorVideoOptions.fps || 24))}
-                      </option>
-                    ))}
-                  </select>
+                  {nativeShotChoices.length > 0 ? (
+                    <select
+                      value={manualMaxShotFrames ?? ''}
+                      onChange={event => setMaxShotFrames(
+                        videoModel,
+                        event.target.value ? Number(event.target.value) : null,
+                      )}
+                      className="bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-xs text-text-primary focus:outline-none focus:border-accent-blue"
+                    >
+                      <option value="">Auto</option>
+                      {nativeShotChoices.map(frames => (
+                        <option key={frames} value={frames}>
+                          {formatSeconds(frames / (activeDirectorVideoOptions.fps || 24))}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    // Rolling-window model (LTX2, Wan, ...) — no native
+                    // lattice to pick from, but a manual numeric override
+                    // is still useful as a per-window upper bound. Hide
+                    // the dropdown but keep the warning so the user knows
+                    // their previous override (if any) is still being sent.
+                    <span className="text-2xs text-text-muted">rolling window</span>
+                  )}
                 </div>
                 <p className={`text-2xs ${
                   manualMaxShotFrames != null
@@ -2121,7 +2130,9 @@ function DirectorAdvancedAccordion() {
                       : `Auto derives the one-pass limit from the selected canvas and GPU.`
                     : safeShotFrames != null && manualMaxShotFrames > safeShotFrames
                       ? `Manual override exceeds Auto's ${formatSeconds(safeShotFrames / (activeDirectorVideoOptions.fps || 24))} recommendation and may run out of VRAM.`
-                      : `Manual native-shot limit. Director will plan dialogue and action to this duration.`}
+                      : activeDirectorVideoOptions?.sliding_window
+                        ? `Rolling-window model: this limit is applied per window, not per shot.`
+                        : `Manual native-shot limit. Director will plan dialogue and action to this duration.`}
                 </p>
               </div>
             )}

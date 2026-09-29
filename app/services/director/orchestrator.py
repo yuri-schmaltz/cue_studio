@@ -175,8 +175,11 @@ class DirectorOrchestrator:
                     if result.auto_fixes:
                         print(f"[Director] Shot {shot.shot_id} auto-fixes: {result.auto_fixes}")
 
+        _total_duration = production_plan.total_duration_sec
+        if _total_duration is None:
+            _total_duration = 0.0
         print(f"[Director] Plan complete: {len(production_plan.shots)} shots, "
-              f"{production_plan.total_duration_sec:.1f}s total")
+              f"{_total_duration:.1f}s total")
 
         return production_plan
 
@@ -294,8 +297,11 @@ class DirectorOrchestrator:
         if self.flags.use_prompt_validation:
             validation = validate_prompt_for_mode(prompt, mode, shot, plan)
             if self.flags.log_validation_details and validation.warnings:
+                _score = validation.completeness_score
+                if _score is None:
+                    _score = 0.0
                 print(f"[Director] Prompt validation ({shot.shot_id}, {mode}): "
-                      f"score={validation.completeness_score:.2f}, "
+                      f"score={_score:.2f}, "
                       f"warnings={validation.warnings}")
 
         # Compress
@@ -305,10 +311,13 @@ class DirectorOrchestrator:
                 aggressive=self.flags.aggressive_compression,
             )
             if self.flags.log_compression_deltas and compression.chars_removed > 0:
+                _ratio = compression.compression_ratio
+                if _ratio is None:
+                    _ratio = 0.0
                 print(f"[Director] Compression ({shot.shot_id}, {mode}): "
                       f"{compression.original_words}->{compression.compressed_words} words, "
                       f"{compression.chars_removed} chars removed "
-                      f"({compression.compression_ratio:.1%})")
+                      f"({_ratio:.1%})")
             prompt = compression.compressed
 
         return prompt

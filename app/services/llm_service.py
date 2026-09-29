@@ -403,6 +403,23 @@ MODEL_REGISTRY = {
             "temperature": 1.0, "top_p": 0.95, "top_k": 64,
             "frequency_penalty": 0, "presence_penalty": 0,
         },
+        # CRITICAL for Gemma 4 in llama.cpp: the GGUF tokenizer's
+        # `special_eog_ids` list reclassifies `<|tool_response>` as an
+        # EOG token, which causes llama.cpp to REMOVE the classic `</s>`
+        # from the EOG list (see llama.cpp tokenizer.cpp). The model
+        # then has NO automatic end-of-generation marker when running
+        # with `--jinja`, so it will happily emit 30k+ tokens until
+        # max_new_tokens is hit. Observed empirically on a 5-clip
+        # Director plan: 1,300+ tokens at 8.5 t/s, no EOS, hung the
+        # /api/v1/director/v2/plan request indefinitely.
+        #
+        # Fix: explicitly add Gemma 4's stop sequences to every chat
+        # completion payload via generate()/generate_streaming(). The
+        # canonical Gemma 4 end markers are `<|im_end|>` (chat turn end)
+        # and `<end_of_turn>` (legacy Google Gemma). Both are recognized
+        # by llama-server's OpenAI-compatible /v1/chat/completions and
+        # stop generation cleanly without affecting normal output.
+        "default_stop_tokens": ["<|im_end|>", "<end_of_turn>"],
     },
     "Abhiray/gemma-4-E4B-it-heretic-GGUF": {
         "label": "Gemma 4 4B Heretic Uncensored (Vision, Fast) (Recommended)",
@@ -414,6 +431,11 @@ MODEL_REGISTRY = {
             "temperature": 1.0, "top_p": 0.95, "top_k": 64,
             "frequency_penalty": 0, "presence_penalty": 0,
         },
+        # See the E2B entry above for the full rationale. The E4B
+        # model is the default for Cue Studio (DEFAULT_HF_REPO) and
+        # the one currently hanging /api/v1/director/v2/plan. Same
+        # </s>-removed-from-EOG pathology, same fix.
+        "default_stop_tokens": ["<|im_end|>", "<end_of_turn>"],
     },
     "SulphurAI/Sulphur-2-base": {
         # Sulphur-2's own uncensored prompt enhancer — a ~9.6B multimodal
@@ -541,6 +563,8 @@ MODEL_REGISTRY = {
             "temperature": 1.0, "top_p": 0.95, "top_k": 64,
             "frequency_penalty": 0, "presence_penalty": 0,
         },
+        # See Gemma 4 2B entry for full rationale. Same pathology.
+        "default_stop_tokens": ["<|im_end|>", "<end_of_turn>"],
         "extra_flags": [
             "-c", "65536",
             "-np", "1",
@@ -574,6 +598,8 @@ MODEL_REGISTRY = {
         # gemma_prefix (this template emits an empty <|channel>thought<channel|>
         # when thinking is off, which would fight a manually-injected token).
         "thinking_style": "gemma",
+        # See Gemma 4 2B entry for full rationale. Same pathology.
+        "default_stop_tokens": ["<|im_end|>", "<end_of_turn>"],
         # Repeat-loop fix — COMPLEMENT the caller, don't clobber it.
         # registry sampling_defaults OVERRIDE per-call values (see
         # _apply_sampling_defaults), and the Director passes are tuned per pass:
@@ -2440,11 +2466,30 @@ def generate(
         thinking_budget=thinking_budget,
         reasoning_effort=reasoning_effort,
     )
-    combined_stop = list(stop) if stop else []
+    # Filter empty strings — an empty token means "stop on every token"
+    # which would terminate generation immediately. Upstream callers
+    # can occasionally pass `stop=[""]` after `None → ""` coercion;
+    # defensive filter keeps the payload semantically valid.
+    combined_stop = [t for t in (stop or []) if t]
     if _active_registry_entry().get("disable_thinking", False):
         for tok in ("<think>", "<thinking>", "<|think|>", "<channel>", "<|channel|>"):
             if tok not in combined_stop:
                 combined_stop.append(tok)
+    # Gemma 4 EOS fix — llama.cpp's tokenizer removes the classic
+    # `</s>` from `special_eog_ids` when it detects `<|tool_response>`
+    # as another EOG token, which leaves Gemma 4 GGUFs with NO
+    # automatic end-of-generation marker. Without these stop tokens,
+    # long Director plans burn the entire token budget emitting
+    # content that never terminates (1300+ tokens at 8.5 t/s, hung
+    # /api/v1/director/v2/plan indefinitely). The registry entry's
+    # `default_stop_tokens` lists Gemma 4's canonical turn-end
+    # markers; we layer them on top of any caller-supplied stops
+    # without clobbering them. See E2B registry entry for full
+    # rationale.
+    _entry = _active_registry_entry()
+    for tok in _entry.get("default_stop_tokens", []) or []:
+        if tok and tok not in combined_stop:
+            combined_stop.append(tok)
     if combined_stop:
         payload["stop"] = combined_stop
 
@@ -2564,6 +2609,7 @@ def generate_streaming(
     presence_penalty: float = 0.0,
     json_schema: Optional[dict] = None,
     grammar: Optional[str] = None,
+    stop: Optional[list[str]] = None,
 ) -> str:
     """Generate text using SSE streaming, populating the stream buffer in real-time.
 
@@ -2676,8 +2722,20 @@ def generate_streaming(
     # empty `content`. Stopping on the marker token caps wasted tokens at 1.
     if _active_registry_entry().get("disable_thinking", False):
         stop_tokens = ["<think>", "<thinking>", "<|think|>", "<channel>", "<|channel|>"]
-        existing = payload.get("stop") or []
-        payload["stop"] = list(existing) + [t for t in stop_tokens if t not in existing]
+        existing = [t for t in (payload.get("stop") or []) if t]
+        payload["stop"] = existing + [t for t in stop_tokens if t not in existing]
+    # Gemma 4 EOS fix — same rationale as the matching block in
+    # generate(). llama.cpp's tokenizer removes `</s>` from the EOG list
+    # when `<|tool_response>` is present, so Gemma 4 GGUFs need explicit
+    # `<|im_end|>` / `<end_of_turn>` stop tokens to terminate cleanly.
+    # The registry entry's `default_stop_tokens` provides them per-model
+    # so other models stay untouched.
+    _entry = _active_registry_entry()
+    if _entry.get("default_stop_tokens"):
+        existing = [t for t in (payload.get("stop") or []) if t]
+        payload["stop"] = existing + [
+            t for t in _entry["default_stop_tokens"] if t and t not in existing
+        ]
 
     # Direct GBNF grammar or Schema-constrained JSON output
     if grammar is not None:

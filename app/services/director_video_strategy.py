@@ -259,6 +259,17 @@ def build_director_video_execution_profile(
             int(raw_recommended) if raw_recommended is not None else None
         )
 
+    # A model that uses rolling/sliding windows (LTX2, Wan, MiniMax H3
+    # variants) doesn't publish a single architectural ``frames_maximum``;
+    # the runtime fragments the requested span into overlapping windows.
+    # When that flag is on, a manual override is treated as a *per-window*
+    # upper bound (clamped against ``frames_minimum`` only) rather than a
+    # model-wide architectural limit. This unblocks users on rolling-window
+    # models who set an override while another model was active — the value
+    # is still validated against the lattice so we never feed the runtime
+    # a frame count it can't honor.
+    rolling_window = bool(model_def.get("sliding_window"))
+
     override_frames: int | None = None
     if manual_max_frames not in (None, "", 0, "0"):
         try:
@@ -267,18 +278,30 @@ def build_director_video_execution_profile(
             raise ValueError(
                 "Director's manual maximum shot length must be a frame count."
             ) from exc
-        if architectural_maximum is None:
+        # Only reject when there's no fallback path at all — fixed-shot
+        # models (e.g. older single-pass video models) genuinely have no
+        # upper bound the user can override.
+        if architectural_maximum is None and not rolling_window:
             raise ValueError(
                 f"{model_type} does not publish a bounded shot length to override."
             )
+        # Clamp to architectural_maximum FIRST when it exists (e.g. MiniMax H3
+        # single-pass mode). This prevents stale UI overrides from a
+        # different model — values that exceed the new model's hard limit —
+        # from being rejected outright. The lattice check below then runs
+        # against the clamped value, which always lands on the lattice
+        # because architectural_maximum itself is on the lattice.
+        if architectural_maximum is not None:
+            override_frames = min(override_frames, architectural_maximum)
         if not (
-            minimum_frames <= override_frames <= architectural_maximum
-            and (override_frames - minimum_frames) % frame_step == 0
+            minimum_frames <= override_frames
+            and (override_frames - minimum_frames) % max(1, frame_step) == 0
         ):
+            upper = architectural_maximum or "unbounded"
             raise ValueError(
                 f"Director's manual maximum for {model_type} must be on its "
-                f"{minimum_frames}-{architectural_maximum} frame lattice "
-                f"(step {frame_step})."
+                f"frame lattice starting at {minimum_frames} (step {frame_step}); "
+                f"got {override_frames} (upper bound: {upper})."
             )
 
     if is_h3 and recommended_maximum is None and override_frames is None:
@@ -335,6 +358,14 @@ def build_director_video_execution_profile(
         "gpu_vram_gb": detected_vram,
         "manual_override": override_frames is not None,
         "manual_max_frames": override_frames,
+        # True when override was accepted on a sliding-window model that
+        # has no architectural maximum. UI can show a banner warning the
+        # user that this is an experimental per-window upper bound.
+        "rolling_window_override": (
+            override_frames is not None
+            and architectural_maximum is None
+            and rolling_window
+        ),
         "hardware_supported": bool(
             not is_h3 or (recommendation or {}).get("supported", True)
         ),

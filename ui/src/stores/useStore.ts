@@ -12171,6 +12171,20 @@ export const useStore = create<AppState>((set, get, store) => ({
       ?? directorVideoOptions?.default_skip_steps_start_step_perc
       ?? 25
     ) / 5) * 5))
+    // Defensive cleanup: if the active video model doesn't publish an
+    // architectural ``frames_maximum`` (rolling-window models like LTX2
+    // / Wan), drop any stale manual override that might have leaked
+    // across a model switch in localStorage. Without this, a saved value
+    // from a previous model can sneak into a request for a model that
+    // would reject it (backend 400) — and the user can't fix it from the
+    // UI because no dropdown is rendered for sliding-window models.
+    const selectedFramesMaximum = directorVideoOptions?.frames_maximum ?? null
+    if (
+      !Number.isFinite(selectedFramesMaximum)
+      && directorVideoMaxShotFramesByModel[selectedVideoModel] != null
+    ) {
+      get().setDirectorVideoMaxShotFrames(selectedVideoModel, null)
+    }
     const directorMaxShotFrames = directorVideoMaxShotFramesByModel[selectedVideoModel]
 
     // Upload all reference images (main + character + location) if not already uploaded
@@ -12297,7 +12311,18 @@ export const useStore = create<AppState>((set, get, store) => ({
       shot_image_guidance: directorShotImageGuidance,
       director_resolution_preset: directorResolution,
       director_aspect_ratio: directorAspectRatio,
-      director_max_shot_frames: directorMaxShotFrames,
+      // Only send the override when the user explicitly set a finite,
+      // positive frame count. Spreading `undefined` is a no-op for
+      // JSON.stringify so the field is omitted entirely from the request.
+      // Background: a stale override from a previous model can survive a
+      // model switch in localStorage and previously leaked into requests
+      // for models that don't publish an architectural frame limit (LTX2,
+      // Wan, etc) — backend rejected with 400 even though the user's
+      // current intent was "Auto". See director_video_strategy.py for the
+      // matching backend change.
+      ...(Number.isFinite(directorMaxShotFrames) && (directorMaxShotFrames as number) > 0
+        ? { director_max_shot_frames: directorMaxShotFrames }
+        : {}),
       fps,
       frames_steps: directorVideoOptions?.frames_steps ?? 4,
       frames_minimum: directorVideoOptions?.frames_minimum ?? 5,

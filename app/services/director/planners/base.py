@@ -389,6 +389,28 @@ class BasePlanner(ABC):
             "frequency_penalty": frequency_penalty,
             "presence_penalty": presence_penalty,
         }
+        # Defense-in-depth: explicitly forward the registry's
+        # `default_stop_tokens` to the LLM call as `stop=`. The
+        # generate() and generate_streaming() functions already inject
+        # these automatically, but planner callers go through a
+        # different code path and have historically been the ones that
+        # hang indefinitely when the active model's tokenizer removes
+        # `</s>` from the EOG list (Gemma 4 GGUFs via llama.cpp). Passing
+        # `stop=` here is a no-op for models without the entry, and
+        # layers protection for models that have it.
+        try:
+            from services import llm_service
+            entry = llm_service._active_registry_entry() or {}
+            default_stop = entry.get("default_stop_tokens")
+            if default_stop:
+                # Filter empty strings — an empty `stop` token in the
+                # OpenAI payload means "stop on EVERY token" and
+                # immediately terminates generation (was being injected
+                # by a previous version that didn't filter None → ""
+                # from upstream callers).
+                kwargs["stop"] = [t for t in default_stop if t]
+        except Exception:
+            pass
         if thinking_budget == 0:
             kwargs["enable_thinking"] = False
             # Grammar on the first attempt only for thinking-off models:
