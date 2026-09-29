@@ -455,4 +455,81 @@ def _install_optional_stubs() -> None:
         # patcher will shim it on demand.
         pass
 
+
+# ── User media library fixtures ─────────────────────────────────────
+#
+# The user keeps reference audio / image / video / script samples
+# outside the repo (Google Drive syncs into /home/yuri/Google/). The
+# paths live in ``app/services/test_fixtures.py`` so both runtime
+# helpers and tests can import the same constants. These pytest
+# fixtures surface them as a single ``media_library_paths`` dict so
+# test functions can do ``media_library_paths["audio"]`` instead of
+# reaching into module-level globals.
+#
+# Tests that NEED real fixtures should mark themselves with
+# ``pytest.mark.media`` (registered below) and use the
+# ``require_media_library`` fixture, which skips cleanly when the
+# library isn't on disk. Tests that DON'T need real fixtures just
+# ignore both — no behavioural change for the existing 625 tests.
+
+import pytest  # noqa: E402  — late import keeps the existing preamble readable
+
+
+def pytest_configure(config):  # noqa: D401
+    """Register the ``media`` marker so ``--strict-markers`` doesn't
+    complain when a test is marked ``@pytest.mark.media``."""
+    config.addinivalue_line(
+        "markers",
+        "media: tests that consume the user's external media library "
+        "(/home/yuri/Google/midias and /home/yuri/Google/documentos/"
+        "04-biblioteca/roteiros-referencia). Auto-skipped when the "
+        "library is unavailable.",
+    )
+
+
+@pytest.fixture(scope="session")
+def media_library_paths() -> dict[str, object]:
+    """Expose the user media library as a session-scoped dict.
+
+    Tests that only need the *paths* (not the files themselves) use
+    this fixture without the ``require_media_library`` skipper — that
+    way a path-listing test passes on any checkout. Tests that need
+    actual files also depend on ``require_media_library`` below.
+    """
+    from services import test_fixtures
+    return {
+        "media_root": test_fixtures.MEDIA_LIBRARY_DIR,
+        "scripts_root": test_fixtures.SCRIPTS_LIBRARY_DIR,
+        "media_audio_dir": test_fixtures.MEDIA_LIBRARY_DIR / test_fixtures.MEDIA_AUDIO_SUBDIR,
+        "media_images_dir": test_fixtures.MEDIA_LIBRARY_DIR / test_fixtures.MEDIA_IMAGES_SUBDIR,
+        "media_videos_dir": test_fixtures.MEDIA_LIBRARY_DIR / test_fixtures.MEDIA_VIDEO_SUBDIR,
+        "scripts_cinema_dir": test_fixtures.SCRIPTS_LIBRARY_DIR / test_fixtures.SCRIPTS_CINEMA_SUBDIR,
+        "scripts_series_dir": test_fixtures.SCRIPTS_LIBRARY_DIR / test_fixtures.SCRIPTS_SERIES_SUBDIR,
+    }
+
+
+@pytest.fixture(scope="session")
+def require_media_library() -> None:
+    """Skip the test if the user media library isn't on disk.
+
+    Pair this with ``media_library_paths`` when a test needs to read
+    real files. CI runners that don't have the Google Drive sync
+    mounted still pass — the test gets reported as skipped rather
+    than failed.
+    """
+    from services import test_fixtures
+    if not test_fixtures.MEDIA_LIBRARY_DIR.is_dir():
+        pytest.skip(
+            f"Media library not found at {test_fixtures.MEDIA_LIBRARY_DIR}. "
+            f"Set CUE_STUDIO_MEDIA_LIBRARY_DIR to a mirror or skip these "
+            f"tests with `-m 'not media'`."
+        )
+    if not test_fixtures.SCRIPTS_LIBRARY_DIR.is_dir():
+        pytest.skip(
+            f"Scripts library not found at {test_fixtures.SCRIPTS_LIBRARY_DIR}. "
+            f"Set CUE_STUDIO_SCRIPTS_LIBRARY_DIR to a mirror or skip these "
+            f"tests with `-m 'not media'`."
+        )
+
+
 _install_optional_stubs()

@@ -810,14 +810,19 @@ export function DirectorChat() {
     : 'Reviewing...'
 
   const renderComposer = (headerTitle?: string, fillSpace?: boolean) => (
-    <div className={`space-y-2 ${fillSpace ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
-      <header className="flex items-center justify-between gap-2 shrink-0">
-        {headerTitle ? (
+    // Skip the inter-block gap when no header is rendered — Description's
+    // fillSpace mode passes no title, so the previous `space-y-2` was
+    // pushing the textarea down ~8px for no visual benefit, breaking the
+    // rhythm set by Music/References (gap-3 → UploadZone, no header).
+    <div className={`${headerTitle ? 'space-y-2' : ''} ${fillSpace ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
+      {headerTitle ? (
+        <header className="flex items-center justify-between gap-2 shrink-0">
           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
             {headerTitle}
           </h3>
-        ) : <div />}
-      </header>
+          <div />
+        </header>
+      ) : null}
 
       {/* Field container */}
       <div className={`relative w-full ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
@@ -1220,7 +1225,7 @@ export function DirectorChat() {
                 The tabs row above is hidden on this tab so the
                 composer does not share vertical space with it. */}
             {activeTab === 'description' && (
-              <div className="flex-1 min-h-0 flex flex-col space-y-3">
+              <div className="flex-1 min-h-0 flex flex-col gap-3">
                 <DirectorAudioSourceTabs
                   activeTab={activeTab}
                   onTabChange={(t) => setActiveTab(t)}
@@ -1229,10 +1234,16 @@ export function DirectorChat() {
                     let the block grow to fill all available vertical
                     space above the tabs; the inner textarea
                     (renderComposer with fillSpace=true) uses h-full
-                    to stretch to the bottom. No border-t — the line
+                    to stretch to the bottom. No border-t — a linha
                     horizontal entre as abas e o textarea foi removida
-                    porque duplicava visualmente o separador do card. */}
-                <div className="flex-1 min-h-0 flex flex-col pt-2.5 -mb-2">
+                    porque duplicava visualmente o separador do card.
+                    Espaçamento consistente com Music/References:
+                    gap-3 no container externo (mesma cadência que
+                    UploadZone usa logo abaixo das Music sub-tabs),
+                    space-y-2 dentro do renderComposer. Sem pt-2.5
+                    extra nem -mb-2 — eles inflavam o espaço entre as
+                    abas e o textarea em ~18px além do padrão. */}
+                <div className="flex-1 min-h-0 flex flex-col">
                   {renderComposer(undefined, true)}
                 </div>
               </div>

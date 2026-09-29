@@ -808,7 +808,14 @@ def suggest_clip_boundaries(
     total_duration: Optional[float] = None,
 ) -> List[dict]:
     """Suggest optimal clip boundaries aligned to musical structure."""
-    song_duration = total_duration or analysis["duration"]
+    # Defensive read: callers (handlers in launch.py) may forward a
+    # partial analysis dict, and ``analysis["duration"]`` was raising
+    # KeyError before this guard. Falling back to ``total_duration``,
+    # then ``clip_duration``, then 0 keeps the function total.
+    raw_duration = total_duration if total_duration else analysis.get("duration", 0)
+    if not raw_duration or raw_duration <= 0:
+        raw_duration = max(clip_duration, 1.0)
+    song_duration = raw_duration
     sections = analysis.get("sections", [])
     downbeats = analysis.get("downbeats", [])
 
@@ -938,6 +945,11 @@ def plan_clip_structure(
     Returns a list of clip dicts with ``beat_count`` and ``duration_frames``.
     """
     bpm = analysis.get("bpm", 120.0)
+    # Guard against BPM <= 0 (librosa returns 0.0 when no clear tempo is
+    # detected — silence, pure tones, or extremely short clips). Without
+    # this clamp the endpoint returns HTTP 500 instead of a graceful plan.
+    if not bpm or bpm <= 0:
+        bpm = 120.0
     beat_duration = 60.0 / bpm
     beats = analysis.get("beats", [])
     beat_times = sorted(b["time"] if isinstance(b, dict) else b.time for b in beats)

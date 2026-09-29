@@ -10944,6 +10944,11 @@ async def director_v2_plan(request: Request):
     Returns structured ProductionPlan + rendered clip_plans.
     """
     body = await request.json()
+    if not isinstance(body, dict):
+        raise HTTPException(
+            status_code=400,
+            detail="request body must be a JSON object",
+        )
     skill_type = body.get("skill_type", body.get("pipeline_type", "music_video"))
 
     # Map legacy pipeline_type to skill_type
@@ -10955,6 +10960,31 @@ async def director_v2_plan(request: Request):
         "viral_video": "viral_video",
     }
     skill_type = skill_map.get(skill_type, skill_type)
+
+    # Validate the minimum payload the planner requires before spawning
+    # the LLM worker. Without this guard an empty body or missing
+    # required keys surfaces as ``MusicVideoPlanner.plan() missing 2
+    # required positional arguments`` — HTTP 500 with a TypeError —
+    # which the UI cannot diagnose. Returning 400 here turns a
+    # confusing crash into a clean validation error.
+    _REQUIRED_BY_SKILL = {
+        "music_video": ("clips", "scene_description"),
+        "short_film": ("clips", "story_description"),
+        "podcast": ("clips", "scene_description"),
+        "viral_video": ("clips", "scene_description"),
+    }
+    required = _REQUIRED_BY_SKILL.get(skill_type)
+    if required:
+        missing = [k for k in required if not body.get(k)]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"{skill_type} planning requires: "
+                    + ", ".join(required)
+                    + f" (missing: {', '.join(missing)})"
+                ),
+            )
 
     # Register a cancellation event up-front so the client can interrupt
     # the LLM call mid-stream via /api/v1/director/v2/plan/cancel.
