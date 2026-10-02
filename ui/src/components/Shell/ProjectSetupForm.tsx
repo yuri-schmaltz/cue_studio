@@ -67,18 +67,6 @@ export const PROJECT_SETUP_RESOLUTIONS: ReadonlyArray<{ value: ResolutionPreset;
   { value: '1080p', label: '1080p' },
 ]
 
-/** One-click starting setups for the New project dialog. Each template
- *  pins format AND skill together so picking "Short film" can't leave
- *  the project on the Music Video skill by accident. Model/advanced
- *  choices stay per-project because they depend on the installed
- *  catalog. */
-export const PROJECT_SETUP_TEMPLATES: ReadonlyArray<{ value: string; label: string; desc: string; setup: Partial<ProjectSetupDefaults> }> = [
-  { value: 'short-film', label: 'Short film', desc: '16:9 · 720p', setup: { aspect_ratio: '16:9', resolution: '720p', director_skill: 'short_film' } },
-  { value: 'reels', label: 'Reels', desc: '9:16 · 1080p', setup: { aspect_ratio: '9:16', resolution: '1080p', director_skill: 'music_video' } },
-  { value: 'cinema', label: 'Cinema', desc: '21:9 · 1080p', setup: { aspect_ratio: '21:9', resolution: '1080p', director_skill: 'music_video' } },
-  { value: 'square', label: 'Square', desc: '1:1 · 1080p', setup: { aspect_ratio: '1:1', resolution: '1080p', director_skill: 'music_video' } },
-]
-
 export interface ProjectSetupFormProps {
   value: ProjectSetupDefaults
   onChange: (next: ProjectSetupDefaults) => void
@@ -218,32 +206,32 @@ export function ProjectSetupForm({
       <fieldset className={sectionCls} aria-label="Workflow defaults">
         <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Workflow</legend>
         <div className="grid grid-cols-2 gap-2">
-          <label className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.seamless ? 'border-accent-blue/60 bg-accent-blue/5' : 'border-border hover:border-border-light'}`}>
-            <input
-              type="checkbox"
-              checked={Boolean(safeValue.seamless)}
-              disabled={disabled}
-              onChange={e => update({ seamless: e.target.checked })}
-              className="accent-accent-blue w-3 h-3 shrink-0"
-            />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(safeValue.seamless)}
+            disabled={disabled}
+            onClick={() => update({ seamless: !safeValue.seamless })}
+            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border text-left select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.seamless ? 'border-accent-blue/60 bg-accent-blue/5' : 'border-border hover:border-border-light'}`}
+          >
             <span className="min-w-0">
               <span className="text-xs text-text-secondary block leading-tight">Seamless</span>
               <span className="text-2xs text-text-muted block leading-tight truncate">continuous sliding window</span>
             </span>
-          </label>
-          <label className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.auto_mode ? 'border-accent-blue/60 bg-accent-blue/5' : 'border-border hover:border-border-light'}`}>
-            <input
-              type="checkbox"
-              checked={Boolean(safeValue.auto_mode)}
-              disabled={disabled}
-              onChange={e => update({ auto_mode: e.target.checked })}
-              className="accent-accent-blue w-3 h-3 shrink-0"
-            />
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={Boolean(safeValue.auto_mode)}
+            disabled={disabled}
+            onClick={() => update({ auto_mode: !safeValue.auto_mode })}
+            className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border text-left select-none transition-all ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${safeValue.auto_mode ? 'border-accent-blue/60 bg-accent-blue/5' : 'border-border hover:border-border-light'}`}
+          >
             <span className="min-w-0">
               <span className="text-xs text-text-secondary block leading-tight">Auto</span>
               <span className="text-2xs text-text-muted block leading-tight truncate">skip review steps</span>
             </span>
-          </label>
+          </button>
         </div>
       </fieldset>
 
@@ -347,22 +335,28 @@ export function ProjectSetupForm({
 }
 
 function FormSelect({
-  label, value, onChange, options, disabled,
+  label, value, onChange, options, disabled, inline,
 }: {
   label: string
   value: string
   onChange: (next: string) => void
   options: ReadonlyArray<{ value: string; label: string }>
   disabled?: boolean
+  /** When true, the label sits on the same row as the select
+   *  (label + select in a flex row, label keeps a fixed width) —
+   *  used by the tight Output format row where "Aspect ratio" and
+   *  "Resolution" share two columns side-by-side. Long labels in
+   *  narrow columns (model pickers) stay stacked by default. */
+  inline?: boolean
 }) {
   return (
-    <label className="block">
-      <span className="text-xs text-text-secondary block mb-1">{label}</span>
+    <label className={inline ? 'flex items-center gap-2 min-w-0' : 'block'}>
+      <span className={inline ? 'text-xs text-text-secondary shrink-0' : 'text-xs text-text-secondary block mb-1'}>{label}</span>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+        className={`${inline ? 'flex-1 min-w-0' : 'w-full'} rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue`}
       >
         {options.map(opt => (
           <option key={opt.value || 'blank'} value={opt.value}>{opt.label}</option>

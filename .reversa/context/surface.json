@@ -1,0 +1,98 @@
+{
+  "generated_at": "2026-10-02T19:33:48Z",
+  "project_root": "/home/yuri/Documentos/cue_studio",
+  "languages": [
+    { "name": "Python", "extensions": [".py"], "file_count": 1427 },
+    { "name": "TypeScript", "extensions": [".ts", ".tsx"], "file_count": 172 },
+    { "name": "JavaScript", "extensions": [".js", ".mjs"], "file_count": 9 },
+    { "name": "CSS", "extensions": [".css"], "file_count": 3 },
+    { "name": "HTML", "extensions": [".html"], "file_count": 3 },
+    { "name": "Markdown", "extensions": [".md"], "file_count": 98 },
+    { "name": "YAML", "extensions": [".yaml", ".yml"], "file_count": 36 },
+    { "name": "Shell", "extensions": [".sh"], "file_count": 10 }
+  ],
+  "primary_language": "Python",
+  "frameworks": [
+    { "name": "FastAPI", "version": "n/a (pinned)", "source": "app/requirements.txt" },
+    { "name": "React", "version": "19.2.0", "source": "ui/package.json" },
+    { "name": "Zustand", "version": "5.0.11", "source": "ui/package.json" },
+    { "name": "Vite", "version": "7.3.1", "source": "ui/package.json" },
+    { "name": "Tailwind CSS", "version": "4.2.1", "source": "ui/package.json" },
+    { "name": "TypeScript", "version": "~5.9.3", "source": "ui/package.json" },
+    { "name": "pytest", "version": "n/a (out/dev)", "source": "pyproject.toml" },
+    { "name": "Click", "version": "transitive", "source": "app/cli.py" },
+    { "name": "mmgp", "version": "3.7.12", "source": "app/requirements.txt" },
+    { "name": "diffusers", "version": "0.36.0", "source": "app/requirements.txt" },
+    { "name": "transformers", "version": "4.57.1", "source": "app/requirements.txt" }
+  ],
+  "package_manager": "pip (Python) + npm (UI)",
+  "entry_points": [
+    { "path": "app/launch.py", "type": "server_entry" },
+    { "path": "app/wgp.py", "type": "core_runtime" },
+    { "path": "app/cli.py", "type": "cli_entry" },
+    { "path": "cli/__init__.py", "type": "console_script_shim" },
+    { "path": "ui/src/main.tsx", "type": "ui_entry" },
+    { "path": "app/setup.py", "type": "bootstrap" }
+  ],
+  "config_files": [
+    "pyproject.toml",
+    "app/setup_config.json",
+    "app/Dockerfile",
+    "ui/package.json",
+    "ui/package-lock.json",
+    "ui/tsconfig.json",
+    "ui/tsconfig.app.json",
+    "ui/tsconfig.node.json",
+    "ui/vite.config.ts",
+    "ui/eslint.config.js",
+    "conftest.py"
+  ],
+  "ci_cd": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/h3-turbo-upstream.yml"
+  ],
+  "docker": {
+    "dockerfile": "app/Dockerfile",
+    "compose": null
+  },
+  "database_hints": [
+    { "path": "app/services/app_state_db.py", "type": "sqlite_unified_store" },
+    { "path": "app/services/director/schema.py", "type": "python_schema" }
+  ],
+  "test_framework": "pytest",
+  "test_file_count": 62,
+  "frontend_test_file_count": 1,
+  "modules": [
+    "launch",
+    "wgp",
+    "cli",
+    "setup",
+    "director",
+    "director_pipeline",
+    "routers",
+    "services",
+    "app_state_db",
+    "models",
+    "profiles",
+    "preprocessing",
+    "postprocessing",
+    "plugins",
+    "shared",
+    "ui-shell",
+    "ui-stages",
+    "ui-director",
+    "ui-editor",
+    "ui-stores",
+    "ui-api"
+  ],
+  "total_files": 1612,
+  "organization_suggestion": {
+    "granularity": "module",
+    "rationale": "Pastas top-level organizam-se por domínio: app/services/director, app/services/llm_guides, app/services/style_bible, app/services/sam; sinais de roteamento centralizado coexistem (app/routers/) mas não dominam.",
+    "signals": [
+      { "type": "top_level_domain_folders", "evidence": ["app/services/director/", "app/services/llm_guides/", "app/services/style_bible/", "app/services/grammars/", "app/services/sam/"] },
+      { "type": "centralized_routing", "evidence": ["app/routers/mcp.py", "app/routers/productions.py", "app/routers/video_editor.py", "app/routers/wizard.py"] }
+    ],
+    "features": []
+  }
+}
