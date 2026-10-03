@@ -1004,6 +1004,17 @@ input[type="range"]::-webkit-slider-thumb {
    the toolbar so its content can be centered without leaving the icon
    pinned to the top of the page. */
 .section-container { width:100%; padding:16px 16px 48px; display:flex; flex-direction:column; min-height:100%; box-sizing:border-box; }
+/* Wide variant of the section container — used by the Configurations
+ * drawer because its two-column layout has a fixed-width sidebar and
+ * a content area that needs every horizontal pixel available. The
+ * default 16px horizontal padding eats 32px of width on a 1418px
+ * viewport (the left+right margins of the .configurations-layout),
+ * which leaves a visible empty strip on the right edge once the
+ * cards are stacked side-by-side. The wide variant drops the
+ * horizontal padding to 4px so the cards hug the viewport edge while
+ * preserving the original vertical rhythm (16px top + 48px bottom)
+ * so the Configurations drawer doesn't feel cramped at the top. */
+.section-container--wide { padding-left: 4px; padding-right: 4px; }
 .section-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:32px; }
 .section-heading h1 { font-size: var(--text-4xl); line-height:1.25; font-weight:600; letter-spacing:-.035em; }
 .section-heading p:not(.section-eyebrow) { margin-top:10px; font-size: var(--text-base); line-height:1.7; color:var(--color-text-muted); }
@@ -1198,11 +1209,27 @@ input[type="range"]::-webkit-slider-thumb {
   .director-stage-chat, .director-stage-plan, .director-stage-options { grid-column: 1 / -1; min-height: 280px; }
 }
 .shell-icon-button.is-active { background:var(--color-bg-active); color:var(--color-accent-blue); }
-.configurations-layout { display:grid; grid-template-columns:280px minmax(0,1fr); align-items:stretch; gap:32px; }
+.configurations-layout { display:grid; grid-template-columns:240px minmax(0,1fr); align-items:stretch; gap:16px; }
 .configurations-navigation { display:flex; flex-direction:column; gap:6px; }
 .configurations-navigation button { display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px; border-radius:10px; background:transparent; border:1px solid transparent; color:var(--color-text-secondary); text-align:left; cursor:pointer; transition:background .15s,color .15s,border-color .15s; }
 .configurations-navigation button:hover { background:var(--color-bg-hover); color:var(--color-text-primary); }
 .configurations-navigation button.is-active { background:var(--color-bg-secondary); border-color:var(--color-border); color:var(--color-text-primary); }
+/* Distinct solid background color per active config section — mirrors
+ * the pattern used by .application-tab[data-section] above so the
+ * two navigation strips feel consistent. Palette is intentionally
+ * different from the main tabs (warmer / less saturated) to keep the
+ * two rows visually distinct: main tabs say "where you are in the
+ * app", config buttons say "which subsystem you're tweaking". Each
+ * color is opaque (the active state reads as a chip, not a tint),
+ * the icon keeps its slot, and the small description inherits the
+ * same white text to stay readable on the saturated background. */
+.configurations-navigation button[data-section="appearance"].is-active    { background:#0891b2; color:#fff; border-color:#0891b2; }
+.configurations-navigation button[data-section="performance"].is-active   { background:#c2410c; color:#fff; border-color:#c2410c; }
+.configurations-navigation button[data-section="integrations"].is-active  { background:#9333ea; color:#fff; border-color:#9333ea; }
+.configurations-navigation button[data-section="storage"].is-active       { background:#0d9488; color:#fff; border-color:#0d9488; }
+.configurations-navigation button[data-section="notifications"].is-active { background:#d97706; color:#fff; border-color:#d97706; }
+.configurations-navigation button.is-active strong,
+.configurations-navigation button.is-active small { color:inherit; }
 .configurations-navigation button > span { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
 .configurations-navigation button strong { font-size: var(--text-base); font-weight:600; color:inherit; }
 .configurations-navigation button small { font-size: var(--text-xs); color:var(--color-text-muted); line-height:1.4; white-space:normal; }
@@ -1308,6 +1335,19 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: start;
 }
 .settings-columns > .settings-group { margin: 0; min-width: 0; }
+/* Equal-height variant. Same grid as `.settings-columns` but with
+ * ``align-items: stretch`` so sibling cards grow to match the
+ * tallest one. Used by the Appearance panel (Mode + Theme) where
+ * the Mode card has a 3-segment segmented control and the Theme
+ * card has a select + swatch + description — without this the
+ * cards end up at their natural heights and the segmented control
+ * leaves a visible gap above the Theme description. The base
+ * ``.settings-columns`` keeps ``align-items: start`` because the
+ * Integrations panel deliberately wants independent card heights
+ * (Providers is tall, Models is short, and stretching them would
+ * create a dead zone above the Models footer). */
+.settings-columns--equal { align-items: stretch; }
+.settings-columns--equal > .settings-group > .settings-card { display: flex; }
 /* Stretch direct-child cards inside .settings-columns so the
  * shortest card grows to match its sibling. Without this the
  * Appearance mode/auto-launch row keeps its natural shape (which
@@ -1386,20 +1426,79 @@ input[type="range"]::-webkit-slider-thumb {
   flex-direction: column;
   gap: 24px;
 }
-/* Constrained variant of the settings panel — used by tabs whose
- * internal layout relies on scroll panes (Performance trio). Caps
- * the panel to the viewport so the trio can't grow past the
- * available vertical space — without this cap, the Models card's
- * expanded list pushes the entire row past the viewport and the
- * internal scroll never engages (Linked Folders would scroll with
- * the rest of the page instead of staying pinned to the card). The
- * 180px offset covers the page header (40px), the tab nav padding
- * (32px+48px), the panel header (~80px) and the trio's gap+border. */
+/* Constrained variant of the settings panel — caps the panel to
+ * the viewport so its content can't grow past the available
+ * vertical space. The 180px offset covers the page header (40px),
+ * the tab nav padding (32px+48px), the panel header (~80px) and
+ * the grid/columns gap+border. `min-height: 0` on the inner
+ * columns lets the right card's own overflow:auto kick in when
+ * the merged runtime-tuning content exceeds the viewport — so the
+ * page itself stays scroll-free and only the card scrolls if it
+ * has to. */
 .settings-panel-constrained {
+  display: flex;
+  flex-direction: column;
   height: calc(100vh - 180px);
   min-height: 520px;
 }
 .settings-panel-constrained > .settings-feature-row { flex: 1; min-height: 0; }
+/* Two-column horizontal layout used by the Performance panel. Each
+ * child is a self-contained .settings-feature-column; the right one
+ * holds the merged runtime-tuning card and the left one holds the
+ * LLM Configuration. Each column has its own internal scroll so a
+ * very narrow viewport (or large merged card) doesn't push the
+ * other column out of view. The container itself never grows past
+ * the viewport cap (.settings-panel-constrained handles that), so
+ * no vertical scroll bar appears at the page level — only inside
+ * the card itself if the inner content ever exceeds the available
+ * height. */
+/* Two-column horizontal layout used by the Performance panel. Each
+ * child is a self-contained .settings-feature-column; the right one
+ * holds the merged runtime-tuning card and the left one holds the
+ * LLM Configuration. ``align-items: stretch`` is the grid default
+ * but we set it explicitly so both columns always span the full
+ * vertical track — without this, a short card (LLM) would only be
+ * as tall as its content and the user would see a dead zone below
+ * it where the right-hand card keeps going. The nested
+ * ``height: 100%`` on the .settings-feature-column forces each
+ * column to consume the grid track's full height; without it the
+ * flex children inside the column don't know the available height
+ * to fill (the grid item itself shrinks to content under the
+ * default align-items value when the column's display:flex
+ * children aren't told to fill the parent). The 16px inner gap on
+ * the card mirrors the standard .settings-card padding so the row
+ * spacing between labels and controls stays predictable across the
+ * whole settings drawer. The card's own ``overflow: auto`` keeps
+ * the page-level .section-scroll idle — when the merged content
+ * is taller than the viewport cap, only the card scrolls. */
+.settings-panel-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+.settings-panel-columns > .settings-feature-column {
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.settings-panel-columns > .settings-feature-column > .settings-group {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.settings-panel-columns > .settings-feature-column > .settings-group > .settings-card {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  gap: 16px;
+}
 /* Two-row vertical stack used by the Performance panel. Each child
  * (a .settings-feature-column + .settings-feature-row pair) is laid
  * out top-to-bottom with a 24px gap. The BOTTOM row is the one that
@@ -1407,7 +1506,8 @@ input[type="range"]::-webkit-slider-thumb {
  * the TOP row stays pinned because the runtime knobs there
  * (LLM Configuration + FlashVSR) are short. flex: 1 on the bottom
  * row + min-height: 0 lets it absorb leftover vertical space
- * without pushing past the viewport cap. */
+ * without pushing past the viewport cap. Kept for other tabs that
+ * still want a vertical stack. */
 .settings-panel-rows {
   display: flex;
   flex-direction: column;

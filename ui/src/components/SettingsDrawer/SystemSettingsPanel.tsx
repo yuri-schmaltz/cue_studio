@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Cpu, RefreshCw, Loader2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
-import { LlmConfigurationCard, FlashVsrCard } from './perf/LlmConfigurationCard'
+import { LlmConfigurationCard, FlashVsrCardEmbedded } from './perf/LlmConfigurationCard'
 
 const profileLabels: Record<string, string> = {
   '1': 'Profile 1: High RAM + High VRAM',
@@ -79,7 +79,7 @@ function SelectField({ label, value, options, onChange }: {
  *   - Re-detect  → POST /api/v1/system-detect/apply (re-runs detection,
  *                  applies fresh recommendation. Only enabled when auto is on)
  */
-function AutoPerformanceCard() {
+function AutoPerformanceCardEmbedded() {
   const servicesConfig = useStore(s => s.servicesConfig)
   const updateServicesConfig = useStore(s => s.updateServicesConfig)
   const loadServicesConfig = useStore(s => s.loadServicesConfig)
@@ -188,7 +188,7 @@ function AutoPerformanceCard() {
   const cudaOK = !!hw?.cuda_available
 
   return (
-    <div className="settings-card">
+    <>
         {/* Hardware readout — GPU name, VRAM, RAM */}
         <div className="flex items-start gap-2">
           <Cpu size={16} className="text-text-secondary shrink-0 mt-0.5" />
@@ -253,7 +253,7 @@ function AutoPerformanceCard() {
             {toast}
           </div>
         )}
-      </div>
+    </>
   )
 }
 
@@ -457,7 +457,7 @@ export function SystemSettingsPanel() {
           the inner row so the constrained panel keeps the same
           scroll behaviour — each row scrolls independently
           rather than growing the whole panel past the viewport. */}
-      <div className="settings-panel-rows">
+      <div className="settings-panel-columns">
         <div className="settings-feature-column">
           <div className="settings-group">
             <LlmConfigurationCard
@@ -468,25 +468,31 @@ export function SystemSettingsPanel() {
               llmModels={llmModels}
             />
           </div>
-          <div className="settings-group">
-            <FlashVsrCard
-              servicesConfig={servicesConfig!}
-              updateConfig={updateServicesConfig}
-            />
-          </div>
         </div>
 
-        {/* Two-column bottom row: Advanced runtime tuning on the
-            left, Auto-tune card on the right. Models used to sit
-            here as the third column but moved to Integrations
-            (see comment above). */}
+        {/* Right column: a single merged card holding every other
+          runtime control — FlashVSR upscaler (Model Variant / Top-K /
+          Backend), hardware readout + auto-tune switch
+          (AutoPerformanceCardEmbedded), and the advanced manual
+          tuning (attention, quant, tiling, compile, profiles,
+          VRAM headroom). Three formerly-separate cards collapsed
+          into one because they're all "how should the next
+          generation be tuned" — keeping them in a single column on
+          the right keeps both columns visible at once on a
+          1080p+ viewport. Divider lines keep each subsystem
+          visually distinct inside the single card. */}
         <div className="settings-feature-column">
           <div className="settings-group">
-            <div className="settings-card">{renderAdvancedFields()}</div>
-          </div>
-
-          <div className="settings-group">
-            <AutoPerformanceCard />
+            <div className="settings-card">
+              <FlashVsrCardEmbedded
+                servicesConfig={servicesConfig!}
+                updateConfig={updateServicesConfig}
+              />
+              <hr className="border-border" />
+              <AutoPerformanceCardEmbedded />
+              <hr className="border-border" />
+              {renderAdvancedFields()}
+            </div>
           </div>
         </div>
       </div>

@@ -22,10 +22,10 @@ export function SettingsDrawer() {
   const select = useStore(s => s.setSettingsTab)
   return (
     <div className="section-scroll">
-      <div className="section-container">
+      <div className="section-container section-container--wide">
         <div className="configurations-layout">
           <nav className="configurations-navigation" aria-label="Configuration categories">
-            {tabs.map(({ id, label, description, icon: Icon }) => <button key={id} onClick={() => select(id)} aria-current={active === id ? 'page' : undefined} className={active === id ? 'is-active' : ''}><Icon size={17} /><span><strong>{label}</strong><small>{description}</small></span></button>)}
+            {tabs.map(({ id, label, description, icon: Icon }) => <button key={id} data-section={id} onClick={() => select(id)} aria-current={active === id ? 'page' : undefined} className={active === id ? 'is-active' : ''}><Icon size={17} /><span><strong>{label}</strong><small>{description}</small></span></button>)}
           </nav>
           <div className="configurations-content">
             {active === 'appearance' && <AppearanceSettingsPanel />}

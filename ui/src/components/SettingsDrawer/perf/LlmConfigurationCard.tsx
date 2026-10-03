@@ -266,7 +266,7 @@ export function LlmConfigurationCard({
  *  knob — moved from Integrations to the Performance panel for the
  *  same reason as LLM Configuration.
  */
-export function FlashVsrCard({
+export function FlashVsrCardEmbedded({
   servicesConfig,
   updateConfig,
 }: {
@@ -274,7 +274,7 @@ export function FlashVsrCard({
   updateConfig: (patch: Partial<ServicesConfig>) => Promise<void>
 }) {
   return (
-    <div className="settings-card">
+    <>
       <div>
         <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">FlashVSR Model Variant</label>
         <select
@@ -328,6 +328,6 @@ export function FlashVsrCard({
           SpargeAttn gives the best quality when there's motion but needs a separate install. Auto uses the bundled Triton kernels otherwise.
         </p>
       </div>
-    </div>
+    </>
   )
 }

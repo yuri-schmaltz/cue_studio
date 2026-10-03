@@ -44,7 +44,7 @@ export function AppearanceSettingsPanel() {
         <h2><Palette size={18} aria-hidden="true" /> Appearance</h2>
       </header>
 
-      <div className="settings-columns">
+      <div className="settings-columns settings-columns--equal">
         <div className="settings-group">
           <div className="settings-card">
             <div>
