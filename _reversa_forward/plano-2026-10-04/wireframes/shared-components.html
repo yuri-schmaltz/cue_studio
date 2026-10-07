@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Cue Studio — Componentes compartilhados (A08)</title>
+<style>
+  :root {
+    --bg: #0f1115; --bg-soft: #181b22; --line: #2a2f3a;
+    --fg: #e7eaf0; --fg-soft: #aab0bd; --accent: #6ea8ff;
+    --warn: #f1c44a; --danger: #ef6f6c; --success: #6ad7a3;
+    --radius: 10px; --tap: 44px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg); color: var(--fg); line-height: 1.5;
+  }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0; font-size: 18px; }
+  main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  section { margin-bottom: 32px; }
+  section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-soft); }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .field { display: block; margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; margin-bottom: 4px; color: var(--fg-soft); }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+    min-height: var(--tap); font: inherit;
+  }
+  .field .hint { font-size: 12px; color: var(--fg-soft); margin-top: 4px; }
+  .field .error { font-size: 12px; color: var(--danger); margin-top: 4px; }
+  .field input[aria-invalid="true"] { border-color: var(--danger); }
+  .field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn {
+    background: var(--accent); color: #08121f; padding: 10px 14px;
+    border: 0; border-radius: 8px; font-weight: 600; min-height: var(--tap); min-width: var(--tap);
+    cursor: pointer;
+  }
+  .btn.secondary { background: var(--bg); color: var(--fg); border: 1px solid var(--line); }
+  .btn.ghost { background: transparent; color: var(--fg); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .status { display: inline-flex; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; }
+  .status.queued { background: rgba(170,176,189,.15); color: var(--fg-soft); }
+  .status.running { background: rgba(110,168,255,.15); color: var(--accent); }
+  .status.done { background: rgba(106,215,163,.15); color: var(--success); }
+  .status.failed { background: rgba(239,111,108,.15); color: var(--danger); }
+  dialog { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-soft); color: var(--fg); padding: 16px; max-width: 480px; }
+  dialog::backdrop { background: rgba(0,0,0,.5); }
+  .empty {
+    text-align: center; padding: 32px 16px; color: var(--fg-soft);
+    border: 1px dashed var(--line); border-radius: var(--radius);
+  }
+  .errbox {
+    border: 1px solid var(--danger); padding: 12px; border-radius: 8px;
+    background: rgba(239,111,108,.08); color: var(--fg);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Componentes compartilhados (A08)</h1>
+  <p style="color:var(--fg-soft); margin:6px 0 0">Demonstra <code>TextField</code>, <code>Select</code>, <code>Button</code>, <code>StatusBadge</code>, <code>ErrorState</code>, <code>EmptyState</code>, <code>AppDialog</code>.</p>
+</header>
+<main>
+
+<section>
+  <h2>TextField com label, hint, erro e aria-describedby</h2>
+  <div class="grid">
+    <div class="card">
+      <h3 style="margin:0 0 12px">Padrão</h3>
+      <div class="field">
+        <label for="name">Nome do projeto</label>
+        <input id="name" placeholder="Ex.: Lançamento Outono" />
+        <div class="hint" id="name-hint">Pode ser alterado depois.</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 12px">Com erro</h3>
+      <div class="field">
+        <label for="name-err">Token</label>
+        <input id="name-err" aria-invalid="true" aria-describedby="name-err-error" value="abc" />
+        <div class="error" id="name-err-error" role="alert">Token precisa ter 16 caracteres.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Select com keyboard nav</h2>
+  <div class="card">
+    <div class="field">
+      <label for="model">Modelo</label>
+      <select id="model">
+        <option>LTX-2 19B</option>
+        <option>Flux 2 Klein</option>
+        <option>Wan 2.2</option>
+      </select>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Button — variantes e foco visível</h2>
+  <div class="card">
+    <button class="btn">Primário</button>
+    <button class="btn secondary">Secundário</button>
+    <button class="btn ghost">Ghost</button>
+    <button class="btn" disabled>Desabilitado</button>
+  </div>
+</section>
+
+<section>
+  <h2>StatusBadge</h2>
+  <div class="card">
+    <span class="status queued">Aguardando</span>
+    <span class="status running">Gerando</span>
+    <span class="status done">Concluído</span>
+    <span class="status failed">Falhou</span>
+  </div>
+</section>
+
+<section>
+  <h2>EmptyState</h2>
+  <div class="empty">
+    <p>Nenhum projeto ainda.</p>
+    <button class="btn">Criar projeto</button>
+  </div>
+</section>
+
+<section>
+  <h2>ErrorState com retry</h2>
+  <div class="errbox">
+    <strong>Não foi possível gerar.</strong>
+    <p style="margin:6px 0">GPU ficou sem memória durante o take 3.</p>
+    <button class="btn">Tentar de novo</button>
+  </div>
+</section>
+
+<section>
+  <h2>AppDialog (focus trap + Escape + retorno de foco)</h2>
+  <div class="card">
+    <button class="btn" id="open-dialog">Abrir diálogo</button>
+  </div>
+
+  <dialog id="dialog" aria-labelledby="dialog-title">
+    <h2 id="dialog-title" style="margin-top:0">Salvar como…</h2>
+    <p>Escolha onde salvar o clipe.</p>
+    <div class="field">
+      <label for="dlg-name">Nome do arquivo</label>
+      <input id="dlg-name" value="cena-01.mp4" />
+    </div>
+    <div class="row" style="display:flex; gap:8px; justify-content:flex-end">
+      <button class="btn ghost" id="dlg-cancel">Cancelar</button>
+      <button class="btn" id="dlg-save">Salvar</button>
+    </div>
+  </dialog>
+</section>
+
+</main>
+<script>
+  const opener = document.getElementById('open-dialog');
+  const dialog = document.getElementById('dialog');
+  let previouslyFocused = null;
+
+  function focusables() {
+    return Array.from(dialog.querySelectorAll(
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    ));
+  }
+
+  opener.addEventListener('click', () => {
+    previouslyFocused = document.activeElement;
+    if (typeof dialog.showModal === 'function') {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute('open', '');
+    }
+    const first = focusables()[0];
+    if (first) first.focus();
+  });
+
+  dialog.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      dialog.close();
+    } else if (e.key === 'Tab') {
+      const f = focusables();
+      if (f.length === 0) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        last.focus();
+        e.preventDefault();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        first.focus();
+        e.preventDefault();
+      }
+    }
+  });
+
+  dialog.addEventListener('close', () => {
+    if (previouslyFocused) previouslyFocused.focus();
+  });
+
+  document.getElementById('dlg-cancel').addEventListener('click', () => dialog.close());
+  document.getElementById('dlg-save').addEventListener('click', () => dialog.close());
+</script>
+</body>
+</html>

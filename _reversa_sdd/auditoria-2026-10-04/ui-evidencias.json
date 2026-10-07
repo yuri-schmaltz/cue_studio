@@ -1,0 +1,572 @@
+{
+  "scope": "React UI with intercepted API fixtures, no backend or GPU generation",
+  "screens": [
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Dashboard",
+      "visibleControls": 1,
+      "controlsUnder24": 0,
+      "fontSizes": [
+        "11px"
+      ],
+      "scrollContainers": 0,
+      "text": "Dashboard\nSelect pipeline...\n\nNo saved pipelines yet\n\nRun a Director pipeline and it will appear here",
+      "section": "Dashboard",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Projects",
+      "visibleControls": 9,
+      "controlsUnder24": 1,
+      "fontSizes": [
+        "12px",
+        "16px"
+      ],
+      "scrollContainers": 0,
+      "text": "New project\n1 project\naudit-fixture\nActive\n\nDefault settings · 0 files",
+      "section": "Projects",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Director",
+      "visibleControls": 8,
+      "controlsUnder24": 3,
+      "fontSizes": [
+        "11px",
+        "10px"
+      ],
+      "scrollContainers": 0,
+      "text": "Music\nReferences\nDescription\nUpload\nGenerate\nDrop a song or video or click to upload\nCLIP STRUCTURE\nNo clips planned yet. Upload audio to analyze and generate the clip structure.\nIDENTIFIED VOICES & CHARACTERS\nInstrumental track — no voices detected.\n\nPlanning controls will appear here.\n\nPipeline:\nidle\nUpload\n1/10\nGENERATION OPTIONS\nStyle Bibles\nBasic\nExpert\n\nLocked — drop audio in the chat column on the left to unlock aspect ratio, resolution, LoRA picking, audio speed, source strength and the negative prompt.\n\nStyle Bibles stay available from the header so you can prepare them before the audio arrives.\n\nModelo: ltx2_22B_distilled_1_1\nVRAM: 0.0 / 24 GB",
+      "section": "Director",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Studio",
+      "visibleControls": 60,
+      "controlsUnder24": 14,
+      "fontSizes": [
+        "11px",
+        "16px",
+        "10px",
+        "12px"
+      ],
+      "scrollContainers": 0,
+      "text": "Manual generation\n·\nSingle clips, image/video editing, audio tools\nStyle Bibles\nVideo\nImage\nAudio\nWORKFLOW\nFrames · References · Transform · Finish\nFrames\nText, first / last, injected frames, audio, or control video\nDURATION\n5s\n30s\n1m\n2m\n3m\n4m\n5m\n10m\n15m\n30m\n60m\nCustom\nSingle window · 5s\nINPUTS\nFrame\nAdvanced Settings\nRESOLUTION\n480p\n540p\n720p\n1080p\nASPECT RATIO\n▬\n16:9\n▮\n9:16\n◼\n1:1\n▭\n4:3\n▯\n3:4\nPRESETS\nSave Current\n\nNo video presets for this model\n\nLORAS\nA-Z\nCheck\nBrowse\nNo LoRAs found for this model\nPOST PROCESSING\nOUTPUT CODECS\nSEED\nRandom\nINFERENCE STEPS\nGUIDANCE SCALE\nNEGATIVE PROMPT\nMMAUDIO (SOUNDTRACK)\nOUTPUT COUNT\n1\nNo compatible model\nNeed model\nAll\nImages\nVideos\nAudio\nEdits\nMulti-clip\nFavorites\n\nYour generated videos will appear here.\n\n1. Choose a model in the controls on the left.\n2. Type a prompt — e.g. “a golden retriever surfing a big wave, slow motion”\n3. Hit Generate.\n\nHeads up: the first time you use a model, its weights download once (often tens of GB) before generation starts — later runs are fast. Progress shows at the bottom-right.\n\nBrowse recipes\n\nSelect an asset on the left to inspect it.",
+      "section": "Studio",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Editor",
+      "visibleControls": 50,
+      "controlsUnder24": 32,
+      "fontSizes": [
+        "11px",
+        "16px",
+        "10px"
+      ],
+      "scrollContainers": 0,
+      "text": "16:9 · 1080p\n21:9 · Ultrawide\n9:16 · 1080p\n1:1 · 1080p\n4:3 · 1080p\nSaved\nExport\nMedia\nAdjust\nMEDIA\nAll workspaces\naudit-fixture\nUploads\n▾\nAll\nUpload\nTitle\n\nUpload media or generate it in Studio. Workspace media appears here automatically.\n\nDrop media onto the timeline\n0:00:00\n0:00\nSplit\nRipple\nTrack\n0:00:00\nTIMELINE\n0:00\n0:02\n0:04\n0:06\n0:08\n0:10\n0:12\nTitles\nMain video\nAudio",
+      "section": "Editor",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Medias",
+      "visibleControls": 10,
+      "controlsUnder24": 0,
+      "fontSizes": [
+        "11px",
+        "16px",
+        "12px"
+      ],
+      "scrollContainers": 0,
+      "text": "All\nImages\nVideos\nAudio\nEdits\nMulti-clip\nFavorites\n\nYour generated videos will appear here.\n\n1. Open Director → Studio and choose a model.\n2. Type a prompt — e.g. “a golden retriever surfing a big wave, slow motion”\n3. Hit Generate.\n\nHeads up: the first time you use a model, its weights download once (often tens of GB) before generation starts — later runs are fast. Progress shows at the bottom-right.\n\nOpen Studio\nBrowse recipes\n\nSelect an asset on the left to inspect it.",
+      "section": "Medias",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Queue",
+      "visibleControls": 0,
+      "controlsUnder24": 0,
+      "fontSizes": [],
+      "scrollContainers": 0,
+      "text": "GENERATION QUEUE\n0 items\n\nStudio, Director, and Editor in one place. Hold, queue, start, or cancel generation jobs from here.\n\nQueue is empty\n\nQueued Studio generations, Editor exports, and held Director projects will appear here.",
+      "section": "Queue",
+      "errors": []
+    },
+    {
+      "width": 1440,
+      "documentWidth": 1440,
+      "selectedSection": "Configurations",
+      "visibleControls": 9,
+      "controlsUnder24": 0,
+      "fontSizes": [
+        "16px",
+        "11px",
+        "12px"
+      ],
+      "scrollContainers": 0,
+      "text": "Appearance\nTheme and dark/light mode\nPerformance\nAuto-tune, models and codecs\nIntegrations\nLLM, content and external APIs\nStorage\nWhere new projects are created on disk\nNotifications\nAlerts, sounds and delivery\nAppearance\nMODE\nDark\nLight\nAuto\n\nDark interface at all times.\n\nTHEME\nGolden Hour\nClassic\nOnyx\nBlender\n\nDefault. Warm cinematic palette — near-black surfaces and amber highlights at night; warm paper and burnt orange in daylight.",
+      "section": "Configurations",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Dashboard",
+      "visibleControls": 1,
+      "controlsUnder24": 0,
+      "fontSizes": [
+        "16px"
+      ],
+      "scrollContainers": 0,
+      "text": "Dashboard\nSelect pipeline...\n\nNo saved pipelines yet\n\nRun a Director pipeline and it will appear here",
+      "section": "Dashboard",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Projects",
+      "visibleControls": 9,
+      "controlsUnder24": 1,
+      "fontSizes": [
+        "12px",
+        "16px"
+      ],
+      "scrollContainers": 0,
+      "text": "New project\n1 project\naudit-fixture\nActive\n\nDefault settings · 0 files",
+      "section": "Projects",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Director",
+      "visibleControls": 8,
+      "controlsUnder24": 3,
+      "fontSizes": [
+        "11px",
+        "10px"
+      ],
+      "scrollContainers": 0,
+      "text": "Music\nReferences\nDescription\nUpload\nGenerate\nDrop a song or video or click to upload\nCLIP STRUCTURE\nNo clips planned yet. Upload audio to analyze and generate the clip structure.\nIDENTIFIED VOICES & CHARACTERS\nInstrumental track — no voices detected.\n\nPlanning controls will appear here.\n\nPipeline:\nidle\nUpload\n1/10\nGENERATION OPTIONS\nStyle Bibles\nBasic\nExpert\n\nLocked — drop audio in the chat column on the left to unlock aspect ratio, resolution, LoRA picking, audio speed, source strength and the negative prompt.\n\nStyle Bibles stay available from the header so you can prepare them before the audio arrives.\n\nModelo: ltx2_22B_distilled_1_1\nVRAM: 0.0 / 24 GB",
+      "section": "Director",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Studio",
+      "visibleControls": 51,
+      "controlsUnder24": 12,
+      "fontSizes": [
+        "11px",
+        "16px",
+        "10px"
+      ],
+      "scrollContainers": 1,
+      "text": "Manual generation\n·\nSingle clips, image/video editing, audio tools\nStyle Bibles\nVideo\nImage\nAudio\nWORKFLOW\nFrames · References · Transform · Finish\nFrames\nText, first / last, injected frames, audio, or control video\nDURATION\n5s\n30s\n1m\n2m\n3m\n4m\n5m\n10m\n15m\n30m\n60m\nCustom\nSingle window · 5s\nINPUTS\nFrame\nAdvanced Settings\nRESOLUTION\n480p\n540p\n720p\n1080p\nASPECT RATIO\n▬\n16:9\n▮\n9:16\n◼\n1:1\n▭\n4:3\n▯\n3:4\nPRESETS\nSave Current\n\nNo video presets for this model\n\nLORAS\nA-Z\nCheck\nBrowse\nNo LoRAs found for this model\nPOST PROCESSING\nOUTPUT CODECS\nSEED\nRandom\nINFERENCE STEPS\nGUIDANCE SCALE\nNEGATIVE PROMPT\nMMAUDIO (SOUNDTRACK)\nOUTPUT COUNT\n1\nNo compatible model\nNeed model",
+      "section": "Studio",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Editor",
+      "visibleControls": 44,
+      "controlsUnder24": 29,
+      "fontSizes": [
+        "16px",
+        "11px",
+        "10px"
+      ],
+      "scrollContainers": 0,
+      "text": "Export\nEditor tools\nMedia\nAdjust\nMEDIA\nAll workspaces\naudit-fixture\nUploads\n▾\nAll\nUpload\nTitle\n\nUpload media or generate it in Studio. Workspace media appears here automatically.\n\nDrop media onto the timeline\n0:00:00\nTrack\nTIMELINE\n0:00\n0:02\n0:04\n0:06\n0:08\n0:10\n0:12\nTitles\nMain video\nAudio",
+      "section": "Editor",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Medias",
+      "visibleControls": 10,
+      "controlsUnder24": 7,
+      "fontSizes": [
+        "10px",
+        "16px",
+        "12px",
+        "11px"
+      ],
+      "scrollContainers": 0,
+      "text": "All\nImg\nVid\nAud\nEdit\nMC\n\nYour generated videos will appear here.\n\n1. Open Director → Studio and choose a model.\n2. Type a prompt — e.g. “a golden retriever surfing a big wave, slow motion”\n3. Hit Generate.\n\nHeads up: the first time you use a model, its weights download once (often tens of GB) before generation starts — later runs are fast. Progress shows at the bottom-right.\n\nOpen Studio\nBrowse recipes\n\nSelect an asset on the left to inspect it.",
+      "section": "Medias",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Queue",
+      "visibleControls": 0,
+      "controlsUnder24": 0,
+      "fontSizes": [],
+      "scrollContainers": 0,
+      "text": "GENERATION QUEUE\n0 items\n\nStudio, Director, and Editor in one place. Hold, queue, start, or cancel generation jobs from here.\n\nQueue is empty\n\nQueued Studio generations, Editor exports, and held Director projects will appear here.",
+      "section": "Queue",
+      "errors": []
+    },
+    {
+      "width": 390,
+      "documentWidth": 390,
+      "selectedSection": "Configurations",
+      "visibleControls": 9,
+      "controlsUnder24": 0,
+      "fontSizes": [
+        "16px",
+        "11px"
+      ],
+      "scrollContainers": 0,
+      "text": "Appearance\nPerformance\nIntegrations\nStorage\nNotifications\nAppearance\nMODE\nDark\nLight\nAuto\n\nDark interface at all times.\n\nTHEME\nGolden Hour\nClassic\nOnyx\nBlender\n\nDefault. Warm cinematic palette — near-black surfaces and amber highlights at night; warm paper and burnt orange in daylight.",
+      "section": "Configurations",
+      "errors": []
+    }
+  ],
+  "keyboard": {
+    "focusBefore": "<button class=\"shell-primary-button shrink-0\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"roun",
+    "focusAfterTab": "<button class=\"shell-primary-button shrink-0\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"roun",
+    "unchanged": true
+  },
+  "newProjectModal": {
+    "dialogs": 1,
+    "text": "New project\nProject name\nOpen in\nDirector\nEditor\nMedia\nSKILL\nMusic Video\nShort Film\nOUTPUT FORMAT\nAspect ratio\n16:9 — Wide\n9:16 — Portrait\n1:1 — Square\n4:3 — Classic\n3:4 — Tall\nResolution\n480p\n540p\n720p\n1080p\nWORKFLOW\nSeamless\ncontinuous sliding window\nAuto\nskip review steps\nAdvanced defaults\nCancel\nCreate project",
+    "visibleControls": 13,
+    "activeElement": "INPUT"
+  },
+  "externalFetchAuthorization": [
+    "Bearer audit-dummy-token"
+  ],
+  "pageErrors": [],
+  "requestCount": 77,
+  "requests": [
+    {
+      "path": "/api/v1/system/preflight",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/models",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/model-visibility",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/h3-window-overrides",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/studio-preferences",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/workspaces",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/outputs",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/system-config",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/services-config",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/llm/models",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/director/pipelines",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/jobs",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/system-stats",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/system/preflight",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/models",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/model-visibility",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/h3-window-overrides",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/studio-preferences",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/workspaces",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/outputs",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/system-config",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/services-config",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/llm/status",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/llm/models",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/director/pipelines",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/jobs",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/system-stats",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/model-options/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/defaults/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/installed",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/model-visibility",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/studio-preferences",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/model-options/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/defaults/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/installed",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/workspaces/audit-fixture/setup",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/check-updates",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/model-visibility",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/studio-preferences",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/loras/check-updates",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/model-visibility",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/presets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1/details",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/presets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1/details",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/editor/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/editor/projects",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/editor/projects/665c9510297649bf",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/workspaces",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/outputs",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/outputs",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/director/pipelines",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/director/queue",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/director/queue",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/presets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1/details",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/presets",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1/details",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/loras/ltx2_22B_distilled_1_1",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/director/queue",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/director/queue",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/downloads/active",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/models",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/models",
+      "method": "GET"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+--- a/app/launch.py
++++ b/app/launch.py
+@@ -10913,8 +10913,16 @@
+ # the HocusPocus migration; see docs/VIDEO_EDITOR.md.
+ try:
+     from routers.video_editor import build_video_editor_router
+-    api.include_router(build_video_editor_router())
++    # Feature A05: o router exige um callable get_editor. O call site anterior
++    # chamava sem argumento, levantando TypeError que era engolido pelo try/except.
++    # O editor é criado por get_video_editor_instance() em runtime; ajuste o nome
++    # conforme a API real (ver app/services/video_editor.py).
++    try:
++        from services.video_editor import get_video_editor_instance
++    except ImportError:
++        get_video_editor_instance = lambda: None  # 503 will be returned by the route
++    api.include_router(build_video_editor_router(get_editor=get_video_editor_instance))
+     _mcp_log.info("[video_editor] router mounted at /api/v1/editor")
+ except Exception as _ve_import_err:  # pragma: no cover — defensive
+     _mcp_log.warning("[video_editor] router unavailable: %s", _ve_import_err)

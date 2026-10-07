@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-04",
+  "timezone": "America/Sao_Paulo",
+  "commit": "27cadae",
+  "source_edits": false,
+  "runtime_write_incident": "The existing app/.cache/app_state.sqlite3 was touched by AppStateDBSingletonTests using the default singleton path. See diagnostico.md.",
+  "checks": [
+    {"command": "ui/node_modules/.bin/tsc --noEmit --incremental false -p ui/tsconfig.app.json (run from ui with relative paths)", "status": "passed"},
+    {"command": "ui/node_modules/.bin/tsc --noEmit --incremental false -p ui/tsconfig.node.json (run from ui with relative paths)", "status": "passed"},
+    {"command": "vite build --configLoader runner --outDir ../_reversa_sdd/auditoria-2026-10-04/build", "status": "passed", "warning": "Editor store is statically and dynamically imported"},
+    {"command": "npm run lint", "status": "failed", "errors": 12, "warnings": 6},
+    {"command": "npm run test:control", "status": "passed"},
+    {"command": "npm run test:store", "status": "passed", "note": "Expected fixture error/cancellation logs; exit code 0"},
+    {"command": "unittest discover -s tests -p test_api_security.py", "status": "passed", "tests": 8},
+    {"command": "unittest discover -s tests -p test_app_state_db.py", "status": "passed", "tests": 11, "note": "Singleton test touched the default existing runtime database"},
+    {"command": "unittest discover -s tests -p test_job_lifecycle.py", "status": "passed", "tests": 4},
+    {"check": "inspect.signature(build_video_editor_router).bind()", "status": "call_mismatch_confirmed", "missing_argument": "get_editor"},
+    {"check": "Chromium browser fixtures", "status": "see_ui_evidencias", "viewports": [[1440, 960], [390, 844]], "backend_requests": "intercepted"}
+  ],
+  "build_baseline_decimal_kb": {
+    "entry_js": 879.22,
+    "entry_js_gzip": 243.25,
+    "css": 150.75,
+    "css_gzip": 23.23
+  },
+  "not_run": ["full pytest suite", "GPU generation", "real export", "remote API authentication", "runtime crash/restart", "dependency vulnerability audit"]
+}

@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cue Studio — Wireframes (ciclo 0 · plano 2026-10-04)</title>
+<style>
+  :root {
+    --bg: #0f1115; --bg-soft: #181b22; --line: #2a2f3a;
+    --fg: #e7eaf0; --fg-soft: #aab0bd; --accent: #6ea8ff;
+    --warn: #f1c44a; --danger: #ef6f6c; --success: #6ad7a3;
+    --radius: 10px;
+    --tap: 44px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--fg);
+    line-height: 1.5;
+  }
+  header {
+    padding: 16px 24px; border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  header h1 { margin: 0; font-size: 18px; }
+  header .meta { color: var(--fg-soft); font-size: 13px; }
+  nav.tabs {
+    display: flex; gap: 4px; padding: 12px 24px; border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  nav.tabs a {
+    color: var(--fg-soft); text-decoration: none; padding: 10px 14px;
+    border-radius: var(--radius); font-size: 14px; min-height: var(--tap);
+    display: inline-flex; align-items: center;
+  }
+  nav.tabs a:hover { background: var(--bg-soft); color: var(--fg); }
+  nav.tabs a.active { background: var(--bg-soft); color: var(--accent); }
+  main { padding: 24px; max-width: 1440px; margin: 0 auto; }
+  section { margin-bottom: 32px; }
+  section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--fg-soft); }
+  .grid { display: grid; gap: 16px; }
+  .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 900px) {
+    .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; }
+  }
+  .card {
+    background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .card h3 { margin: 0 0 8px; font-size: 14px; color: var(--fg-soft); }
+  .card .frame {
+    background: var(--bg); border: 1px dashed var(--line); border-radius: 8px;
+    padding: 12px; min-height: 240px; color: var(--fg-soft); font-size: 13px;
+  }
+  ul.bullets { padding-left: 20px; }
+  ul.bullets li { margin: 4px 0; }
+  .btn {
+    background: var(--accent); color: #08121f; padding: 10px 14px; border-radius: 8px;
+    border: 0; font-weight: 600; min-height: var(--tap); min-width: var(--tap);
+  }
+  .btn.secondary { background: var(--bg-soft); color: var(--fg); border: 1px solid var(--line); }
+  .btn.ghost { background: transparent; color: var(--fg); }
+  .field {
+    display: block; margin-bottom: 12px;
+  }
+  .field label { display: block; font-size: 13px; margin-bottom: 4px; color: var(--fg-soft); }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px;
+    min-height: var(--tap);
+  }
+  .field .hint { font-size: 12px; color: var(--fg-soft); margin-top: 4px; }
+  .field .error { font-size: 12px; color: var(--danger); margin-top: 4px; }
+  .status {
+    display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px;
+    border-radius: 999px; font-size: 12px; min-height: 24px;
+  }
+  .status.queued { background: rgba(170, 176, 189, .15); color: var(--fg-soft); }
+  .status.running { background: rgba(110, 168, 255, .15); color: var(--accent); }
+  .status.done { background: rgba(106, 215, 163, .15); color: var(--success); }
+  .status.failed { background: rgba(239, 111, 108, .15); color: var(--danger); }
+  .pillset { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill { padding: 6px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; }
+  .focusable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(110, 168, 255, .15); color: var(--accent); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .grid-icons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .icon {
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    min-height: var(--tap); min-width: var(--tap); display: inline-flex;
+    align-items: center; justify-content: center; color: var(--fg-soft);
+  }
+  pre.kbd { background: var(--bg); border: 1px solid var(--line); padding: 8px; border-radius: 6px; font-size: 12px; color: var(--fg-soft); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Cue Studio — Wireframes</h1>
+    <div class="meta">Plano de ação 2026-10-04 · ciclo 0 (A01–A06) · protótipos</div>
+  </div>
+  <div class="row">
+    <span class="badge">A03</span>
+    <span class="badge">A08</span>
+    <span class="badge">A09</span>
+    <span class="badge">A10</span>
+    <span class="badge">A13</span>
+    <span class="badge">A14</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <a href="#dashboard" class="active">Dashboard</a>
+  <a href="#projects">Projetos</a>
+  <a href="#new">Novo projeto</a>
+  <a href="#director">Director</a>
+  <a href="#studio">Studio</a>
+  <a href="#queue">Fila</a>
+  <a href="#editor">Editor</a>
+  <a href="#settings">Configurações</a>
+</nav>
+
+<main>
+
+<section id="dashboard">
+  <h2>Dashboard (vazio + quando há produção)</h2>
+  <div class="grid cols-2">
+    <article class="card">
+      <h3>Estado vazio</h3>
+      <div class="frame stack">
+        <p><strong>Bem-vindo(a) ao Cue Studio.</strong></p>
+        <p class="status queued">Sem projetos ainda</p>
+        <button class="btn focusable">Criar primeiro projeto</button>
+        <ul class="bullets">
+          <li>Escolher preset (Music Video / Short Film / Custom)</li>
+          <li>Ajustar opções técnicas depois</li>
+          <li>Ver primeiros passos com 1 clique</li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="card">
+      <h3>Com produção</h3>
+      <div class="frame stack">
+        <p>Continuar último</p>
+        <div class="row">
+          <strong>“Lançamento Outono”</strong>
+          <span class="badge">Briefing</span>
+        </div>
+        <button class="btn focusable">Continuar projeto</button>
+        <p>Fila ativa</p>
+        <div class="stack">
+          <div class="row"><span class="status running">Gerando</span> Cena 3 — “Montanha enevoada” · 38%</div>
+          <div class="row"><span class="status queued">Aguardando</span> Cena 4 — “Plano aberto”</div>
+        </div>
+        <p>Últimas saídas</p>
+        <div class="grid-icons">
+          <div class="icon">thumb1</div>
+          <div class="icon">thumb2</div>
+          <div class="icon">thumb3</div>
+          <div class="icon">thumb4</div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="projects">
+  <h2>Projetos (cards + busca)</h2>
+  <div class="card">
+    <div class="frame">
+      <div class="row" style="margin-bottom:12px">
+        <input class="focusable" placeholder="Buscar projetos…" style="flex:1" />
+        <button class="btn secondary focusable">+ Novo projeto</button>
+      </div>
+      <div class="grid cols-3">
+        <div class="card"><strong>Lançamento Outono</strong><br /><small>Music Video · 12 cenas</small></div>
+        <div class="card"><strong>Curta-metragem Gato</strong><br /><small>Short Film · 8 cenas</small></div>
+        <div class="card"><strong>Peça Experimental</strong><br /><small>Custom · 5 cenas</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="new">
+  <h2>Novo projeto — criação rápida (A10)</h2>
+  <div class="card">
+    <div class="frame stack">
+      <h3 style="color:var(--fg)">Comece com nome + tipo + preset</h3>
+      <div class="field">
+        <label for="np-name">Nome</label>
+        <input id="np-name" placeholder="Ex.: Lançamento Outono" class="focusable" />
+      </div>
+      <div class="field">
+        <label for="np-type">Tipo</label>
+        <select id="np-type" class="focusable">
+          <option>Music Video</option>
+          <option>Short Film</option>
+          <option>Custom</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="np-preset">Preset recomendado</label>
+        <select id="np-preset" class="focusable">
+          <option>Music Video — padrão (cinematic, mp4)</option>
+          <option>Music Video — vertical (reels, mp4)</option>
+        </select>
+        <div class="hint">Você poderá ajustar destino, skill, formato e workflow depois.</div>
+      </div>
+      <div class="row">
+        <button class="btn focusable">Criar projeto</button>
+        <button class="btn ghost focusable">Ajustar mais opções…</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="director">
+  <h2>Director (desktop 3 colunas · mobile tabs)</h2>
+  <div class="card">
+    <div class="frame">
+      <div class="row" style="margin-bottom:8px">
+        <strong>“Lançamento Outono”</strong>
+        <span class="badge">Etapa atual: Cenas</span>
+        <span class="status running">Próxima ação: revisar cenas</span>
+      </div>
+      <div class="grid cols-3">
+        <div>
+          <h4 style="margin:4px 0">Briefing</h4>
+          <p style="color:var(--fg-soft)">Texto do briefing…</p>
+        </div>
+        <div>
+          <h4 style="margin:4px 0">Cenas</h4>
+          <ul style="list-style:none; padding:0; margin:0">
+            <li class="row" style="margin-bottom:6px"><span class="status done">✓</span> Cena 1 · 6s</li>
+            <li class="row" style="margin-bottom:6px"><span class="status running">●</span> Cena 2 · 8s</li>
+            <li class="row" style="margin-bottom:6px"><span class="status queued">…</span> Cena 3 · 5s</li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="margin:4px 0">Opções</h4>
+          <div class="stack">
+            <div>Skill: <strong>cinematic</strong></div>
+            <div>Formato: <strong>mp4</strong></div>
+            <div>Workflow: <strong>basic</strong></div>
+            <button class="btn secondary focusable">Gerar tudo</button>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:12px; font-size:12px">Em ≤ 768 px, vira tabs Briefing / Cenas / Opções.</p>
+    </div>
+  </div>
+</section>
+
+<section id="studio">
+  <h2>Studio — Controles ↔ Resultados em qualquer viewport</h2>
+  <div class="card">
+    <div class="frame">
+      <div class="pillset" style="margin-bottom:12px">
+        <span class="pill focusable" tabindex="0">Controles</span>
+        <span class="pill focusable" tabindex="0" aria-current="page">Resultados</span>
+      </div>
+      <div class="grid cols-2">
+        <div>
+          <h4 style="margin:4px 0">Controles</h4>
+          <div class="field"><label>Prompt</label><textarea class="focusable">Montanha enevoada ao amanhecer…</textarea></div>
+          <div class="field"><label>Modelo</label><select class="focusable"><option>LTX-2 19B</option></select></div>
+          <div class="field"><label>Duração (s)</label><input type="number" class="focusable" value="6" /></div>
+          <button class="btn focusable">Gerar</button>
+        </div>
+        <div>
+          <h4 style="margin:4px 0">Resultados</h4>
+          <div class="grid-icons">
+            <div class="icon">v1</div>
+            <div class="icon">v2</div>
+            <div class="icon">v3</div>
+            <div class="icon">v4</div>
+          </div>
+          <p style="font-size:12px; color:var(--fg-soft)">Geração concluída abre esta aba automaticamente.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="queue">
+  <h2>Fila — ações coerentes por estado (A14)</h2>
+  <div class="card">
+    <div class="frame stack">
+      <div class="row"><span class="status queued">Aguardando</span> Cena 4 — “Plano aberto” · posição #2</div>
+      <div class="row"><span class="status running">Gerando</span> Cena 3 — “Montanha enevoada” · ≈ 4 min</div>
+      <div class="row"><span class="status done">Concluído</span> Cena 1 — “Abertura”</div>
+      <div class="row"><span class="status failed">Falhou</span> Cena 2 — OOM (ajuste de hardware)</div>
+      <p style="font-size:12px">Cancelar: 1 só em queued/preparing/running · Revisar: awaiting_review/done · Reabrir: failed/cancelled.</p>
+    </div>
+  </div>
+</section>
+
+<section id="editor">
+  <h2>Editor — timeline + inspector (call site do A05 corrigido)</h2>
+  <div class="card">
+    <div class="frame stack">
+      <div class="row">
+        <strong>Projeto editor</strong>
+        <span class="badge">salvo há 2 s</span>
+      </div>
+      <div style="background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; height:120px; display:flex; gap:4px; align-items:flex-end">
+        <div style="width:48px; background:var(--accent); height:60%"></div>
+        <div style="width:48px; background:var(--success); height:90%"></div>
+        <div style="width:48px; background:var(--warn); height:40%"></div>
+        <div style="width:48px; background:var(--accent); height:70%"></div>
+      </div>
+      <div class="row">
+        <button class="btn secondary focusable">Exportar</button>
+        <button class="btn ghost focusable">Voltar ao Director</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="settings">
+  <h2>Configurações — diagnóstico de runtime (A24)</h2>
+  <div class="card">
+    <div class="frame stack">
+      <div class="row"><strong>Runtime</strong><span class="badge">OK</span></div>
+      <div class="row"><span>GPU:</span> NVIDIA H100 · 78 GB livres</div>
+      <div class="row"><span>Modelos:</span> 12 prontos · 1 baixando</div>
+      <div class="row"><span>Workspace:</span> /home/user/cue-studio (3.2 GB)</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Acessibilidade — checklist rápido</h2>
+  <div class="grid cols-3">
+    <div class="card"><strong>Foco visível</strong><br /><small>Anel 2 px + offset em ambos.</small></div>
+    <div class="card"><strong>Alvos de toque</strong><br /><small>≥ 44×44 px.</small></div>
+    <div class="card"><strong>Tab por teclado</strong><br /><small>Não interceptar globalmente.</small></div>
+    <div class="card"><strong>Modais</strong><br /><small>role + retorno de foco + Escape.</small></div>
+    <div class="card"><strong>Estados</strong><br /><small>Vazio/carregando/erro com ação.</small></div>
+    <div class="card"><strong>URL semântica</strong><br /><small>/projects/:id/:section.</small></div>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

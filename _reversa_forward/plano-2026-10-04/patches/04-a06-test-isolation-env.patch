@@ -1,0 +1,27 @@
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -1,5 +1,30 @@
+ """Pytest configuration and helpers for Cue Studio backend tests."""
++import os
++import tempfile
++from pathlib import Path
++
++# Feature A06: isolar singletons de cache/banco para evitar o incidente em
++# que o cache real do usuário (app/.cache/app_state.sqlite3) foi tocado
++# durante a auditoria de 2026-10-04.
++_TEST_TMP = Path(tempfile.mkdtemp(prefix="cue-studio-tests-"))
++os.environ.setdefault("APP_SQLITE_PATH", str(_TEST_TMP / "app_state.sqlite3"))
++os.environ.setdefault("APP_CACHE_DIR", str(_TEST_TMP / "cache"))
++os.environ.setdefault("CUE_API_KEY", "test-token-not-secret")
++os.environ.setdefault("CUE_TEST_MODE", "1")
++
++import pytest
++
++@pytest.fixture(autouse=True)
++def _isolate_singletons(tmp_path, monkeypatch):
++    """Garante que cada teste use diretórios temporários."""
++    monkeypatch.setenv("APP_SQLITE_PATH", str(tmp_path / "app_state.sqlite3"))
++    monkeypatch.setenv("APP_CACHE_DIR", str(tmp_path / "cache"))
++    yield
+
+ # ...existing conftest content preserved...

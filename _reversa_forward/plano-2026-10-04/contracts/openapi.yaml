@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: Cue Studio API (proposta A02/A11/A15/A18/A19)
+  version: 0.1.0-cycle0
+  description: |
+    Especificação derivada do plano de ação de 2026-10-04.
+    Serve como contrato canônico entre o frontend React e o backend FastAPI.
+    Cada endpoint referencia a feature correspondente.
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      summary: Health check (público, allowlist)
+      responses:
+        "200": { description: ok }
+  /ready:
+    get:
+      summary: Readiness probe (público, allowlist)
+      responses:
+        "200": { description: ok }
+  /api/projects:
+    get:
+      summary: Listar projetos (A11, A17)
+      parameters:
+        - in: query
+          name: type
+          schema: { type: string, enum: [music-video, short-film, custom] }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        "200":
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: "#/components/schemas/ProjectSummary" } }
+                  page: { type: integer }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      summary: Criar projeto (A10)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectCreate" }
+      responses:
+        "201":
+          description: Projeto criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/projects/{projectId}:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema: { type: string }
+    get:
+      summary: Abrir projeto (A09)
+      responses:
+        "200":
+          description: Projeto
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Apagar projeto (A19)
+      responses:
+        "204": { description: Removido }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /api/projects/{projectId}/briefing:
+    put:
+      summary: Atualizar briefing (A12)
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Briefing" }
+      responses:
+        "200":
+          description: Briefing atualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+  /api/dashboard/summary:
+    get:
+      summary: Resumo para Dashboard (A11)
+      responses:
+        "200":
+          description: Resumo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/queue:
+    get:
+      summary: Listar fila (A14)
+      responses:
+        "200":
+          description: Itens da fila
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QueueItem" }
+  /api/queue/{jobId}:
+    parameters:
+      - in: path
+        name: jobId
+        required: true
+        schema: { type: string }
+    delete:
+      summary: Cancelar job (A14)
+      responses:
+        "204": { description: Cancelado }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/queue/{jobId}/resume:
+    post:
+      summary: Retomar job interrompido (A19)
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema: { type: string }
+      responses:
+        "202":
+          description: Retomada enfileirada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QueueItem" }
+        "409":
+          description: Job não está em estado retomável
+  /api/v1/editor/projects:
+    get:
+      summary: Listar projetos do editor (A05)
+      responses:
+        "200":
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: "#/components/schemas/EditorProject" }
+    post:
+      summary: Criar projeto do editor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EditorProjectCreate" }
+      responses:
+        "201":
+          description: Projeto criado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EditorProject" }
+  /api/v1/editor/projects/{projectId}:
+    parameters:
+      - in: path
+        name: projectId
+        required: true
+        schema: { type: string }
+    get:
+      summary: Abrir projeto do editor
+      responses:
+        "200":
+          description: Projeto
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EditorProject" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Apagar projeto do editor
+      responses:
+        "204": { description: Removido }
+        "404": { $ref: "#/components/responses/NotFound" }
+components:
+  responses:
+    Unauthorized:
+      description: Auth ausente ou inválida (A02)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    BadRequest:
+      description: Erro de validação
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    Conflict:
+      description: Estado não permite a operação
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message, operationId]
+      properties:
+        code: { type: string, description: "Identificador estável para tradução/i18n e ação sugerida" }
+        message: { type: string, description: "Mensagem humana" }
+        operationId: { type: string, format: uuid, description: "Chave idempotente" }
+        cause: { type: string, nullable: true }
+    ProjectSummary:
+      type: object
+      required: [id, name, type, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [music-video, short-film, custom] }
+        presetId: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
+        thumb: { type: string, format: uri, nullable: true }
+    ProjectCreate:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        type: { type: string, enum: [music-video, short-film, custom] }
+        presetId: { type: string, nullable: true }
+    Project:
+      allOf:
+        - $ref: "#/components/schemas/ProjectSummary"
+        - type: object
+          properties:
+            briefing: { $ref: "#/components/schemas/Briefing" }
+            scenes:
+              type: array
+              items: { $ref: "#/components/schemas/SceneCard" }
+            options: { $ref: "#/components/schemas/DirectorOptions" }
+    Briefing:
+      type: object
+      properties:
+        intent: { type: string }
+        audience: { type: string }
+        durationSec: { type: integer, minimum: 5, maximum: 600 }
+        references: { type: array, items: { type: string } }
+    SceneCard:
+      type: object
+      required: [id, index, durationSec, status, prompt]
+      properties:
+        id: { type: string }
+        index: { type: integer }
+        durationSec: { type: number }
+        takes: { type: integer }
+        status:
+          type: string
+          enum: [pending, running, review, done, failed]
+        prompt: { type: string }
+        thumb: { type: string, format: uri, nullable: true }
+    DirectorOptions:
+      type: object
+      properties:
+        skill: { type: string }
+        format: { type: string, enum: [mp4, webm, mov] }
+        workflow: { type: string, enum: [basic, expert] }
+    DashboardSummary:
+      type: object
+      properties:
+        continueProject: { $ref: "#/components/schemas/ContinueProject" }
+        queue:
+          type: array
+          items: { $ref: "#/components/schemas/QueueItem" }
+        recentOutputs:
+          type: array
+          items: { $ref: "#/components/schemas/RecentOutput" }
+    ContinueProject:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        section: { type: string }
+        updatedAt: { type: string, format: date-time }
+    QueueItem:
+      type: object
+      required: [id, projectId, state, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        label: { type: string }
+        state:
+          type: string
+          enum: [queued, preparing, running, awaiting_review, done, failed, cancelled]
+        progress: { type: number, minimum: 0, maximum: 1 }
+        expectedSec: { type: integer, nullable: true }
+        position: { type: integer, nullable: true }
+        updatedAt: { type: string, format: date-time }
+    RecentOutput:
+      type: object
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        thumb: { type: string, format: uri }
+        createdAt: { type: string, format: date-time }
+    EditorProject:
+      type: object
+      required: [id, title, clips]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        clips:
+          type: array
+          items: { $ref: "#/components/schemas/EditorClip" }
+        updatedAt: { type: string, format: date-time }
+    EditorClip:
+      type: object
+      required: [id, mediaPath, start, duration]
+      properties:
+        id: { type: string }
+        mediaPath: { type: string }
+        start: { type: number }
+        duration: { type: number }
+        label: { type: string, nullable: true }
+        audioGain: { type: number, default: 1.0 }
+    EditorProjectCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, default: "Untitled" }

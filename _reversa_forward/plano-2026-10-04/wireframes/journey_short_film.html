@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Cue Studio — Jornada Short Film</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 880px; margin: 24px auto; padding: 0 16px; line-height: 1.5; color: #1a1a22; }
+  h1 { font-size: 22px; }
+  .step { background: #f6f7fa; border-left: 4px solid #6ea8ff; padding: 12px 16px; margin: 8px 0; border-radius: 6px; }
+  .step strong { display: block; margin-bottom: 4px; }
+  .err { background: #fff1f0; border-left-color: #ef6f6c; }
+  code { background: #eceff5; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+</style>
+</head>
+<body>
+<h1>Jornada: Short Film</h1>
+
+<p>Diferenças em relação ao Music Video: cenas mais longas, foco em continuidade e revisão de takes.</p>
+
+<h2>Passos</h2>
+
+<div class="step">
+  <strong>1. Briefing estendido</strong>
+  Campos extras: arco narrativo, tom, referências de estilo.
+  Próxima ação visível: <em>“Planejar cenas”</em>.
+</div>
+
+<div class="step">
+  <strong>2. Planejamento de cenas</strong>
+  Origem: rota <code>/projects/:id/scenes</code>.
+  Lista com take preferencial + alternativas. Bulk actions: regenerar 1 cena ou todas.
+  Próxima ação visível: <em>“Comparar takes”</em>.
+</div>
+
+<div class="step">
+  <strong>3. Comparação de takes</strong>
+  Origem: atalho “Comparar” em cada cena.
+  Visualização lado a lado com thumbs + áudio.
+  Próxima ação visível: <em>“Aceitar take”</em>.
+</div>
+
+<div class="step">
+  <strong>4. Edição + continuidades</strong>
+  Origem: Editor (A05).
+  Ação extra: <em>“Suavizar corte entre cenas”</em> (release posterior).
+</div>
+
+<div class="step">
+  <strong>5. Export final</strong>
+  Mesma trilha do Music Video; maior duração; presets de filme (1080p/4K).
+</div>
+
+<h2>Pontos de erro</h2>
+<div class="step err">
+  <strong>Tom inconsistente entre takes</strong>
+  Modal mostra: <em>“Diferença de tom detectada — ajustar?”</em> (LLM pode explicar diff).
+</div>
+<div class="step err">
+  <strong>Continuidade quebrada</strong>
+  Inspector sinaliza rosto/roupa divergente. Ação: <em>“Aceitar”</em> ou <em>“Regenerar com referências”</em>.
+</div>
+
+</body>
+</html>

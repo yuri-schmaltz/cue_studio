@@ -1,0 +1,32 @@
+--- a/ui/src/main.tsx
++++ b/ui/src/main.tsx
+@@ -1,8 +1,14 @@
+ import { StrictMode } from 'react'
+ import { createRoot } from 'react-dom/client'
+ import './index.css'
+ import App from './App.tsx'
+ import { migrateAll } from './lib/legacyKeys'
++import { configureApiTransport, apiFetch } from './api/transport'
++
++// Feature A01: instala um transporte de fetch com allowlist de origem.
++// Substitui o patch global de window.fetch feito em api/client.ts.
++configureApiTransport({
++  apiOrigins: [window.location.origin],
++  authHeader: 'Authorization',
++  getToken: () => localStorage.getItem('cue-studio.token'),
++})
+
+ // One-shot v2.1 rebrand migration: rewrites every legacy
+--- a/ui/src/api/client.ts
++++ b/ui/src/api/client.ts
+@@ -1,6 +1,8 @@
+ // HTTP client for Cue Studio.
++// Feature A01: este arquivo NÃO toca mais window.fetch. O transporte vive em
++// ./transport.ts e exige configuração via configureApiTransport() no bootstrap.
++import { apiFetch } from './transport'
+
+ // ...existing imports preserved...
+@@ -XX,XX +XX,XX @@
+-// REMOVIDO: window.fetch patch global.
+-// Substituir todas as chamadas fetch() que falam com a API por apiFetch().
++export const api = apiFetch

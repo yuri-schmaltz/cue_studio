@@ -1,0 +1,101 @@
+<!doctype html>
+<!--
+  Protótipo estático do bug do Tab bloqueado (A03).
+
+  Reproduz o cenário do achado D01: um listener global que chama
+  preventDefault() em Tab impede navegação entre campos.
+
+  Como abrir:
+    1. Salve este arquivo em disco.
+    2. Abra no navegador ou sirva com `python3 -m http.server` em uma
+       pasta temporária (NÃO dentro de `ui/` nem `app/`).
+    3. Clique em "Campo A" e pressione Tab. O foco deve ir para "Campo B"
+       quando o botão "Instalar bug" não estiver ativado. Com o bug
+       instalado, o foco **não** muda (comportamento atual de `main.tsx`).
+
+  Este arquivo está em `_reversa_forward/` e não é importado por nenhum
+  código de produção.
+-->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Protótipo A03 — Tab bloqueado</title>
+<style>
+  body { font-family: system-ui, sans-serif; padding: 24px; max-width: 720px; }
+  button, input { font-size: 14px; padding: 6px 10px; margin: 4px; }
+  fieldset { margin-top: 16px; }
+  .ok { color: #0a7a32; }
+  .bug { color: #b3261e; }
+  pre { background: #f4f4f4; padding: 8px; }
+</style>
+</head>
+<body>
+<h1>Protótipo A03 — Tab bloqueado</h1>
+<p>
+  Estado atual: <span id="state" class="ok">normal</span>
+</p>
+
+<fieldset>
+  <legend>Cenário 1 — normal (deveria ser o comportamento alvo)</legend>
+  <input id="a1" />
+  <input id="a2" />
+  <input id="a3" />
+  <button id="b1">Botão 1</button>
+  <button id="b2">Botão 2</button>
+</fieldset>
+
+<fieldset>
+  <legend>Cenário 2 — bug do listener global</legend>
+  <button id="install-bug">Instalar bug (preventDefault global)</button>
+  <button id="remove-bug">Remover bug</button>
+</fieldset>
+
+<pre id="log"></pre>
+
+<script>
+  const log = document.getElementById('log');
+  function append(line) {
+    log.textContent += line + '\n';
+  }
+
+  function activeId() {
+    const el = document.activeElement;
+    return el && el.id ? '#' + el.id : (el && el.tagName ? el.tagName : '(none)');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      append(`Tab pressionado; foco antes: ${activeId()}`);
+    }
+  }, true);
+
+  let installed = false;
+  function installBug() {
+    if (installed) return;
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+      }
+    }, true);
+    installed = true;
+    document.getElementById('state').textContent = 'bug instalado';
+    document.getElementById('state').className = 'bug';
+  }
+  function removeBug() {
+    installed = false;
+    document.getElementById('state').textContent = 'normal';
+    document.getElementById('state').className = 'ok';
+  }
+
+  document.getElementById('install-bug').addEventListener('click', installBug);
+  document.getElementById('remove-bug').addEventListener('click', removeBug);
+
+  // Demonstra foco após Tab quando o bug está instalado.
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'Tab') {
+      append(`  foco depois: ${activeId()}`);
+    }
+  }, true);
+</script>
+</body>
+</html>

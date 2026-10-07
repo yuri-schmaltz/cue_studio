@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Cue Studio — Jornada Geração Manual</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 880px; margin: 24px auto; padding: 0 16px; line-height: 1.5; color: #1a1a22; }
+  h1 { font-size: 22px; }
+  .step { background: #f6f7fa; border-left: 4px solid #6ea8ff; padding: 12px 16px; margin: 8px 0; border-radius: 6px; }
+  .step strong { display: block; margin-bottom: 4px; }
+  .err { background: #fff1f0; border-left-color: #ef6f6c; }
+  code { background: #eceff5; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+</style>
+</head>
+<body>
+<h1>Jornada: Geração manual (Studio)</h1>
+
+<p>Criador que ignora o Director e gera uma peça única no Studio (A13).</p>
+
+<h2>Passos</h2>
+
+<div class="step">
+  <strong>1. Abrir Studio</strong>
+  Origem: Sidebar → Studio (sem projeto obrigatório).
+  Layout: Controles / Resultados.
+</div>
+
+<div class="step">
+  <strong>2. Definir parâmetros</strong>
+  Prompt, modelo, duração, seed, referências.
+  Próxima ação: <em>“Gerar”</em>.
+</div>
+
+<div class="step">
+  <strong>3. Acompanhar</strong>
+  Resultado aparece em ≤ 1 toque do mobile (A13).
+  Status: queued / preparing / running / done / failed.
+</div>
+
+<div class="step">
+  <strong>4. Salvar</strong>
+  Origem: botão “Salvar no projeto” — abre diálogo para escolher destino (projeto existente ou criar).
+</div>
+
+<h2>Pontos de erro</h2>
+<div class="step err">
+  <strong>Sem projeto aberto</strong>
+  Ação: <em>“Criar projeto agora”</em> (deep-link via A09).
+</div>
+
+</body>
+</html>

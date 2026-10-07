@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Cue Studio — Jornada Exportação</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 880px; margin: 24px auto; padding: 0 16px; line-height: 1.5; color: #1a1a22; }
+  h1 { font-size: 22px; }
+  .step { background: #f6f7fa; border-left: 4px solid #6ea8ff; padding: 12px 16px; margin: 8px 0; border-radius: 6px; }
+  .step strong { display: block; margin-bottom: 4px; }
+  .err { background: #fff1f0; border-left-color: #ef6f6c; }
+  code { background: #eceff5; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+</style>
+</head>
+<body>
+<h1>Jornada: Exportação</h1>
+
+<p>Reaproveita o Editor (A05) e a fila (A14). Foco em feedback claro de duração e retomada (A19).</p>
+
+<h2>Passos</h2>
+
+<div class="step">
+  <strong>1. Iniciar exportação</strong>
+  Origem: botão “Exportar” no Editor.
+  Modal: formato, codec, resolução, caminho.
+  Próxima ação: <em>“Enfileirar”</em>.
+</div>
+
+<div class="step">
+  <strong>2. Acompanhar fila</strong>
+  Origem: <code>/queue</code>.
+  Job com <em>expectedSec</em>; sem ETA falso.
+</div>
+
+<div class="step">
+  <strong>3. Conclusão</strong>
+  Toast: <em>“Pronto · abrir”</em>. Link para <code>/media</code>.
+</div>
+
+<h2>Pontos de erro</h2>
+<div class="step err">
+  <strong>Disco cheio</strong>
+  Estado: failed. Mensagem: <em>“Sem espaço no destino — libere X GB”</em>.
+</div>
+<div class="step err">
+  <strong>Cancelamento</strong>
+  Cancela ffmpeg; cleanup do arquivo parcial; UI mostra estado cancelled.
+</div>
+<div class="step err">
+  <strong>Queda do app</strong>
+  Estado pós-reinício: interrupted (A19). Botão “Retomar” continua do ponto exato; usa <code>operationId</code>.
+</div>
+
+</body>
+</html>

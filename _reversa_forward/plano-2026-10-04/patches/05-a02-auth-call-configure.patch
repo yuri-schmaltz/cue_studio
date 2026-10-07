@@ -1,0 +1,46 @@
+--- a/app/launch.py
++++ b/app/launch.py
+@@ -1,5 +1,7 @@
+ """Launcher principal. Switches a ten-up services and mounts the full app."""
++from services.security import configure_security, verify_api_key  # Feature A02
++
++# ...existing imports preserved...
+@@ -XX,XX +XX,XX @@
++    # Feature A02: ligar política de auth.
++    # Em modo local (default), auth opcional. Quando --share ou variável de
++    # ambiente CUE_REQUIRE_AUTH=1 estiver setada, exigimos token.
++    share_mode = os.environ.get("CUE_SHARE_MODE") == "1" or _is_share_mode()
++    require_auth = share_mode or os.environ.get("CUE_REQUIRE_AUTH") == "1"
++    api_key = os.environ.get("CUE_API_KEY") or os.environ.get("MAESTRO_API_KEY")
++    configure_security(
++        api_key=api_key,
++        require_auth=require_auth,
++        allow_unauthenticated_local=not share_mode,
++    )
++
+     api = FastAPI(...)
++    # Em modo compartilhado, aplica middleware que valida Authorization globalmente.
++    if require_auth:
++        from starlette.middleware.base import BaseHTTPMiddleware
++
++        class AuthMiddleware(BaseHTTPMiddleware):
++            async def dispatch(self, request, call_next):
++                # Reusa verify_api_key para validação; ignora caminhos públicos.
++                if request.url.path in ("/health", "/ready", "/docs", "/openapi.json",
++                                        "/redoc", "/favicon.ico", "/icon.png",
++                                        "/cue-studio-icon.png"):
++                    return await call_next(request)
++                try:
++                    await verify_api_key(request)
++                except HTTPException as exc:
++                    return JSONResponse(
++                        status_code=exc.status_code,
++                        content={
++                            "code": "auth.missing_or_invalid",
++                            "message": "API key required",
++                            "operationId": str(uuid.uuid4()),
++                        },
++                    )
++                return await call_next(request)
++
++        api.add_middleware(AuthMiddleware)

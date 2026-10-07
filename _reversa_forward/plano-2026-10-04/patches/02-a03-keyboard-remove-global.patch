@@ -1,0 +1,51 @@
+--- a/ui/src/main.tsx
++++ b/ui/src/main.tsx
+@@ -1,7 +1,7 @@
+ import { StrictMode } from 'react'
+ import { createRoot } from 'react-dom/client'
+ import './index.css'
+ import App from './App.tsx'
+ import { migrateAll } from './lib/legacyKeys'
++import { installKeyboardShortcuts } from './a11y/keyboard'
+
+ // One-shot v2.1 rebrand migration: rewrites every legacy
+ // "maestro-*" / "maestro_*" localStorage, sessionStorage, and
+@@ -10,29 +10,7 @@
+ // localStorage makes this a no-op on subsequent boots.
+ migrateAll()
+
+-// Intercept the Tab key globally across the whole interface to disable tab-
+-// based focus navigation. Inside text fields (textarea/input), inserts a
+-// tab/indent character instead of moving focus.
+-window.addEventListener('keydown', (e: KeyboardEvent) => {
+-  if (e.key !== 'Tab') return
+-
+-  const target = e.target as HTMLElement | null
+-  const isTextarea = target instanceof HTMLTextAreaElement
+-  const isInput = target instanceof HTMLInputElement && ['text', 'search', 'url'].includes(target.type)
+-
+-  if (isTextarea && !target.readOnly && !target.disabled) {
+-    e.preventDefault()
+-    const start = target.selectionStart
+-    const end = target.selectionEnd
+-    const val = target.value
+-    target.value = val.substring(0, start) + '  ' + val.substring(end)
+-    target.selectionStart = target.selectionEnd = start + 2
+-    target.dispatchEvent(new Event('input', { bubbles: true }))
+-    return
+-  }
+-
+-  if (isInput && !target.readOnly && !target.disabled) {
+-    e.preventDefault()
+-    return
+-  }
+-
+-  // Prevent the default Tab focus traversal on buttons, links, tabs and containers
+-  e.preventDefault()
+-}, true)
++// Feature A03: restaurada a navegação padrão por Tab. Atalhos de indentação
++// agora vivem em installKeyboardShortcuts() (ui/src/a11y/keyboard.ts) e só
++// disparam dentro de elementos com data-allow-indent="true".
++installKeyboardShortcuts()
+
+ // Mobile browsers require persistent notifications from a service worker;

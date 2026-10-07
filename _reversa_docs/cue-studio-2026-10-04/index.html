@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Cue Studio — Mini-site do Plano 2026-10-04</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  :root {
+    --bg: #0a0c11; --bg-soft: #14171f; --line: #262a36;
+    --fg: #e7eaf0; --fg-soft: #aab0bd; --accent: #6ea8ff;
+    --warn: #f1c44a; --danger: #ef6f6c; --success: #6ad7a3;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--fg); line-height: 1.6;
+  }
+  header {
+    padding: 48px 24px;
+    background: linear-gradient(135deg, #1a1f2c 0%, #0a0c11 100%);
+    border-bottom: 1px solid var(--line);
+  }
+  .container { max-width: 1080px; margin: 0 auto; }
+  header h1 { margin: 0; font-size: 36px; }
+  header .meta { color: var(--fg-soft); font-size: 14px; margin-top: 6px; }
+  nav.toc {
+    background: var(--bg-soft); border-bottom: 1px solid var(--line);
+    padding: 12px 24px; position: sticky; top: 0; z-index: 10;
+  }
+  nav.toc ul {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; gap: 16px; flex-wrap: wrap;
+  }
+  nav.toc a { color: var(--fg-soft); text-decoration: none; font-size: 13px; }
+  nav.toc a:hover { color: var(--accent); }
+  main { padding: 24px; }
+  section { margin-bottom: 48px; }
+  h2 { color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  .grid {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .card {
+    background: var(--bg-soft); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .card h3 { margin: 0 0 8px; color: var(--fg); }
+  .card p { margin: 6px 0; font-size: 14px; color: var(--fg-soft); }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; margin-right: 4px;
+  }
+  .P0 { background: rgba(239,111,108,.15); color: var(--danger); }
+  .P1 { background: rgba(241,196,74,.15); color: var(--warn); }
+  .P2 { background: rgba(110,168,255,.15); color: var(--accent); }
+  .P3 { background: rgba(170,176,189,.15); color: var(--fg-soft); }
+  table {
+    width: 100%; border-collapse: collapse; margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left; padding: 10px; border-bottom: 1px solid var(--line);
+  }
+  th { color: var(--fg-soft); font-weight: 500; }
+  td a { color: var(--accent); text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+  code {
+    background: var(--bg); padding: 2px 6px; border-radius: 4px;
+    font-family: "SFMono-Regular", monospace; font-size: 13px;
+  }
+  pre {
+    background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 12px; overflow-x: auto;
+    font-size: 13px; color: var(--fg-soft);
+  }
+  .cta {
+    background: var(--accent); color: #08121f; padding: 12px 18px;
+    border-radius: 8px; text-decoration: none; display: inline-block;
+    font-weight: 600; margin: 8px 0;
+  }
+  .stat-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin: 16px 0; }
+  .stat { background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-align: center; }
+  .stat .num { font-size: 32px; color: var(--accent); font-weight: 700; }
+  .stat .label { font-size: 13px; color: var(--fg-soft); }
+</style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <h1>Cue Studio — Plano de Ação 2026-10-04</h1>
+    <div class="meta">Cue Studio 2.5.2 · commit 27cadae · auditoria reversa · ciclo 0 P0/P1 pronto</div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="container">
+    <ul>
+      <li><a href="#sumario">Sumário</a></li>
+      <li><a href="#diagnostico">Diagnóstico</a></li>
+      <li><a href="#backlog">Backlog</a></li>
+      <li><a href="#ciclo0">Ciclo 0</a></li>
+      <li><a href="#contratos">Contratos</a></li>
+      <li><a href="#wireframes">Wireframes</a></li>
+      <li><a href="#adrs">ADRs</a></li>
+      <li><a href="#execucao">Como executar</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main>
+<div class="container">
+
+<section id="sumario">
+  <h2>Sumário executivo</h2>
+  <div class="stat-grid">
+    <div class="stat"><div class="num">24</div><div class="label">Ações no plano</div></div>
+    <div class="stat"><div class="num">8</div><div class="label">Specs SDD P0</div></div>
+    <div class="stat"><div class="num">44</div><div class="label">Checks passando</div></div>
+    <div class="stat"><div class="num">5</div><div class="label">Wireframes HTML</div></div>
+    <div class="stat"><div class="num">6</div><div class="label">ADRs</div></div>
+    <div class="stat"><div class="num">7</div><div class="label">Patches manuais</div></div>
+  </div>
+  <p>
+    A auditoria produziu <a href="../../_reversa_sdd/auditoria-2026-10-04/diagnostico.md">diagnóstico</a> e <a href="../../_reversa_sdd/auditoria-2026-10-04/plano-de-acao.md">plano</a> completos. Esta pasta contém a <strong>materialização executável</strong> do plano, isolada em <code>_reversa_forward/plano-2026-10-04/</code>.
+  </p>
+</section>
+
+<section id="diagnostico">
+  <h2>Diagnóstico (achados prioritários)</h2>
+  <table>
+    <tr><th>ID</th><th>Título</th><th>Conf.</th><th>Plano</th></tr>
+    <tr><td>D01</td><td>Tab bloqueado globalmente</td><td>🟢</td><td>A03</td></tr>
+    <tr><td>D02</td><td>Token aplicado a destinos externos</td><td>🟢</td><td>A01</td></tr>
+    <tr><td>D03</td><td>Auth geral não integrada</td><td>🟢</td><td>A02</td></tr>
+    <tr><td>D04</td><td>Lint quebrado (12 erros, 6 avisos)</td><td>🟢</td><td>A04</td></tr>
+    <tr><td>D05</td><td>Router Editor não montado (call site)</td><td>🟢</td><td>A05</td></tr>
+    <tr><td>D06</td><td>Concentração de responsabilidades</td><td>🟡</td><td>A16, A17</td></tr>
+    <tr><td>D07</td><td>Erros HTTP inconsistentes</td><td>🟡</td><td>A15</td></tr>
+    <tr><td>D08</td><td>Persistência sem matriz única</td><td>🟡</td><td>A18</td></tr>
+    <tr><td>D09</td><td>Bundle inicial grande</td><td>🟢</td><td>A20</td></tr>
+    <tr><td>D10</td><td>Testes frontend fora do CI</td><td>🟢</td><td>A06</td></tr>
+  </table>
+</section>
+
+<section id="backlog">
+  <h2>Backlog (24 ações)</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Ciclo 0 — falhas verificadas</h3>
+      <p>
+        <span class="badge P0">A03</span> Teclado e foco de diálogos<br />
+        <span class="badge P0">A01</span> Transporte HTTP seguro<br />
+        <span class="badge P0">A02</span> Auth integrada<br />
+        <span class="badge P0">A04</span> Lint sem erros<br />
+        <span class="badge P1">A05</span> Router Editor (call site)<br />
+        <span class="badge P1">A06</span> Isolamento de testes
+      </p>
+    </div>
+    <div class="card">
+      <h3>Ciclo 1 — fundação UX</h3>
+      <p>
+        <span class="badge P1">A07</span> Jornadas com criadores<br />
+        <span class="badge P1">A08</span> Componentes compartilhados<br />
+        <span class="badge P1">A09</span> Navegação com URL<br />
+        <span class="badge P1">A11</span> Dashboard<br />
+        <span class="badge P1">A13</span> Studio mobile<br />
+        <span class="badge P1">A14</span> Fila com ações coerentes
+      </p>
+    </div>
+    <div class="card">
+      <h3>Ciclo 2 — fluxos visíveis</h3>
+      <p>
+        <span class="badge P1">A10</span> Criação rápida de projeto<br />
+        <span class="badge P1">A12</span> Director responsivo<br />
+        <span class="badge P1">A15</span> Error boundary + payload
+      </p>
+    </div>
+    <div class="card">
+      <h3>Ciclo 3 — modernização estrutural</h3>
+      <p>
+        <span class="badge P1">A16</span> Routers por domínio<br />
+        <span class="badge P1">A17</span> Slices, transporte, polling<br />
+        <span class="badge P1">A18</span> Persistência e migrações<br />
+        <span class="badge P1">A19</span> Retomada de jobs
+      </p>
+    </div>
+    <div class="card">
+      <h3>Ciclo 4 — performance e release</h3>
+      <p>
+        <span class="badge P2">A20</span> Bundle<br />
+        <span class="badge P2">A21</span> Densidade<br />
+        <span class="badge P2">A22</span> Tap targets<br />
+        <span class="badge P2">A23</span> Foco e ARIA<br />
+        <span class="badge P3">A24</span> Telemetria
+      </p>
+    </div>
+    <div class="card">
+      <h3>Resumo executivo</h3>
+      <p>Estimativa: 38–60 dias úteis (~8–12 semanas) com 1 dev dedicado e suporte parcial de design.</p>
+    </div>
+  </div>
+</section>
+
+<section id="ciclo0">
+  <h2>Ciclo 0 — Status</h2>
+  <table>
+    <tr><th>Ação</th><th>Spec</th><th>Patch</th><th>Protótipo</th><th>Teste</th></tr>
+    <tr><td>A03 teclado</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/07-feature-a03-keyboard.md">md</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/patches/02-a03-keyboard-remove-global.patch">patch</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/prototypes/a03_keyboard.html">html</a></td><td>—</td></tr>
+    <tr><td>A01 transporte</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/08-feature-a01-secure-http.md">md</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/patches/03-a01-secure-http-bootstrap.patch">patch</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/prototypes/a01_secure_transport.py">py</a> (5/5)</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/tests/api_transport.test.ts">ts</a></td></tr>
+    <tr><td>A02 auth</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/09-feature-a02-auth.md">md</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/patches/05-a02-auth-call-configure.patch">patch</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/prototypes/a02_auth.py">py</a> (5/5)</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/tests/test_api_auth_full.py">py</a></td></tr>
+    <tr><td>A04 lint</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/10-feature-a04-lint.md">md</a></td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>A05 editor router</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/11-feature-a05-editor-router.md">md</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/patches/01-a05-editor-call-site.patch">patch</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/prototypes/a05_editor_router.py">py</a> (4/4)</td><td>—</td></tr>
+    <tr><td>A06 isolamento</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/12-feature-a06-test-isolation.md">md</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/patches/04-a06-test-isolation-env.patch">patch</a></td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/prototypes/a06_test_isolation.py">py</a> (2/2)</td><td>✅ <a href="../../_reversa_forward/plano-2026-10-04/tests/test_app_state_db_contract.py">py</a></td></tr>
+  </table>
+</section>
+
+<section id="contratos">
+  <h2>Contratos</h2>
+  <p>Toda a API HTTP proposta está em <a href="../../_reversa_forward/plano-2026-10-04/contracts/openapi.yaml"><code>openapi.yaml</code></a> (válido como YAML).</p>
+  <p>Tipos compartilhados entre frontend e backend:</p>
+  <ul>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/contracts/types.ts"><code>types.ts</code></a> — tipos TypeScript</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/contracts/projects.py"><code>projects.py</code></a> — schemas Pydantic (camelCase para JSON)</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/contracts/api_errors.py"><code>api_errors.py</code></a> — payload de erro padronizado</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/contracts/api_transport.ts"><code>api_transport.ts</code></a> — transporte HTTP com allowlist</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/contracts/migration_runner.py"><code>migration_runner.py</code></a> — runner de migrações idempotente</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/contracts/app_state_db.py"><code>app_state_db.py</code></a> — caminho do singleton via env var</li>
+  </ul>
+</section>
+
+<section id="wireframes">
+  <h2>Wireframes standalone</h2>
+  <p>HTML autocontido; abre localmente sem servidor.</p>
+  <div class="grid">
+    <a class="card" href="../../_reversa_forward/plano-2026-10-04/wireframes/index.html">
+      <h3>Visão geral</h3>
+      <p>8 telas: Dashboard, Projetos, Novo projeto, Director, Studio, Fila, Editor, Settings.</p>
+    </a>
+    <a class="card" href="../../_reversa_forward/plano-2026-10-04/wireframes/shared-components.html">
+      <h3>Componentes compartilhados (A08)</h3>
+      <p>TextField, Select, Button, StatusBadge, EmptyState, ErrorState, AppDialog com focus trap funcional.</p>
+    </a>
+    <a class="card" href="../../_reversa_forward/plano-2026-10-04/wireframes/journey_music_video.html">
+      <h3>Jornada: Music Video</h3>
+      <p>6 passos + 3 pontos de erro documentados.</p>
+    </a>
+    <a class="card" href="../../_reversa_forward/plano-2026-10-04/wireframes/journey_short_film.html">
+      <h3>Jornada: Short Film</h3>
+      <p>5 passos + 2 pontos de erro (tom inconsistente, continuidade quebrada).</p>
+    </a>
+    <a class="card" href="../../_reversa_forward/plano-2026-10-04/wireframes/journey_export.html">
+      <h3>Jornada: Exportação</h3>
+      <p>3 passos + retomada após crash (A19).</p>
+    </a>
+    <a class="card" href="../../_reversa_forward/plano-2026-10-04/wireframes/journey_manual.html">
+      <h3>Jornada: Geração manual (Studio)</h3>
+      <p>4 passos sem projeto prévio.</p>
+    </a>
+  </div>
+</section>
+
+<section id="adrs">
+  <h2>ADRs (Architecture Decision Records)</h2>
+  <ul>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/adrs/ADR-001-secure-http-transport.md">ADR-001</a> — Substituir patch global de fetch por transporte com allowlist.</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/adrs/ADR-002-restore-keyboard-navigation.md">ADR-002</a> — Restaurar navegação por teclado.</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/adrs/ADR-003-auth-integration.md">ADR-003</a> — Política de autenticação no servidor geral.</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/adrs/ADR-004-persistence-matrix.md">ADR-004</a> — Matriz de persistência e migrações idempotentes.</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/adrs/ADR-005-routers-by-domain.md">ADR-005</a> — Monólito modular: routers por domínio.</li>
+    <li><a href="../../_reversa_forward/plano-2026-10-04/adrs/ADR-006-error-payload.md">ADR-006</a> — Payload de erro HTTP padronizado.</li>
+  </ul>
+</section>
+
+<section id="execucao">
+  <h2>Como executar</h2>
+  <h3>1. Validar tudo (sem tocar código)</h3>
+  <pre><code>bash _reversa_forward/plano-2026-10-04/scripts/run_all_prototypes.sh</code></pre>
+
+  <h3>2. Liberar a política</h3>
+  <p>Edite <code>.reversa/reversa-config.json</code> e troque <code>allowLegacyEdits</code> para <code>true</code> (com ou sem <code>allowedPaths</code>).</p>
+
+  <h3>3. Aplicar patches do ciclo 0</h3>
+  <pre><code>git checkout -b feature/ciclo-0
+git apply _reversa_forward/plano-2026-10-04/patches/*.patch</code></pre>
+
+  <h3>4. Verificar com os testes prontos</h3>
+  <pre><code>python3 -m pytest _reversa_forward/plano-2026-10-04/tests/
+cd ui && npx playwright test _reversa_forward/plano-2026-10-04/e2e/</code></pre>
+
+  <a class="cta" href="../../_reversa_forward/plano-2026-10-04/HANDOFF.md">Ver HANDOFF completo →</a>
+</section>
+
+</div>
+</main>
+</body>
+</html>

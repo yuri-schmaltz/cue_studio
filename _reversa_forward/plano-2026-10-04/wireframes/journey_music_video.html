@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Cue Studio — Jornada Music Video</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 880px; margin: 24px auto; padding: 0 16px; line-height: 1.5; color: #1a1a22; }
+  h1 { font-size: 22px; }
+  h2 { font-size: 16px; margin-top: 24px; color: #444; }
+  .step { background: #f6f7fa; border-left: 4px solid #6ea8ff; padding: 12px 16px; margin: 8px 0; border-radius: 6px; }
+  .step strong { display: block; margin-bottom: 4px; }
+  .err { background: #fff1f0; border-left-color: #ef6f6c; }
+  code { background: #eceff5; padding: 2px 6px; border-radius: 4px; font-size: 90%; }
+</style>
+</head>
+<body>
+<h1>Jornada: Music Video</h1>
+<p>Documento vivo; revisar com criadores. Pré-requisitos: <code>allowLegacyEdits</code> aplicado e UI atualizada.</p>
+
+<h2>Atores</h2>
+<ul>
+  <li>Criador (desperta a ação).</li>
+  <li>Consumidor (cliente final que vê o vídeo). Não interage com o app.</li>
+</ul>
+
+<h2>Pré-condições</h2>
+<ul>
+  <li>App local rodando; GPU disponível; token de auth configurado (se aplicável).</li>
+  <li>Pelo menos 1 modelo de vídeo carregado.</li>
+</ul>
+
+<h2>Passos</h2>
+
+<div class="step">
+  <strong>1. Criação rápida</strong>
+  Origem: Dashboard → botão “Criar projeto” / Sidebar → “Projetos” → + Novo.
+  Campos obrigatórios: <em>nome</em>, <em>tipo=Music Video</em>. Opcional: ajustar preset.
+  Próxima ação visível: <em>“Criar projeto”</em>.
+</div>
+
+<div class="step">
+  <strong>2. Briefing</strong>
+  Origem: rota <code>/projects/:id/briefing</code>.
+  Inputs: intenção, público, duração (5–600 s), referências (URLs ou arquivos).
+  Próxima ação visível: <em>“Ir para Cenas”</em> (botão sticky).
+</div>
+
+<div class="step">
+  <strong>3. Geração de cenas</strong>
+  Origem: rota <code>/projects/:id/scenes</code>.
+  Lista de cenas com miniatura/duração/take/status/prompt editável.
+  Ação principal por cena: <em>“Gerar”</em>; ação geral: <em>“Gerar tudo”</em>.
+  Próxima ação visível após geração: <em>“Revisar cenas”</em>.
+</div>
+
+<div class="step">
+  <strong>4. Revisão</strong>
+  Origem: rota <code>/projects/:id/review</code>.
+  Ações por cena: aceitar take, regenerar, ajustar prompt.
+  Próxima ação visível: <em>“Ir para Editor”</em>.
+</div>
+
+<div class="step">
+  <strong>5. Edição final</strong>
+  Origem: rota <code>/projects/:id/editor</code> (router do A05 corrigido).
+  Ações: trim, split, reorder, ajuste de ganho.
+  Próxima ação visível: <em>“Exportar”</em>.
+</div>
+
+<div class="step">
+  <strong>6. Exportação</strong>
+  Origem: botão “Exportar” no Editor.
+  Modal de progresso com ação “Cancelar”.
+  Próxima ação visível: <em>“Abrir mídia”</em> ou <em>“Voltar ao Director”</em>.
+</div>
+
+<h2>Pontos de erro</h2>
+
+<div class="step err">
+  <strong>Rede caída</strong>
+  Em qualquer passo, modal mostra motivo e “Tentar novamente” usando <code>operationId</code> idempotente (A15).
+</div>
+
+<div class="step err">
+  <strong>GPU ocupada</strong>
+  Bloqueio suave: <em>“Aguardando GPU livre — ≈ 5 min”</em>. Estimativa em A14.
+</div>
+
+<div class="step err">
+  <strong>OOM do modelo</strong>
+  Estado: <em>failed</em>. Ação: “Reabrir” → diálogo com diagnóstico + ação de reduzir duração.
+</div>
+
+<h2>Saídas</h2>
+<ul>
+  <li>Vídeo final em /workspace/outputs (configurável).</li>
+  <li>Snapshot do projeto persistido (A18).</li>
+  <li>Histórico de takes e prompts.</li>
+</ul>
+
+<h2>Critérios de aceite (para A07 + A09)</h2>
+<ul>
+  <li>Criador consegue concluir o fluxo do passo 1 ao 6 sem interromper contexto (A09).</li>
+  <li>Em 390 px, todos os passos continuam executáveis (A12, A13).</li>
+  <li>Foco por teclado funcional em todas as telas (A03).</li>
+</ul>
+
+</body>
+</html>
