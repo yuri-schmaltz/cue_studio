@@ -39,6 +39,7 @@ Esta pasta materializa o **primeiro ciclo** do plano em formato executável pelo
 | A22 | P2 | Alvos de toque 44 px | pendente |
 | A23 | P2 | Foco visível e ARIA | pendente |
 | A24 | P3 | Telemetria de runtime | pendente |
+| A25 | P1 | Estado narrativo estruturado por plano (Shot IR + continuity check) | spec pronta em [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) — complementar ao ciclo UX, não substitui |
 
 ## Sequência recomendada para o ciclo 0
 
@@ -71,6 +72,34 @@ Cada arquivo `0X-feature-*.md` segue o template abaixo:
 
 - [`prototypes/`](prototypes/) — scripts isolados que demonstram a abordagem esperada sem tocar `app/` ou `ui/`. Servem para validar estratégia e dar confiança antes da implementação real.
 - [`checklists/`](checklists/) — listas curtas para verificação manual (teclado, foco, contraste, etc.).
+
+## Extensão complementar (ciclo 4) — eixos de produto
+
+A partir de 2026-10-15, uma extensão complementar ataca seis eixos de produto que não estavam no escopo da auditoria original A01–A24: dependências explícitas, estado narrativo estruturado, perfil econômico, provenance, PT-BR e offline estrito. Esses eixos não substituem A01–A24; eles ampliam o escopo de capacidade do Cue Studio e podem entrar em v2.6 ou v3.0.
+
+| ID | Eixo | Spec | Status |
+|---|---|---|---|
+| A25 | Shot IR + continuidade | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) | ✅ spec + protótipo (7/7) |
+| A26 | Dependências explícitas e propagação de impacto | [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) | ✅ spec + protótipo (7/7) |
+| A26b | Retake com efeito real (correção bug R01) | [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) | ✅ spec + protótipo (9/9) — P0 do dossiê |
+| A27 | ProvenanceManifest por Take | [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) | ✅ spec + protótipo (9/9) |
+| A28 | Continuity Panel (visualização UX do A25) | [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) | ✅ spec + protótipo (7/7) |
+| A29 | Perfil econômico 6–8 GB comprovado | [`38-feature-a29-economy-profile.md`](38-feature-a29-economy-profile.md) | ✅ spec + protótipo (8/8) |
+| A30 | Corpus PT-BR para TTS | [`39-feature-a30-ptbr-corpus.md`](39-feature-a30-ptbr-corpus.md) | ✅ spec + protótipo (8/8) |
+| A31 | Modo `--offline-strict` com auditoria | [`40-feature-a31-offline-strict.md`](40-feature-a31-offline-strict.md) | ✅ spec + protótipo (9/9) |
+| A34 | CapabilityMatrix por modelo/runtime/modo | [`37-feature-a34-capability-matrix.md`](37-feature-a34-capability-matrix.md) | ✅ spec + protótipo (8/8) |
+| R03 | Wizard tipado + MCP mutation_class | [`36-feature-r03-wizard-mcp.md`](36-feature-r03-wizard-mcp.md) | ✅ spec + protótipo (9/9) |
+
+Mapeamento rápido contra o código atual (v2.5.2, verificado por grep):
+
+- **A25 (Shot IR)**: `app/services/h3_story_ledger.py` v24 já tem `subject_continuity`, `setting_continuity`, `visual_continuity`, `_infer_h3_blocking_contract`. Faltam `hand_object`, `gaze`, `action_completed`, `object_state`, expor como schema editável e detector de inconsistências.
+- **A26 (dependências)**: sem `impact_of`, sem DAG explícito. Verde, trabalho novo.
+- **A26b (retake com efeito real)**: `production_resume.py:retake_stage()` tem `if False` no caminho efetivo; fachada apenas registra evento, **não despacha renderização**. Bug confirmado pelo dossiê seção 10. Spec + protótipo A26b cobrem a correção proposta com idempotência.
+- **A27 (provenance)**: `editor_projects.py:1777` define `sidecar`, `checkpoint_compatibility.py` retorna receipt, `wgp.py` registra `queue_manifest`. Falta `ProvenanceManifest` unificado por Take com SHA-256 de artefatos, validação de adulteração, bundle portátil e integração com Storage Manager.
+- **A28 (Continuity Panel)**: 6 regras do A25 funcionam no protótipo mas não há UI que exiba resultados. A28 entrega o painel.
+- **A29 (economia)**: Auto-Tune funciona; sem obra de referência publicada, sem tempo medido, sem relatório versionado.
+- **A30 (PT-BR)**: Chatterbox/Qwen3/Kokoro reconhecem `pt-br`; sem corpus de avaliação, sem dicionário de pronúncia.
+- **A31 (offline)**: Allowlist de modelos existe; sem flag `--offline-strict`, sem auditoria de egress, sem CI offline.
 
 ## Handoff
 

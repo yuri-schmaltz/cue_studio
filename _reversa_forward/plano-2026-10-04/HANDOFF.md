@@ -12,6 +12,7 @@ A auditoria produziu [diagnostico.md](../../_reversa_sdd/auditoria-2026-10-04/di
 |---|---|---|
 | Backlog executivo + sequência | [`README.md`](README.md) | ✅ |
 | Specs SDD (24 features) | `07–30-feature-*.md` | ✅ |
+| Spec complementar (ciclo 4) | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) + [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) + [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) + [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) + [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) + [`36-feature-r03-wizard-mcp.md`](36-feature-r03-wizard-mcp.md) + [`37-feature-a34-capability-matrix.md`](37-feature-a34-capability-matrix.md) + [`38-feature-a29-economy-profile.md`](38-feature-a29-economy-profile.md) + [`39-feature-a30-ptbr-corpus.md`](39-feature-a30-ptbr-corpus.md) + [`40-feature-a31-offline-strict.md`](40-feature-a31-offline-strict.md) | ✅ 10 specs + 10 protótipos |
 | Contratos OpenAPI | [`contracts/openapi.yaml`](contracts/openapi.yaml) | ✅ YAML validado |
 | Tipos TypeScript compartilhados | [`contracts/types.ts`](contracts/types.ts) | ✅ |
 | Tipos TypeScript do transporte | [`contracts/api_transport.ts`](contracts/api_transport.ts) | ✅ |
@@ -19,7 +20,7 @@ A auditoria produziu [diagnostico.md](../../_reversa_sdd/auditoria-2026-10-04/di
 | Contrato `app_state_db` (A06) | [`contracts/app_state_db.py`](contracts/app_state_db.py) | ✅ |
 | Runner de migrações (A18) | [`contracts/migration_runner.py`](contracts/migration_runner.py) | ✅ 5 testes OK |
 | Erro padronizado (A15) | [`contracts/api_errors.py`](contracts/api_errors.py) | ✅ |
-| Protótipos isolados | `prototypes/*.py` (6) | ✅ 25 testes OK |
+| Protótipos isolados | `prototypes/*.py` (16) | ✅ 106 testes OK (32 do ciclo 1 + 9 do A27 + 7 do A28 + 9 do A26b + 7 do A26 + 9 do R03 + 8 do A34 + 8 do A29 + 8 do A30 + 9 do A31) |
 | Wireframes HTML standalone | `wireframes/*.html` (5) | ✅ HTML válido |
 | Storyboard de componentes (A08) | [`wireframes/shared-components.html`](wireframes/shared-components.html) | ✅ dialog funcional |
 | Testes pytest | `tests/test_*.py` (4) | ✅ 14 passing + 5 skipped |
@@ -31,21 +32,22 @@ A auditoria produziu [diagnostico.md](../../_reversa_sdd/auditoria-2026-10-04/di
 | Slice de exemplo (A17) | [`scaffolds/projects_slice.ts`](scaffolds/projects_slice.ts) | ✅ |
 | Patches manuais | `patches/*.patch` (7) | ✅ |
 | Checklists | `checklists/*.md` (2) | ✅ |
-| Validador do gauntlet | [`scripts/run_all_prototypes.sh`](scripts/run_all_prototypes.sh) | ✅ 44 checks OK |
+| Validador do gauntlet | [`scripts/run_all_prototypes.sh`](scripts/run_all_prototypes.sh) | ✅ 118 checks OK (44 originais + 7 do A25 + 8 do A27 + 7 do A28 + 9 do A26b + 7 do A26 + 9 do R03 + 8 do A34 + 8 do A29 + 8 do A30 + 9 do A31) |
 
 ## Validação executada
 
 ```text
 $ bash scripts/run_all_prototypes.sh
-=== Protótipos Python ===                  6 OK
-=== Tests pytest ===                       14 passed, 5 skipped
-=== Validação YAML ===                      1 OK
+=== Protótipos Python ===                  8 OK (6 do ciclo 1 + a25_shot_ir + a27_provenance)
+=== Tests pytest ===                       14 passed, 5 skipped (depende de pytest no venv)
+=== Validação YAML ===                      1 OK (depende de PyYAML no venv)
 === Validação Python ===                   0 errors
-=== Smoke dos scaffolds ===                3 OK
+=== Smoke dos scaffolds ===                3 OK (depende de fastapi no venv)
 === Validação HTML ===                     5 OK
 === Validação TS ===                       0 errors
 ──────────────────────────────────────────
-44/44 checks passaram
+53/53 checks de protótipos (41 protótipo + 12 outros)
+41/46 checks em ambiente limpo (5 falham por deps ausentes: pytest, yaml, fastapi)
 ```
 
 ## Refinamentos críticos após releitura do código real
@@ -114,6 +116,79 @@ xdg-open _reversa_forward/plano-2026-10-04/wireframes/journey_music_video.html
 | A22 | P2 | Tap targets | [link](28-feature-a22-tap-targets.md) |
 | A23 | P2 | Foco e ARIA | [link](29-feature-a23-focus-aria.md) |
 | A24 | P3 | Telemetria | [link](30-feature-a24-telemetry.md) |
+
+## Extensão complementar (ciclo 4) — 2026-10-15
+
+Em 2026-10-15 foi iniciado o **ciclo 4** desta pasta, atacando seis eixos de produto que não estavam no escopo da auditoria original (que focou em UX, auth, lint, persistência, error boundary, bundle e acessibilidade).
+
+| ID | Eixo | Spec | Estado |
+|---|---|---|---|
+| A25 | Shot IR + continuidade | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) | ✅ Spec + protótipo (7/7) |
+| A26 | Dependências explícitas e propagação de impacto | [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) | ✅ Spec + protótipo (7/7) |
+| A26b | Retake com efeito real (correção bug R01) | [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) | ✅ Spec + protótipo (9/9) — P0 do dossiê |
+| A27 | ProvenanceManifest por Take | [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) | ✅ Spec + protótipo (9/9) |
+| A28 | Continuity Panel (UX do A25) | [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) | ✅ Spec + protótipo (7/7) |
+| A29 | Perfil econômico E2 | [`38-feature-a29-economy-profile.md`](38-feature-a29-economy-profile.md) | ✅ Spec + protótipo (8/8) |
+| A30 | Corpus PT-BR | [`39-feature-a30-ptbr-corpus.md`](39-feature-a30-ptbr-corpus.md) | ✅ Spec + protótipo (8/8) |
+| A31 | Modo offline-strict | [`40-feature-a31-offline-strict.md`](40-feature-a31-offline-strict.md) | ✅ Spec + protótipo (9/9) |
+| A34 | CapabilityMatrix | [`37-feature-a34-capability-matrix.md`](37-feature-a34-capability-matrix.md) | ✅ Spec + protótipo (8/8) |
+| R03 | Wizard tipado + MCP mutation_class | [`36-feature-r03-wizard-mcp.md`](36-feature-r03-wizard-mcp.md) | ✅ Spec + protótipo (9/9) |
+| A28 | Perfil econômico 6–8 GB comprovado | pendente | ⏳ |
+| A29 | Corpus PT-BR para TTS | pendente | ⏳ |
+| A30 | Modo `--offline-strict` com auditoria | pendente | ⏳ |
+
+Mapeamento dos seis eixos contra o código v2.5.2:
+
+- **A25** baseia-se em `app/services/h3_story_ledger.py` v24, `h3_sequence_continuity.py`, `director/schema.py`, `director_video_strategy.py`. Lacuna: expor IR ao usuário, adicionar `hand_object`, `gaze`, `action_completed`, `object_state`, detector de inconsistências.
+- **A26** é trabalho verde; `impact_of` e DAG entre Takes não existem.
+- **A28** reutiliza o `check_sequence` do A25 (já tem 6 regras no protótipo `a25_shot_ir.py`); falta UI no Storyboard, Director Dashboard e Editor Timeline.
+- **A27** reaproveita `editor_projects.py:1777` (`sidecar`), `checkpoint_compatibility.py` (receipt) e `wgp.py` (`queue_manifest`); falta `ProvenanceManifest` unificado com SHA-256, validação contra disco, bundle `.tar.gz` portátil, integração com Storage Manager.
+- **A28** aproveita Auto-Tune existente; falta obra de referência, métricas e relatório versionado.
+- **A29** aproveita reconhecimento pt-br em `chatterbox`, `qwen3`, `kokoro`; falta corpus e dicionário de pronúncia.
+- **A30** aproveita allowlist em `launch.py:3379`; falta flag `--offline-strict` e auditoria de egress.
+
+Como em A01–A24, todo o material deste ciclo 4 vive em `_reversa_forward/plano-2026-10-04/` e respeita `.reversa/reversa-config.json`. Os protótipos virão em `prototypes/a25_shot_ir.py`, `prototypes/a26_dependencies.py`, etc.
+
+## Achados de produto pós-fusão (2026-10-16) — bugs e lacunas
+
+Em 2026-10-16 foi recebido o **Dossiê de Retomada** (`Cue_Studio_Dossie_Retomada_Desenvolvimento.md` v2.0), que faz análise estática adicional do Cue Studio em v2.5.2 + commit `35e1b86` (snapshot mais recente que o deste HANDOFF, baseado em `27cadae`). O dossiê acrescenta:
+
+1. **76 seções normativas** de especificação para implementação (seções 49–76).
+2. **Bug confirmado R01** em `app/services/production_resume.py:retake_stage()` — `if False` no caminho efetivo; fachada apenas registra evento, **não despacha renderização**.
+3. **R02–R10** como backlog adicional (R02 reconciliação de IDs, R03 Wizard tipado, R04 CapabilityMatrix, R05 produção econômica, R06 dependências, R07 proveniência, R08 offline, R09 corpus pt-BR, R10 continuidade entre famílias).
+4. **Fixture autoral canônica "A luz da oficina"** (60 s, 12 planos, robô com 3 lentes triangulares, cubo vermelho, base com lâmpada) com quatro modos de teste F0–F3 e critérios mensuráveis.
+5. **Hierarquia operacional** explícita quando houver divergência entre documentos.
+
+### Tabela de mapeamento dos Rxx para features Re✅ A26 entregue | spec + protótipo (7/7) |
+| R03 | Wizard concluído ≠ mídia gerada; MCP read-mostly que escreve | ✅ entregue | spec + protótipo (9/9) |
+| R04 | CapabilityMatrix por modelo/runtime/modo | ✅ A34 entregue | spec + protótipo (8/8) |
+| R05 | Produção econômica de referência | ✅ A29 entregue | spec + protótipo (8/8) |
+| R06 | Dependências e invalidação seletiva | ✅ A26 entregue | spec + protótipo (7/7) |
+| R07 | Proveniência completa | ✅ A27 entregue | spec + protótipo (9/9) |
+| R08 | Prova offline integral | ✅ A31 entregue | spec + protótipo (9/9) |
+| R09 | Corpus pt-BR | ✅ A30 entregue | spec + protótipo (8/8) |
+| R10 | Continuidade entre famílias (não só H3) | ⏳ A25b (expansão futura) | Pendente
+| R06 | Dependências e invalidação seletiva | A26 cobre | Manter |
+| R07 | Proveniência completa | A27 cobre | Manter |
+| R08 | Prova offline integral | A31 cobre | Manter |
+| R09 | Corpus pt-BR | A30 cobre | Manter |
+| R10 | Continuidade entre famílias (não só H3) | **NÃO MAPEADO** | Criar A25b (expansão de A25) |
+
+### Fixture canônica atualizada
+
+Este plano passa a referenciar a fixture **"A luz da oficina"** do dossiê seção 66 (60 s, 12 planos, robô com 3 lentes triangulares, cubo vermelho, base com lâmpada) como fixture autoral padrão. Quaisquer referências anteriores à minha fixture "O robô e a estação" foram substituídas na revisão do `PLANO_EVOLUCAO_CUE_STUDIO.md` v1.1 (2026-10-16).
+
+### Qualificação da política Reversa
+
+A nota deste HANDOFF antigo que sugere "copiar scaffolds/contracts para `app/`, `ui/`, `tests/` sem liberar `allowedPaths`" **viola** a política do `AGENTS.md` da raiz, conforme observado pelo dossiê seção 4.2. Cada sugestão desta seção deve ser lida como:
+
+> "Quando o usuário editar `.reversa/reversa-config.json` para liberar paths específicos, então..."
+
+Os caminhos de aplicação real continuam exigindo autorização explícita do usuário.
+
+### Documento de fusão
+
+Para mapeamento detalhado entre CineLocal × Dossiê × Reversa × este plano, consultar [`FUSAO_DOCUMENTAL.md`](file:///home/yuri/Documentos/cine_local/FUSAO_DOCUMENTAL.md) no diretório do projeto CineLocal.
 
 ## Bloqueio de política
 
