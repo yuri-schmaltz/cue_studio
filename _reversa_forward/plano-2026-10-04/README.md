@@ -79,8 +79,7 @@ A partir de 2026-10-15, uma extensão complementar ataca seis eixos de produto q
 
 | ID | Eixo | Spec | Status |
 |---|---|---|---|
-| A25 | Shot IR + continuidade | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) | ✅ spec + protótipo (7/7) |
-| A26 | Dependências explícitas e propagação de impacto | [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) | ✅ spec + protótipo (7/7) |
+| A25 | Shot IR + continuidade | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) | ✅ spec + protótipo (7/7) || A25b | Continuidade entre famílias (R10) | [`41-feature-a25b-cross-family-continuity.md`](41-feature-a25b-cross-family-continuity.md) | ✅ Spec + protótipo (8/8) — fechando R10 || A26 | Dependências explícitas e propagação de impacto | [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) | ✅ spec + protótipo (7/7) |
 | A26b | Retake com efeito real (correção bug R01) | [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) | ✅ spec + protótipo (9/9) — P0 do dossiê |
 | A27 | ProvenanceManifest por Take | [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) | ✅ spec + protótipo (9/9) |
 | A28 | Continuity Panel (visualização UX do A25) | [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) | ✅ spec + protótipo (7/7) |
@@ -93,6 +92,7 @@ A partir de 2026-10-15, uma extensão complementar ataca seis eixos de produto q
 Mapeamento rápido contra o código atual (v2.5.2, verificado por grep):
 
 - **A25 (Shot IR)**: `app/services/h3_story_ledger.py` v24 já tem `subject_continuity`, `setting_continuity`, `visual_continuity`, `_infer_h3_blocking_contract`. Faltam `hand_object`, `gaze`, `action_completed`, `object_state`, expor como schema editável e detector de inconsistências.
+- **A25b (cross-family continuity / R10)**: H3 tem `_infer_h3_blocking_contract` + `Picture N` labels, mas Wan/LTX/LTX25/Hunyuan não têm adapter de continuidade. A25b introduz `ContinuityAdapter` (Protocol) com 5 adapters por família + fallback `IndependentFallbackAdapter` + `ContinuityRegistry` + `resolve_continuity()` orquestrando A34 + A25b + A25. Fecha o R10.
 - **A26 (dependências)**: sem `impact_of`, sem DAG explícito. Verde, trabalho novo.
 - **A26b (retake com efeito real)**: `production_resume.py:retake_stage()` tem `if False` no caminho efetivo; fachada apenas registra evento, **não despacha renderização**. Bug confirmado pelo dossiê seção 10. Spec + protótipo A26b cobrem a correção proposta com idempotência.
 - **A27 (provenance)**: `editor_projects.py:1777` define `sidecar`, `checkpoint_compatibility.py` retorna receipt, `wgp.py` registra `queue_manifest`. Falta `ProvenanceManifest` unificado por Take com SHA-256 de artefatos, validação de adulteração, bundle portátil e integração com Storage Manager.
@@ -103,12 +103,14 @@ Mapeamento rápido contra o código atual (v2.5.2, verificado por grep):
 
 ## Smoke de integração validado
 
-`prototypes/integration_smoke.py` encadeia os 10 protótipos do ciclo 4 em 11 passos contra a fixture `cue-reference-film-v1` ("A luz da oficina", 12 shots). Resultado: **11/11 PASS** sem GPU, sem FastAPI, sem app real. Como rodar:
+`prototypes/integration_smoke.py` encadeia os 11 protótipos do ciclo 4 em 12 passos contra a fixture `cue-reference-film-v1` ("A luz da oficina", 12 shots). Resultado: **12/12 PASS** sem GPU, sem FastAPI, sem app real. Como rodar:
 
 ```bash
 cd /home/yuri/Documentos/cine_local/cue_studio
 python3 _reversa_forward/plano-2026-10-04/prototypes/integration_smoke.py
 ```
+
+Os 12 passos exercitam: A25 Shot IR, A25+A28 continuity, A26b retake, A26 dependencies, A34 CapabilityMatrix, A27 provenance, A30 PT-BR, A29 economy, A31 offline-strict, R03 wizard, verificação cruzada e o novo passo 12 **A25b Cross-family continuity** (adapters H3/LTX/Wan/Hunyuan + fallback INDEPENDENT).
 
 ## Handoff
 

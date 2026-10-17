@@ -17,11 +17,13 @@ Etapas executadas:
 8. Economy Profile (A29)     — relatório Markdown + budget validation
 9. Offline-strict (A31)      — auditor de conexões
 10. Wizard tipado (R03)      — dispatch creative/mechanical/review
+11. Verificação cruzada       — coerência A25/A28/A26/A34/A30
+12. Cross-family continuity   — adapters H3/LTX/Wan/Hunyuan + fallback
 
 Rodar:
     python3 _reversa_forward/plano-2026-10-04/prototypes/integration_smoke.py
 
-Saída esperada: 11/11 steps OK.
+Saída esperada: 12/12 steps OK.
 """
 from __future__ import annotations
 
@@ -35,6 +37,7 @@ sys.path.insert(0, str(PROTOS))
 
 # Importa os 10 protótipos como módulos
 import a25_shot_ir
+import a25b_cross_family_continuity
 import a26b_retake_dispatch
 import a26_dependencies
 import a27_provenance
@@ -52,7 +55,7 @@ import r03_wizard_mcp
 
 def _print_step(n: int, label: str, ok: bool, detail: str = "") -> bool:
     status = "OK" if ok else "FAIL"
-    print(f"  [{n:2d}/11] {status}  {label}{(' — ' + detail) if detail else ''}")
+    print(f"  [{n:2d}/12] {status}  {label}{(' — ' + detail) if detail else ''}")
     return ok
 
 
@@ -512,19 +515,69 @@ def main() -> int:
     )
     failures += 0 if ok11 else 1
 
+    # Step 12: Cross-family continuity (A25b) — adapters H3/LTX/Wan/Hunyuan + fallback
+    a25b = a25b_cross_family_continuity
+    reg = a25b._registry()
+    from dataclasses import replace as _dc_replace
+    fake_next = _dc_replace(shot_irs[1])  # Shot 2 da fixture
+    h3 = a25b.resolve_continuity(
+        registry=reg, next_shot_ir=fake_next, director_strategy="continuous",
+        family=a25b.ModelFamily.H3,
+        previous_output=a25b.PreviousShotOutput(shot_id="shot_001", picture_n_index=2),
+        previous_state=None,
+    )
+    ltx = a25b.resolve_continuity(
+        registry=reg, next_shot_ir=fake_next, director_strategy="continuous",
+        family=a25b.ModelFamily.LTX,
+        previous_output=a25b.PreviousShotOutput(
+            shot_id="shot_001",
+            last_frame_path="/tmp/shot_001_last.png",
+            multi_window_state={"next_window_size": 24, "next_window_id": "window_002"},
+        ),
+        previous_state=None,
+    )
+    wan = a25b.resolve_continuity(
+        registry=reg, next_shot_ir=fake_next, director_strategy="continuous",
+        family=a25b.ModelFamily.WAN,
+        previous_output=a25b.PreviousShotOutput(
+            shot_id="shot_001", last_frame_path="/tmp/shot_001_last.png",
+        ),
+        previous_state=None,
+    )
+    fallback = a25b.resolve_continuity(
+        registry=reg, next_shot_ir=fake_next, director_strategy="continuous",
+        family=a25b.ModelFamily.UNKNOWN,
+        previous_output=a25b.PreviousShotOutput(shot_id="shot_001"),
+        previous_state=None,
+    )
+    adapter_count = len(reg.available_families())
+    ok12 = _print_step(
+        12, "A25b Cross-family — H3/LTX/Wan + fallback",
+        h3.mode == "picture_n_reference"
+        and ltx.mode == "extend_previous"
+        and wan.mode == "first_last_frame"
+        and fallback.mode == "independent"
+        and fallback.confidence == 0.0
+        and adapter_count == 6,
+        f"h3={h3.mode}, ltx={ltx.mode}, wan={wan.mode}, "
+        f"fallback={fallback.mode}/conf={fallback.confidence}, "
+        f"families={adapter_count}",
+    )
+    failures += 0 if ok12 else 1
+
     print()
     print("=" * 72)
     if failures == 0:
-        print(f"PASS 11/11 — protótipos integrados sem GPU, sem FastAPI, sem Cue Studio real")
+        print(f"PASS 12/12 — protótipos integrados sem GPU, sem FastAPI, sem Cue Studio real")
         print()
         print("Resumo do que está pronto para deploy:")
-        print("  - 10 specs + 10 protótipos + 1 smoke de integração")
+        print("  - 11 specs + 11 protótipos + 1 smoke de integração")
         print("  - Política Reversa respeitada (allowLegacyEdits=false)")
         print("  - Aplicação real requer: editar reversa-config.json, venv Python 3.11,")
         print("    GPU NVIDIA CUDA 12.8, ~50-300 GB de modelos sob demanda")
         return 0
     else:
-        print(f"FAIL {failures}/11 steps")
+        print(f"FAIL {failures}/12 steps")
         return 1
 
 
