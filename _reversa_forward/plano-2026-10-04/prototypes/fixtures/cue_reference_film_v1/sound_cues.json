@@ -1,0 +1,30 @@
+{
+  "music": {
+    "id": "f0_instrumental_01",
+    "kind": "deterministic_synth",
+    "language": "instrumental",
+    "sample_rate": 48000,
+    "tempo_bpm": 96,
+    "key": "C major",
+    "start_seconds": 0.0,
+    "end_seconds": 60.0,
+    "voices": [
+      {"name": "pad",   "wave": "sine",     "freq_hz": 261.6, "amp": 0.18},
+      {"name": "bass",  "wave": "triangle", "freq_hz": 130.8, "amp": 0.22},
+      {"name": "arp",   "wave": "square",   "freq_hz": 523.2, "amp": 0.08},
+      {"name": "shimmer","wave": "sine",    "freq_hz": 1046.5,"amp": 0.04}
+    ]
+  },
+  "ambient": {
+    "id": "f0_ambient_room_a",
+    "kind": "deterministic_pink_noise_filtered",
+    "amp": 0.04
+  },
+  "effects": [
+    {"id": "fx_footsteps_S02",  "start_seconds": 2.0, "duration_seconds": 2.0, "kind": "soft_impulse_train", "amp": 0.30, "rate_hz": 2.0},
+    {"id": "fx_touch_cube_S04", "start_seconds": 15.0,"duration_seconds": 0.4, "kind": "wood_click",         "amp": 0.55},
+    {"id": "fx_footsteps_S06",  "start_seconds": 25.0, "duration_seconds": 2.0, "kind": "soft_impulse_train", "amp": 0.30, "rate_hz": 2.0},
+    {"id": "fx_insert_S08",     "start_seconds": 37.5, "duration_seconds": 0.6, "kind": "deep_click",         "amp": 0.60},
+    {"id": "fx_lamp_on_S09",    "start_seconds": 40.0, "duration_seconds": 1.2, "kind": "warm_rumble_rise",   "amp": 0.50}
+  ]
+}

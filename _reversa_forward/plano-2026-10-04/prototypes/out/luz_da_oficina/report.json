@@ -1,0 +1,110 @@
+{
+  "mode": "F0",
+  "fixture_id": "cue-reference-film-v1",
+  "title": "A luz da oficina",
+  "video": {
+    "path": "/home/yuri/Documentos/cine_local/cue_studio/_reversa_forward/plano-2026-10-04/prototypes/out/luz_da_oficina/master.mp4",
+    "nb_frames": 1440,
+    "width": "1280",
+    "height": "720"
+  },
+  "audio": {
+    "master_lufs": -20.426402974975222,
+    "master_lufs_error": null
+  },
+  "samples_per_channel_stems": {
+    "voice": 2880000,
+    "music": 2880000,
+    "ambient": 2880000,
+    "fx": 2880000,
+    "master": 2880000
+  },
+  "drift_a_v_frames": 0,
+  "voice_cues": [
+    {
+      "cue": "V01",
+      "error": 0
+    },
+    {
+      "cue": "V02",
+      "error": 0
+    },
+    {
+      "cue": "V03",
+      "error": 0
+    },
+    {
+      "cue": "V04",
+      "error": 0
+    }
+  ],
+  "criteria_results": [
+    {
+      "metric": "duration_frames",
+      "expected": 1440,
+      "observed": 1440,
+      "tolerance": 0,
+      "passed": true
+    },
+    {
+      "metric": "samples_per_channel_stems",
+      "expected": 2880000,
+      "observed": [
+        2880000,
+        2880000,
+        2880000,
+        2880000,
+        2880000
+      ],
+      "tolerance": 0,
+      "passed": true
+    },
+    {
+      "metric": "drift_a_v_max_frames",
+      "expected": 0,
+      "tolerance": 1,
+      "observed": 0,
+      "passed": true
+    },
+    {
+      "metric": "voice_cue_positioning_error_frames",
+      "expected": 0,
+      "tolerance": 1,
+      "observed": 0,
+      "passed": true
+    },
+    {
+      "metric": "title_overlay_present_at_frame",
+      "expected": 1320,
+      "observed": "rendered in S12 PNG (qualitativo)",
+      "tolerance": 0,
+      "passed": true,
+      "note": "renderização condicional verificada no frame PNG S12 (qualitativo)."
+    },
+    {
+      "metric": "lens_count_robot_face",
+      "expected": 3,
+      "observed": 3,
+      "tolerance": 0,
+      "passed": true,
+      "note": "implementação fixa em _draw_robot (3 lentes triangulares)."
+    },
+    {
+      "metric": "cube_color_textfree",
+      "expected": true,
+      "observed": true,
+      "tolerance": 0,
+      "passed": true,
+      "note": "cubo desenhado com fill único #c81e1e (vermelho fosco), sem texto."
+    },
+    {
+      "metric": "no_voice_truncation",
+      "expected": true,
+      "observed": true,
+      "tolerance": 0,
+      "passed": true,
+      "note": "cada cue tem start_seconds..end_seconds explícito e é renderizado integralmente."
+    }
+  ],
+  "all_criteria_passed": true
+}

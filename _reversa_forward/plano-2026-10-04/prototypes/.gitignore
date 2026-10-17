@@ -1,0 +1,5 @@
+out/
+!out/luz_da_oficina/
+out/luz_da_oficina/*.wav
+out/luz_da_oficina/*.mp4
+!out/luz_da_oficina/report.json

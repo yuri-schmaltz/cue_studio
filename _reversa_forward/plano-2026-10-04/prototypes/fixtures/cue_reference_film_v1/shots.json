@@ -1,0 +1,188 @@
+{
+  "shots": [
+    {
+      "shot_id": "S01",
+      "index": 1,
+      "frames": [0, 119],
+      "shot_size": "wide",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "oficina vazia estabelecida, lâmpada apagada",
+      "exit_state": "ambiente estabelecido",
+      "state_vars": {
+        "robot_present": false,
+        "cube_location": "table",
+        "lamp_on": false
+      }
+    },
+    {
+      "shot_id": "S02",
+      "index": 2,
+      "frames": [120, 239],
+      "shot_size": "wide",
+      "movement": "tracking_left_to_right",
+      "angle": "eye_level",
+      "action": "robô entra pela porta e caminha para mesa",
+      "exit_state": "robô próximo à mesa",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "table",
+        "lamp_on": false
+      }
+    },
+    {
+      "shot_id": "S03",
+      "index": 3,
+      "frames": [240, 359],
+      "shot_size": "close_up",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "close das três lentes olhando o cubo",
+      "exit_state": "cubo ainda na mesa",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "table",
+        "lamp_on": false,
+        "robot_gaze_target": "red_cube"
+      }
+    },
+    {
+      "shot_id": "S04",
+      "index": 4,
+      "frames": [360, 479],
+      "shot_size": "medium",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "robô pega o cubo com a mão direita",
+      "exit_state": "cubo na mão direita",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "robot_right_hand",
+        "lamp_on": false
+      }
+    },
+    {
+      "shot_id": "S05",
+      "index": 5,
+      "frames": [480, 599],
+      "shot_size": "extreme_close_up",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "detalhe da mão e cubo",
+      "exit_state": "pegada conservada",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "robot_right_hand",
+        "lamp_on": false
+      }
+    },
+    {
+      "shot_id": "S06",
+      "index": 6,
+      "frames": [600, 719],
+      "shot_size": "medium",
+      "movement": "tracking_left_to_right",
+      "angle": "eye_level",
+      "action": "robô caminha até o pedestal",
+      "exit_state": "movimento esquerda→direita concluído",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "robot_right_hand",
+        "lamp_on": false
+      }
+    },
+    {
+      "shot_id": "S07",
+      "index": 7,
+      "frames": [720, 839],
+      "shot_size": "wide",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "robô diante da base",
+      "exit_state": "cubo na mão direita",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "robot_right_hand",
+        "lamp_on": false,
+        "robot_at_position": "in_front_of_lamp_base"
+      }
+    },
+    {
+      "shot_id": "S08",
+      "index": 8,
+      "frames": [840, 959],
+      "shot_size": "close_up",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "cubo inserido na cavidade",
+      "exit_state": "mão livre, cubo na base",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "lamp_base_cavity",
+        "lamp_on": false
+      }
+    },
+    {
+      "shot_id": "S09",
+      "index": 9,
+      "frames": [960, 1079],
+      "shot_size": "wide",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "lâmpada acende âmbar gradualmente",
+      "exit_state": "luz acesa",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "lamp_base_cavity",
+        "lamp_on": true
+      }
+    },
+    {
+      "shot_id": "S10",
+      "index": 10,
+      "frames": [1080, 1199],
+      "shot_size": "close_up",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "close do robô iluminado, três lentes intactas",
+      "exit_state": "robô observa a luz",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "lamp_base_cavity",
+        "lamp_on": true,
+        "robot_gaze_target": "lamp"
+      }
+    },
+    {
+      "shot_id": "S11",
+      "index": 11,
+      "frames": [1200, 1319],
+      "shot_size": "wide",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "robô recua e contempla a oficina",
+      "exit_state": "cubo permanece na base",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "lamp_base_cavity",
+        "lamp_on": true
+      }
+    },
+    {
+      "shot_id": "S12",
+      "index": 12,
+      "frames": [1320, 1439],
+      "shot_size": "wide",
+      "movement": "static",
+      "angle": "eye_level",
+      "action": "estável com título final sobreposto",
+      "exit_state": "encerramento",
+      "title_overlay": "A luz da oficina",
+      "state_vars": {
+        "robot_present": true,
+        "cube_location": "lamp_base_cavity",
+        "lamp_on": true
+      }
+    }
+  ]
+}

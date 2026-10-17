@@ -1,0 +1,45 @@
+{
+  "characters": [
+    {
+      "id": "robot_01",
+      "kind": "robot",
+      "body_color": "#c0c4cc",
+      "accent_color": "#1f2a44",
+      "lens_count": 3,
+      "lens_layout": "triangular",
+      "lens_color": "#1f2a44",
+      "height_ratio": 0.62,
+      "legs": 2,
+      "arms": 2,
+      "no_human_mouth": true,
+      "voice_id": null
+    }
+  ],
+  "props": [
+    {
+      "id": "red_cube",
+      "color": "#c81e1e",
+      "finish": "fosco",
+      "side_ratio": 0.13,
+      "text_present": false
+    }
+  ],
+  "locations": [
+    {
+      "id": "room_a",
+      "kind": "oficina",
+      "wall_color": "#cdb892",
+      "floor_color": "#3a2a1c",
+      "table_position": {"x_ratio": 0.78, "y_ratio": 0.55, "size_ratio": 0.28},
+      "door_position": {"x_ratio": 0.5, "y_ratio": 0.30, "size_ratio": 0.16},
+      "window_position": {"x_ratio": 0.15, "y_ratio": 0.40, "size_ratio": 0.18},
+      "lamp_base_position": {"x_ratio": 0.40, "y_ratio": 0.62, "size_ratio": 0.14},
+      "lamp_base_color": "#7a5a3a",
+      "lighting": "matinal_suave",
+      "lamp_off_color": "#5a4a30",
+      "lamp_on_color": "#ffb84a",
+      "lamp_lighting_factor_off": 0.55,
+      "lamp_lighting_factor_on": 1.30
+    }
+  ]
+}

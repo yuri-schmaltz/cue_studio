@@ -1,0 +1,32 @@
+{
+  "project_id": "cue-reference-film-v1",
+  "title": "A luz da oficina",
+  "version": "1.0",
+  "language": "pt-BR",
+  "timeline": {
+    "fps": 24,
+    "duration_seconds": 60,
+    "total_frames": 1440,
+    "width": 1280,
+    "height": 720,
+    "sample_rate": 48000,
+    "channels": 2
+  },
+  "audio_targets": {
+    "master_lufs": -16.0,
+    "lufs_tolerance": 1.0,
+    "true_peak_dbTP": -1.0
+  },
+  "acceptance": {
+    "mode": "F0",
+    "purpose": "CI, duration, mix, export, falhas determinísticas",
+    "does_not_prove": ["qualidade de IA", "determinismo entre GPUs"],
+    "per_shot_frames": 120,
+    "shots": 12
+  },
+  "build": {
+    "mode": "deterministic",
+    "seed": 42,
+    "fixture_author": "Plan Cue Studio 2026-10-16"
+  }
+}

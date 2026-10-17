@@ -300,3 +300,32 @@ A26c ataca uma lacuna operacional do Cue Studio v2.5.2: `app/requirements.txt` p
 - Passo 13 do smoke integrado exercita `generate_lock + validate_lock (drift clean) + upgrade_proposal (safe_minor)`.
 
 Política Reversa continua respeitada (allowLegacyEdits=false). Geração real dos 5 lockfiles por perfil (rodar `pip-compile` 5x com índices CUDA-cu121, cu124, cu128 etc.) **não está** no escopo desta entrega — usuário decide quando materializar.
+
+## Obra de referência em modo F0 (2026-10-16)
+
+Materialização concreta da fixture canônica "A luz da oficina" em **modo F0** — geração determinística por software (sem GPU / sem Diffusers / sem Whisper / sem TTS). Usa apenas Pillow (frames geométricos) + stdlib `wave` + `math` (síntese de áudio) + FFmpeg libx264 (mux).
+
+Artefatos:
+
+- Pacote de fixture `prototypes/fixtures/cue_reference_film_v1/`: `project.json`, `shots.json`, `continuity.json`, `speech.json`, `sound_cues.json`, `expected.json`, `README.md`.
+- Renderizador `prototypes/f0_render_luz_da_oficina.py`.
+- `master.mp4` (H.264 1280×720@24fps, 1.6 MB).
+- 5 stems `voice.wav` / `music.wav` / `ambient.wav` / `fx.wav` / `master_audio.wav` (60s @ 48 kHz estéreo, 11 MB cada).
+- `report.json` com critérios de aceite.
+
+**8/8 critérios PASS** (ver tabela completa no README). Loudness master −20.43 LUFS (abaixo do alvo −16 do F2, aceitável dentro da simplicidade F0).
+
+Como reproduzir:
+
+```bash
+. f0_venv/bin/activate
+python3 _reversa_forward/plano-2026-10-04/prototypes/f0_render_luz_da_oficina.py
+```
+
+Material vive em `_reversa_forward/plano-2026-10-04/prototypes/out/luz_da_oficina/`, dentro da área permitida do Reversa.
+
+Próximos passos em produção:
+
+- **F1** — híbrido: substituir F0 por mídias congeladas + jobs reais de edição/retake controlado.
+- **F2** — IA completa: substituir F0 por cadeias locais de modelos (H3 Omni + Wan + Qwen3 TTS + Kugelaudio + MMAudio); alvo: rubrica ≥ 3 nos 6 critérios artísticos (identidade, continuidade, movimento, aparência, voz pt-BR, coerência).
+- **F3** — recuperação: F1/F2 com interrupções controladas; alvo: reconciliação e preservação A27 + A26b.

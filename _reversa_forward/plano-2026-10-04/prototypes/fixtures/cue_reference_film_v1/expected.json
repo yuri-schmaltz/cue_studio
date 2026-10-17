@@ -1,0 +1,28 @@
+{
+  "master": {
+    "duration_seconds": 60,
+    "duration_frames": 1440,
+    "fps": 24,
+    "width": 1280,
+    "height": 720,
+    "sample_rate": 48000,
+    "channels": 2,
+    "samples_per_channel": 2880000
+  },
+  "stems": {
+    "voice_wav": "voice.wav",
+    "music_wav": "music.wav",
+    "ambient_wav": "ambient.wav",
+    "fx_wav": "fx.wav"
+  },
+  "criteria": [
+    {"metric": "duration_frames", "expected": 1440, "tolerance": 0},
+    {"metric": "samples_per_channel_stems", "expected": 2880000, "tolerance": 0},
+    {"metric": "drift_a_v_max_frames", "expected": 0, "tolerance": 1},
+    {"metric": "voice_cue_positioning_error_frames", "expected": 0, "tolerance": 1},
+    {"metric": "title_overlay_present_at_frame", "expected": 1320, "tolerance": 0},
+    {"metric": "lens_count_robot_face", "expected": 3},
+    {"metric": "cube_color_textfree", "expected": true},
+    {"metric": "no_voice_truncation", "expected": true}
+  ]
+}

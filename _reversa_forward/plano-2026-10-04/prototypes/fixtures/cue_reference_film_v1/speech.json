@@ -1,0 +1,36 @@
+{
+  "voice_id": "f0_pt_br_voice_01",
+  "kind": "deterministic_sine_voice",
+  "language": "pt-BR",
+  "sample_rate": 48000,
+  "cues": [
+    {
+      "id": "V01",
+      "text": "Na oficina silenciosa, uma pequena descoberta.",
+      "start_seconds": 5.0,
+      "end_seconds": 12.0,
+      "window_frames": [120, 287]
+    },
+    {
+      "id": "V02",
+      "text": "Cada peca encontra o seu lugar.",
+      "start_seconds": 15.0,
+      "end_seconds": 23.0,
+      "window_frames": [360, 551]
+    },
+    {
+      "id": "V03",
+      "text": "Basta um gesto para acender uma ideia.",
+      "start_seconds": 35.0,
+      "end_seconds": 43.0,
+      "window_frames": [840, 1031]
+    },
+    {
+      "id": "V04",
+      "text": "E uma nova historia pode comecar.",
+      "start_seconds": 50.0,
+      "end_seconds": 57.0,
+      "window_frames": [1200, 1367]
+    }
+  ]
+}
