@@ -101,6 +101,15 @@ Mapeamento rápido contra o código atual (v2.5.2, verificado por grep):
 - **A30 (PT-BR)**: Chatterbox/Qwen3/Kokoro reconhecem `pt-br`; sem corpus de avaliação, sem dicionário de pronúncia.
 - **A31 (offline)**: Allowlist de modelos existe; sem flag `--offline-strict`, sem auditoria de egress, sem CI offline.
 
+## Smoke de integração validado
+
+`prototypes/integration_smoke.py` encadeia os 10 protótipos do ciclo 4 em 11 passos contra a fixture `cue-reference-film-v1` ("A luz da oficina", 12 shots). Resultado: **11/11 PASS** sem GPU, sem FastAPI, sem app real. Como rodar:
+
+```bash
+cd /home/yuri/Documentos/cine_local/cue_studio
+python3 _reversa_forward/plano-2026-10-04/prototypes/integration_smoke.py
+```
+
 ## Handoff
 
 [`HANDOFF.md`](HANDOFF.md) traz o resumo final, dependências e o que **você** precisa fazer para liberar a implementação (paths em `.reversa/reversa-config.json`).

@@ -12,7 +12,7 @@ A auditoria produziu [diagnostico.md](../../_reversa_sdd/auditoria-2026-10-04/di
 |---|---|---|
 | Backlog executivo + sequência | [`README.md`](README.md) | ✅ |
 | Specs SDD (24 features) | `07–30-feature-*.md` | ✅ |
-| Spec complementar (ciclo 4) | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) + [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) + [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) + [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) + [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) + [`36-feature-r03-wizard-mcp.md`](36-feature-r03-wizard-mcp.md) + [`37-feature-a34-capability-matrix.md`](37-feature-a34-capability-matrix.md) + [`38-feature-a29-economy-profile.md`](38-feature-a29-economy-profile.md) + [`39-feature-a30-ptbr-corpus.md`](39-feature-a30-ptbr-corpus.md) + [`40-feature-a31-offline-strict.md`](40-feature-a31-offline-strict.md) | ✅ 10 specs + 10 protótipos |
+| Spec complementar (ciclo 4) | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) + [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) + [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) + [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) + [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) + [`36-feature-r03-wizard-mcp.md`](36-feature-r03-wizard-mcp.md) + [`37-feature-a34-capability-matrix.md`](37-feature-a34-capability-matrix.md) + [`38-feature-a29-economy-profile.md`](38-feature-a29-economy-profile.md) + [`39-feature-a30-ptbr-corpus.md`](39-feature-a30-ptbr-corpus.md) + [`40-feature-a31-offline-strict.md`](40-feature-a31-offline-strict.md) | ✅ 10 specs + 10 protótipos + smoke |
 | Contratos OpenAPI | [`contracts/openapi.yaml`](contracts/openapi.yaml) | ✅ YAML validado |
 | Tipos TypeScript compartilhados | [`contracts/types.ts`](contracts/types.ts) | ✅ |
 | Tipos TypeScript do transporte | [`contracts/api_transport.ts`](contracts/api_transport.ts) | ✅ |
@@ -243,3 +243,31 @@ Os 7 patches em [`patches/`](patches/) e os scaffolds podem ser revisados e apli
 
 - Após qualquer release que mude `app/launch.py`, `ui/src/main.tsx`, `ui/src/api/client.ts`, `ui/src/stores/useStore.ts`, `app/routers/video_editor.py`, `app/services/security.py` ou `conftest.py`.
 - Quando o time decidir uma arquitetura diferente da proposta.
+---
+
+## Smoke de integração validado (2026-10-16)
+
+`prototypes/integration_smoke.py` é o teste final do ciclo 4. Ele simula a fixture **`cue-reference-film-v1` — "A luz da oficina"** (12 shots, 2 cenas) exercitando os 10 protótipos em 11 passos sequenciais:
+
+```
+[ 1/11] OK  A25 Shot IR (12 shots parseados)
+[ 2/11] OK  A25+A28 Continuity check + CSV export
+[ 3/11] OK  A26b Retake — bug confirmado + corrigido
+[ 4/11] OK  A26 Dependencies — impact_of
+[ 5/11] OK  A34 CapabilityMatrix — 14 modelos
+[ 6/11] OK  A27 Provenance — manifest válido
+[ 7/11] OK  A30 Corpus PT-BR (34 frases)
+[ 8/11] OK  A29 Economy Profile E2 — budget OK
+[ 9/11] OK  A31 Offline-strict — auditor bloqueia remotas
+[10/11] OK  R03 Wizard tipado — 3 kinds OK
+[11/11] OK  Verificação cruzada — 5 dimensões coerentes
+```
+
+Como rodar:
+
+```bash
+cd /home/yuri/Documentos/cine_local/cue_studio
+python3 _reversa_forward/plano-2026-10-04/prototypes/integration_smoke.py
+```
+
+O smoke **não precisa de GPU, FastAPI, nem da app real** — usa só stdlib. É a forma mais próxima possível de "rodar a app com melhorias" dentro do policy `allowLegacyEdits: false`.
