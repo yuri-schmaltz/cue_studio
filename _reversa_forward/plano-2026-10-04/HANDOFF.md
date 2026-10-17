@@ -12,7 +12,7 @@ A auditoria produziu [diagnostico.md](../../_reversa_sdd/auditoria-2026-10-04/di
 |---|---|---|
 | Backlog executivo + sequência | [`README.md`](README.md) | ✅ |
 | Specs SDD (24 features) | `07–30-feature-*.md` | ✅ |
-| Spec complementar (ciclo 4) | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) + [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) + [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) + [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) + [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) + [`36-feature-r03-wizard-mcp.md`](36-feature-r03-wizard-mcp.md) + [`37-feature-a34-capability-matrix.md`](37-feature-a34-capability-matrix.md) + [`38-feature-a29-economy-profile.md`](38-feature-a29-economy-profile.md) + [`39-feature-a30-ptbr-corpus.md`](39-feature-a30-ptbr-corpus.md) + [`40-feature-a31-offline-strict.md`](40-feature-a31-offline-strict.md) + [`41-feature-a25b-cross-family-continuity.md`](41-feature-a25b-cross-family-continuity.md) | ✅ 11 specs + 11 protótipos + smoke (R10 fechado) |
+| Spec complementar (ciclo 4) | [`31-feature-a25-shot-ir.md`](31-feature-a25-shot-ir.md) + [`32-feature-a27-provenance.md`](32-feature-a27-provenance.md) + [`33-feature-a28-continuity-panel.md`](33-feature-a28-continuity-panel.md) + [`34-feature-a26b-retake-dispatch.md`](34-feature-a26b-retake-dispatch.md) + [`35-feature-a26-dependencies.md`](35-feature-a26-dependencies.md) + [`36-feature-r03-wizard-mcp.md`](36-feature-r03-wizard-mcp.md) + [`37-feature-a34-capability-matrix.md`](37-feature-a34-capability-matrix.md) + [`38-feature-a29-economy-profile.md`](38-feature-a29-economy-profile.md) + [`39-feature-a30-ptbr-corpus.md`](39-feature-a30-ptbr-corpus.md) + [`40-feature-a31-offline-strict.md`](40-feature-a31-offline-strict.md) + [`41-feature-a25b-cross-family-continuity.md`](41-feature-a25b-cross-family-continuity.md) + [`42-feature-a26c-lockfile-reproducible-builds.md`](42-feature-a26c-lockfile-reproducible-builds.md) | ✅ 12 specs + 12 protótipos + smoke (R10 fechado) |
 | Contratos OpenAPI | [`contracts/openapi.yaml`](contracts/openapi.yaml) | ✅ YAML validado |
 | Tipos TypeScript compartilhados | [`contracts/types.ts`](contracts/types.ts) | ✅ |
 | Tipos TypeScript do transporte | [`contracts/api_transport.ts`](contracts/api_transport.ts) | ✅ |
@@ -247,21 +247,22 @@ Os 7 patches em [`patches/`](patches/) e os scaffolds podem ser revisados e apli
 
 ## Smoke de integração validado (2026-10-16)
 
-`prototypes/integration_smoke.py` é o teste final do ciclo 4. Ele simula a fixture **`cue-reference-film-v1` — "A luz da oficina"** (12 shots, 2 cenas) exercitando os 11 protótipos em 12 passos sequenciais:
+`prototypes/integration_smoke.py` é o teste final do ciclo 4. Ele simula a fixture **`cue-reference-film-v1` — "A luz da oficina"** (12 shots, 2 cenas) exercitando os 12 protótipos em 13 passos sequenciais:
 
 ```
-[ 1/12] OK  A25 Shot IR (12 shots parseados)
-[ 2/12] OK  A25+A28 Continuity check + CSV export
-[ 3/12] OK  A26b Retake — bug confirmado + corrigido
-[ 4/12] OK  A26 Dependencies — impact_of
-[ 5/12] OK  A34 CapabilityMatrix — 14 modelos
-[ 6/12] OK  A27 Provenance — manifest válido
-[ 7/12] OK  A30 Corpus PT-BR (34 frases)
-[ 8/12] OK  A29 Economy Profile E2 — budget OK
-[ 9/12] OK  A31 Offline-strict — auditor bloqueia remotas
-[10/12] OK  R03 Wizard tipado — 3 kinds OK
-[11/12] OK  Verificação cruzada — 5 dimensões coerentes
-[12/12] OK  A25b Cross-family — H3/LTX/Wan + fallback
+[ 1/13] OK  A25 Shot IR (12 shots parseados)
+[ 2/13] OK  A25+A28 Continuity check + CSV export
+[ 3/13] OK  A26b Retake — bug confirmado + corrigido
+[ 4/13] OK  A26 Dependencies — impact_of
+[ 5/13] OK  A34 CapabilityMatrix — 14 modelos
+[ 6/13] OK  A27 Provenance — manifest válido
+[ 7/13] OK  A30 Corpus PT-BR (34 frases)
+[ 8/13] OK  A29 Economy Profile E2 — budget OK
+[ 9/13] OK  A31 Offline-strict — auditor bloqueia remotas
+[10/13] OK  R03 Wizard tipado — 3 kinds OK
+[11/13] OK  Verificação cruzada — 5 dimensões coerentes
+[12/13] OK  A25b Cross-family — H3/LTX/Wan + fallback
+[13/13] OK  A26c Lockfile — parse + drift + upgrade OK
 ```
 
 Como rodar:
@@ -285,3 +286,17 @@ A25b ataca o único achado do dossiê que estava marcado como `⏳ futura`: **R1
 - Passo 12 do smoke integrado cobre adapters H3 (`picture_n_reference`), LTX (`extend_previous`), Wan (`first_last_frame`) e fallback `INDEPENDENT` para modelo desconhecido.
 
 Política Reversa continua respeitada (allowLegacyEdits=false).
+
+## Lockfile reproduzível A26c (2026-10-16)
+
+A26c ataca uma lacuna operacional do Cue Studio v2.5.2: `app/requirements.txt` pinou versões mas **não tem hashes**, é o mesmo arquivo para todos os perfis E0–E4 e não detecta drift quando índices mudam. A26c introduz:
+
+- **Lockfiles por perfil** em formato `pip-compile` com `--hash=sha256:...` por pacote, markers PEP 508, extras e `extra-index-url`. Compatível com `pip install --require-hashes -r locks/E{i}.txt`.
+- **SourceManifest** registrando SHA-256 real do `app/requirements.txt` e `pyproject.toml` usados para gerar cada lock, mais `commit_sha`, `pip_version`, `python_version`. Auditabilidade completa.
+- **`validate_lock(lock, manifest, observed, observed_req_sha) -> DriftReport`** com 4 campos: `missing`, `version_drift`, `hash_drift`, `extras`, e flag `source_manifest_stale`. `ok=True` somente se tudo bate.
+- **`upgrade_proposal(lock, new_req, ...) -> UpgradeProposal`** classificando mudanças em `safe_minor` (libera), `risky_minor` (avalia), `major` (bloqueia merge). Suporta `dropped` (pacote removido) e `added`.
+- **Parser determinístico** de `requirements.txt` com continuação (`\`), markers, hashes, extras.
+- Spec: [`42-feature-a26c-lockfile-reproducible-builds.md`](42-feature-a26c-lockfile-reproducible-builds.md). Protótipo: `prototypes/a26c_lockfile_reproducible.py` (8/8 checks).
+- Passo 13 do smoke integrado exercita `generate_lock + validate_lock (drift clean) + upgrade_proposal (safe_minor)`.
+
+Política Reversa continua respeitada (allowLegacyEdits=false). Geração real dos 5 lockfiles por perfil (rodar `pip-compile` 5x com índices CUDA-cu121, cu124, cu128 etc.) **não está** no escopo desta entrega — usuário decide quando materializar.

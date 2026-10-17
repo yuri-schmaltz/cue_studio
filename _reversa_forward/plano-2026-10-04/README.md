@@ -94,6 +94,7 @@ Mapeamento rápido contra o código atual (v2.5.2, verificado por grep):
 - **A25 (Shot IR)**: `app/services/h3_story_ledger.py` v24 já tem `subject_continuity`, `setting_continuity`, `visual_continuity`, `_infer_h3_blocking_contract`. Faltam `hand_object`, `gaze`, `action_completed`, `object_state`, expor como schema editável e detector de inconsistências.
 - **A25b (cross-family continuity / R10)**: H3 tem `_infer_h3_blocking_contract` + `Picture N` labels, mas Wan/LTX/LTX25/Hunyuan não têm adapter de continuidade. A25b introduz `ContinuityAdapter` (Protocol) com 5 adapters por família + fallback `IndependentFallbackAdapter` + `ContinuityRegistry` + `resolve_continuity()` orquestrando A34 + A25b + A25. Fecha o R10.
 - **A26 (dependências)**: sem `impact_of`, sem DAG explícito. Verde, trabalho novo.
+- **A26c (lockfile reproduzível)**: `app/requirements.txt` tem pins exatos mas **sem hashes**; mesmo arquivo serve E0/E1/E2/E3/E4; nada detecta drift quando o índice muda. A26c introduz 5 lockfiles por perfil E0–E4 com `--hash=sha256:...` + SourceManifest (`requirements_txt_sha256`, `pyproject_sha256`, `commit_sha`) + `validate_lock(...)` + `upgrade_proposal(...)`. Compatível com `pip install --require-hashes -r locks/E{i}.txt`.
 - **A26b (retake com efeito real)**: `production_resume.py:retake_stage()` tem `if False` no caminho efetivo; fachada apenas registra evento, **não despacha renderização**. Bug confirmado pelo dossiê seção 10. Spec + protótipo A26b cobrem a correção proposta com idempotência.
 - **A27 (provenance)**: `editor_projects.py:1777` define `sidecar`, `checkpoint_compatibility.py` retorna receipt, `wgp.py` registra `queue_manifest`. Falta `ProvenanceManifest` unificado por Take com SHA-256 de artefatos, validação de adulteração, bundle portátil e integração com Storage Manager.
 - **A28 (Continuity Panel)**: 6 regras do A25 funcionam no protótipo mas não há UI que exiba resultados. A28 entrega o painel.
@@ -103,14 +104,14 @@ Mapeamento rápido contra o código atual (v2.5.2, verificado por grep):
 
 ## Smoke de integração validado
 
-`prototypes/integration_smoke.py` encadeia os 11 protótipos do ciclo 4 em 12 passos contra a fixture `cue-reference-film-v1` ("A luz da oficina", 12 shots). Resultado: **12/12 PASS** sem GPU, sem FastAPI, sem app real. Como rodar:
+`prototypes/integration_smoke.py` encadeia os 12 protótipos do ciclo 4 em 13 passos contra a fixture `cue-reference-film-v1` ("A luz da oficina", 12 shots). Resultado: **13/13 PASS** sem GPU, sem FastAPI, sem app real. Como rodar:
 
 ```bash
 cd /home/yuri/Documentos/cine_local/cue_studio
 python3 _reversa_forward/plano-2026-10-04/prototypes/integration_smoke.py
 ```
 
-Os 12 passos exercitam: A25 Shot IR, A25+A28 continuity, A26b retake, A26 dependencies, A34 CapabilityMatrix, A27 provenance, A30 PT-BR, A29 economy, A31 offline-strict, R03 wizard, verificação cruzada e o novo passo 12 **A25b Cross-family continuity** (adapters H3/LTX/Wan/Hunyuan + fallback INDEPENDENT).
+Os 13 passos exercitam: A25 Shot IR, A25+A28 continuity, A26b retake, A26 dependencies, A34 CapabilityMatrix, A27 provenance, A30 PT-BR, A29 economy, A31 offline-strict, R03 wizard, verificação cruzada, **A25b Cross-family continuity** (adapters H3/LTX/Wan/Hunyuan + fallback INDEPENDENT) e **A26c Lockfile reproduzível** (parse + lock + drift + upgrade).
 
 ## Handoff
 

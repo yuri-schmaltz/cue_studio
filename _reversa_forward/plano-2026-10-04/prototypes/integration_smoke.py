@@ -19,11 +19,12 @@ Etapas executadas:
 10. Wizard tipado (R03)      — dispatch creative/mechanical/review
 11. Verificação cruzada       — coerência A25/A28/A26/A34/A30
 12. Cross-family continuity   — adapters H3/LTX/Wan/Hunyuan + fallback
+13. Lockfile reproduzível     — parse + lock + drift + upgrade
 
 Rodar:
     python3 _reversa_forward/plano-2026-10-04/prototypes/integration_smoke.py
 
-Saída esperada: 12/12 steps OK.
+Saída esperada: 13/13 steps OK.
 """
 from __future__ import annotations
 
@@ -40,6 +41,7 @@ import a25_shot_ir
 import a25b_cross_family_continuity
 import a26b_retake_dispatch
 import a26_dependencies
+import a26c_lockfile_reproducible
 import a27_provenance
 import a28_continuity_panel
 import a29_economy_profile
@@ -55,7 +57,7 @@ import r03_wizard_mcp
 
 def _print_step(n: int, label: str, ok: bool, detail: str = "") -> bool:
     status = "OK" if ok else "FAIL"
-    print(f"  [{n:2d}/12] {status}  {label}{(' — ' + detail) if detail else ''}")
+    print(f"  [{n:2d}/13] {status}  {label}{(' — ' + detail) if detail else ''}")
     return ok
 
 
@@ -565,19 +567,66 @@ def main() -> int:
     )
     failures += 0 if ok12 else 1
 
+    # Step 13: Lockfile reproduzível (A26c) — parse + lock + drift + upgrade
+    a26c = a26c_lockfile_reproducible
+    _mini_req = (
+        a26c.Requirement("mmgp", "==3.7.12", (), (), (), None),
+        a26c.Requirement("diffusers", "==0.36.0", (), (), (), None),
+        a26c.Requirement("transformers", "==4.57.1", (), (), (), None),
+    )
+    _lock, _manifest = a26c.generate_lock(
+        profile="E2",
+        source_requirements=_mini_req,
+        source_requirements_txt_sha="src_sha_smoke",
+        source_pyproject_sha="pyp_sha_smoke",
+        profile_excludes=(),
+        extra_indexes=("https://download.pytorch.org/whl/cu121",),
+        platform="linux-x86_64-cuda12.1",
+        python_version="3.11",
+        generated_at="2026-10-16T12:00:00Z",
+        commit_sha="bf50b33",
+        pip_version="pip 24.0",
+    )
+    # drift limpo
+    _clean_drift = a26c.validate_lock(
+        _lock, _manifest, _mini_req, observed_requirements_txt_sha="src_sha_smoke",
+    )
+    # upgrade safe_minor
+    _new_req = (
+        a26c.Requirement("mmgp", "==3.7.12", (), (), (), None),
+        a26c.Requirement("diffusers", "==0.36.1", (), (), (), None),  # safe_minor
+        a26c.Requirement("transformers", "==4.57.1", (), (), (), None),
+    )
+    _proposal = a26c.upgrade_proposal(
+        current_lock=_lock,
+        new_requirements=_new_req,
+        new_requirements_txt_sha="src_sha_smoke_v2",
+        previous_requirements_txt_sha="src_sha_smoke",
+    )
+    ok13 = _print_step(
+        13, "A26c Lockfile — parse + drift + upgrade OK",
+        _clean_drift.ok
+        and not _proposal.block_merge
+        and len(_lock.requirements) == 3
+        and any(p[0] == "diffusers" and p[2] == "0.36.1" for p in _proposal.safe_minor),
+        f"clean_drift={_clean_drift.ok}, lock_pkgs={len(_lock.requirements)}, "
+        f"upgrade_summary={_proposal.summary}",
+    )
+    failures += 0 if ok13 else 1
+
     print()
     print("=" * 72)
     if failures == 0:
-        print(f"PASS 12/12 — protótipos integrados sem GPU, sem FastAPI, sem Cue Studio real")
+        print(f"PASS 13/13 — protótipos integrados sem GPU, sem FastAPI, sem Cue Studio real")
         print()
         print("Resumo do que está pronto para deploy:")
-        print("  - 11 specs + 11 protótipos + 1 smoke de integração")
+        print("  - 12 specs + 12 protótipos + 1 smoke de integração")
         print("  - Política Reversa respeitada (allowLegacyEdits=false)")
         print("  - Aplicação real requer: editar reversa-config.json, venv Python 3.11,")
         print("    GPU NVIDIA CUDA 12.8, ~50-300 GB de modelos sob demanda")
         return 0
     else:
-        print(f"FAIL {failures}/12 steps")
+        print(f"FAIL {failures}/13 steps")
         return 1
 
 
