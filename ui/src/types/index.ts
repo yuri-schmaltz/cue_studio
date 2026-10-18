@@ -55,6 +55,14 @@ export interface ProjectSetupDefaults {
   /** Project card cover image filename (uploaded via the cover
    *  endpoint, stored next to setup.json). Empty means no cover. */
   cover_image?: string
+  /** Creation preset applied to this project (feature A10) — an id
+   *  from `projects/presets.ts` DEFAULT_PRESETS. Empty/undefined for
+   *  projects created before presets existed. */
+  preset_id?: string
+  /** Names of preset-owned fields the user overrode after applying
+   *  the preset (feature A10). Kept as a list of field names so a
+   *  preset update can never silently wipe a saved override. */
+  overrides?: string[]
 }
 
 export const PROJECT_SETUP_LATEST_SCHEMA = 1

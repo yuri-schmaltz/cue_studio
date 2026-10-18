@@ -209,3 +209,16 @@ export const ProjectsPage = lazyWithCache(
 export const RecipesOverlay = lazyWithCache(
   () => import('../components/Recipes/RecipesOverlay'),
 )
+
+/**
+ * Work dashboard (A11).
+ *
+ * The "where is my production" summary block shown above the
+ * pipeline-review Dashboard. Lightweight compared to the routes
+ * above, but it still pulls the store slices and the queue contract,
+ * so it lazy-loads with the dashboard section instead of the cold
+ * boot path.
+ */
+export const WorkDashboard = lazyWithCache(
+  () => import('../components/Dashboard/WorkDashboard'),
+)

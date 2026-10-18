@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "entries": [
+    {
+      "model_id": "minimax_h3_omni_pruned",
+      "runtime": "wan_gp",
+      "mode": "t2v",
+      "capabilities": [
+        "audio_generate",
+        "fl2va",
+        "lora_support",
+        "multi_window",
+        "text_to_video"
+      ]
+    },
+    {
+      "model_id": "minimax_h3_first_last",
+      "runtime": "wan_gp",
+      "mode": "fl2v",
+      "capabilities": [
+        "first_last_frame",
+        "lora_support",
+        "multi_window"
+      ]
+    },
+    {
+      "model_id": "ltx25_distilled",
+      "runtime": "wan_gp",
+      "mode": "t2v",
+      "capabilities": [
+        "image_to_video",
+        "lora_support",
+        "multi_window",
+        "outpaint",
+        "text_to_video"
+      ]
+    },
+    {
+      "model_id": "ltx25_dev",
+      "runtime": "wan_gp",
+      "mode": "t2v",
+      "capabilities": [
+        "image_to_video",
+        "lora_support",
+        "multi_window",
+        "text_to_video"
+      ]
+    },
+    {
+      "model_id": "wan_2_2_5b",
+      "runtime": "wan_gp",
+      "mode": "t2v",
+      "capabilities": [
+        "image_to_video",
+        "lora_support",
+        "text_to_video"
+      ]
+    },
+    {
+      "model_id": "wan_2_1_1_3b",
+      "runtime": "wan_gp",
+      "mode": "t2v",
+      "capabilities": [
+        "image_to_video",
+        "text_to_video"
+      ]
+    },
+    {
+      "model_id": "scail2_14b_fast",
+      "runtime": "wan_gp",
+      "mode": "animate",
+      "capabilities": [
+        "fl2va",
+        "lora_support"
+      ]
+    },
+    {
+      "model_id": "flux_2_klein_9b",
+      "runtime": "diffusers",
+      "mode": "t2i",
+      "capabilities": [
+        "lora_support",
+        "text_to_image",
+        "upscale"
+      ]
+    },
+    {
+      "model_id": "qwen_image_edit",
+      "runtime": "diffusers",
+      "mode": "edit",
+      "capabilities": [
+        "inpaint",
+        "outpaint"
+      ]
+    },
+    {
+      "model_id": "qwen3_tts",
+      "runtime": "comfy",
+      "mode": "speech",
+      "capabilities": [
+        "audio_generate",
+        "text_to_speech"
+      ]
+    },
+    {
+      "model_id": "kugelaudio",
+      "runtime": "comfy",
+      "mode": "speech",
+      "capabilities": [
+        "audio_generate",
+        "text_to_speech"
+      ]
+    },
+    {
+      "model_id": "ace_step_15_xl_sft",
+      "runtime": "comfy",
+      "mode": "music",
+      "capabilities": [
+        "audio_generate",
+        "music_gen"
+      ]
+    },
+    {
+      "model_id": "minimax_music3",
+      "runtime": "comfy",
+      "mode": "music",
+      "capabilities": [
+        "audio_generate",
+        "music_gen"
+      ]
+    },
+    {
+      "model_id": "mmaudio",
+      "runtime": "comfy",
+      "mode": "sfx",
+      "capabilities": [
+        "audio_generate"
+      ]
+    }
+  ]
+}

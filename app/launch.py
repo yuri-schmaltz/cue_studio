@@ -38,6 +38,18 @@ os.chdir(_app_dir)
 _original_argv = sys.argv[:]
 _launch_args = sys.argv[1:]  # Save our own args
 
+# A31 — offline-strict: registrar a flag ANTES de qualquer import que possa
+# baixar modelo ou tocar em `requests`. O egress real é bloqueado pelos
+# guards de services.safe_download/services.web_push consultando
+# services.offline_strict; aqui só garantimos que a variável de ambiente
+# já reflita a CLI quando esses guards rodarem pela primeira vez.
+if "--offline-strict" in _launch_args:
+    os.environ.setdefault("CUE_OFFLINE_STRICT", "1")
+    print(
+        "[Cue Studio] Modo OFFLINE-STRICT ativo: egress remoto bloqueado "
+        "(loopback permitido)."
+    )
+
 # Build argv for wgp: keep flags it understands, always include --multiple-images
 _wgp_argv = ["wgp.py", "--multiple-images"]
 if "--compile" in _launch_args:
@@ -627,6 +639,23 @@ def _play_host_completion_sound() -> None:
         print(f"[Notifications] Host completion sound failed: {exc}")
 
 
+def _emit_take_provenance(job: dict) -> None:
+    """A27 — grava ``<output>.provenance.json`` dos artefatos de um Take."""
+    out_dir = job.get("out_dir")
+    if not out_dir or not os.path.isdir(out_dir):
+        return
+    try:
+        from services.job_lifecycle import emit_provenance_for_job
+
+        emitted = emit_provenance_for_job(
+            job, out_dir, project_id=job.get("workspace") or "default",
+        )
+        if emitted:
+            print(f"[Provenance] {len(emitted)} take manifest(s) written")
+    except Exception as exc:  # pragma: no cover — defensivo
+        print(f"[Provenance] emission failed: {exc}")
+
+
 def _on_generation_job_terminal(job: dict, status: str) -> None:
     """Top-level Studio/tool notification; Director child renders stay quiet."""
     params = job.get("params") or {}
@@ -636,6 +665,7 @@ def _on_generation_job_terminal(job: dict, status: str) -> None:
     is_editor = job.get("kind") == "editor_export"
     surface = "Editor" if is_editor else "Studio"
     if status == "completed":
+        _emit_take_provenance(job)
         _play_host_completion_sound()
         _web_push.dispatch(
             category="completion",
@@ -10724,6 +10754,54 @@ try:
     _mcp_log.info("[productions] router mounted at /api/v1/productions")
 except Exception as _productions_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[productions] router unavailable: %s", _productions_import_err)
+
+# Shot IR router (GET/PUT Shot IR + continuity check per production) —
+# estado narrativo estruturado por plano (A25). Sidecars ficam em
+# <projects_root>/director/<production_id>/shots/<shot_id>.shot_ir.json.
+try:
+    from routers.shot_ir import build_shot_ir_router
+    api.include_router(build_shot_ir_router(projects_root=_projects_root))
+    _mcp_log.info(
+        "[shot_ir] router mounted at /api/v1/director/productions/*/shots"
+    )
+except Exception as _shot_ir_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[shot_ir] router unavailable: %s", _shot_ir_import_err)
+
+# Provenance router (/api/v1/takes/{id}/provenance*) — ProvenanceManifest
+# por Take com SHA-256 real, validação anti-tamper e bundle .tar.gz (A27).
+try:
+    from routers.provenance import build_provenance_router
+    api.include_router(build_provenance_router(takes_root=_projects_root))
+    _mcp_log.info("[provenance] router mounted at /api/v1/takes")
+except Exception as _provenance_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[provenance] router unavailable: %s", _provenance_import_err)
+
+# CapabilityMatrix router (/api/v1/capabilities) — capacidades declaradas por
+# modelo/runtime/modo, cruzadas com o catálogo real instalado (A34 / R04).
+try:
+    from routers.capabilities import build_capabilities_router
+
+    def _capability_models_fetcher():
+        return [
+            {"model_type": mt}
+            for mt in getattr(wgp, "displayed_model_types", []) or []
+        ]
+
+    api.include_router(
+        build_capabilities_router(models_fetcher=_capability_models_fetcher)
+    )
+    _mcp_log.info("[capabilities] router mounted at /api/v1/capabilities")
+except Exception as _capabilities_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[capabilities] router unavailable: %s", _capabilities_import_err)
+
+# System network router (/api/v1/system/network-policy, /connections) —
+# estado da política offline-strict + log de tentativas de egress (A31/R08).
+try:
+    from routers.system_network import build_system_network_router
+    api.include_router(build_system_network_router())
+    _mcp_log.info("[system_network] router mounted at /api/v1/system")
+except Exception as _sysnet_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[system_network] router unavailable: %s", _sysnet_import_err)
 
 # Queue router (/api/v1/queue) — post-restart job classification (done /
 # interrupted / failed / unknown) + idempotent resume. A19; see

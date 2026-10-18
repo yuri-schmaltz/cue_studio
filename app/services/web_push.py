@@ -285,6 +285,36 @@ class WebPushService:
             raise WebPushUnavailable(
                 "Web Push dependencies are missing; run Cue Studio Update once."
             )
+
+        # A31 — offline-strict: Web Push é egress remoto para o push service
+        # do navegador. No modo estrito registra a tentativa como bloqueada
+        # e devolve erro estruturado sem tocar na rede (spec 40 §2.1).
+        try:
+            from .offline_strict import is_offline_strict
+        except ImportError:  # pragma: no cover — import defensivo
+            is_offline_strict = lambda: False  # noqa: E731
+        if is_offline_strict():
+            endpoints = [
+                str(item.get("endpoint") or "")
+                for item in self._eligible(category, endpoint)
+            ]
+            if not endpoints:
+                return PushDeliveryResult(attempted=0, delivered=0, removed=0)
+            from .offline_strict import record_blocked
+
+            for url in endpoints:
+                record_blocked(url, reason="offline-strict: web push bloqueado")
+            print(
+                "[offline-strict] Web Push bloqueado para "
+                f"{len(endpoints)} assinatura(s)."
+            )
+            return PushDeliveryResult(
+                attempted=0,
+                delivered=0,
+                removed=0,
+                errors=("offline-strict: Web Push bloqueado",),
+            )
+
         from pywebpush import WebPushException, webpush
 
         subscriptions = self._eligible(category, endpoint)

@@ -56,8 +56,26 @@ def _read_version() -> str:
 
 @click.group()
 @click.version_option(_read_version(), prog_name="cue-studio")
-def cli() -> None:
+@click.option(
+    "--offline-strict",
+    is_flag=True,
+    default=False,
+    help=(
+        "Ativa o modo offline estrito: bloqueia egress remoto "
+        "(downloads, CivitAI, Web Push) e auditoria as tentativas. "
+        "Equivalente a CUE_OFFLINE_STRICT=1 (A31)."
+    ),
+)
+def cli(offline_strict: bool) -> None:
     """Cue Studio — companion CLI for status, gallery, and Style Bible tasks."""
+    if offline_strict:
+        from app.services.offline_strict import configure_offline_strict
+
+        configure_offline_strict(True)
+        click.echo(
+            "[offline-strict] Modo offline estrito ATIVADO: "
+            "egress remoto será bloqueado (loopback permitido)."
+        )
 
 
 @cli.command()

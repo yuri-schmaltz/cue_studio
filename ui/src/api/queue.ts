@@ -8,8 +8,12 @@
 import { apiFetch } from './transport'
 import { ensureOk } from './errors'
 import type { DirectorQueueEntryDetail, DirectorQueueState } from '../types'
+import type { PersistedQueueList, PersistedResumeResult } from '../queue/types'
 
 const QUEUE_URL = '/api/v1/director/queue'
+// Persisted post-restart jobs (feature A19 endpoints — note the
+// real namespace is /api/v1, not the spec's /api/queue).
+const PERSISTED_QUEUE_URL = '/api/v1/queue'
 
 async function request<T>(path: string, init?: RequestInit, signal?: AbortSignal): Promise<T> {
   const res = await ensureOk(await apiFetch(path, { ...init, signal }))
@@ -59,5 +63,33 @@ export const queueApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ entry_ids: entryIds }),
     }, signal)
+  },
+
+  // ----------------------------------------------------- persisted queue
+  /** Every persisted job with its post-restart state
+   *  (GET /api/v1/queue, feature A19). */
+  listPersisted(signal?: AbortSignal): Promise<PersistedQueueList> {
+    return request<PersistedQueueList>(PERSISTED_QUEUE_URL, { cache: 'no-store' }, signal)
+  },
+
+  /** Resume one interrupted/failed job
+   *  (POST /api/v1/queue/{job_id}/resume). Idempotent on the backend
+   *  via an optional Idempotency-Key header. */
+  resume(
+    jobId: string,
+    options?: { outDir?: string; idempotencyKey?: string },
+    signal?: AbortSignal,
+  ): Promise<PersistedResumeResult> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (options?.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey
+    return request<PersistedResumeResult>(
+      `${PERSISTED_QUEUE_URL}/${encodeURIComponent(jobId)}/resume`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ out_dir: options?.outDir ?? 'default' }),
+      },
+      signal,
+    )
   },
 }

@@ -4,6 +4,7 @@ import {
   ArrowUp,
   Check,
   Clock,
+  Eye,
   ListVideo,
   Loader2,
   Pause,
@@ -14,8 +15,20 @@ import {
   X,
 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
-import { formatEtaDuration } from '../../lib/format'
+import { isAbortError } from '../../projects/projectsSlice'
+import { formatAge, formatEtaDuration } from '../../lib/format'
+import type { GenerationJob } from '../../types'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
+import { queueApi } from '../../api/queue'
+import { AppDialog } from '../shared/AppDialog'
+import {
+  queueAllows,
+  queueStateFor,
+  queueStatusLabel,
+  QUEUE_LABELS,
+  type PersistedQueueJob,
+  type QueueState,
+} from '../../queue/types'
 
 const ACTIVE_JOB_STATUSES = new Set(['held', 'queued', 'running', 'awaiting_review'])
 const ACTIVE_DIRECTOR_STATUSES = new Set(['held', 'queued', 'running', 'awaiting_review'])
@@ -23,6 +36,14 @@ const ACTIVE_PIPELINE_STATUSES = new Set(['queued', 'running', 'paused'])
 
 function compactStatus(value: string): string {
   return value.replace(/_/g, ' ').replace(/^./, letter => letter.toUpperCase())
+}
+
+/** " · ~4m remaining" for a known ETA, '' otherwise — the estimate is
+ *  only shown when the backend actually provides one (spec A14 §2.1:
+ *  no false ETAs; `formatEtaDuration` renders `~`-prefixed values). */
+function etaSuffix(seconds: number | null | undefined): string {
+  const text = seconds != null ? formatEtaDuration(seconds) : ''
+  return text ? ` · ${text} remaining` : ''
 }
 
 function progressPercent(step: number, totalSteps: number, progress: number): number {
@@ -61,6 +82,28 @@ export function QueuePage() {
   const setSidebarOpen = useStore(state => state.setSidebarOpen)
   const setAppSection = useStore(state => state.setAppSection)
   const [startingAll, setStartingAll] = useState(false)
+  // A14: cancelling a *running* job asks for confirmation first —
+  // held/queued items still cancel directly (spec §2.1).
+  const [cancelConfirm, setCancelConfirm] = useState<
+    | { kind: 'job'; job: GenerationJob }
+    | { kind: 'pipeline' }
+    | null
+  >(null)
+  // A14 §2.1 / A19: persisted post-restart jobs (Restart recovery).
+  const [persistedJobs, setPersistedJobs] = useState<PersistedQueueJob[]>([])
+  const [persistedError, setPersistedError] = useState<string | null>(null)
+  const [resumingId, setResumingId] = useState<string | null>(null)
+  const [resumeFeedback, setResumeFeedback] = useState<{ id: string; ok: boolean; message: string } | null>(null)
+
+  const visiblePersisted = useMemo(() => {
+    const rows: Array<{ job: PersistedQueueJob; state: QueueState }> = []
+    for (const job of persistedJobs) {
+      const state = queueStateFor(job.status)
+      // `unknown` (no record, no media) must not render as a queue item.
+      if (state) rows.push({ job, state })
+    }
+    return rows
+  }, [persistedJobs])
 
   const studioJobs = useMemo(
     () => {
@@ -88,6 +131,7 @@ export function QueuePage() {
   )
   const totalCount = studioJobs.length
     + pendingDirectorCount
+    + visiblePersisted.length
     + (activePipeline && !activePipelineIsQueued ? 1 : 0)
 
   useEffect(() => {
@@ -99,6 +143,48 @@ export function QueuePage() {
     const timer = window.setInterval(() => void loadDirectorQueue(), 2500)
     return () => window.clearInterval(timer)
   }, [directorQueue?.running, directorQueue?.entries, loadDirectorQueue])
+
+  // A14/A19: load the persisted post-restart queue once per mount;
+  // refreshed again after every resume attempt below.
+  useEffect(() => {
+    const controller = new AbortController()
+    void queueApi.listPersisted(controller.signal)
+      .then(res => setPersistedJobs(res.jobs))
+      .catch(err => {
+        if (isAbortError(err)) return
+        setPersistedError(err instanceof Error ? err.message : 'Could not load restart recovery jobs')
+      })
+    return () => controller.abort()
+  }, [])
+
+  const resumePersisted = async (jobId: string) => {
+    if (resumingId) return
+    setResumingId(jobId)
+    setResumeFeedback(null)
+    try {
+      const result = await queueApi.resume(jobId)
+      setResumeFeedback({ id: jobId, ok: result.ok, message: result.message })
+      if (result.ok) {
+        const refreshed = await queueApi.listPersisted()
+        setPersistedJobs(refreshed.jobs)
+      }
+    } catch (err) {
+      setResumeFeedback({
+        id: jobId,
+        ok: false,
+        message: err instanceof Error ? err.message : 'Could not resume this job',
+      })
+    } finally {
+      setResumingId(null)
+    }
+  }
+
+  const confirmCancel = () => {
+    if (!cancelConfirm) return
+    if (cancelConfirm.kind === 'job') stopGeneration(cancelConfirm.job.id)
+    else void stopPipeline()
+    setCancelConfirm(null)
+  }
 
   const startAllQueues = async () => {
     if (startingAll) return
@@ -175,7 +261,7 @@ export function QueuePage() {
           </div>
         </div>
 
-        {!activePipeline && studioJobs.length === 0 && directorEntries.length === 0 && (
+        {!activePipeline && studioJobs.length === 0 && directorEntries.length === 0 && visiblePersisted.length === 0 && (
           <div className="shell-empty">
             <ListVideo size={40} strokeWidth={1.5} />
             <h2>Queue is empty</h2>
@@ -195,15 +281,13 @@ export function QueuePage() {
                 <div className="queue-card-meta">
                   <div className="queue-card-title">{pipelineStatus.progress?.message || compactStatus(pipelineStatus.phase)}</div>
                   <div className="queue-card-subtitle">
-                    Director · {compactStatus(pipelineStatus.status)}
-                    {pipelineStatus.progress?.project_eta_seconds != null
-                      ? ` · ${formatEtaDuration(pipelineStatus.progress.project_eta_seconds)} remaining`
-                      : ''}
+                    Director · {queueStatusLabel(pipelineStatus.status)}
+                    {etaSuffix(pipelineStatus.progress?.project_eta_seconds)}
                   </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => void stopPipeline()}
+                  onClick={() => setCancelConfirm({ kind: 'pipeline' })}
                   className="shell-icon-button hover:text-red-400"
                   title="Stop Director generation"
                   aria-label="Stop Director generation"
@@ -246,12 +330,16 @@ export function QueuePage() {
               {studioJobs.map((job, index) => {
                 const percent = progressPercent(job.step, job.totalSteps, job.progress)
                 const isPromptPlanning = job.kind === 'prompt_enhancement'
+                // A14: cancel is offered only for states where the
+                // shared QUEUE_ACTIONS table allows it.
+                const jobState = queueStateFor(job.status)
+                const canCancel = jobState !== null && queueAllows(jobState, 'cancel')
                 const label = job.phase || job.message || (
                   job.status === 'held'
                     ? 'Ready — waiting for Start Queue'
                     : job.status === 'queued'
                       ? 'Waiting to start'
-                      : 'Generating'
+                      : queueStatusLabel(job.status)
                 )
                 return (
                   <div key={job.id || `pending-${index}`} className="queue-card">
@@ -263,20 +351,25 @@ export function QueuePage() {
                         <div className="queue-card-title">{label}</div>
                         <div className="queue-card-subtitle">
                           {job.kind === 'editor_export'
-                            ? `Editor export · ${compactStatus(job.status)}`
+                            ? `Editor export · ${queueStatusLabel(job.status)}`
                             : isPromptPlanning
                               ? 'Studio · AI planning'
-                              : `Studio · ${compactStatus(job.status)}`}
+                              : `Studio · ${queueStatusLabel(job.status)}`}
                           {job.totalSteps > 0 ? ` · Step ${job.step}/${job.totalSteps}` : ''}
-                          {job.generationEtaSeconds != null
-                            ? ` · ${formatEtaDuration(job.generationEtaSeconds)} remaining`
-                            : ''}
+                          {etaSuffix(job.generationEtaSeconds)}
                         </div>
                       </div>
-                      {!isPromptPlanning && (
+                      {!isPromptPlanning && canCancel && (
                         <button
                           type="button"
-                          onClick={() => { if (job.id) stopGeneration(job.id) }}
+                          onClick={() => {
+                            if (!job.id) return
+                            // Spec A14 §2.1: cancelling a running job
+                            // asks for confirmation instead of firing
+                            // the request directly.
+                            if (job.status === 'running') setCancelConfirm({ kind: 'job', job })
+                            else stopGeneration(job.id)
+                          }}
                           disabled={!job.id}
                           className="shell-icon-button hover:text-red-400 disabled:opacity-30"
                           title={!job.id
@@ -338,7 +431,14 @@ export function QueuePage() {
               )}
             </div>
             <div className="queue-list">
-              {directorEntries.map((entry, index) => (
+              {directorEntries.map((entry, index) => {
+                // A14: status label from the single QUEUE_LABELS table;
+                // the "review" action (open the project) is offered only
+                // where QUEUE_ACTIONS allows it. The card body keeps its
+                // always-available open behavior for editing entries.
+                const entryState = queueStateFor(entry.status)
+                const canReview = entryState !== null && queueAllows(entryState, 'review')
+                return (
                 <div key={entry.id} className="queue-card is-row">
                   {entry.status === 'running'
                     ? <Loader2 size={13} className="shrink-0 animate-spin text-accent-blue" />
@@ -361,24 +461,26 @@ export function QueuePage() {
                       {entry.scene_description || `${entry.pipeline_type.replace(/_/g, ' ')} project`}
                     </div>
                     <div className={`queue-card-subtitle ${entry.status === 'failed' ? 'is-error' : ''}`}>
-                      {compactStatus(entry.status)} · {entry.error || entry.message || entry.video_model}
+                      {queueStatusLabel(entry.status)} · {entry.error || entry.message || entry.video_model}
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (entry.status === 'awaiting_review' && entry.pipeline_id) {
-                        void useStore.getState().reattachDirectorPipeline(entry.pipeline_id)
-                        setAppSection('director')
-                      } else void openDirectorEntry(entry.id)
-                    }}
-                    disabled={directorQueueLoading}
-                    className="shell-icon-button"
-                    title="Open Director project"
-                    aria-label="Open Director project"
-                  >
-                    <Pencil size={12} />
-                  </button>
+                  {canReview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (entry.status === 'awaiting_review' && entry.pipeline_id) {
+                          void useStore.getState().reattachDirectorPipeline(entry.pipeline_id)
+                          setAppSection('director')
+                        } else void openDirectorEntry(entry.id)
+                      }}
+                      disabled={directorQueueLoading}
+                      className="shell-icon-button"
+                      title="Open Director project"
+                      aria-label="Open Director project"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  )}
                   {entry.status !== 'running' && entry.status !== 'awaiting_review' && (
                     <>
                       <button
@@ -414,9 +516,98 @@ export function QueuePage() {
                     </>
                   )}
                 </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {visiblePersisted.length > 0 && (
+          <section className="queue-section" data-testid="queue-recovery-section">
+            <div className="queue-section-header">
+              <div className="queue-section-title-group">
+                <span>Restart recovery</span>
+                <span className="queue-section-meta">
+                  {visiblePersisted.length} {visiblePersisted.length === 1 ? 'job' : 'jobs'}
+                </span>
+              </div>
+            </div>
+            {persistedError && (
+              <p className="mb-2 text-2xs text-red-400" role="alert">{persistedError}</p>
+            )}
+            <div className="queue-list">
+              {visiblePersisted.map(({ job, state }) => (
+                <div key={job.id} className="queue-card is-row" data-testid={`queue-recovery-${job.id}`}>
+                  {state === 'done'
+                    ? <Check size={13} className="shrink-0 text-indicator-success" />
+                    : <Clock size={13} className="shrink-0 text-text-muted" />}
+                  <div className="queue-card-body">
+                    <div className="queue-card-title">{job.title || job.id}</div>
+                    <div className={`queue-card-subtitle ${state === 'failed' ? 'is-error' : ''}`}>
+                      {QUEUE_LABELS[state]}
+                      {job.attempt != null ? ` · attempt ${job.attempt}` : ''}
+                      {job.interrupted_at ? ` · ${formatAge(job.interrupted_at)}` : ''}
+                    </div>
+                    {resumeFeedback?.id === job.id && (
+                      <div
+                        className={`text-2xs ${resumeFeedback.ok ? 'text-emerald-400' : 'text-red-400'}`}
+                        role="status"
+                      >
+                        {resumeFeedback.message}
+                      </div>
+                    )}
+                  </div>
+                  {/* A14 §3: actions come straight from QUEUE_ACTIONS —
+                      `reopen` (Resume) only for failed/interrupted,
+                      `review` only for done. */}
+                  {queueAllows(state, 'reopen') && job.can_resume && (
+                    <button
+                      type="button"
+                      onClick={() => void resumePersisted(job.id)}
+                      disabled={resumingId !== null}
+                      className="queue-section-action"
+                      title="Reopen this job and resume from where it stopped"
+                      data-testid={`queue-recovery-resume-${job.id}`}
+                    >
+                      {resumingId === job.id
+                        ? <Loader2 size={11} className="animate-spin" />
+                        : <Play size={11} />}
+                      Resume
+                    </button>
+                  )}
+                  {queueAllows(state, 'review') && (
+                    <button
+                      type="button"
+                      onClick={() => setAppSection('medias')}
+                      className="queue-section-action"
+                      title="Review this job's outputs in Medias"
+                      data-testid={`queue-recovery-review-${job.id}`}
+                    >
+                      <Eye size={11} />
+                      Review
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </section>
+        )}
+
+        {cancelConfirm && (
+          <AppDialog
+            open
+            onClose={() => setCancelConfirm(null)}
+            title="Stop this generation?"
+            description={
+              cancelConfirm.kind === 'job'
+                ? 'The unfinished output will be discarded. Files already saved stay in the gallery.'
+                : 'The active Director pipeline will stop. Progress saved so far is kept and can be resumed.'
+            }
+            secondaryAction={{ label: 'Keep running', onClick: () => setCancelConfirm(null) }}
+            primaryAction={{ label: 'Stop generation', onClick: confirmCancel }}
+          >
+            {null}
+          </AppDialog>
         )}
       </div>
     </div>

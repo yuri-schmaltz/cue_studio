@@ -412,6 +412,58 @@ def register_terminal_listener(
         _terminal_listeners.add(listener)
 
 
+def emit_provenance_for_job(
+    gen: Mapping[str, Any],
+    out_dir: str,
+    *,
+    project_id: str | None = None,
+    adapter_revision: str = "unknown",
+) -> list[str]:
+    """A27 — emite ``<output>.provenance.json`` para cada artefato de um Take.
+
+    Best-effort por artefato: hashing de um arquivo corrompido ou removido
+    durante a escrita é registrado como warning, nunca derruba o terminal
+    do job (os listeners rodam sem segurar o lock e não podem falhar).
+    Retorna os caminhos de manifesto gravados.
+    """
+    try:
+        from .provenance import emit_provenance, manifest_path_for
+    except Exception:  # pragma: no cover — import defensivo
+        return []
+
+    outputs = collect_job_outputs(gen, out_dir)
+    if not outputs:
+        return []
+
+    params = gen.get("params") if isinstance(gen.get("params"), Mapping) else {}
+    adapter_id = str(params.get("model_type") or "unknown")
+    try:
+        seed = int(params.get("seed") or 0)
+    except (TypeError, ValueError):
+        seed = 0
+    take_id = str(gen.get("id") or "") or None
+
+    emitted: list[str] = []
+    for filename in outputs:
+        try:
+            manifest = emit_provenance(
+                take_id=take_id or os.path.splitext(filename)[0],
+                output_path=os.path.join(out_dir, filename),
+                project_id=str(project_id or gen.get("workspace") or "default"),
+                adapter_id=adapter_id,
+                adapter_revision=adapter_revision,
+                project_dir=out_dir,
+                parameters={k: v for k, v in params.items() if isinstance(v, (str, int, float, bool))},
+                seed=seed,
+                sidecar_paths=[os.path.join(out_dir, os.path.splitext(filename)[0] + ".meta.json")],
+            )
+        except Exception as exc:  # pragma: no cover — defensivo
+            print(f"[Provenance] Take manifest skipped for {filename}: {exc}")
+            continue
+        emitted.append(str(manifest_path_for(os.path.join(out_dir, filename))))
+    return emitted
+
+
 def unregister_terminal_listener(
     listener: Callable[[Mapping[str, Any], str], None],
 ) -> None:

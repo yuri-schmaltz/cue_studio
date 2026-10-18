@@ -19,6 +19,8 @@ import {
   SystemBubble,
 } from './DirectorChatBadges'
 import { DirectorErrorBanner } from './DirectorErrorBanner'
+import { DIRECTOR_LABELS } from '../../director/types'
+import { deriveImageSceneStatus, deriveVideoSceneStatus } from '../../director/sceneStatus'
 
 import { formatSeconds, recommendedWindowProfile } from './DurationSlider'
 import { DurationPresetControl } from './DurationPresetControl'
@@ -2804,16 +2806,14 @@ export function ImagePromptsReview({
           // card whose imageGenProgress row says 'error' for a *different*
           // clip index. Without this override, regenerating Clip 7 in a
           // plan where Clip 3 already failed would leave the spinner
-          // sitting on the wrong card.
-          const status: 'pending' | 'generating' | 'ready' | 'failed' = regeneratingIndex === i
-            ? 'generating'
-            : image
-              ? 'ready'
-              : imageGenProgress?.status === 'error' && (imageGenProgress.failed_clip_index === i || imageGenProgress.current === i)
-                ? 'failed'
-                : imageGenProgress && imageGenProgress.current === i && imageGenProgress.status !== 'done'
-                  ? 'generating'
-                  : 'pending'
+          // sitting on the wrong card. (Derivation lives in
+          // director/sceneStatus.ts so it's unit-tested — A12.)
+          const status = deriveImageSceneStatus({
+            index: i,
+            hasImage: Boolean(image),
+            regenerating: regeneratingIndex === i,
+            progress: imageGenProgress,
+          })
           // Per-clip error message captured by the store when the
           // generation loop's try/catch records the failing index.
           // Falls back to the global error when only one clip failed
@@ -2857,7 +2857,7 @@ export function ImagePromptsReview({
                     title={`Re-generate the start image for Clip ${i + 1} only`}
                     aria-label={`Regenerate Clip ${i + 1}`}
                   >
-                    <RotateCcw size={10} /> Regenerate this clip
+                    <RotateCcw size={10} /> {DIRECTOR_LABELS.retryScene}
                   </button>
                 )}
                 {clipIsRegenerating && (
@@ -3189,15 +3189,16 @@ export function VideoPromptsReview({
           // the badge stays accurate even when several clips share the
           // same failed status. Without this, the spinner would jump
           // between cards when the user clicks ↻ on different clips.
-          const status: 'pending' | 'generating' | 'ready' | 'failed' = regeneratingIndex === i
-            ? 'generating'
-            : pipelineStatus?.status === 'failed' && (failedClipIndex === i || currentClip === i + 1)
-              ? 'failed'
-              : clipImage
-                ? 'ready'
-                : pipelineStatus?.status === 'running' && currentClip === i + 1
-                  ? 'generating'
-                  : 'pending'
+          // (Derivation lives in director/sceneStatus.ts — A12.)
+          const status = deriveVideoSceneStatus({
+            index: i,
+            hasStartImage: Boolean(clipImage),
+            regenerating: regeneratingIndex === i,
+            pipelineFailed: pipelineStatus?.status === 'failed',
+            pipelineRunning: pipelineStatus?.status === 'running',
+            currentClip: currentClip ?? null,
+            failedClipIndex,
+          })
           const clipIsRegenerating = regeneratingIndex === i
           return (
             <div key={i} className="bg-bg-tertiary rounded-lg p-3 space-y-2 border border-border/80 hover:border-border transition-colors shadow-xs">
@@ -3220,7 +3221,7 @@ export function VideoPromptsReview({
                     </>
                   )}
                 </div>
-                {/* Per-clip Re-roll / Regenerate button — available whenever pipelineId exists and clip is not generating */}
+                {/* Per-clip Re-roll / Regenerate button — available whenever pipelineId exists and clip is not generating. A failed scene gets the spec's standard retry CTA (A12 §5). */}
                 {pipelineId && !clipIsRegenerating && status !== 'generating' && (
                   <button
                     type="button"
@@ -3229,7 +3230,7 @@ export function VideoPromptsReview({
                     title={`Re-render only Clip ${i + 1} video`}
                     aria-label={`Regenerate Clip ${i + 1} video`}
                   >
-                    <RotateCcw size={10} /> Re-roll this clip
+                    <RotateCcw size={10} /> {status === 'failed' ? DIRECTOR_LABELS.retryScene : 'Re-roll this clip'}
                   </button>
                 )}
                 {clipIsRegenerating && (

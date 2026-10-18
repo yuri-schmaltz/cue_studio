@@ -1787,6 +1787,27 @@ def render_editor_project(
             "created_at": time.time(),
         }
         _atomic_write_json(os.path.splitext(output_path)[0] + ".meta.json", sidecar)
+        # A27 — manifesto de proveniência ao lado do sidecar. Best-effort:
+        # uma falha de hashing nunca derruba um export já concluído.
+        try:
+            from .provenance import emit_provenance
+
+            emit_provenance(
+                take_id=f"editor_{project['id']}",
+                project_id=str(project["id"]),
+                adapter_id="editor_timeline",
+                adapter_revision="editor_export",
+                output_path=output_path,
+                project_dir=output_dir,
+                parameters={
+                    "tool": "editor",
+                    "edit_sub_mode": "timeline",
+                    "editor_project_id": project["id"],
+                },
+                sidecar_paths=[os.path.splitext(output_path)[0] + ".meta.json"],
+            )
+        except Exception as provenance_err:  # pragma: no cover — defensivo
+            print(f"[Provenance] Export manifest skipped: {provenance_err}")
         if progress_callback:
             progress_callback(100, "Export complete")
         return output_path

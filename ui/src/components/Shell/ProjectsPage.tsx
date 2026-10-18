@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Clapperboard, Copy, Film, FolderOpen, ImagePlus, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Sparkles, Trash2, X } from 'lucide-react'
+import { Check, Clapperboard, Copy, Film, FolderOpen, ImagePlus, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Sparkles, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
+import type { ProjectType } from '../../types/projects'
 import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspaceCoverUrl, submitGeneration, type Workspace } from '../../api/client'
+import { applyPreset, presetById, presetForType, presetSummary, trackOverrides, DEFAULT_PRESETS } from '../../projects/presets'
 import { ProjectSetupForm, ProjectSetupSummary } from './ProjectSetupForm'
 import { SkeletonGrid } from '../shared/Skeleton'
 import { AppDialog } from '../shared/AppDialog'
 import { Button } from '../shared/Button'
 import { TextField } from '../shared/TextField'
+import { Select } from '../shared/Select'
 
 /**
  * Projects page — one-to-one with workspaces on the backend.
@@ -116,6 +119,12 @@ export function ProjectsPage() {
   const [name, setName] = useState('')
   const [setup, setSetup] = useState<ProjectSetupDefaults>(DEFAULT_PROJECT_SETUP)
   const [destination, setDestination] = useState<AppSection>('director')
+  // Quick-create path (A10): type drives the recommended preset; the
+  // preset fills the technical defaults so the dialog stays a two-field
+  // affair until the user asks for more.
+  const [projectType, setProjectType] = useState<ProjectType>('music-video')
+  const [presetId, setPresetId] = useState<string>(presetForType('music-video').id)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
@@ -265,14 +274,22 @@ export function ProjectsPage() {
       // mount via the store. Done sequentially so a failed save never
       // strands a project on disk in an unexpected shape.
       await createWorkspace(value)
+      // A10 quick path: apply the chosen preset (any expanded-form
+      // edits win over it and are recorded as `overrides`), then
+      // persist the whole setup including preset_id + overrides.
+      const preset = presetById(presetId) ?? presetForType(projectType)
+      const diverged = trackOverrides(setup, preset)
+      const patch = Object.fromEntries(diverged.map(f => [f, setup[f]]))
+      const nextSetup = applyPreset(setup, preset, patch)
+      setSetup(nextSetup)
       // A picked cover can only be uploaded now that the folder
       // exists — merge the stored filename into the setup payload.
-      let nextSetup = setup
+      let finalSetup = nextSetup
       if (pendingCover) {
         const { cover_image } = await uploadWorkspaceCover(value, pendingCover)
-        nextSetup = { ...nextSetup, cover_image }
+        finalSetup = { ...nextSetup, cover_image }
       }
-      await saveSetupAction(nextSetup)
+      await saveSetupAction(finalSetup)
       setCreating(false); setName('')
       setSetup(DEFAULT_PROJECT_SETUP)
       setPendingCover(null)
@@ -363,7 +380,12 @@ export function ProjectsPage() {
   }
   const openCreate = () => {
     setError(null)
-    setSetup(DEFAULT_PROJECT_SETUP)
+    const type: ProjectType = 'music-video'
+    const preset = presetForType(type)
+    setProjectType(type)
+    setPresetId(preset.id)
+    setShowAdvanced(false)
+    setSetup(applyPreset(DEFAULT_PROJECT_SETUP, preset))
     setPendingCover(null)
     setCoverError('')
     setInitialCover('')
@@ -497,6 +519,75 @@ export function ProjectsPage() {
                 </div>
                 <CoverSquareButton workspaceName={null} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
               </div>
+              {/* Quick path (A10): type + recommended preset. The
+                  technical fields stay hidden until the user asks for
+                  them — one decision per row, then Create. */}
+              <div className="mt-3">
+                <span className="text-xs text-text-secondary">Type</span>
+                <div className="mt-1 grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Project type">
+                  {([
+                    { value: 'music-video', label: 'Music Video' },
+                    { value: 'short-film', label: 'Short Film' },
+                    { value: 'custom', label: 'Custom' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={projectType === opt.value}
+                      disabled={busy !== null}
+                      onClick={() => {
+                        setProjectType(opt.value)
+                        const recommended = presetForType(opt.value)
+                        setPresetId(recommended.id)
+                        // Keep whatever the user already edited in this
+                        // dialog as explicit overrides on the new preset.
+                        setSetup(prev => {
+                          const current = presetById(presetId)
+                          const diverged = current ? trackOverrides(prev, current) : []
+                          const patch = Object.fromEntries(diverged.map(f => [f, prev[f]]))
+                          return applyPreset(prev, recommended, patch)
+                        })
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs text-center transition-all ${
+                        projectType === opt.value
+                          ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
+                          : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-3">
+                <Select
+                  id="project-preset"
+                  label="Preset"
+                  hint={(() => {
+                    const preset = presetById(presetId)
+                    return preset ? `Applies: ${presetSummary(preset)}` : undefined
+                  })()}
+                  value={presetId}
+                  onChange={nextId => {
+                    setPresetId(nextId)
+                    const preset = presetById(nextId)
+                    if (preset) {
+                      setSetup(prev => {
+                        const current = presetById(presetId)
+                        const diverged = current ? trackOverrides(prev, current) : []
+                        const patch = Object.fromEntries(diverged.map(f => [f, prev[f]]))
+                        return applyPreset(prev, preset, patch)
+                      })
+                    }
+                  }}
+                  options={DEFAULT_PRESETS.map(p => ({
+                    value: p.id,
+                    label: p.recommendedFor.includes(projectType) ? `${p.label} (recommended)` : p.label,
+                  }))}
+                  disabled={busy !== null}
+                />
+              </div>
               <div className="mt-3 grid grid-cols-3 gap-1.5">
                 <span className="text-xs text-text-secondary col-span-3">Open in</span>
                 {([
@@ -519,12 +610,43 @@ export function ProjectsPage() {
                   </button>
                 ))}
               </div>
-              <div className="mt-4 border-t border-border/40 pt-3">
-                <ProjectSetupForm value={setup} onChange={setSetup} studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
-              </div>
+              {/* Progressive setup (A10): the full form stays one click
+                  away but never blocks the quick path. Expanded edits
+                  are recorded as preset overrides on save. */}
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => setShowAdvanced(v => !v)}
+                aria-expanded={showAdvanced}
+                className="mt-3 flex w-full items-center justify-between rounded-lg border border-border/60 px-2.5 py-2 text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
+              >
+                <span>Adjust… more options</span>
+                {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {showAdvanced && (
+                <div className="mt-3 border-t border-border/40 pt-3">
+                  <ProjectSetupForm value={setup} onChange={setSetup} studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
+                </div>
+              )}
             </>
           ) : (
             <>
+              {/* A10: show which preset the project was created with and
+                  which fields diverge from it, so re-opening the setup
+                  never loses that context. */}
+              {(() => {
+                const preset = presetById(setup.preset_id)
+                if (!preset) return null
+                const overridden = Array.isArray(setup.overrides) ? setup.overrides : []
+                return (
+                  <p className="mb-2 rounded-lg border border-border/60 bg-bg-tertiary/40 px-2.5 py-1.5 text-2xs text-text-muted">
+                    Preset: <span className="text-text-secondary">{preset.label}</span>
+                    {overridden.length > 0 && (
+                      <> · overridden: <span className="text-text-secondary">{overridden.join(', ')}</span></>
+                    )}
+                  </p>
+                )
+              })()}
               <div>
                 <ProjectSetupForm value={setup} onChange={setSetup} compact studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
               </div>

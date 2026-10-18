@@ -93,12 +93,24 @@ def _install_request_timeouts() -> None:
         # if it does. Env var still applies.
         return
 
+    # A31 — offline-strict: audita/bloqueia egress remoto em todo caminho
+    # que usa `requests` (downloads de modelo, CivitAI, HF). O import é
+    # barato e stdlib-only; quando o modo não está ativo o guard é um no-op
+    # além da leitura do env var.
+    from .offline_strict import guard_egress, is_offline_strict
+
+    def _offline_guard(url):
+        if not is_offline_strict():
+            return
+        guard_egress(str(url), purpose="requests")
+
     # 2. Patch the Session class. Most HTTP libraries route through
     #    Session.request, including hf-hub's _request_wrapper.
     if not getattr(requests.Session.request, "_cue_studio_timeout_patched", False):
         _original_session_request = requests.Session.request
 
         def _session_request(self, method, url, **kwargs):
+            _offline_guard(url)
             if kwargs.get("timeout") is None:
                 kwargs["timeout"] = (
                     _CONNECT_TIMEOUT_SECONDS, _READ_TIMEOUT_SECONDS
@@ -113,6 +125,7 @@ def _install_request_timeouts() -> None:
         _original_module_request = requests.request
 
         def _module_request(method, url, **kwargs):
+            _offline_guard(url)
             if kwargs.get("timeout") is None:
                 kwargs["timeout"] = (
                     _CONNECT_TIMEOUT_SECONDS, _READ_TIMEOUT_SECONDS
@@ -121,6 +134,20 @@ def _install_request_timeouts() -> None:
 
         _module_request._cue_studio_timeout_patched = True
         requests.request = _module_request
+
+    # 3b. A31 — requests.get/post/... rodam por requests.api.request, que
+    #     é o global chamado por api.get/api.post. Patch direto ali garante
+    #     que QUALQUER caller (hf-hub, civitai client, scripts) passe pela
+    #     auditoria de egress no modo offline estrito.
+    if not getattr(requests.api.request, "_cue_studio_offline_patched", False):
+        _original_api_request = requests.api.request
+
+        def _api_request(method, url, **kwargs):
+            _offline_guard(url)
+            return _original_api_request(method, url, **kwargs)
+
+        _api_request._cue_studio_offline_patched = True
+        requests.api.request = _api_request
 
 
 # ── Layer 2: UI download tracking via tqdm patch ───────────────────
