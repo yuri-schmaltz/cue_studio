@@ -10845,6 +10845,14 @@ try:
 except Exception as _cap_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[capabilities] router unavailable: %s", _cap_import_err)
 
+# Dependency graph router (A26)
+try:
+    from routers.dependencies import build_dependencies_router
+    api.include_router(build_dependencies_router())
+    _mcp_log.info("[dependencies] router mounted at /api/v1/projects/{id}/dependencies")
+except Exception as _dep_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[dependencies] router unavailable: %s", _dep_import_err)
+
 # Backwards-compat re-exports — the existing test suite reaches
 # into ``launch`` for the workspace helpers. Keep the names
 # reachable so the cutover doesn't break the test surface.
