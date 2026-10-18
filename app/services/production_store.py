@@ -145,9 +145,15 @@ CREATE INDEX IF NOT EXISTS idx_pe_kind ON production_events(kind, created_at);
 
 
 def _default_db_path() -> Path:
-    """Resolve the same path the rest of the app uses (services.app_state_db)."""
-    repo_root = Path(__file__).resolve().parents[1]
-    return repo_root / ".cache" / "app_state.sqlite3"
+    """Resolve the same path the rest of the app uses (services.app_state_db).
+
+    Delegates to :func:`services.app_state_db.get_default_db_path` so both
+    stores honor the same ``APP_SQLITE_PATH`` / ``APP_CACHE_DIR`` overrides
+    (A06 test isolation).
+    """
+    from .app_state_db import get_default_db_path
+
+    return get_default_db_path()
 
 
 # ------------------------------------------------------------------- store

@@ -60,9 +60,41 @@ log = logging.getLogger("cue_studio.app_state_db")
 SCHEMA_VERSION = 1
 
 
-def _default_db_path() -> Path:
+DEFAULT_CACHE_DIR_NAME = ".cache"
+DEFAULT_DB_NAME = "app_state.sqlite3"
+
+
+def get_default_cache_dir() -> Path:
+    """Return the app cache directory.
+
+    Honors ``APP_CACHE_DIR`` so tests (and embedded installs) can point
+    every SQLite cache at an isolated directory. Falls back to
+    ``<app>/.cache``.
+    """
+    override = os.environ.get("APP_CACHE_DIR")
+    if override:
+        return Path(override)
     repo_root = Path(__file__).resolve().parents[1]
-    return repo_root / ".cache" / "app_state.sqlite3"
+    return repo_root / DEFAULT_CACHE_DIR_NAME
+
+
+def get_default_db_path() -> Path:
+    """Return the singleton DB path.
+
+    Resolution order (A06 test isolation):
+
+    1. ``APP_SQLITE_PATH`` env var — explicit override, used by the test
+       suite so no test ever touches the developer's real database.
+    2. ``APP_CACHE_DIR`` (or ``<app>/.cache``) / ``app_state.sqlite3``.
+    """
+    override = os.environ.get("APP_SQLITE_PATH")
+    if override:
+        return Path(override)
+    return get_default_cache_dir() / DEFAULT_DB_NAME
+
+
+def _default_db_path() -> Path:
+    return get_default_db_path()
 
 
 # Migration scripts run sequentially on every boot. ``up`` SQL is applied
@@ -446,7 +478,11 @@ def reset_app_state_db_singleton() -> None:
 
 __all__ = [
     "AppStateDB",
+    "DEFAULT_CACHE_DIR_NAME",
+    "DEFAULT_DB_NAME",
     "SCHEMA_VERSION",
     "get_app_state_db",
+    "get_default_cache_dir",
+    "get_default_db_path",
     "reset_app_state_db_singleton",
 ]

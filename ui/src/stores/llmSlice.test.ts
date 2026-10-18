@@ -32,7 +32,7 @@ function createTestStore() {
   // zustand `set` plumbing is cast down to `never` to satisfy the
   // creator's parameter types.
   return create<LlmSlice>()((set, _get, api) =>
-    createLlmSlice(set as never, get as never, api),
+    createLlmSlice(set as never, _get as never, api as never),
   )
 }
 

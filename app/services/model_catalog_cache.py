@@ -49,8 +49,9 @@ _DEFAULT_TTL = {
 
 
 def _default_cache_path() -> Path:
-    repo_root = Path(__file__).resolve().parents[1]
-    return repo_root / ".cache" / "model_catalog.sqlite3"
+    from .app_state_db import get_default_cache_dir
+
+    return get_default_cache_dir() / "model_catalog.sqlite3"
 
 
 class ModelCatalogCache:
