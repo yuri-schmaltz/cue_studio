@@ -10837,6 +10837,14 @@ try:
 except Exception as _ve_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[video_editor] router unavailable: %s", _ve_import_err)
 
+# CapabilityMatrix router (A34 / R04) — consultável por UI e adaptadores.
+try:
+    from routers.capabilities import build_capabilities_router
+    api.include_router(build_capabilities_router())
+    _mcp_log.info("[capabilities] router mounted at /api/v1/capabilities")
+except Exception as _cap_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[capabilities] router unavailable: %s", _cap_import_err)
+
 # Backwards-compat re-exports — the existing test suite reaches
 # into ``launch`` for the workspace helpers. Keep the names
 # reachable so the cutover doesn't break the test surface.
