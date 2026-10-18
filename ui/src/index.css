@@ -1801,3 +1801,61 @@ input[type="range"]::-webkit-slider-thumb {
   flex: 1;
   min-width: 0;
 }
+
+/* ─── Density tokens (A21) ───────────────────────────────────────────── */
+:root {
+  --font-task: 14px;
+  --font-task-meta: 12px;
+  --font-list: 12px;
+  --font-list-meta: 11px;
+}
+[data-density="compact"] {
+  --font-task: 13px;
+  --font-task-meta: 11px;
+  --font-list: 12px;
+  --font-list-meta: 11px;
+}
+[data-density="comfortable"] {
+  --font-task: 15px;
+  --font-task-meta: 13px;
+  --font-list: 13px;
+  --font-list-meta: 12px;
+}
+
+/* ─── Tap targets (A22) ──────────────────────────────────────────────── */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-button { padding: 10px; }
+@media (pointer: coarse) {
+  button, a, [role="button"], input, select, textarea {
+    min-height: 44px;
+  }
+}
+
+/* ─── Focus visible + reduced motion (A23) ───────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-accent-blue);
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

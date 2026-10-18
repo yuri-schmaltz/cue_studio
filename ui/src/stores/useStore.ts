@@ -12,6 +12,7 @@ import type { DirectorError } from './directorError'
 import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, LlmRolesState, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
+import { applyDensity, getStoredDensity, type Density } from '../lib/density'
 import {
   effectiveH3OmniSequenceFrames,
   h3WindowOverrideKey,
@@ -1132,6 +1133,9 @@ export interface AppState {
   themePrefs: ThemePrefs
   setThemeMode: (mode: ThemeMode) => void
   setThemeFamily: (family: FamilyId) => void
+
+  density: Density
+  setDensity: (density: Density) => void
 
   // Retake Dialog
   retakeDialogOpen: boolean
@@ -2916,6 +2920,12 @@ export const useStore = create<AppState>((set, get, store) => ({
     const prefs = { ...get().themePrefs, family }
     applyThemePrefs(prefs)
     set({ themePrefs: prefs })
+  },
+
+  density: getStoredDensity(),
+  setDensity: (density) => {
+    applyDensity(density)
+    set({ density })
   },
 
   // CivitAI LoRA Browser

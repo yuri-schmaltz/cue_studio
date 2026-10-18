@@ -1,18 +1,18 @@
 import { Suspense, useEffect } from 'react'
 import { ApplicationHeader } from './components/Shell/ApplicationHeader'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import { MainContent } from './components/MainContent/MainContent'
-import { RetakeDialog } from './components/RetakeDialog'
-import { OomRecoveryBanner } from './components/OomRecoveryBanner'
-import { DownloadStatusBanner } from './components/DownloadStatusBanner'
-import { PreflightBanner } from './components/PreflightBanner'
-import { WelcomeModal } from './components/WelcomeModal'
-import { NotificationCoordinator } from './components/NotificationCoordinator'
-import { NotificationToastHost } from './components/NotificationToastHost'
-import { EditorRoundTripBanner } from './editor/EditorRoundTripBanner'
 import {
   DirectorDashboard,
   DirectorPage,
+  MainContent,
+  RetakeDialog,
+  OomRecoveryBanner,
+  DownloadStatusBanner,
+  PreflightBanner,
+  WelcomeModal,
+  NotificationCoordinator,
+  NotificationToastHost,
+  EditorRoundTripBanner,
   EditorWorkspace,
   LoraBrowser,
   ProjectsPage,
@@ -25,11 +25,13 @@ import {
 import { useStore } from './stores/useStore'
 import { useUrlNavigation } from './navigation/useUrlNavigation'
 import { usePolling } from './lib/usePolling'
+import { emitTelemetry } from './lib/telemetry'
 
 function App() {
   // Keep the URL and the store's navigation in lock-step (A09):
   // deep links restore project + section, Back walks real URLs.
   useUrlNavigation()
+  useEffect(() => { void emitTelemetry('app_started', {}) }, [])
   const loadModels = useStore(s => s.loadModels)
   const loadOutputs = useStore(s => s.loadOutputs)
   const loadWorkspaces = useStore(s => s.loadWorkspaces)
@@ -62,6 +64,7 @@ function App() {
 
   return (
     <div className="application-shell">
+      <div id="a11y-status" aria-live="polite" className="sr-only" />
       <ApplicationHeader />
       <div className="application-content" role="tabpanel" id={`panel-${section}`} aria-labelledby={`tab-${section}`} tabIndex={0}>
         <Suspense fallback={<RouteLoadingShell />}>

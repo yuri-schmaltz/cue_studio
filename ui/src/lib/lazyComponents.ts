@@ -222,3 +222,47 @@ export const RecipesOverlay = lazyWithCache(
 export const WorkDashboard = lazyWithCache(
   () => import('../components/Dashboard/WorkDashboard'),
 )
+
+/**
+ * Main content (media gallery + inspector) — the Medias tab body.
+ * Lazy-loaded so the gallery/inspector tree (and its media polling)
+ * only hydrates when the user opens that tab.
+ */
+export const MainContent = lazyAny(
+  () => import('../components/MainContent/MainContent'),
+)
+
+/**
+ * Retake dialog — only mounted when the user triggers a retake, so
+ * its chunk (and the take-comparison media) stays off the cold path.
+ */
+export const RetakeDialog = lazyAny(
+  () => import('../components/RetakeDialog'),
+)
+
+/**
+ * Overlay banners / modals / coordinators — none of them need to
+ * block first paint; lazy-loading keeps their (and their dependencies')
+ * bytes out of the entry chunk.
+ */
+export const OomRecoveryBanner = lazyAny(
+  () => import('../components/OomRecoveryBanner'),
+)
+export const DownloadStatusBanner = lazyAny(
+  () => import('../components/DownloadStatusBanner'),
+)
+export const PreflightBanner = lazyAny(
+  () => import('../components/PreflightBanner'),
+)
+export const WelcomeModal = lazyAny(
+  () => import('../components/WelcomeModal'),
+)
+export const NotificationCoordinator = lazyAny(
+  () => import('../components/NotificationCoordinator'),
+)
+export const NotificationToastHost = lazyAny(
+  () => import('../components/NotificationToastHost'),
+)
+export const EditorRoundTripBanner = lazyAny(
+  () => import('../editor/EditorRoundTripBanner'),
+)

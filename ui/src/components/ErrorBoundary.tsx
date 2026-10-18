@@ -3,6 +3,7 @@ import type { ErrorInfo, ReactNode } from 'react'
 
 import { errorActionFor } from '../api/error-actions'
 import { ErrorState } from './shared/ErrorState'
+import { emitTelemetry } from '../lib/telemetry'
 
 /**
  * Per-section render error boundary (feature A15).
@@ -33,9 +34,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo): void {
-    // Console is stripped from the production bundle by vite config;
-    // in dev this gives engineers the component stack.
     console.error(`[${this.props.section}] render failed:`, error, info.componentStack)
+    void emitTelemetry('ui_error', {
+      section: this.props.section,
+      message: error instanceof Error ? error.message : String(error),
+    })
   }
 
   private reset = () => {

@@ -8,15 +8,15 @@
   "doc_level": "completo",
   "output_folder": "_reversa_sdd",
   "forward_folder": "_reversa_forward",
-  "phase": "reconhecimento",
-  "completed": [],
-  "pending": [
+  "phase": "revisao",
+  "completed": [
     "reconhecimento",
     "escavacao",
     "interpretacao",
     "geracao",
     "revisao"
   ],
+  "pending": [],
   "checkpoints": {
     "scout": {
       "completed_at": "2026-10-02T19:33:48Z",
@@ -25,6 +25,10 @@
         "_reversa_sdd/dependencies.md",
         ".reversa/context/surface.json"
       ]
+    },
+    "gauntlet_final": {
+      "completed_at": "2026-10-18T00:00:00Z",
+      "summary": "P0-P3 + ciclo4 + A25b + A28 + F0-F3 + Reversa phases concluidos. Suites: pytest 924? passed, ui lint 0 erros, build ok, smoke 13/13."
     }
   },
   "engines": [

@@ -22,6 +22,8 @@ export function AppearanceSettingsPanel() {
   const prefs = useStore(s => s.themePrefs)
   const setThemeMode = useStore(s => s.setThemeMode)
   const setThemeFamily = useStore(s => s.setThemeFamily)
+  const density = useStore(s => s.density)
+  const setDensity = useStore(s => s.setDensity)
   // Re-render when the OS flips its scheme while in auto mode so the
   // swatch and hint track the effective variant.
   const [, setOsTick] = useState(0)
@@ -104,6 +106,37 @@ export function AppearanceSettingsPanel() {
               </div>
               <p className="text-2xs text-text-muted mt-1.5">
                 {family.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-columns settings-columns--equal">
+        <div className="settings-group">
+          <div className="settings-card">
+            <div>
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
+                Density
+              </label>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {(['comfortable', 'compact'] as const).map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setDensity(d)}
+                    aria-pressed={density === d}
+                    className={`flex-1 px-3 py-1.5 text-xs transition-colors ${
+                      density === d
+                        ? 'bg-accent-blue text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
+                    }`}
+                  >
+                    {d === 'comfortable' ? 'Confortável' : 'Compacta'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-2xs text-text-muted mt-1.5">
+                Ajusta o tamanho do texto e o espaçamento dos painéis.
               </p>
             </div>
           </div>
