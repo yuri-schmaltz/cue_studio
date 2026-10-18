@@ -101,3 +101,40 @@ def ci_smoke(auditor: ConnectionAuditor) -> dict[str, int]:
         "allowed": auditor.allowed_count(),
         "blocked": auditor.blocked_count(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Integração com safe_download (A31)
+# ---------------------------------------------------------------------------
+
+import os as _os
+
+
+def is_offline_strict() -> bool:
+    """Retorna True se o modo offline-strict está ativo."""
+    return _os.environ.get("CUE_OFFLINE_STRICT", "").lower() in ("1", "true", "yes")
+
+
+def guard_egress(url: str, purpose: str = "") -> None:
+    """Bloqueia egress remoto em modo offline-strict.
+
+    Lança RuntimeError se a URL não for localhost e o modo offline-strict
+    estiver ativo. No-op caso contrário.
+    """
+    if not is_offline_strict():
+        return
+    # Extrair host da URL
+    host = url
+    if "://" in host:
+        host = host.split("://", 1)[1]
+    if "/" in host:
+        host = host.split("/", 1)[0]
+    if ":" in host:
+        host = host.rsplit(":", 1)[0]
+    host = host.strip("[]")
+    auditor = ConnectionAuditor(NetworkPolicy.OFFLINE)
+    att = auditor.attempt(host, 0, protocol="http")
+    if att.blocked:
+        raise RuntimeError(
+            f"offline-strict bloqueia egress remoto ({purpose}): {url}"
+        )
