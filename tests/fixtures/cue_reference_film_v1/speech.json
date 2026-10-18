@@ -1,0 +1,14 @@
+{
+  "project_id": "cue-reference-film-v1",
+  "voice_profile": "pt-br-narrator",
+  "backend": "qwen3-tts",
+  "language": "pt-BR",
+  "sample_rate": 48000,
+  "cues": [
+    {"id": "V01", "start_seconds": 5.0, "end_seconds": 12.0, "text": "Na oficina silenciosa, uma pequena descoberta."},
+    {"id": "V02", "start_seconds": 15.0, "end_seconds": 23.0, "text": "Cada peça encontra o seu lugar."},
+    {"id": "V03", "start_seconds": 35.0, "end_seconds": 43.0, "text": "Basta um gesto para acender uma ideia."},
+    {"id": "V04", "start_seconds": 50.0, "end_seconds": 57.0, "text": "E uma nova história pode começar."}
+  ],
+  "total_samples_per_channel": 2880000
+}

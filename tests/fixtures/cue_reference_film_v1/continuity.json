@@ -1,0 +1,30 @@
+{
+  "project_id": "cue-reference-film-v1",
+  "characters": {
+    "robot_01": {
+      "canonical": {
+        "body_color": "gray_light",
+        "details_color": "blue_dark",
+        "limbs": {"legs": 2, "arms": 2},
+        "face": {"lenses": 3, "arrangement": "triangular", "mouth": false},
+        "geometry_critical": true
+      },
+      "voice": "pt-br-narrator"
+    }
+  },
+  "objects": {
+    "red_cube": {"color": "red_matte", "text": false},
+    "lamp_base": {"pedestal": true, "cube_cavity": true, "lamp_amber": true, "lamp_initial_state": "off"}
+  },
+  "location": {
+    "room_a": {"table": "right", "door": "back", "window": "left", "lighting": "morning_soft"}
+  },
+  "rules": [
+    {"id": "gaze_flip", "severity": "error"},
+    {"id": "wardrobe_skip", "severity": "error"},
+    {"id": "object_hand_jump", "severity": "error"},
+    {"id": "object_state_unsupported", "severity": "error"},
+    {"id": "action_orphan", "severity": "error"},
+    {"id": "position_collision", "severity": "error"}
+  ]
+}

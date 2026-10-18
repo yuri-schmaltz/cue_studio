@@ -1,0 +1,13 @@
+{
+  "id": "cue-reference-film-v1",
+  "schema_version": 1,
+  "revision": 1,
+  "title": "A luz da oficina",
+  "locale": "pt-BR",
+  "timebase": {"numerator": 24, "denominator": 1},
+  "canvas": {"width": 1280, "height": 720, "pixel_format": "yuv420p"},
+  "network_policy": "offline",
+  "resource_policy": {"max_gpu_jobs": 1, "max_cpu_jobs": 2, "max_attempts": 2, "production_timeout_hours": 12},
+  "created_at": "2026-10-17T00:00:00Z",
+  "updated_at": "2026-10-17T00:00:00Z"
+}

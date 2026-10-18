@@ -1,0 +1,30 @@
+{
+  "project_id": "cue-reference-film-v1",
+  "total_frames": 1440,
+  "fps": 24,
+  "duration_seconds": 60,
+  "audio_samples_per_channel": 2880000,
+  "sample_rate": 48000,
+  "shots_count": 12,
+  "scenes_count": 1,
+  "speech_cues": 4,
+  "effects_count": 5,
+  "criteria": {
+    "duration_frames_exact": 1440,
+    "audio_alignment_common": true,
+    "cue_position_error_frames": 1,
+    "av_drift_frames": 1,
+    "loudness_lufs": -16,
+    "loudness_tolerance_lu": 1,
+    "true_peak_dbtp": -1,
+    "no_truncated_words": true
+  },
+  "critical_errors": [
+    "lente_count_change_on_closeup",
+    "cube_duplicate_or_disappear",
+    "hand_object_contradicts_state",
+    "wrong_speech",
+    "wrong_title",
+    "music_lost_on_rerun"
+  ]
+}

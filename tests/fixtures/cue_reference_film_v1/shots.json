@@ -1,0 +1,20 @@
+{
+  "project_id": "cue-reference-film-v1",
+  "scene_id": "scene_room_a",
+  "shots": [
+    {"id": "S01", "order": 1, "duration_frames": 120, "frames": [0, 120], "intent": "Geral da oficina vazia, lâmpada apagada", "characters": [], "continuity": "independent", "state_exit": "Ambiente estabelecido"},
+    {"id": "S02", "order": 2, "duration_frames": 120, "frames": [120, 240], "intent": "Robô entra pela porta, esquerda→direita", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Robô próximo à mesa"},
+    {"id": "S03", "order": 3, "duration_frames": 120, "frames": [240, 360], "intent": "Close das três lentes olhando o cubo", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Cubo ainda na mesa"},
+    {"id": "S04", "order": 4, "duration_frames": 120, "frames": [360, 480], "intent": "Plano médio; robô pega cubo com mão direita", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Cubo na mão direita"},
+    {"id": "S05", "order": 5, "duration_frames": 120, "frames": [480, 600], "intent": "Detalhe da mão/cubo, sem mudar geometria", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Pegada conservada"},
+    {"id": "S06", "order": 6, "duration_frames": 120, "frames": [600, 720], "intent": "Plano médio; robô caminha até o pedestal", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Movimento esquerda→direita"},
+    {"id": "S07", "order": 7, "duration_frames": 120, "frames": [720, 840], "intent": "Geral; robô diante da base", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Cubo na mão direita"},
+    {"id": "S08", "order": 8, "duration_frames": 120, "frames": [840, 960], "intent": "Detalhe; cubo inserido na cavidade", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Mão livre, cubo na base"},
+    {"id": "S09", "order": 9, "duration_frames": 120, "frames": [960, 1080], "intent": "Lâmpada acende âmbar gradualmente", "characters": [], "continuity": "continuous", "state_exit": "Luz acesa"},
+    {"id": "S10", "order": 10, "duration_frames": 120, "frames": [1080, 1200], "intent": "Close do robô iluminado, três lentes intactas", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Robô observa a luz"},
+    {"id": "S11", "order": 11, "duration_frames": 120, "frames": [1200, 1320], "intent": "Geral; robô recua e contempla a oficina", "characters": ["robot_01"], "continuity": "continuous", "state_exit": "Cubo permanece na base"},
+    {"id": "S12", "order": 12, "duration_frames": 120, "frames": [1320, 1440], "intent": "Plano estável com título final sobreposto", "characters": [], "continuity": "independent", "state_exit": "Encerramento"}
+  ],
+  "total_frames": 1440,
+  "fps": 24
+}
