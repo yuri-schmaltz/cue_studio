@@ -17,7 +17,6 @@ GENERATOR = FIXTURE_DIR / "generate_f0.py"
 EXPECTED = json.loads((FIXTURE_DIR / "expected.json").read_text())
 
 
-@pytest.mark.fixture_f0
 def test_f0_render_master_criteria():
     """O gerador F0 deve produzir um master válido passando todos os critérios."""
     result = subprocess.run(
@@ -30,9 +29,6 @@ def test_f0_render_master_criteria():
         f"generate_f0.py falhou:\n{result.stdout}\n{result.stderr}"
     )
     assert "TODOS OS CRITÉRIOS DE ACEITE PASSARAM" in result.stdout, result.stdout
-
-
-@pytest.mark.fixture_f0
 def test_f0_fixture_files_present():
     """Todos os arquivos obrigatórios da fixture devem existir."""
     required = [
@@ -43,7 +39,6 @@ def test_f0_fixture_files_present():
         assert (FIXTURE_DIR / name).is_file(), f"arquivo ausente: {name}"
 
 
-@pytest.mark.fixture_f0
 def test_f0_expected_criteria_values():
     """Os valores esperados no expected.json devem ser consistentes."""
     exp = EXPECTED
