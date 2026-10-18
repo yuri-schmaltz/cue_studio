@@ -10,8 +10,9 @@ import type { DialogProps } from './types'
  *
  * - `role="dialog"` (implicit on `<dialog>`) + explicit `aria-modal`
  *   and `aria-labelledby` / `aria-describedby`.
- * - Initial focus: the dialog container receives focus on open so
- *   screen readers announce the title.
+ * - Initial focus: the element flagged `data-autofocus` (TextField
+ *   mirrors its `autoFocus` prop) receives focus on open; otherwise
+ *   the dialog container so screen readers announce the title.
  * - `Escape` fires the native `cancel` event and is routed to
  *   `onClose` (prevented by default so the component stays
  *   controlled). With `confirmOnClose` the Escape / backdrop
@@ -41,13 +42,25 @@ export function AppDialog({
       previouslyFocused.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null
       if (!dialog.open) dialog.showModal()
-      // Initial focus goes to the field flagged `autofocus` (matching
-      // the pre-migration behaviour); otherwise the dialog container
+      // Initial focus goes to the element flagged `data-autofocus` /
+      // `autofocus` (React's `autoFocus` never renders the attribute
+      // and runs before the dialog is open, so TextField mirrors the
+      // prop into `data-autofocus`); otherwise the dialog container
       // itself so the title is announced.
-      const initialFocus = dialog.querySelector<HTMLElement>('[autofocus]')
+      const active = document.activeElement
+      const focusedInside =
+        active instanceof HTMLElement && active !== dialog && dialog.contains(active)
+          ? active
+          : null
+      const initialFocus =
+        dialog.querySelector<HTMLElement>('[data-autofocus], [autofocus]') ?? focusedInside
       ;(initialFocus ?? dialog).focus()
     } else if (dialog.open) {
       dialog.close()
+      // Restore focus right away; the native 'close' event fires as a
+      // task in real browsers (too late for this synchronous pass) and
+      // is kept as a fallback for user-initiated closes.
+      previouslyFocused.current?.focus?.()
     }
   }, [open])
 

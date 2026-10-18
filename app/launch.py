@@ -7770,203 +7770,28 @@ async def update_services_config(request: Request):
     return {"status": "ok", "updated": updated}
 
 
-# ============================================================================
-@api.get("/api/v1/workspaces")
-def list_workspaces_endpoint():
-    """List all workspaces and the active one."""
-    return {
-        "workspaces": _list_workspaces(),
-        "active": _get_active_workspace(),
-    }
+# Workspaces (projects) domain — extracted to ``routers/workspaces`` (A16,
+# routers by domain). The launch-internal helpers stay here and are injected
+# via WorkspaceDeps, so the router package never imports launch.py and every
+# URL/behaviour is unchanged.
+from routers.workspaces import WorkspaceDeps, build_workspaces_router
 
-
-@api.put("/api/v1/workspaces/active")
-async def set_active_workspace(request: Request):
-    """Switch to a different workspace."""
-    body = await request.json()
-    name = body.get("name", "default")
-
-    # Validate name (alphanumeric, hyphens, underscores)
-    import re
-    if name != "default" and not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', name):
-        raise HTTPException(status_code=400, detail="Invalid workspace name. Use letters, numbers, hyphens, underscores.")
-
-    # Persist the switch; only touch wgp.save_path when idle. If a job is
-    # in progress it has locked wgp.save_path to its target workspace —
-    # overwriting mid-generation scatters clips across workspaces. The
-    # config is saved either way, so the next job or restart picks it up.
-    idle = not _active_gen_states
-    ws_dir = _persist_active_workspace(name, apply_save_paths=idle)
-    if idle:
-        print(f"[Workspace] Switched to: {name} ({ws_dir})")
-    else:
-        print(f"[Workspace] Config switched to: {name} (save_path deferred — generation in progress)")
-    return {"status": "ok", "active": name, "path": ws_dir}
-
-
-@api.post("/api/v1/workspaces")
-async def create_workspace(request: Request):
-    """Create a new workspace."""
-    body = await request.json()
-    name = body.get("name", "").strip()
-
-    if not name:
-        raise HTTPException(status_code=400, detail="Workspace name is required")
-
-    import re
-    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', name):
-        raise HTTPException(status_code=400, detail="Invalid workspace name. Use letters, numbers, hyphens, underscores.")
-
-    ws_dir = _workspace_dir(name)
-    os.makedirs(ws_dir, exist_ok=True)
-
-    return {"status": "ok", "name": name, "path": ws_dir}
-
-
-@api.get("/api/v1/workspaces/{name}/setup")
-def get_workspace_setup(name: str):
-    """Return the ProjectSetup JSON for a workspace.
-
-    Missing file → defaults. Default workspace → defaults. Used by the
-    UI to hydrate the Director selection on `switchWorkspace` so the
-    user starts a session with the same aspect ratio / resolution /
-    models they used last time in this project. Idempotent.
-    """
-    return {"name": name, "setup": _load_workspace_setup(name)}
-
-
-@api.put("/api/v1/workspaces/{name}/setup")
-async def put_workspace_setup(name: str, request: Request):
-    """Update the ProjectSetup for a workspace. Atomic write.
-
-    Shared between the New project dialog (POST then PUT to fill the
-    just-created folder) and the Edit setup affordance on the project
-    card (re-PUT to overwrite). Validation lives in
-    `_persist_workspace_setup` so direct callers (e.g. tests) hit the
-    same error mapping as the HTTP surface.
-    """
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
-    raw_setup = body.get("setup", body)
-    persisted = _persist_workspace_setup(name, raw_setup)
-    return {"status": "ok", "name": name, "setup": persisted}
-
-
-@api.post("/api/v1/workspaces/{name}/cover")
-async def upload_workspace_cover(name: str, file: UploadFile = File(...)):
-    """Upload the project card cover image.
-
-    Stores the file next to setup.json under a unique cover_<id>.<ext>
-    name and points setup.json at it. The previous cover file is only
-    removed after the new setup.json persists, so a failed persist
-    never destroys the previous cover.
-    """
-    base = os.path.abspath(_projects_root())
-    content = await file.read()
-    try:
-        stored = save_cover_image(base, name, content, file.filename or "cover.png")
-    except WorkspaceSetupError as exc:
-        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
-    previous = (_load_workspace_setup(name).get("cover_image") or "")
-    try:
-        current = _load_workspace_setup(name)
-        current["cover_image"] = stored
-        persisted = _persist_workspace_setup(name, current)
-    except HTTPException:
-        delete_cover_image(base, name, stored)
-        raise
-    if previous and previous != stored:
-        delete_cover_image(base, name, previous)
-    return {"status": "ok", "name": name, "cover_image": stored, "setup": persisted}
-
-
-@api.get("/api/v1/workspaces/{name}/cover")
-def serve_workspace_cover(name: str):
-    """Serve the project card cover image referenced by setup.json."""
-    base = os.path.abspath(_projects_root())
-    filename = (_load_workspace_setup(name).get("cover_image") or "")
-    path = cover_image_path(base, name, filename) if filename else None
-    if path is None:
-        raise HTTPException(status_code=404, detail="No cover image for this project.")
-    media_type = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".webp": "image/webp",
-        ".bmp": "image/bmp",
-    }.get(os.path.splitext(filename)[1].lower(), "application/octet-stream")
-    return FileResponse(path, media_type=media_type)
-
-
-@api.delete("/api/v1/workspaces/{name}/cover")
-def delete_workspace_cover(name: str):
-    """Remove the project card cover image and clear the setup reference."""
-    base = os.path.abspath(_projects_root())
-    current = _load_workspace_setup(name)
-    current["cover_image"] = ""
-    persisted = _persist_workspace_setup(name, current)
-    delete_cover_image(base, name)
-    return {"status": "ok", "name": name, "setup": persisted}
-
-
-@api.delete("/api/v1/workspaces/{name}")
-def delete_workspace(name: str):
-    """Delete a workspace folder and every asset inside it.
-
-    Refused while anything is queued or generating: jobs capture their
-    workspace at submit time and _workspace_dir() recreates folders on
-    demand, so a mid-generation delete would silently resurrect the
-    workspace and scatter files into it.
-    """
-    import re
-    if name == "default":
-        raise HTTPException(status_code=400, detail="The default workspace is the outputs folder itself and cannot be deleted.")
-    if not re.match(r'^[a-zA-Z0-9][a-zA-Z0-9_-]*$', name):
-        raise HTTPException(status_code=400, detail="Invalid workspace name.")
-    base = os.path.abspath(_projects_root())
-    # _safe_join resolves symlinks/junctions before the containment check —
-    # the regex blocks traversal but not a junction inside outputs/.
-    ws_dir = _safe_join(base, name)
-    if ws_dir is None:
-        raise HTTPException(status_code=400, detail="Invalid workspace path.")
-    if not os.path.isdir(ws_dir):
-        raise HTTPException(status_code=404, detail=f"Workspace not found: {name}")
-
-    busy = any(
-        j.get("status") in ("held", "queued", "running")
-        for j in _jobs.values()
-    )
-    if busy or _active_gen_states:
-        raise HTTPException(status_code=409, detail="A generation is held, queued, or running. Remove it or wait for it to finish before deleting a workspace.")
-    # Director pipelines are alive between their generation jobs (LLM
-    # planning, review pauses) with no _jobs entry — but their next step
-    # would resurrect the folder via _workspace_dir().
-    try:
-        from services.director_pipeline import any_pipeline_active
-        if any_pipeline_active():
-            raise HTTPException(status_code=409, detail="A Director pipeline is running or paused. Stop it before deleting a workspace.")
-    except ImportError:
-        pass
-
-    # Deleting the active workspace switches to default first. Safe to write
-    # wgp.save_path directly here: nothing is generating (guards above).
-    switched = False
-    if _get_active_workspace() == name:
-        _persist_active_workspace("default")
-        switched = True
-        print(f"[Workspace] Active workspace deleted — switched to default")
-
-    from services.win_safe_files import safe_delete_dir
-    result = safe_delete_dir(ws_dir)
-    print(f"[Workspace] Deleted '{name}': {result['files_deleted']} files removed, "
-          f"{result['files_deferred']} deferred, dir_removed={result['removed']}")
-    return {
-        "status": "ok", "name": name,
-        "files_deleted": result["files_deleted"], "files_deferred": result["files_deferred"],
-        "dir_removed": result["removed"], "switched_to_default": switched, "errors": result["errors"],
-    }
-
+api.include_router(build_workspaces_router(WorkspaceDeps(
+    list_workspaces=_list_workspaces,
+    get_active_workspace=_get_active_workspace,
+    persist_active_workspace=_persist_active_workspace,
+    active_gen_states=lambda: _active_gen_states,
+    jobs=lambda: _jobs,
+    projects_root=_projects_root,
+    workspace_dir=_workspace_dir,
+    load_workspace_setup=_load_workspace_setup,
+    persist_workspace_setup=_persist_workspace_setup,
+    save_cover_image=save_cover_image,
+    delete_cover_image=delete_cover_image,
+    cover_image_path=cover_image_path,
+    safe_join=_safe_join,
+    workspace_setup_error=WorkspaceSetupError,
+)))
 
 # ============================================================================
 # API Routes: Storage (duplicate finder + usage analytics)

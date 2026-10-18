@@ -9,7 +9,7 @@
     "height": "720"
   },
   "audio": {
-    "master_lufs": -20.426402974975222,
+    "master_lufs": null,
     "master_lufs_error": null
   },
   "samples_per_channel_stems": {

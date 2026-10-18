@@ -7,7 +7,7 @@ without mounting the main application.
 
 | Component | File | Notes |
 |---|---|---|
-| `AppDialog` | `AppDialog.tsx` | Native `<dialog>`: `role`/`aria-modal` implicit+explicit, initial focus (honours `[autofocus]`), `Escape` routed through the controlled `onClose`, backdrop click, focus restore. `confirmOnClose` blocks Escape/backdrop dismissal (close becomes an explicit action). |
+| `AppDialog` | `AppDialog.tsx` | Native `<dialog>`: `role`/`aria-modal` implicit+explicit, initial focus (honours `data-autofocus`; `TextField` mirrors its `autoFocus` prop into it), `Escape` routed through the controlled `onClose`, backdrop click, focus restore. `confirmOnClose` blocks Escape/backdrop dismissal (close becomes an explicit action). |
 | `TextField` | `TextField.tsx` | Label + hint + error/success; `aria-describedby` connects `${id}-hint`, `${id}-error` (and `${id}-success`); `aria-invalid` on error. |
 | `NumberField` | `NumberField.tsx` | Same contract with `inputMode="numeric"`; reports `number | ''`. |
 | `Select` | `Select.tsx` | Native `<select>` combobox (platform keyboard nav), label/hint/error wiring identical to `TextField`. |

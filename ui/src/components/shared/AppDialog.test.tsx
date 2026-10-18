@@ -44,18 +44,21 @@ describe('AppDialog', () => {
     opener.focus()
     fireEvent.click(opener)
     const dialog = screen.getByRole('dialog')
-    // Initial focus lands on the dialog container itself (no [autofocus]
-    // element inside) so the title is announced.
+    // Initial focus lands on the dialog container itself (no
+    // data-autofocus element inside) so the title is announced.
     expect(document.activeElement).toBe(dialog)
     // Close and confirm focus goes back to the opener.
     fireEvent.click(screen.getByRole('button', { name: 'Close dialog' }))
     expect(document.activeElement).toBe(opener)
   })
 
-  it('focuses the [autofocus] element when present', () => {
+  it('focuses the element flagged for initial focus (data-autofocus)', () => {
+    // React's `autoFocus` prop doesn't render an attribute and would
+    // run while the dialog is still closed, so the shared convention
+    // is `data-autofocus` (TextField mirrors its `autoFocus` prop).
     render(
       <AppDialog open onClose={() => {}} title="With autofocus">
-        <input aria-label="first field" autoFocus />
+        <input aria-label="first field" data-autofocus />
       </AppDialog>,
     )
     expect(document.activeElement).toBe(screen.getByLabelText('first field'))

@@ -53,6 +53,10 @@ export function TextField({
         value={value}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        // React never renders the `autofocus` attribute, and its
+        // programmatic focus runs before an enclosing AppDialog is
+        // open — mirror the flag so the dialog can find it.
+        data-autofocus={autoFocus || undefined}
         required={required}
         disabled={disabled}
         aria-invalid={error ? true : undefined}
