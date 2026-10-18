@@ -1,7 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- standalone field,
- * no co-located helpers. Lives in /perf so the Performance panel and any
- * future embedder can render the same masked-key + Set/Change affordance
- * without depending on the Integrations panel internals. */
+ 
 import { useState } from 'react'
 
 /** Masked API-key input. Renders a single row showing the masked

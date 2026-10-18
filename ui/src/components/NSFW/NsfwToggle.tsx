@@ -1,6 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- NsfwDisclaimerModal
- * is consumed by NsfwToggle via composition and never by any other module;
- * co-locating the two keeps the legal text next to its only consumer. */
+ 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ShieldAlert, ShieldCheck, Lock } from 'lucide-react'
 import { useStore } from '../../stores/useStore'

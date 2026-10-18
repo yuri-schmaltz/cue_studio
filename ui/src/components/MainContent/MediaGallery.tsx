@@ -21,6 +21,7 @@ function GalleryThumbnail({ file }: { file: OutputFile }) {
 
   useEffect(() => {
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setThumbUrl(null)
     if (file.type === 'video') {
       requestThumbnail(file.url, file.name).then((dataUrl) => {

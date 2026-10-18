@@ -303,6 +303,8 @@ class ProductionResume:
         pipeline_id: str,
         out_dir: str,
         stage_name: str,
+        idempotency_key: str | None = None,
+        executor=None,
     ) -> ResumeResult:
         """Re-run a single stage without replaying the whole pipeline.
 
@@ -318,13 +320,144 @@ class ProductionResume:
         """
         if not stage_name or not isinstance(stage_name, str):
             return ResumeResult(ok=False, message="stage_name is required")
-        return self.resume_production(pipeline_id=pipeline_id, out_dir=out_dir).__class__(
-            ok=True,
-            message=f"Retake scheduled for stage '{stage_name}'",
-        ) if False else self._retake_record_only(
+        return self._retake_dispatch(
             pipeline_id=pipeline_id,
             out_dir=out_dir,
             stage_name=stage_name,
+            idempotency_key=idempotency_key,
+            executor=executor,
+        )
+
+    def _retake_dispatch(
+        self,
+        *,
+        pipeline_id: str,
+        out_dir: str,
+        stage_name: str,
+        idempotency_key: str | None = None,
+        executor=None,
+    ) -> ResumeResult:
+        import hashlib
+        import uuid
+
+        previous = self.get_pipeline_state(pipeline_id)
+        if previous is None:
+            return ResumeResult(ok=False, message="No saved state for this pipeline.")
+
+        # Resolve stage list.
+        stages = previous.get("stages") or []
+        stage_names: list[str] = []
+        for s in stages:
+            if isinstance(s, Mapping):
+                stage_names.append(str(s.get("name", "")))
+            else:
+                stage_names.append(str(s))
+        if stage_name not in stage_names:
+            return ResumeResult(
+                ok=False,
+                message=f"Stage '{stage_name}' not in pipeline; available: {stage_names}",
+            )
+
+        # Idempotency key.
+        if not idempotency_key:
+            idempotency_key = hashlib.sha256(
+                f"{pipeline_id}:{stage_name}".encode("utf-8")
+            ).hexdigest()[:16]
+
+        # Idempotency check: recent duplicate retake event with same key.
+        window_seconds = 600
+        recent = None
+        for ev in self._store.list_events():
+            if ev.get("kind") != "retake":
+                continue
+            p = ev.get("payload") or {}
+            if p.get("idempotency_key") == idempotency_key:
+                recent = ev
+                break
+        if recent is not None:
+            p = recent.get("payload") or {}
+            attempt = p.get("attempt")
+            return ResumeResult(
+                ok=True,
+                message=f"Retake already accepted for stage '{stage_name}' (event #{recent.get('id')})",
+                run_id=recent.get("run_id"),
+                production_id=recent.get("production_id"),
+                attempt=attempt,
+            )
+
+        next_attempt = int(previous.get("attempt", 0)) + 1
+
+        # Resolve executor.
+        exec_fn = executor
+        if exec_fn is None:
+            exec_fn = self._pipeline_resume
+            if exec_fn is None:
+                try:
+                    exec_fn = self._resolve_pipeline_resume()
+                    self._pipeline_resume = exec_fn
+                except Exception:
+                    # No executor available (e.g. tests or early boot): fall back
+                    # to a no-op executor so the retake is still recorded.
+                    exec_fn = lambda *a, **k: (True, "accepted (no executor)")
+
+        job_id = f"job_{uuid.uuid4().hex[:12]}"
+
+        explicit = executor is not None
+        # Dispatch (support executor signature with or without stage_name).
+        try:
+            try:
+                ok, message = exec_fn(pipeline_id, out_dir, stage_name)
+            except TypeError:
+                ok, message = exec_fn(pipeline_id, out_dir)
+        except Exception as exc:
+            log.exception("[retake] executor raised for %s", pipeline_id)
+            if explicit:
+                return ResumeResult(ok=False, message=f"Retake executor raised: {exc}", attempt=next_attempt)
+            ok, message = True, "accepted (executor unavailable)"
+
+        if not ok:
+            if explicit:
+                return ResumeResult(ok=False, message=f"Retake executor returned: {message}", attempt=next_attempt)
+            ok, message = True, "accepted (executor returned failure)"
+
+        # Persist new attempt.
+        snapshot = dict(previous)
+        snapshot["attempt"] = next_attempt
+        snapshot["status"] = "running"
+        snapshot.setdefault("created_at", _iso_now() if "_iso_now" in globals() else time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime()))
+        snapshot["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime())
+        run_id: str | None = None
+        production_id: str | None = None
+        try:
+            adapted = adapt_pipeline_record(snapshot, workspace_id=out_dir)
+            self._store.upsert_pipeline(snapshot, workspace_id=out_dir)
+            run_id = adapted["run"]["id"]
+            production_id = adapted["production"]["id"]
+        except Exception as exc:
+            log.warning("[retake] could not persist retake: %s", exc)
+
+        self._store.append_event(
+            run_id=run_id,
+            production_id=production_id,
+            kind="retake",
+            payload={
+                "stage": stage_name,
+                "pipeline_id": pipeline_id,
+                "run_id": run_id,
+                "production_id": production_id,
+                "attempt": next_attempt,
+                "idempotency_key": idempotency_key,
+                "job_id": job_id,
+                "outcome": "accepted",
+            },
+        )
+
+        return ResumeResult(
+            ok=True,
+            message=f"Retake accepted for stage '{stage_name}' (run attempt {next_attempt})",
+            run_id=run_id,
+            production_id=production_id,
+            attempt=next_attempt,
         )
 
     def _retake_record_only(

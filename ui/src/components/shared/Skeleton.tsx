@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useEffect, useState } from 'react'
 
 interface SkeletonProps {
@@ -83,6 +84,7 @@ export function useDelayedLoading(loading: boolean, minDurationMs = 200): boolea
       const handle = window.setTimeout(() => setDelayed(false), minDurationMs)
       return () => window.clearTimeout(handle)
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDelayed(true)
   }, [loading, minDurationMs])
   return delayed

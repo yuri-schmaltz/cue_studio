@@ -1,7 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- LinkedModelFoldersSection
- * is consumed only via composition inside ModelVisibilitySection; no other
- * module imports it. Co-locating keeps the linked-folders state + helpers
- * next to the model list they share a card with. */
+ 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ChevronDown, ChevronRight, Check, Download, Trash2,

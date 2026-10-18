@@ -10914,7 +10914,12 @@ except Exception as _wizard_import_err:  # pragma: no cover — defensive
 # the HocusPocus migration; see docs/VIDEO_EDITOR.md.
 try:
     from routers.video_editor import build_video_editor_router
-    api.include_router(build_video_editor_router())
+    from services.video_editor import VideoEditor
+
+    def _get_video_editor():
+        return VideoEditor()
+
+    api.include_router(build_video_editor_router(get_editor=_get_video_editor))
     _mcp_log.info("[video_editor] router mounted at /api/v1/editor")
 except Exception as _ve_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[video_editor] router unavailable: %s", _ve_import_err)
@@ -29881,6 +29886,22 @@ if __name__ == "__main__":
 
     # Confirm the polling filter immediately before Uvicorn configures logging.
     install_quiet_access_filter()
+
+    # Feature A02: ativar a camada de segurança (antes morta). Em modo
+    # compartilhado (--share / 0.0.0.0) exigir token; em loopback manter
+    # acesso local liberado por padrão.
+    try:
+        from services.security import configure_security
+
+        _share_mode = (host == "0.0.0.0")
+        _active_key = configure_security(
+            require_auth=_share_mode,
+            allow_unauthenticated_local=True,
+        )
+        if _active_key and _share_mode:
+            print(f"  API key:       {_active_key}")
+    except Exception as _sec_err:  # pragma: no cover — defensive
+        print(f"  [security] configure failed: {_sec_err}")
 
     try:
         uvicorn.run(api, host=host, port=port)

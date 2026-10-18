@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Check, Loader2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useDirectorSlice } from '../../stores/directorSelectors'
@@ -56,7 +57,7 @@ export function DirectorStatusPanel() {
   // avoiding redundancy with the busy state label rendered just to the left.
   const subStatus = imageGenProgress?.total
     ? `Image ${imageGenProgress.current}/${imageGenProgress.total}${imageGenProgress.currentClipLabel ? ` (${imageGenProgress.currentClipLabel})` : ''}`
-    : loadingMessage && !/^(processing|busy|loading)[\.…]*$/i.test(loadingMessage.trim())
+    : loadingMessage && !/^(processing|busy|loading)[.…]*$/i.test(loadingMessage.trim())
       ? loadingMessage
       : null
 

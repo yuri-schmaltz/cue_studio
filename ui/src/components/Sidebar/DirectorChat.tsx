@@ -1146,7 +1146,6 @@ export function DirectorChat() {
                         sliderRef={sliderRef}
                         setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
                         loading={loading}
-                        totalClipDuration={totalClipDuration}
                         confirmStructure={confirmStructure}
                         isActive={atStep('structure')}
                         isShortFilm={isShortFilm}
@@ -1433,7 +1432,7 @@ function PathChooser({ onSelect }: { onSelect: (path: ShortFilmPath) => void }) 
 }
 
 function UploadZone({
-  dragOver, setDragOver, handleDrop, handleFile, loading, loadingMessage: _loadingMessage, audioFile, isShortFilm,
+  dragOver, setDragOver, handleDrop, handleFile, loading, audioFile, isShortFilm,
 }: {
   dragOver: boolean
   setDragOver: (v: boolean) => void

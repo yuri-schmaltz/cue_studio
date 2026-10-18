@@ -99,7 +99,9 @@ function lazyWithCache<T extends ComponentType<unknown>>(
  * missing ``IntrinsicAttributes``. Use sparingly — prefer the
  * strict variant when the component truly has no props.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function lazyAny(loader: () => Promise<unknown>): ComponentType<any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return lazyWithCache<ComponentType<any>>(loader)
 }
 

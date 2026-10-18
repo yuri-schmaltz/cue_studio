@@ -491,7 +491,7 @@ export function AnalysisSummary({
 
 export function StructureView({
   plannedClips, energyBias, localBias, setLocalBias, sliderRef, setEnergyBias,
-  loading, totalClipDuration: _totalClipDuration, confirmStructure, isActive, isShortFilm,
+  loading, confirmStructure, isActive, isShortFilm,
 }: {
   plannedClips: ReturnType<typeof useStore.getState>['directorPlannedClips']
   energyBias: number
@@ -500,7 +500,6 @@ export function StructureView({
   sliderRef: React.MutableRefObject<number | null>
   setEnergyBias: (bias: number) => Promise<void>
   loading: boolean
-  totalClipDuration: number
   confirmStructure: () => void
   isActive: boolean
   isShortFilm?: boolean

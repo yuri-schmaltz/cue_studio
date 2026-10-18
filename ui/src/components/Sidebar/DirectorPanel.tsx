@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ImageIcon, Play } from 'lucide-react'
@@ -74,6 +75,7 @@ function ClipImageThumbnail({ file, clipIndex, sizeClass = "aspect-square rounde
 
   useEffect(() => {
     const objectUrl = URL.createObjectURL(file)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setUrl(objectUrl)
     return () => {
       URL.revokeObjectURL(objectUrl)

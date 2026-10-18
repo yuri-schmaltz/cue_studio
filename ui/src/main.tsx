@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { migrateAll } from './lib/legacyKeys'
+import { configureApiTransport } from './api/transport'
+import { getApiKey } from './api/client'
 
 // One-shot v2.1 rebrand migration: rewrites every legacy
 // "maestro-*" / "maestro_*" localStorage, sessionStorage, and
@@ -11,35 +13,16 @@ import { migrateAll } from './lib/legacyKeys'
 // localStorage makes this a no-op on subsequent boots.
 migrateAll()
 
-// Intercept the Tab key globally across the whole interface to disable tab-
-// based focus navigation. Inside text fields (textarea/input), inserts a
-// tab/indent character instead of moving focus.
-window.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (e.key !== 'Tab') return
-
-  const target = e.target as HTMLElement | null
-  const isTextarea = target instanceof HTMLTextAreaElement
-  const isInput = target instanceof HTMLInputElement && ['text', 'search', 'url'].includes(target.type)
-
-  if (isTextarea && !target.readOnly && !target.disabled) {
-    e.preventDefault()
-    const start = target.selectionStart
-    const end = target.selectionEnd
-    const val = target.value
-    target.value = val.substring(0, start) + '  ' + val.substring(end)
-    target.selectionStart = target.selectionEnd = start + 2
-    target.dispatchEvent(new Event('input', { bubbles: true }))
-    return
-  }
-
-  if (isInput && !target.readOnly && !target.disabled) {
-    e.preventDefault()
-    return
-  }
-
-  // Prevent the default Tab focus traversal on buttons, links, tabs and containers
-  e.preventDefault()
-}, true)
+// Feature A01: configure secure API transport (token only to same origin).
+try {
+  configureApiTransport({
+    apiOrigins: [window.location.origin],
+    authHeader: 'Authorization',
+    getToken: () => getApiKey(),
+  })
+} catch {
+  // ignore in non-browser environments
+}
 
 // Mobile browsers require persistent notifications from a service worker;
 // `new Notification()` is desktop-only on several engines, including iOS

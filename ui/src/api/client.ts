@@ -25,26 +25,9 @@ export function setApiKey(token: string | null): void {
   }
 }
 
-// Native fetch monkey-patch scoped to the client to ensure every call
-// transparently receives the Bearer token when configured. The patch only
-// runs in environments with `window` (browser); in Node (unit tests that
-// bundle the store) the runtime fetch stays intact so bundlers can resolve
-// the module.
-if (typeof window !== 'undefined') {
-  const _originalFetch = window.fetch.bind(window)
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const token = getApiKey()
-    if (!token) return _originalFetch(input, init)
-
-    const modifiedInit: RequestInit = { ...(init || {}) }
-    const headers = new Headers(modifiedInit.headers || {})
-    if (!headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
-    modifiedInit.headers = headers
-    return _originalFetch(input, modifiedInit)
-  }
-}
+// Auth token is now applied via ui/src/api/transport.ts (apiFetch), scoped to
+// configured origins only. The global `window.fetch` monkey-patch has been
+// removed (Feature A01) to avoid leaking tokens to third-party origins.
 
 
 export interface ApiModel {

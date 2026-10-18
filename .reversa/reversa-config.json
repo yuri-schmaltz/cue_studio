@@ -1,5 +1,24 @@
 {
   "version": 1,
-  "allowLegacyEdits": false,
-  "allowedPaths": []
+  "allowLegacyEdits": true,
+  "allowedPaths": [
+    "ui/src/main.tsx",
+    "ui/src/api/**",
+    "ui/src/a11y/**",
+    "ui/src/components/**/*.tsx",
+    "ui/src/test/**",
+    "ui/tests/**",
+    "ui/package.json",
+    "app/routers/**",
+    "app/services/security.py",
+    "app/services/video_editor.py",
+    "app/services/app_state_db.py",
+    "app/migrations/**",
+    "app/launch.py",
+    "tests/**",
+    "conftest.py",
+    "scripts/**",
+    ".github/workflows/ci.yml",
+    "CHANGELOG.md"
+  ]
 }

@@ -1,7 +1,4 @@
-/* eslint-disable react-refresh/only-export-components -- shared between the
-   Integrations panel (legacy home) and the Performance panel (canonical
-   home for runtime knobs). Keep the opts lists co-located so both
-   surfaces stay in lockstep when a new provider / model is added. */
+ 
 import { useState } from 'react'
 import { RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 import { ApiKeyField } from './ApiKeyField'
