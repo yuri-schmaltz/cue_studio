@@ -10900,6 +10900,16 @@ try:
 except Exception as _productions_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[productions] router unavailable: %s", _productions_import_err)
 
+# Queue router (/api/v1/queue) — post-restart job classification (done /
+# interrupted / failed / unknown) + idempotent resume. A19; see
+# docs/job-resume.md.
+try:
+    from routers.queue import build_queue_router
+    api.include_router(build_queue_router(fs_root=_projects_root))
+    _mcp_log.info("[queue] router mounted at /api/v1/queue")
+except Exception as _queue_import_err:  # pragma: no cover — defensive
+    _mcp_log.warning("[queue] router unavailable: %s", _queue_import_err)
+
 # Wizard router (/api/v1/wizard/*) — durable per-workspace orchestration
 # with LLM supervisor. Phase C of the HocusPocus migration.
 try:

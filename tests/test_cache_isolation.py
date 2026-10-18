@@ -19,7 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "app") not in sys.path:
     sys.path.insert(0, str(ROOT / "app"))
 
-from services import app_state_db, model_catalog_cache, production_store  # noqa: E402
+# NOTE: import via `app.services.*` (not `services.*`) on purpose — loading
+# the short-name module instances first would make later dual-context
+# resolvers (production_resume, routers) bind to a different class object.
+from app.services import app_state_db, model_catalog_cache, production_store  # noqa: E402
 
 REAL_CACHE_DIR = ROOT / "app" / ".cache"
 

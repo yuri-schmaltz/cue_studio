@@ -7,6 +7,9 @@ import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspaceCoverUrl, submitGeneration, type Workspace } from '../../api/client'
 import { ProjectSetupForm, ProjectSetupSummary } from './ProjectSetupForm'
 import { SkeletonGrid } from '../shared/Skeleton'
+import { AppDialog } from '../shared/AppDialog'
+import { Button } from '../shared/Button'
+import { TextField } from '../shared/TextField'
 
 /**
  * Projects page — one-to-one with workspaces on the backend.
@@ -462,80 +465,80 @@ export function ProjectsPage() {
           })}
         </div>
       </div>
-      {/* New project / Edit setup dialog. Each uses its own
-          contextual content; the modal chrome stays shared so the
-          keyboard escape and Tab trap logic isn't repeated. Delete
-          confirmation is inline on the card (no modal). */}
-      {(creating || editing) && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4" onClick={() => { if (!busy) { setCreating(false); setEditing(null) } }}>
-          <form role="dialog" aria-modal="true" aria-labelledby="project-dialog-title" className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl border border-border bg-bg-secondary p-5 shadow-2xl" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); void (creating ? create() : saveEdit()) }} onKeyDown={e => {
-              if (e.key === 'Escape' && !busy) { setCreating(false); setEditing(null) }
-              if (e.key === 'Tab') {
-                const controls = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('input:not(:disabled), select:not(:disabled), button:not(:disabled)'))
-                const first = controls[0], last = controls[controls.length - 1]
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus() }
-                if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus() }
-              }
-            }}>
+      {/* New project / Edit setup dialog. Chrome (focus, Escape,
+          backdrop, ARIA) comes from the shared <AppDialog>; the form
+          content stays local. Delete confirmation is inline on the
+          card (no modal). */}
+      <AppDialog
+        open={creating || Boolean(editing)}
+        onClose={() => { if (!busy) { setCreating(false); setEditing(null) } }}
+        title={creating ? 'New project' : `Edit ${editing} setup`}
+      >
+        <form onSubmit={e => { e.preventDefault(); void (creating ? create() : saveEdit()) }}>
+          {!creating && editing && (
             <div className="mb-2 flex items-center gap-2">
-              <h2 id="project-dialog-title" className="text-lg font-semibold">
-                {creating ? 'New project' : `Edit ${editing} setup`}
-              </h2>
-              {!creating && editing && (
-                <CoverSquareButton workspaceName={editing} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
-              )}
+              <CoverSquareButton workspaceName={editing} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
             </div>
-            {coverError && <p role="alert" className="mb-2 text-xs text-red-400">{coverError}</p>}
-            {creating ? (
-              <>
-                <div className="flex items-end gap-2">
-                  <label className="block flex-1 min-w-0 text-xs text-text-secondary">Project name<input autoFocus required value={name} onChange={e => setName(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-bg-primary px-3 py-2.5 text-sm text-text-primary" placeholder="my-new-film" /></label>
-                  <CoverSquareButton workspaceName={null} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
+          )}
+          {coverError && <p role="alert" className="mb-2 text-xs text-red-400">{coverError}</p>}
+          {creating ? (
+            <>
+              <div className="flex items-end gap-2">
+                <div className="flex-1 min-w-0">
+                  <TextField
+                    id="project-name"
+                    label="Project name"
+                    required
+                    autoFocus
+                    value={name}
+                    onChange={setName}
+                    placeholder="my-new-film"
+                  />
                 </div>
-                {coverError && <p role="alert" className="mt-1.5 text-xs text-red-400">{coverError}</p>}
-                <div className="mt-3 grid grid-cols-3 gap-1.5">
-                  <span className="text-xs text-text-secondary col-span-3">Open in</span>
-                  {([
-                    { value: 'director', label: 'Director' },
-                    { value: 'editor', label: 'Editor' },
-                    { value: 'medias', label: 'Media' },
-                  ] as const).map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      disabled={busy !== null}
-                      onClick={() => setDestination(opt.value)}
-                      className={`px-2.5 py-1 rounded-lg border text-xs text-center transition-all ${
-                        destination === opt.value
-                          ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
-                          : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
-                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-4 border-t border-border/40 pt-3">
-                  <ProjectSetupForm value={setup} onChange={setSetup} studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <ProjectSetupForm value={setup} onChange={setSetup} compact studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
-                </div>
-              </>
-            )}
-            {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" disabled={busy !== null} className="shell-secondary-button" onClick={() => { setCreating(false); setEditing(null) }}>Cancel</button>
-              <button disabled={busy !== null || (!creating && !editing) || (creating && !name.trim())} className="shell-primary-button">
-                {busy ? 'Working…' : creating ? 'Create project' : 'Save setup'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+                <CoverSquareButton workspaceName={null} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-1.5">
+                <span className="text-xs text-text-secondary col-span-3">Open in</span>
+                {([
+                  { value: 'director', label: 'Director' },
+                  { value: 'editor', label: 'Editor' },
+                  { value: 'medias', label: 'Media' },
+                ] as const).map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => setDestination(opt.value)}
+                    className={`px-2.5 py-1 rounded-lg border text-xs text-center transition-all ${
+                      destination === opt.value
+                        ? 'border-accent-blue bg-accent-blue/10 text-text-primary'
+                        : 'border-border text-text-muted hover:border-border-light hover:text-text-secondary'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 border-t border-border/40 pt-3">
+                <ProjectSetupForm value={setup} onChange={setSetup} studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <ProjectSetupForm value={setup} onChange={setSetup} compact studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
+              </div>
+            </>
+          )}
+          {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="secondary" disabled={busy !== null} onClick={() => { setCreating(false); setEditing(null) }}>Cancel</Button>
+            <Button type="submit" variant="primary" loading={busy !== null} disabled={!creating && !editing || (creating && !name.trim())}>
+              {creating ? 'Create project' : 'Save setup'}
+            </Button>
+          </div>
+        </form>
+      </AppDialog>
     </div>
   )
 }
