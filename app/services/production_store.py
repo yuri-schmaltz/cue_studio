@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS runs (
     error TEXT,
     stages TEXT NOT NULL DEFAULT '[]',
     payload TEXT NOT NULL,
+    interrupted_at TEXT,
     FOREIGN KEY (production_id) REFERENCES productions(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_runs_production ON runs(production_id);
@@ -190,6 +191,14 @@ class ProductionStore:
     def _ensure_schema(self) -> None:
         with self._lock, self.connect() as conn:
             conn.executescript(_PRODUCTIONS_DDL)
+            # A19: additive column for restart recovery. SQLite has no
+            # "ADD COLUMN IF NOT EXISTS", so probe table_info first —
+            # existing installs get the column via one harmless ALTER.
+            columns = {
+                row[1] for row in conn.execute("PRAGMA table_info(runs)").fetchall()
+            }
+            if "interrupted_at" not in columns:
+                conn.execute("ALTER TABLE runs ADD COLUMN interrupted_at TEXT")
             conn.commit()
 
     # --------------------------------------------------------------- writes
@@ -323,6 +332,86 @@ class ProductionStore:
                 conn.execute("ROLLBACK")
                 raise
         return bool(cursor.rowcount)
+
+    # ------------------------------------------------- restart recovery (A19)
+
+    def find_run(self, job_id: str) -> dict[str, Any] | None:
+        """Return the latest raw run row for a run/production/pipeline id.
+
+        Matches the run id, the production id, or the legacy bridge
+        ``correlations.pipeline_id`` (same lookup order used by
+        :class:`services.production_resume.ProductionResume`), preferring
+        the newest attempt.
+        """
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT * FROM runs
+                WHERE id = ?
+                   OR production_id = ?
+                   OR json_extract(correlations, '$.pipeline_id') = ?
+                ORDER BY attempt DESC, updated_at DESC
+                LIMIT 1
+                """,
+                (job_id, job_id, job_id),
+            ).fetchone()
+        return dict(row) if row is not None else None
+
+    def mark_run_interrupted(self, run_id: str, when: float | None = None) -> bool:
+        """Stamp ``runs.interrupted_at`` for one run (A19, idempotent).
+
+        Never overwrites an existing stamp so repeated boot scans keep the
+        original interruption timestamp. Returns True only when a stamp was
+        actually written; False if the run already carried a stamp.
+        """
+        when = when if when is not None else time.time()
+        with self._lock, self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                already = conn.execute(
+                    "SELECT interrupted_at FROM runs WHERE id = ?", (run_id,)
+                ).fetchone()
+                if already is not None and already[0] is not None:
+                    conn.execute("ROLLBACK")
+                    return False
+                cursor = conn.execute(
+                    """
+                    UPDATE runs SET interrupted_at = COALESCE(interrupted_at, ?)
+                    WHERE id = ?
+                    """,
+                    (when, run_id),
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return bool(cursor.rowcount)
+
+    def mark_all_interrupted(self, when: float | None = None) -> int:
+        """Stamp every non-terminal run as interrupted (A19 boot scan).
+
+        Called once when the queue router is built so a server restart
+        never leaves ``running`` rows looking live. Idempotent: rows that
+        already carry ``interrupted_at`` keep their original timestamp.
+        Returns the number of rows stamped.
+        """
+        with self._lock, self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            try:
+                cursor = conn.execute(
+                    """
+                    UPDATE runs SET interrupted_at = COALESCE(interrupted_at, ?)
+                    WHERE status IN ('running', 'queued', 'held')
+                      AND interrupted_at IS NULL
+                    """,
+                    (when if when is not None else time.time(),),
+                )
+                stamped = int(cursor.rowcount)
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return stamped
 
     # ---------------------------------------------------------------- reads
 
