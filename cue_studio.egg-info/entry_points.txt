@@ -1,3 +1,0 @@
-[console_scripts]
-cue = cli:main
-cue-studio = cli:main
