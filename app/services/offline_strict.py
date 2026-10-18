@@ -115,6 +115,27 @@ def is_offline_strict() -> bool:
     return _os.environ.get("CUE_OFFLINE_STRICT", "").lower() in ("1", "true", "yes")
 
 
+# ---------------------------------------------------------------------------
+# Singleton auditor (usado por system_network router)
+# ---------------------------------------------------------------------------
+
+_auditor_instance: Optional[ConnectionAuditor] = None
+
+
+def get_auditor() -> ConnectionAuditor:
+    """Retorna o singleton ConnectionAuditor (criado na primeira chamada)."""
+    global _auditor_instance
+    if _auditor_instance is None:
+        policy = NetworkPolicy.OFFLINE if is_offline_strict() else NetworkPolicy.OPTIONAL
+        _auditor_instance = ConnectionAuditor(policy=policy)
+    return _auditor_instance
+
+
+def reset_auditor_singleton() -> None:
+    global _auditor_instance
+    _auditor_instance = None
+
+
 def guard_egress(url: str, purpose: str = "") -> None:
     """Bloqueia egress remoto em modo offline-strict.
 
