@@ -32,6 +32,7 @@ BIND_HOST="127.0.0.1"
 SKIP_BUILD=0
 FORCE_RESTART=0
 AUTO_OPEN=1   # open the browser on the default handler unless --no-open
+OFFLINE_STRICT=0
 
 # Parse args
 while [[ $# -gt 0 ]]; do
@@ -52,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     --no-build)    SKIP_BUILD=1; shift ;;
     --force)       FORCE_RESTART=1; shift ;;
     --no-open)     AUTO_OPEN=0; shift ;;
+    --offline-strict) OFFLINE_STRICT=1; shift ;;
     -h|--help)
       sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
       echo "  --force             ignora stale build; sempre reinicia" >&2
@@ -322,8 +324,9 @@ echo "[start] Lançando backend → log: $LOGFILE"
 # tenta caber em 53% (6.3 GB) e falha. 0.5 dá ~6 GB e força o
 # streaming layer-by-layer em vez de tentar carregar tudo.
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+CUE_OFFLINE_STRICT="$OFFLINE_STRICT" \
 SERVER_NAME="$BIND_HOST" SERVER_PORT="$PORT" \
-setsid "$PY" -u launch.py $COMPILE_FLAG --vram-safety-coefficient 0.5 < /dev/null >"$LOGFILE" 2>&1 &
+setsid "$PY" -u launch.py $COMPILE_FLAG --vram-safety-coefficient 0.5 $([ "$OFFLINE_STRICT" = "1" ] && echo "--offline-strict") < /dev/null >"$LOGFILE" 2>&1 &
 BACKEND_PID=$!
 disown "$BACKEND_PID" 2>/dev/null || true
 echo "$BACKEND_PID" > "$PIDFILE"
