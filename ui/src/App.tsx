@@ -1,5 +1,6 @@
 import { Suspense, useEffect } from 'react'
 import { ApplicationHeader } from './components/Shell/ApplicationHeader'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { MainContent } from './components/MainContent/MainContent'
 import { RetakeDialog } from './components/RetakeDialog'
 import { OomRecoveryBanner } from './components/OomRecoveryBanner'
@@ -21,8 +22,13 @@ import {
   StudioPage,
 } from './lib/lazyComponents'
 import { useStore } from './stores/useStore'
+import { useUrlNavigation } from './navigation/useUrlNavigation'
+import { usePolling } from './lib/usePolling'
 
 function App() {
+  // Keep the URL and the store's navigation in lock-step (A09):
+  // deep links restore project + section, Back walks real URLs.
+  useUrlNavigation()
   const loadModels = useStore(s => s.loadModels)
   const loadOutputs = useStore(s => s.loadOutputs)
   const loadWorkspaces = useStore(s => s.loadWorkspaces)
@@ -48,25 +54,29 @@ function App() {
     loadSystemStats()
   }, [loadModels, loadWorkspaces, loadOutputs, loadSystemConfig, loadServicesConfig, loadLlmStatus, loadLlmModels, loadPipelineList, reconnectJobs, loadSystemStats])
 
-  // Poll LLM status to stay in sync with backend auto-load/unload
-  useEffect(() => {
-    const interval = setInterval(loadLlmStatus, 15000)
-    return () => clearInterval(interval)
-  }, [loadLlmStatus])
+  // Poll LLM status to stay in sync with backend auto-load/unload.
+  // Owned by App via usePolling (A17): the interval is cleared on
+  // unmount and paused while the tab is hidden.
+  usePolling(loadLlmStatus, 15000)
 
   return (
     <div className="application-shell">
       <ApplicationHeader />
       <div className="application-content" role="tabpanel" id={`panel-${section}`} aria-labelledby={`tab-${section}`} tabIndex={0}>
         <Suspense fallback={<RouteLoadingShell />}>
-          {section === 'projects' && <ProjectsPage />}
-          {section === 'queue' && <QueuePage />}
-          {section === 'dashboard' && <DirectorDashboard embedded={true} />}
-          {section === 'director' && <DirectorPage />}
-          {section === 'studio' && <StudioPage />}
-          {section === 'editor' && <EditorWorkspace />}
-          {section === 'medias' && <MainContent />}
-          {section === 'configurations' && <SettingsDrawer />}
+          {/* One <ErrorBoundary> per section (A15): a render crash in
+              one screen must not take down the navigation shell or the
+              other sections. Each conditional mount also remounts the
+              boundary on section switches, so errors never leak across
+              routes. */}
+          {section === 'projects' && <ErrorBoundary section="Projects"><ProjectsPage /></ErrorBoundary>}
+          {section === 'queue' && <ErrorBoundary section="Queue"><QueuePage /></ErrorBoundary>}
+          {section === 'dashboard' && <ErrorBoundary section="Dashboard"><DirectorDashboard embedded={true} /></ErrorBoundary>}
+          {section === 'director' && <ErrorBoundary section="Director"><DirectorPage /></ErrorBoundary>}
+          {section === 'studio' && <ErrorBoundary section="Studio"><StudioPage /></ErrorBoundary>}
+          {section === 'editor' && <ErrorBoundary section="Editor"><EditorWorkspace /></ErrorBoundary>}
+          {section === 'medias' && <ErrorBoundary section="Media"><MainContent /></ErrorBoundary>}
+          {section === 'configurations' && <ErrorBoundary section="Configurations"><SettingsDrawer /></ErrorBoundary>}
         </Suspense>
       </div>
       <Suspense fallback={null}>

@@ -15,6 +15,8 @@ import { Button } from './Button'
 export interface ErrorStateProps {
   title?: string
   error?: unknown
+  /** Extra guidance line (e.g. the action suggested for an ApiError). */
+  suggestion?: string
   onRetry?: () => void
   retryLabel?: string
   className?: string
@@ -29,6 +31,7 @@ function messageOf(error: unknown): string {
 export function ErrorState({
   title = 'Something went wrong',
   error,
+  suggestion,
   onRetry,
   retryLabel = 'Try again',
   className = '',
@@ -40,6 +43,9 @@ export function ErrorState({
         <p className="text-sm font-semibold text-text-primary">{title}</p>
         {error !== undefined && (
           <p className="mt-1 text-xs text-text-secondary">{messageOf(error)}</p>
+        )}
+        {suggestion && (
+          <p className="mt-1 text-xs text-text-muted">{suggestion}</p>
         )}
       </div>
       {onRetry && (

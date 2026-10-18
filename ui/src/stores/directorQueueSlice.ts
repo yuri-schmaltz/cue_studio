@@ -25,27 +25,18 @@
  * of `useStore.ts` concerned with model lifecycle, generation, and
  * the workspace shell.
  *
- * Why static imports here
- * -----------------------
- * Other slices import the api client lazily because the client pulls
- * in the bundled `api.ts` (3K LOC) and we want to defer that cost.
- * The Director Queue is only ever used on the Queue page, which is
- * not on the cold-boot path. Using a static import here keeps the
- * test mock surface (`vi.mock('../api/client')`) usable; with
- * dynamic imports inside the slice body, vitest cannot intercept
- * the resolution and the test ends up calling the real network.
+ * Why the queue client lives in `api/queue.ts`
+ * --------------------------------------------
+ * The monolithic `api/client` (3K LOC) still carries the legacy
+ * queue functions; the Director Queue endpoints are served here by
+ * the domain-split client built in A17 on top of the secure
+ * transport. It exposes one plain function per endpoint, so the test
+ * mock surface (`vi.mock('../api/queue')`) works exactly like
+ * before.
  */
 
 import type { StateCreator } from 'zustand'
-import {
-  enqueueDirectorPipeline,
-  fetchDirectorQueue,
-  updateDirectorQueueEntry,
-  deleteDirectorQueueEntry,
-  startDirectorQueue,
-  pauseDirectorQueue,
-  reorderDirectorQueue,
-} from '../api/client'
+import { queueApi } from '../api/queue'
 
 import type { DirectorQueueEntry } from '../types'
 import type { AppState } from './useStore'
@@ -85,7 +76,7 @@ export const createDirectorQueueSlice: StateCreator<
   loadDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      const queue = await fetchDirectorQueue()
+      const queue = await queueApi.fetch()
       set({ directorQueue: queue, directorQueueLoading: false })
     } catch (err) {
       set({ directorQueueLoading: false })
@@ -96,7 +87,7 @@ export const createDirectorQueueSlice: StateCreator<
   addDirectorQueueEntry: async (params: Record<string, unknown>) => {
     set({ directorQueueLoading: true })
     try {
-      await enqueueDirectorPipeline(params)
+      await queueApi.enqueue(params)
       await get().loadDirectorQueue()
     } catch (err) {
       set({ directorQueueLoading: false })
@@ -110,7 +101,7 @@ export const createDirectorQueueSlice: StateCreator<
   ) => {
     set({ directorQueueLoading: true })
     try {
-      await updateDirectorQueueEntry(entryId, patch)
+      await queueApi.update(entryId, patch)
       await get().loadDirectorQueue()
     } catch (err) {
       set({ directorQueueLoading: false })
@@ -121,7 +112,7 @@ export const createDirectorQueueSlice: StateCreator<
   deleteDirectorQueueEntry: async (entryId: string) => {
     set({ directorQueueLoading: true })
     try {
-      await deleteDirectorQueueEntry(entryId)
+      await queueApi.remove(entryId)
       set({
         directorQueueLoading: false,
         directorQueueEditingEntryId: null,
@@ -136,7 +127,7 @@ export const createDirectorQueueSlice: StateCreator<
   startDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      await startDirectorQueue()
+      await queueApi.start()
       set({ directorQueueLoading: false })
     } catch (err) {
       set({ directorQueueLoading: false })
@@ -147,7 +138,7 @@ export const createDirectorQueueSlice: StateCreator<
   pauseDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      await pauseDirectorQueue()
+      await queueApi.pause()
       set({ directorQueueLoading: false })
     } catch (err) {
       set({ directorQueueLoading: false })
@@ -158,7 +149,7 @@ export const createDirectorQueueSlice: StateCreator<
   reorderDirectorQueue: async (entryIds: string[]) => {
     set({ directorQueueLoading: true })
     try {
-      await reorderDirectorQueue(entryIds)
+      await queueApi.reorder(entryIds)
       await get().loadDirectorQueue()
     } catch (err) {
       set({ directorQueueLoading: false })

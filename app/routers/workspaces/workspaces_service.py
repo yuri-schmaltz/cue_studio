@@ -3,9 +3,8 @@
 These nine endpoints were extracted verbatim from ``app/launch.py`` so
 the launch module only *composes* routers. Every launch-internal helper
 is injected through :class:`WorkspaceDeps`, which keeps this package free
-of any ``launch`` import (see the A16 acceptance check:
-``grep -rn "from app.launch import" app/routers/`` is empty) and lets
-tests build the router with fakes.
+of any ``launch`` import (see the A16 acceptance check: no router module
+imports the launch package) and lets tests build the router with fakes.
 
 URLs and behaviour are unchanged — the parsing, status codes, and error
 messages are the same ones the inline handlers used.

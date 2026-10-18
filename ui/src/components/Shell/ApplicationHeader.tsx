@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo, LayoutDashboard } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { useActiveProject } from '../../navigation/useUrlNavigation'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
 import type { AppSection } from '../../types'
 
@@ -65,6 +66,7 @@ export function ApplicationHeader() {
   }, [jobs, isEnhancing, directorQueue?.entries, pipelineId, pipelineStatus])
 
   const select = (id: AppSection) => navigate(id)
+  const activeProject = useActiveProject()
   return (
     <header className="application-header" data-testid="application-header">
       <nav className="application-navigation" aria-label="Main navigation">
@@ -101,6 +103,17 @@ export function ApplicationHeader() {
           })}
         </div>
       </nav>
+      {/* Active project chip — persistent context on every route (A09). */}
+      {activeProject && (
+        <span
+          className="application-header-project"
+          data-testid="active-project-chip"
+          title={`Active project: ${activeProject}`}
+        >
+          <FolderOpen size={13} aria-hidden="true" />
+          <span className="application-header-project-name">{activeProject}</span>
+        </span>
+      )}
     </header>
   )
 }

@@ -960,6 +960,11 @@ input[type="range"]::-webkit-slider-thumb {
 .application-brand { display:none; }
 .application-actions { justify-self:end; display:flex; align-items:center; gap:8px; }
 .application-navigation { min-width:0; width:100%; }
+/* Active project chip pinned to the header's trailing edge (A09) —
+   always visible so the selected project never leaves the screen. */
+.application-header { position:relative; }
+.application-header-project { position:absolute; top:10px; right:16px; display:inline-flex; align-items:center; gap:6px; max-width:32%; padding:4px 10px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-bg-primary); font-size:var(--text-xs); color:var(--color-text-secondary); }
+.application-header-project-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* The tabs row stretches edge-to-edge inside the header. flex:1 1 0 on
    each tab guarantees the 7 sections share the row equally instead of
    clustering at the start. */

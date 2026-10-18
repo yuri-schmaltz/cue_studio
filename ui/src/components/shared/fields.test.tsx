@@ -47,6 +47,13 @@ describe('TextField', () => {
     )
     expect(screen.getByLabelText('Project name')).toHaveAccessibleDescription('Saved')
   })
+
+  it('mirrors autoFocus into data-autofocus for AppDialog initial focus', () => {
+    render(
+      <TextField id="name" label="Project name" value="" onChange={() => {}} autoFocus />,
+    )
+    expect(screen.getByLabelText('Project name')).toHaveAttribute('data-autofocus')
+  })
 })
 
 describe('NumberField', () => {
