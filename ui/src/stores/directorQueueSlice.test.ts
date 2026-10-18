@@ -12,6 +12,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { create } from 'zustand'
 
 import { createDirectorQueueSlice } from './directorQueueSlice'
+import type { DirectorQueueSlice } from './directorQueueSlice'
 
 const apiMocks = vi.hoisted(() => ({
   fetchDirectorQueue: vi.fn(),
@@ -26,8 +27,12 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('../api/client', () => apiMocks)
 
 function createTestStore() {
-  return create<ReturnType<typeof createDirectorQueueSlice>>()(
-    (...a) => createDirectorQueueSlice(...a),
+  // The slice creator is typed against the full `AppState`; for an
+  // isolated slice store we only keep the slice surface, so the
+  // zustand `set`/`get` plumbing is cast down to `never` to satisfy
+  // the creator's parameter types.
+  return create<DirectorQueueSlice>()((set, get, api) =>
+    createDirectorQueueSlice(set as never, get as never, api as never),
   )
 }
 
