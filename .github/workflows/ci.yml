@@ -29,7 +29,15 @@ jobs:
       - name: Install lightweight test dependencies
         run: >-
           python -m pip install
-          "starlette==0.46.1"
+          "starlette==0.52.1"
+          "fastapi==0.141.1"
+          "httpx==0.28.1"
+          "python-multipart==0.0.32"
+          "click==8.5.0"
+          "uvicorn==0.54.0"
+          "pydantic==2.11.10"
+          "psutil==7.2.2"
+          "PyYAML==6.0.3"
           "numpy==2.2.6"
           "opencv-python-headless==4.12.0.88"
           "Pillow==11.3.0"
@@ -98,7 +106,15 @@ jobs:
         # smoke failure here is independent of an install failure in guard.
         run: >-
           python -m pip install
-          "starlette==0.46.1"
+          "starlette==0.52.1"
+          "fastapi==0.141.1"
+          "httpx==0.28.1"
+          "python-multipart==0.0.32"
+          "click==8.5.0"
+          "uvicorn==0.54.0"
+          "pydantic==2.11.10"
+          "psutil==7.2.2"
+          "PyYAML==6.0.3"
           "numpy==2.2.6"
           "opencv-python-headless==4.12.0.88"
           "Pillow==11.3.0"
@@ -159,3 +175,7 @@ jobs:
       - name: UI behavior contracts
         working-directory: ui
         run: npm run test:control && npm run test:store
+
+      - name: UI Vitest suite
+        working-directory: ui
+        run: npm test

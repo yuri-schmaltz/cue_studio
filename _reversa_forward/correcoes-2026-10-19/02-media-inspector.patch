@@ -1,0 +1,25 @@
+--- a/ui/src/components/MainContent/MediaInspector.tsx
++++ b/ui/src/components/MainContent/MediaInspector.tsx
+@@ -244,17 +244,19 @@
+   // Sidecar metadata can arrive after the initial render. Re-fetch here so
+   // the inspector shows the *authoritative* prompt/plan instead of any
+   // embedded in-progress copy.
++  const metadataFileName = file?.name
++  const metadataReady = file?.metadata_ready
+   useEffect(() => {
+-    if (!file || !file.metadata_ready) return
++    if (!metadataFileName || !metadataReady) return
+     if (meta?.source === 'sidecar') return
+     let cancelled = false
+-    fetchOutputMetadata(file.name)
++    fetchOutputMetadata(metadataFileName)
+       .then(next => {
+         if (!cancelled) useStore.setState({ selectedOutputMeta: next })
+       })
+       .catch(() => {})
+     return () => { cancelled = true }
+-  }, [file?.name, file?.metadata_ready, file?.metadata_updated_at, meta?.source])
++  }, [metadataFileName, metadataReady, file?.metadata_updated_at, meta?.source])
+ 
+   // Pause the inline video when the user navigates to a different clip.
+   useEffect(() => {

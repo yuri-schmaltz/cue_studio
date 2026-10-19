@@ -37,6 +37,7 @@ def _stub_save_path(tempdir: str) -> None:
     # module keeps us on the same wgp instance.
     import launch  # noqa: WPS433
     launch.wgp.server_config["save_path"] = tempdir
+    launch.wgp.server_config.setdefault("services", {})["projects_root_path"] = tempdir
 
 
 class ProjectSetupHelpersTests(unittest.TestCase):

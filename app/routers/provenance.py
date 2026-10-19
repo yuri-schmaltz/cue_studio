@@ -29,6 +29,7 @@ from typing import Any, Callable
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 # Dual-context import trick (routers/provenance.py vs app.routers.provenance.py)
 def _resolve(short: str, full: str):
@@ -130,6 +131,9 @@ def build_provenance_router(
             detail=f"Provenance manifest not found for take {take_id!r}",
         )
 
+    def _manifest_root(path: Path) -> Path:
+        return _root() if path.parent.parent.name == "_imports" else path.parent
+
     # ------------------------------------------------------------- read
     @router.get("/api/v1/takes/{take_id}/provenance")
     async def get_provenance(take_id: str) -> dict[str, Any]:
@@ -141,11 +145,11 @@ def build_provenance_router(
     @router.post("/api/v1/takes/{take_id}/provenance/revalidate")
     async def revalidate_provenance(take_id: str) -> dict[str, Any]:
         path, manifest = _resolve_take(take_id)
-        status, issues = validate_manifest(manifest, _root())
+        status, issues = validate_manifest(manifest, _manifest_root(path))
         return {
             "take_id": take_id,
             "manifest_path": str(path),
-            "status": status.value,
+            "status": status,
             "issues": issues,
         }
 
@@ -157,14 +161,15 @@ def build_provenance_router(
     ) -> FileResponse:
         path, manifest = _resolve_take(take_id)
         handle, tmp_name = tempfile.mkstemp(
-            prefix=f"{take_id}_", suffix=".tar.gz",
+            prefix="cue-provenance-", suffix=".tar.gz",
         )
         os.close(handle)
         try:
             export_bundle(
-                manifest, path.parent, tmp_name, include_refs=include_refs,
+                manifest, _manifest_root(path), tmp_name, include_refs=include_refs,
             )
         except Exception as exc:
+            os.unlink(tmp_name)
             raise HTTPException(
                 status_code=500, detail=f"Bundle export failed: {exc}",
             ) from exc
@@ -172,6 +177,7 @@ def build_provenance_router(
             tmp_name,
             media_type="application/gzip",
             filename=f"{take_id}.provenance.tar.gz",
+            background=BackgroundTask(os.unlink, tmp_name),
         )
 
     @router.post("/api/v1/takes/{take_id}/provenance/bundle")
@@ -179,11 +185,12 @@ def build_provenance_router(
         root = _root()
         root.mkdir(parents=True, exist_ok=True)
         handle, tmp_name = tempfile.mkstemp(
-            prefix=f"{take_id}_", suffix=".tar.gz", dir=str(root),
+            prefix="cue-provenance-", suffix=".tar.gz", dir=str(root),
         )
         try:
             with os.fdopen(handle, "wb") as stream:
-                stream.write(await file.read())
+                while chunk := await file.read(1024 * 1024):
+                    stream.write(chunk)
             manifest, status, issues = import_bundle(tmp_name, root)
         except (ProvenanceValidationError, tarfile.TarError, OSError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -196,7 +203,7 @@ def build_provenance_router(
         return {
             "imported_take_id": manifest.take_id,
             "requested_take_id": take_id,
-            "status": status.value,
+            "status": status,
             "issues": issues,
         }
 

@@ -30,9 +30,9 @@ VALID_ROLES = (
 )
 VALID_QUANTIZATIONS = (
     "fp8", "fp16", "bf16", "int8", "int4",
-    "gguf_q4", "gguf_q2", "nvfp4_awq", "quanto_int8",
+    "gguf_q4", "gguf_q2", "nvfp4_awq", "quanto_int8", "unknown",
 )
-VALID_PRECISIONS = ("full", "pruned", "distilled")
+VALID_PRECISIONS = ("full", "pruned", "distilled", "unknown")
 VALID_OS = ("windows", "linux", "macos", "other")
 VALID_REDACTION = ("none", "strip_personal", "hash_paths")
 VALID_STATUS = ("verified", "needs_review", "incomplete", "corrupt")
@@ -236,7 +236,8 @@ def validate_against_disk(m: ProvenanceManifest, project_dir: Path) -> tuple[str
     issues: list[str] = []
 
     def _check(asset: AssetRef, kind: str) -> None:
-        target = project_dir / asset.relative_path
+        from .provenance_io import contained_file
+        target = contained_file(Path(project_dir), asset.relative_path)
         if not target.exists():
             issues.append(f"{kind} ausente: {asset.asset_id} ({asset.relative_path})")
             return
@@ -252,7 +253,8 @@ def validate_against_disk(m: ProvenanceManifest, project_dir: Path) -> tuple[str
         _check(asset, "áudio")
 
     for sidecar_path, expected_sha in m.sidecars.items():
-        target = project_dir / sidecar_path
+        from .provenance_io import contained_file
+        target = contained_file(Path(project_dir), sidecar_path)
         if not target.exists():
             issues.append(f"sidecar ausente: {sidecar_path}")
             continue
@@ -265,5 +267,14 @@ def validate_against_disk(m: ProvenanceManifest, project_dir: Path) -> tuple[str
     if any("adulterado" in i for i in issues):
         return "corrupt", issues
     if not issues:
+        if m.adapter_id == "legacy_unknown" or m.model.sha256 == "0" * 64:
+            return "needs_review", ["Legacy model/runtime provenance was not recorded"]
         return "verified", []
     return "needs_review", issues
+
+
+# File and bundle transport is independent of the manifest schema.
+from .provenance_io import (
+    PROVENANCE_SUFFIX, emit_provenance, export_bundle, import_bundle, load_manifest,
+    manifest_path_for, retrofill_manifest, validate_manifest,
+)

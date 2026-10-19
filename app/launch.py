@@ -52,6 +52,9 @@ if "--offline-strict" in _launch_args:
 
 # Build argv for wgp: keep flags it understands, always include --multiple-images
 _wgp_argv = ["wgp.py", "--multiple-images"]
+# Explicit config isolation for validation instances and subprocess tests.
+if os.environ.get("CUE_CONFIG_DIR"):
+    _wgp_argv.extend(["--config", os.environ["CUE_CONFIG_DIR"]])
 if "--compile" in _launch_args:
     _wgp_argv.append("--compile")
 sys.argv = _wgp_argv
@@ -1210,324 +1213,10 @@ def list_models():
     return {"families": families, "models": models}
 
 
-_MODEL_VISIBILITY_CONFIG_KEY = "cue_studio_model_visibility"
-_MODEL_VISIBILITY_WRITE_LOCK = threading.RLock()
-_H3_WINDOW_OVERRIDES_CONFIG_KEY = "cue_studio_h3_window_overrides"
-_STUDIO_PREFERENCES_CONFIG_KEY = "cue_studio_studio_preferences"
+# Studio preferences are independent of generation and model loading.
+from routers.studio_preferences import build_studio_preferences_router
 
-
-def _normalize_studio_model_map(values, *, field_name):
-    if values is None:
-        return {}
-    if not isinstance(values, dict):
-        raise ValueError(f"{field_name} must be an object.")
-    normalized = {}
-    for raw_key, raw_model in values.items():
-        if not isinstance(raw_key, str) or not isinstance(raw_model, str):
-            raise ValueError(f"{field_name} entries must be strings.")
-        key = raw_key.strip()
-        model = raw_model.strip()
-        if not key or len(key) > 50 or len(model) > 200:
-            raise ValueError(f"A {field_name} entry is invalid.")
-        if model:
-            normalized[key] = model
-    if len(normalized) > 20:
-        raise ValueError(f"Too many {field_name} entries.")
-    return normalized
-
-
-def _normalize_studio_preferences(values, current=None):
-    """Validate the small, non-project Studio state that survives restarts.
-
-    Prompt text, seeds, LoRAs, uploaded paths, and other job inputs are
-    intentionally excluded. This record only remembers navigation/model
-    choices and the two opt-in H3 acceleration switches.
-    """
-    if values is None:
-        values = {}
-    if not isinstance(values, dict):
-        raise ValueError("Studio preferences must be an object.")
-    normalized = dict(current or {})
-
-    choices = {
-        "generation_mode": {"image", "video", "audio", "avatar"},
-        "studio_video_workflow": {
-            "frames", "references", "extend", "blend", "retake",
-            "prompt_edit", "outpaint", "repaint", "recast", "upscale",
-            "film_grain",
-        },
-        "studio_image_workflow": {
-            "generate", "inpaint", "outpaint", "upscale",
-        },
-        "audio_sub_mode": {"speech", "music", "sfx", "mixer", "revoice"},
-    }
-    for key, allowed in choices.items():
-        if key not in values:
-            continue
-        value = values.get(key)
-        if not isinstance(value, str) or value not in allowed:
-            raise ValueError(f"{key} is invalid.")
-        normalized[key] = value
-
-    for key in ("selected_model_per_mode", "selected_model_per_audio_sub_mode"):
-        if key in values:
-            normalized[key] = _normalize_studio_model_map(
-                values.get(key), field_name=key,
-            )
-
-    if "h3_optimizations" in values:
-        raw_h3 = values.get("h3_optimizations")
-        if not isinstance(raw_h3, dict):
-            raise ValueError("h3_optimizations must be an object.")
-        override_attention = raw_h3.get("override_attention", "")
-        cache_type = raw_h3.get("skip_steps_cache_type", "")
-        if override_attention not in ("", "sol", "sla", "sdpa"):
-            raise ValueError("override_attention is invalid.")
-        if cache_type not in ("", "first_block"):
-            raise ValueError("skip_steps_cache_type is invalid.")
-        h3 = {
-            "override_attention": override_attention,
-            "skip_steps_cache_type": cache_type,
-        }
-        if "skip_steps_multiplier" in raw_h3:
-            try:
-                multiplier = float(raw_h3["skip_steps_multiplier"])
-            except (TypeError, ValueError) as error:
-                raise ValueError("skip_steps_multiplier must be numeric.") from error
-            if not 0 <= multiplier <= 1:
-                raise ValueError("skip_steps_multiplier must be between 0 and 1.")
-            h3["skip_steps_multiplier"] = multiplier
-        if "skip_steps_start_step_perc" in raw_h3:
-            try:
-                warmup = float(raw_h3["skip_steps_start_step_perc"])
-            except (TypeError, ValueError) as error:
-                raise ValueError("skip_steps_start_step_perc must be numeric.") from error
-            if not 0 <= warmup <= 100:
-                raise ValueError("skip_steps_start_step_perc must be between 0 and 100.")
-            h3["skip_steps_start_step_perc"] = warmup
-        normalized["h3_optimizations"] = h3
-
-    return normalized
-
-
-def _studio_preferences_response():
-    raw = wgp.server_config.get(_STUDIO_PREFERENCES_CONFIG_KEY)
-    configured = isinstance(raw, dict) and bool(raw)
-    try:
-        preferences = _normalize_studio_preferences(raw or {})
-    except ValueError:
-        configured = False
-        preferences = {}
-    return {"configured": configured, **preferences}
-
-
-def _persist_model_visibility_config():
-    """Backward-compatible wrapper for the original visibility writer."""
-    _persist_server_config()
-
-
-def _normalize_h3_window_overrides(values):
-    if values is None:
-        return {}
-    if not isinstance(values, dict):
-        raise ValueError("H3 window overrides must be an object.")
-    normalized = {}
-    for raw_key, raw_frames in values.items():
-        if not isinstance(raw_key, str):
-            raise ValueError("H3 window override keys must be strings.")
-        key = raw_key.strip()
-        if not key or len(key) > 300 or "::" not in key:
-            raise ValueError("An H3 window override key is invalid.")
-        try:
-            frames = int(raw_frames)
-        except (TypeError, ValueError) as error:
-            raise ValueError("H3 window override values must be integers.") from error
-        if frames < 1 or frames > 345:
-            raise ValueError("H3 window override values must be between 1 and 345 frames.")
-        normalized[key] = frames
-    if len(normalized) > 500:
-        raise ValueError("Too many H3 window overrides.")
-    return normalized
-
-
-def _h3_window_overrides_response():
-    raw = wgp.server_config.get(_H3_WINDOW_OVERRIDES_CONFIG_KEY, {})
-    try:
-        overrides = _normalize_h3_window_overrides(raw)
-    except ValueError:
-        overrides = {}
-    return {"overrides": overrides}
-
-
-def _normalize_model_visibility_ids(values):
-    """Return a stable, de-duplicated list of persisted model identifiers."""
-    if not isinstance(values, list):
-        raise ValueError("Model visibility must be a list.")
-    normalized = []
-    seen = set()
-    for value in values:
-        if not isinstance(value, str):
-            raise ValueError("Model visibility entries must be strings.")
-        model_type = value.strip()
-        if not model_type or model_type in seen:
-            continue
-        if len(model_type) > 200:
-            raise ValueError("A model identifier is too long.")
-        seen.add(model_type)
-        normalized.append(model_type)
-    if len(normalized) > 5000:
-        raise ValueError("Too many model visibility entries.")
-    return normalized
-
-
-def _model_visibility_response():
-    raw = wgp.server_config.get(_MODEL_VISIBILITY_CONFIG_KEY)
-    configured = isinstance(raw, dict) and isinstance(
-        raw.get("enabled_models"), list,
-    )
-    if not configured:
-        return {
-            "configured": False,
-            "enabled_models": [],
-            "initialized_mature_models": [],
-            "defaults_version": 0,
-        }
-    try:
-        enabled_models = _normalize_model_visibility_ids(
-            raw.get("enabled_models", []),
-        )
-        initialized_mature_models = _normalize_model_visibility_ids(
-            raw.get("initialized_mature_models", []),
-        )
-    except ValueError:
-        return {
-            "configured": False,
-            "enabled_models": [],
-            "initialized_mature_models": [],
-            "defaults_version": 0,
-        }
-    try:
-        defaults_version = max(0, int(raw.get("defaults_version", 0)))
-    except (TypeError, ValueError):
-        defaults_version = 0
-    return {
-        "configured": True,
-        "enabled_models": enabled_models,
-        "initialized_mature_models": initialized_mature_models,
-        "defaults_version": defaults_version,
-    }
-
-
-def _persist_server_config():
-    """Atomically persist Cue Studio UI preferences across changing ports."""
-    config_path = os.path.abspath(wgp.server_config_filename)
-    temp_path = (
-        f"{config_path}.{os.getpid()}.{threading.get_ident()}.tmp"
-    )
-    with _MODEL_VISIBILITY_WRITE_LOCK:
-        try:
-            with open(temp_path, "w", encoding="utf-8") as handle:
-                json.dump(wgp.server_config, handle, indent=4)
-            os.replace(temp_path, config_path)
-        finally:
-            if os.path.isfile(temp_path):
-                try:
-                    os.remove(temp_path)
-                except OSError:
-                    pass
-
-
-@api.get("/api/v1/model-visibility")
-def get_model_visibility():
-    """Return the server-persisted model selector whitelist."""
-    return _model_visibility_response()
-
-
-@api.put("/api/v1/model-visibility")
-async def update_model_visibility(request: Request):
-    """Persist model visibility independently of the browser's origin."""
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise HTTPException(
-            status_code=400,
-            detail="Model visibility payload must be an object.",
-        )
-    try:
-        enabled_models = _normalize_model_visibility_ids(
-            body.get("enabled_models"),
-        )
-        initialized_mature_models = _normalize_model_visibility_ids(
-            body.get("initialized_mature_models", []),
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    try:
-        defaults_version = max(0, int(body.get("defaults_version", 0)))
-    except (TypeError, ValueError) as error:
-        raise HTTPException(
-            status_code=400,
-            detail="defaults_version must be an integer.",
-        ) from error
-
-    with _MODEL_VISIBILITY_WRITE_LOCK:
-        wgp.server_config[_MODEL_VISIBILITY_CONFIG_KEY] = {
-            "enabled_models": enabled_models,
-            "initialized_mature_models": initialized_mature_models,
-            "defaults_version": defaults_version,
-        }
-        _persist_model_visibility_config()
-        return _model_visibility_response()
-
-
-@api.get("/api/v1/h3-window-overrides")
-def get_h3_window_overrides():
-    """Return durable H3 model/resolution native-pass preferences."""
-    return _h3_window_overrides_response()
-
-
-@api.put("/api/v1/h3-window-overrides")
-async def update_h3_window_overrides(request: Request):
-    """Persist H3 native-pass preferences independently of browser origin."""
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise HTTPException(
-            status_code=400,
-            detail="H3 window override payload must be an object.",
-        )
-    try:
-        overrides = _normalize_h3_window_overrides(body.get("overrides"))
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    with _MODEL_VISIBILITY_WRITE_LOCK:
-        wgp.server_config[_H3_WINDOW_OVERRIDES_CONFIG_KEY] = overrides
-        _persist_server_config()
-        return _h3_window_overrides_response()
-
-
-@api.get("/api/v1/studio-preferences")
-def get_studio_preferences():
-    """Return workflow preferences that should survive Cue Studio restarts."""
-    return _studio_preferences_response()
-
-
-@api.put("/api/v1/studio-preferences")
-async def update_studio_preferences(request: Request):
-    """Merge and persist non-project Studio preferences across web origins."""
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise HTTPException(
-            status_code=400,
-            detail="Studio preferences payload must be an object.",
-        )
-    current = wgp.server_config.get(_STUDIO_PREFERENCES_CONFIG_KEY, {})
-    try:
-        preferences = _normalize_studio_preferences(body, current=current)
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    with _MODEL_VISIBILITY_WRITE_LOCK:
-        wgp.server_config[_STUDIO_PREFERENCES_CONFIG_KEY] = preferences
-        _persist_server_config()
-        return _studio_preferences_response()
+api.include_router(build_studio_preferences_router(wgp))
 
 
 @api.get("/api/v1/models/{model_type}/debug")
@@ -10777,19 +10466,11 @@ except Exception as _provenance_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[provenance] router unavailable: %s", _provenance_import_err)
 
 # CapabilityMatrix router (/api/v1/capabilities) — capacidades declaradas por
-# modelo/runtime/modo, cruzadas com o catálogo real instalado (A34 / R04).
+# modelo/runtime/modo declaradas na matriz (A34 / R04).
 try:
     from routers.capabilities import build_capabilities_router
 
-    def _capability_models_fetcher():
-        return [
-            {"model_type": mt}
-            for mt in getattr(wgp, "displayed_model_types", []) or []
-        ]
-
-    api.include_router(
-        build_capabilities_router(models_fetcher=_capability_models_fetcher)
-    )
+    api.include_router(build_capabilities_router())
     _mcp_log.info("[capabilities] router mounted at /api/v1/capabilities")
 except Exception as _capabilities_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[capabilities] router unavailable: %s", _capabilities_import_err)
@@ -23830,7 +23511,6 @@ def _run_sfx_generation(job: dict, raw_params: dict, start_time: float):
         os.makedirs(out_dir, exist_ok=True)
         wgp.save_path = out_dir
         print(f"[SFX {job.get('job_id', '')}] save_path locked to: {out_dir}")
-        before = set(os.listdir(out_dir)) if os.path.isdir(out_dir) else set()
 
         variant = raw_params.get("_mmaudio_variant")
         prompt = raw_params.get("MMAudio_prompt", "") or raw_params.get("prompt", "")
@@ -23847,8 +23527,7 @@ def _run_sfx_generation(job: dict, raw_params: dict, start_time: float):
                 video_path = candidate
 
         if video_path and not os.path.isfile(video_path):
-            print(f"[SFX] Warning: video_guide not found: {video_path}, falling back to text-only")
-            video_path = None
+            raise ValueError(f"SFX video_guide not found: {video_path}")
 
         # If video provided, derive duration from it
         if video_path:
@@ -23860,7 +23539,7 @@ def _run_sfx_generation(job: dict, raw_params: dict, start_time: float):
                 del vr
                 print(f"[SFX] Video: {video_path} ({duration:.1f}s)")
             except Exception as e:
-                print(f"[SFX] Could not read video duration: {e}")
+                raise ValueError(f"Cannot read SFX video_guide: {e}") from e
         else:
             # MMAudio generates max ~20s per pass (VRAM and quality constraints)
             MAX_SFX_DURATION = 20.0
@@ -23930,11 +23609,12 @@ def _run_sfx_generation(job: dict, raw_params: dict, start_time: float):
         )
         # Publish files even when cancellation arrived during MMAudio's
         # non-cooperative call; terminal status/message remain untouched.
-        after = set(os.listdir(out_dir)) if os.path.isdir(out_dir) else set()
-        new_files = sorted(after - before)
+        new_files = collect_job_outputs({"artifact_list": [output_path]}, out_dir)
         record_job_outputs(job, new_files)
         if is_cancel_requested(job):
             return False
+        if not new_files or os.path.getsize(output_path) == 0:
+            raise RuntimeError("MMAudio produced no media artifact")
 
         # Save sidecar metadata
         elapsed = time.time() - start_time
@@ -26740,7 +26420,11 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
             if skipped > 0:
                 summary += f" ({skipped} skipped)"
             print(summary)
-            success = not cancelled and completed == (total_tasks - skipped)
+            success = not cancelled and total_tasks > 0 and completed == total_tasks
+            failure_reason = (
+                f"Task validation failed for {skipped}/{total_tasks} tasks"
+                if skipped else "Generation failed"
+            )
 
             # Clean up continuation temp files
             if os.path.isdir(out_dir):
@@ -26787,6 +26471,10 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
 
             if cancelled or is_cancel_requested(job):
                 return False
+
+            if success and not new_files:
+                success = False
+                failure_reason = "Generation produced no media artifacts"
 
             if os.path.isdir(out_dir):
                 # Post-generation outpaint cleanup: combines two operations
@@ -27331,7 +27019,8 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
                 step=0,
                 total_steps=0,
                 phase="",
-                message="Done" if success else "Generation failed",
+                message="Done" if success else failure_reason,
+                error=None if success else (job.get("error") or failure_reason),
             )
             return success and job.get("status") == "completed"
 

@@ -10,6 +10,8 @@ Supports two planning backends:
 Controlled by feature flags in params or server config.
 """
 
+from .director_inputs import validate_director_inputs
+
 import os
 import copy
 import re
@@ -4858,6 +4860,7 @@ def start_pipeline(params: dict) -> str:
     # workspace; copying them here makes this revision self-contained.
     params.setdefault("_director_project_id", pid)
     _materialize_director_assets(params, out_dir, pid)
+    validate_director_inputs(params)
     prepared_plans = params.get("prepared_clip_plans")
     if not isinstance(prepared_plans, list):
         prepared_plans = []
@@ -5307,6 +5310,11 @@ def _resume_pipeline_reserved(pid: str, out_dir: str) -> tuple[bool, str]:
             "resumed — start a new generation."
         )
 
+    try:
+        validate_director_inputs(params)
+    except ValueError as exc:
+        return False, str(exc)
+
     params["_director_shot_image_policy"] = (
         _saved_pipeline_shot_image_policy(data)
     )
@@ -5495,6 +5503,7 @@ def _run_pipeline(pid: str, resume: bool = False):
             if not p or p.get("status") == "cancelled":
                 return
         params = p["params"]
+        validate_director_inputs(params)
         pipeline_out_dir = p.get("out_dir") or _wgp.save_path
         pipeline_workspace = p.get("workspace")
         shot_image_policy = _director_effective_shot_image_policy(params)

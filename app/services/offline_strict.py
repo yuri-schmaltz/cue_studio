@@ -9,7 +9,8 @@ Fonte: protótipo ``_reversa_forward/plano-2026-10-04/prototypes/a31_offline_str
 
 from __future__ import annotations
 
-import socket
+from ipaddress import ip_address
+from urllib.parse import urlsplit
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -48,7 +49,13 @@ class ConnectionAuditor:
         self.attempts: list[ConnectionAttempt] = []
 
     def is_localhost(self, host: str) -> bool:
-        return host in LOCALHOST_PATTERNS or host.startswith("127.")
+        host = host.lower().strip("[]")
+        if host in ("localhost", "0.0.0.0"):
+            return True
+        try:
+            return ip_address(host).is_loopback
+        except ValueError:
+            return False
 
     def attempt(self, host: str, port: int, protocol: str = "tcp") -> ConnectionAttempt:
         ts = datetime.now(timezone.utc).isoformat()
@@ -128,6 +135,9 @@ def get_auditor() -> ConnectionAuditor:
     if _auditor_instance is None:
         policy = NetworkPolicy.OFFLINE if is_offline_strict() else NetworkPolicy.OPTIONAL
         _auditor_instance = ConnectionAuditor(policy=policy)
+    _auditor_instance.policy = (
+        NetworkPolicy.OFFLINE if is_offline_strict() else NetworkPolicy.OPTIONAL
+    )
     return _auditor_instance
 
 
@@ -136,25 +146,37 @@ def reset_auditor_singleton() -> None:
     _auditor_instance = None
 
 
-def guard_egress(url: str, purpose: str = "") -> None:
-    """Bloqueia egress remoto em modo offline-strict.
+def configure_offline_strict(enabled: bool) -> None:
+    """Configure the process policy, preserving the connection audit log."""
+    _os.environ["CUE_OFFLINE_STRICT"] = "1" if enabled else "0"
+    get_auditor()  # synchronize an already-created auditor with the environment
 
-    Lança RuntimeError se a URL não for localhost e o modo offline-strict
-    estiver ativo. No-op caso contrário.
-    """
+
+def _destination(url: str) -> tuple[str, int]:
+    parsed = urlsplit(url if "://" in url else "//" + url)
+    return parsed.hostname or "", parsed.port or 0
+
+
+def record_blocked(url: str, reason: str) -> ConnectionAttempt:
+    """Record an egress operation rejected before opening a connection."""
+    host, port = _destination(url)
+    attempt = ConnectionAttempt(
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        destination=f"{host}:{port}",
+        protocol="http",
+        blocked=True,
+        reason=reason,
+    )
+    get_auditor().attempts.append(attempt)
+    return attempt
+
+
+def guard_egress(url: str, purpose: str = "") -> None:
+    """Reject remote HTTP requests in strict mode and retain the audit entry."""
     if not is_offline_strict():
         return
-    # Extrair host da URL
-    host = url
-    if "://" in host:
-        host = host.split("://", 1)[1]
-    if "/" in host:
-        host = host.split("/", 1)[0]
-    if ":" in host:
-        host = host.rsplit(":", 1)[0]
-    host = host.strip("[]")
-    auditor = ConnectionAuditor(NetworkPolicy.OFFLINE)
-    att = auditor.attempt(host, 0, protocol="http")
+    host, port = _destination(url)
+    att = get_auditor().attempt(host, port, protocol="http")
     if att.blocked:
         raise RuntimeError(
             f"offline-strict bloqueia egress remoto ({purpose}): {url}"

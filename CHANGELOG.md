@@ -1,5 +1,16 @@
 # Cue Studio Changelog
 
+## Em desenvolvimento — 19/10/2026
+
+- Corrigida a ativação offline da CLI, a auditoria persistente do bloqueio HTTP e a função usada pelo Web Push.
+- Extraídas as rotas de preferências do Studio e as regras de apresentação de atividade do Director; contratos preservados.
+- Junção de vídeos publica somente após codificação e validação em arquivo temporário; falha ou cancelamento preservam o destino anterior. Referências removidas impedem retomada antes do despacho.
+- F2 agora usa jobs reais do Studio, sem substituições sintéticas, e separa medição técnica de revisão artística vinculada ao hash do master. F3 cobre falhas de processo, cancelamento concorrente e replay de retake.
+- Corrigida a montagem das rotas de capacidades e proveniência; bundles preservam caminhos relativos e rejeitam travessia. Metadados legados ou checkpoint desconhecido permanecem `needs_review`.
+- Lockfile preserva extras e hashes de requirements, valida faixas de versão e marcadores, e rejeita declarações não suportadas sem descartá-las silenciosamente.
+- Testes isolam também `wgp_config.json`. CI inclui Vitest e dependências HTTP/CLI explícitas. Documentação histórica foi identificada como tal.
+
+
 ## v2.5.2 — 2026-09-29 (housekeeping — UI bulk actions + fixture isolation)
 
 - **Media gallery bulk actions** (`ui/src/components/MainContent/MainContent.tsx`,

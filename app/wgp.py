@@ -6619,6 +6619,27 @@ def concatenate_multi_clip_videos(
     abort_callback=None, pad_audio=False, audio_duration_sec=None,
     video_duration_sec=None,
 ):
+    """Join into a temporary file and publish only a validated complete video."""
+    from services.media_publication import publish_video
+    try:
+        return publish_video(
+            output_path,
+            lambda temporary: _concatenate_multi_clip_videos_unpublished(
+                clip_paths, temporary, audio_path, audio_start_sec,
+                abort_callback, pad_audio, audio_duration_sec, video_duration_sec,
+            ),
+            cancelled=abort_callback,
+        )
+    except Exception as exc:
+        print(f"[Multi-Clip] Video was not published: {exc}")
+        return False
+
+
+def _concatenate_multi_clip_videos_unpublished(
+    clip_paths, output_path, audio_path=None, audio_start_sec=0.0,
+    abort_callback=None, pad_audio=False, audio_duration_sec=None,
+    video_duration_sec=None,
+):
     """Concatenate video clips into one video, optionally adding a full audio track.
 
     Uses ffmpeg's concat FILTER (not demuxer) which re-encodes all clips to a
@@ -6654,8 +6675,8 @@ def concatenate_multi_clip_videos(
         else:
             valid_paths.append(abs_p)
 
-    if not valid_paths:
-        print("[Multi-Clip] No valid clip files found")
+    if len(valid_paths) != len(clip_paths):
+        print("[Multi-Clip] Missing or empty input clips; complete output was not published")
         return False
 
     n = len(valid_paths)
@@ -10828,7 +10849,7 @@ def process_tasks_cli(queue, state):
     if skipped > 0:
         summary += f" ({skipped} skipped)"
     print(summary)
-    return completed == (total_tasks - skipped)
+    return total_tasks > 0 and completed == total_tasks
 
 
 def get_generation_status(prompt_no, prompts_max, repeat_no, repeat_max, window_no, total_windows):

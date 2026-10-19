@@ -18,6 +18,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from packaging.requirements import Requirement as ParsedRequirement
+from packaging.utils import canonicalize_name
+
 
 @dataclass(frozen=True)
 class Requirement:
@@ -27,6 +30,7 @@ class Requirement:
     markers: tuple[str, ...] = ()
     extras: tuple[str, ...] = ()
     index_url: Optional[str] = None
+    url: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -59,6 +63,7 @@ class DriftReport:
     missing: tuple[str, ...] = ()
     version_drift: tuple[tuple[str, str, str], ...] = ()
     hash_drift: tuple[tuple[str, str, str], ...] = ()
+    source_drift: tuple[tuple[str, str, str], ...] = ()
     extras: tuple[str, ...] = ()
     source_manifest_stale: bool = False
     ok: bool = True
@@ -95,44 +100,31 @@ def _normalize_version(v: str) -> tuple[int, ...]:
 
 
 def parse_requirements(text: str) -> list[Requirement]:
-    """Parser determinístico de requirements.txt."""
-    import re
+    """Parse PEP 508 requirements and pip hash continuations without resolving.
+
+    Invalid or unsupported dependency declarations fail instead of silently
+    disappearing from an apparent lock. Index options are lock metadata.
+    """
     reqs = []
-    for line in text.splitlines():
-        line = line.strip()
+    logical = re.sub(r"\\\r?\n\s*", " ", text)
+    for line in logical.splitlines():
+        line = re.split(r"\s+#", line, maxsplit=1)[0].strip()
         if not line or line.startswith("#"):
             continue
-        if line.startswith("--"):
+        if line.startswith(("--index-url ", "--extra-index-url ", "--trusted-host ")):
             continue
-        # Parse name + version spec
-        m = re.match(r"^([A-Za-z0-9_.-]+)(.*)$", line)
-        if not m:
-            continue
-        name = m.group(1)
-        rest = m.group(2).strip()
-        # Extract markers (after ;)
-        markers = ()
-        if ";" in rest:
-            rest, marker = rest.split(";", 1)
-            markers = (marker.strip(),)
-            rest = rest.strip()
-        # Extract extras
-        extras = ()
-        if "[" in name:
-            name, extras_str = name.split("[", 1)
-            extras_str = extras_str.rstrip("]")
-            extras = tuple(e.strip() for e in extras_str.split(","))
-        # version spec
-        version_spec = rest.strip() if rest else ""
-        # hashes
-        hashes = ()
+        hashes = tuple(re.findall(r"--hash[= ](sha256:[0-9a-fA-F]{64})(?=\s|$)", line))
+        declaration = re.sub(r"\s+--hash[= ]\S+", "", line).strip()
+        if line.count("--hash") != len(hashes):
+            raise ValueError("Only complete SHA-256 requirement hashes are supported")
+        parsed = ParsedRequirement(declaration)
         reqs.append(Requirement(
-            name=name,
-            version_spec=version_spec,
-            hashes=hashes,
-            markers=markers,
-            extras=extras,
-            index_url=None,
+            name=canonicalize_name(parsed.name),
+            version_spec=str(parsed.specifier),
+            hashes=tuple(h.lower() for h in hashes),
+            markers=(str(parsed.marker),) if parsed.marker else (),
+            extras=tuple(sorted(parsed.extras)),
+            url=parsed.url,
         ))
     return reqs
 
@@ -158,30 +150,58 @@ def generate_lock(
     )
 
 
-def validate_lock(lock: Lock, observed: dict) -> DriftReport:
-    """Compara lock com observações (installed packages)."""
-    missing = []
-    version_drift = []
-    hash_drift = []
-    extras = []
+def validate_lock(
+    lock: Lock, observed: dict, *, environment: Optional[dict] = None,
+    source_manifest: Optional[SourceManifest] = None,
+    lock_path: Optional[Path] = None, requirements_path: Optional[Path] = None,
+    pyproject_path: Optional[Path] = None,
+) -> DriftReport:
+    """Check installed versions and recorded artifact hashes, without resolving.
+
+    Hash observations must come from artifact verification, not pip's installed
+    version string. A missing hash cannot prove a hash-pinned requirement.
+    """
+    from packaging.markers import Marker
+    from packaging.specifiers import SpecifierSet
+
+    missing, version_drift, hash_drift, source_drift = [], [], [], []
+    expected_names = set()
+    normalized = {canonicalize_name(name): value for name, value in observed.items()}
     for req in lock.requirements:
-        if req.name not in observed:
+        if req.markers and not all(Marker(marker).evaluate(environment) for marker in req.markers):
+            continue
+        name = canonicalize_name(req.name)
+        expected_names.add(name)
+        if name not in normalized:
             missing.append(req.name)
             continue
-        obs_version = observed[req.name].get("version", "")
-        if req.version_spec and obs_version:
-            # Simplificado: compara versão exata se == presente
-            spec = req.version_spec.strip()
-            if spec.startswith("==") and obs_version != spec[2:]:
-                version_drift.append((req.name, spec, obs_version))
-    ok = len(missing) == 0 and len(version_drift) == 0 and len(hash_drift) == 0
+        obs = normalized[name]
+        if req.url and obs.get("url") != req.url:
+            source_drift.append((req.name, req.url, str(obs.get("url") or "")))
+        version = obs.get("version", "")
+        if req.version_spec and (not version or not SpecifierSet(req.version_spec).contains(version, prereleases=None)):
+            version_drift.append((req.name, req.version_spec, version))
+        if req.hashes:
+            digest = str(obs.get("sha256", "")).lower()
+            actual = digest if digest.startswith("sha256:") else "sha256:" + digest if digest else ""
+            if actual not in req.hashes:
+                hash_drift.append((req.name, "|".join(req.hashes), actual))
+    stale = False
+    if source_manifest is not None:
+        stale = source_manifest.profile != lock.profile
+        for path, expected in (
+            (lock_path, source_manifest.lock_sha256),
+            (requirements_path, source_manifest.requirements_txt_sha256),
+            (pyproject_path, source_manifest.pyproject_sha256),
+        ):
+            if not path or not path.is_file() or not expected or sha256_file(path) != expected:
+                stale = True
     return DriftReport(
-        missing=tuple(missing),
-        version_drift=tuple(version_drift),
-        hash_drift=tuple(hash_drift),
-        extras=tuple(extras),
-        source_manifest_stale=False,
-        ok=ok,
+        missing=tuple(missing), version_drift=tuple(version_drift),
+        hash_drift=tuple(hash_drift), source_drift=tuple(source_drift),
+        extras=tuple(sorted(set(normalized) - expected_names)),
+        source_manifest_stale=stale,
+        ok=not (missing or version_drift or hash_drift or source_drift or stale),
     )
 
 

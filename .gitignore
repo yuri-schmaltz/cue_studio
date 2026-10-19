@@ -117,3 +117,6 @@ app/wgp_config.json.bak
 
 # Launcher runtime state
 .launcher.pid
+
+# Local tooling preserved on disk; untracked at the user's request.
+.claude/

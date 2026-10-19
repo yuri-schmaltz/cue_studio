@@ -77,8 +77,12 @@ Multiple isolated output directories with a quick switcher in the sidebar. Usefu
 - **NSFW mode** is opt-in with a disclaimer step. Disabled by default. Gates uncensored model variants, NSFW LoRAs in the CivitAI browser, and the Settings → Services NSFW toggle.
 - **Experimental features gate** hides power-user toggles (external API keys, Voice Reference, Inpaint, Restyle, Wan2GP Enhancer) by default for a focused first-launch experience.
 
-### 📊 Director Pipeline Dashboard
-View all past Director runs with their full state — clip plans, generated images, generated clips, polish diffs. Re-run any clip without re-running the whole pipeline.
+### Production review and recovery
+Use Projects to select a workspace, Director to review the current production,
+and Queue to inspect recoverable jobs. The standalone Dashboard was removed.
+See [current validation status](docs/CURRENT_STATE.md) and the
+[reference-film validation procedure](docs/REFERENCE_FILM_VALIDATION.md) for
+what the automated checks prove and how to run real-model acceptance.
 
 ## Updates
 

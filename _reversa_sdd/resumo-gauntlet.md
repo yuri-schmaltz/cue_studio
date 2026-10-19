@@ -1,3 +1,5 @@
+> **Retificação — 19/10/2026:** os números abaixo pertencem ao relato histórico de 18/10. A alegação “F2 IA completa (2/2)” não comprova geração por todos os modelos: o teste antigo aceitava fallbacks sintéticos e sua etapa de voz gerava tons. A nova validação usa jobs reais do Studio, reprova falhas de inferência e separa medição técnica de revisão artística vinculada ao hash do master. Consulte `docs/CURRENT_STATE.md` e `docs/REFERENCE_FILM_VALIDATION.md`. As antigas verificações F3 por estado foram substituídas/complementadas por testes de encerramento real de processo, cancelamento concorrente, publicação atômica e bloqueio de referência removida.
+
 # Resumo Gauntlet — Cue Studio (2026-10-18)
 
 ## Fases Reversa concluídas

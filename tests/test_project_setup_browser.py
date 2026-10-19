@@ -44,15 +44,15 @@ def test_create_edit_and_reopen_project_setup():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={'width': 1440, 'height': 960})
         page.on('pageerror', lambda error: errors.append(str(error)))
-        page.add_init_script("localStorage.setItem('cue_studio_welcome_seen_v1','1')")
+        page.add_init_script("localStorage.setItem('cue-studio_welcome_seen_v1','1')")
         page.route('**/api/v1/**', api)
-        page.goto(os.environ.get('SHELL_TEST_URL', 'http://127.0.0.1:3000'), wait_until='networkidle')
+        page.goto(os.environ.get('SHELL_TEST_URL', 'http://127.0.0.1:3000'), wait_until='domcontentloaded')
         page.get_by_role('tab', name='Projects', exact=True).click()
         page.get_by_role('button', name='New project', exact=True).click()
         page.get_by_role('textbox', name='Project name', exact=True).fill('Setup contract')
-        page.get_by_role('radio', name=re.compile(r'^9:16')).click()
-        page.get_by_role('radio', name='480p', exact=True).click()
-        page.get_by_role('button', name='Generate a track', exact=True).click()
+        page.get_by_role('button', name='Adjust… more options', exact=True).click()
+        page.get_by_role('combobox', name='Aspect ratio', exact=True).select_option('9:16')
+        page.get_by_role('combobox', name='Resolution', exact=True).select_option('480p')
         page.get_by_role('button', name='Create project', exact=True).click()
         expect(page.get_by_role('tab', name='Director', exact=True)).to_have_attribute('aria-selected', 'true')
         state = page.evaluate("""async () => {
@@ -60,15 +60,15 @@ def test_create_edit_and_reopen_project_setup():
             const s = useStore.getState();
             return [s.activeWorkspace, s.directorAspectRatio, s.directorResolution, s.directorMusicSource];
         }""")
-        assert state == ['Setup-contract', '9:16', '480p', 'generate']
+        assert state == ['Setup-contract', '9:16', '480p', 'upload']
         page.get_by_role('tab', name='Projects', exact=True).click()
         page.get_by_role('button', name='Edit Setup-contract setup', exact=True).click()
-        expect(page.get_by_role('radio', name=re.compile(r'^9:16'))).to_have_attribute('aria-checked', 'true')
-        page.get_by_role('radio', name=re.compile(r'^1:1')).click()
+        expect(page.get_by_role('combobox', name='Aspect ratio', exact=True)).to_have_value('9:16')
+        page.get_by_role('combobox', name='Aspect ratio', exact=True).select_option('1:1')
         page.get_by_role('button', name='Save setup', exact=True).click()
         expect(page.get_by_role('dialog')).to_have_count(0)
         page.get_by_role('button', name='Edit Setup-contract setup', exact=True).click()
-        expect(page.get_by_role('radio', name=re.compile(r'^1:1'))).to_have_attribute('aria-checked', 'true')
+        expect(page.get_by_role('combobox', name='Aspect ratio', exact=True)).to_have_value('1:1')
         assert next(item for item in workspaces if item['name'] == 'Setup-contract')['setup']['aspect_ratio'] == '1:1'
         assert not errors, errors
         browser.close()

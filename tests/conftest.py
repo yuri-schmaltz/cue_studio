@@ -20,6 +20,8 @@ which backs all ``<app>/.cache`` SQLite files (app_state, model_catalog).
 from __future__ import annotations
 
 import os
+import copy
+import json
 import shutil
 import sys
 import tempfile
@@ -31,6 +33,26 @@ import pytest
 _SESSION_TMP_ROOT = Path(tempfile.mkdtemp(prefix="cue-studio-tests-"))
 os.environ["APP_SQLITE_PATH"] = str(_SESSION_TMP_ROOT / "app_state.sqlite3")
 os.environ["APP_CACHE_DIR"] = str(_SESSION_TMP_ROOT / "cache")
+
+# launch.py also persists wgp_config.json (workspaces and Studio preferences).
+# Cache/SQLite isolation alone does not protect the developer's configuration.
+_CONFIG_DIR = _SESSION_TMP_ROOT / "config"
+_CONFIG_DIR.mkdir()
+_source_config = Path(__file__).resolve().parents[1] / "app" / "wgp_config.json"
+try:
+    _test_config = json.loads(_source_config.read_text())
+except (OSError, ValueError):
+    _test_config = {}
+_test_outputs = _SESSION_TMP_ROOT / "outputs"
+_test_outputs.mkdir()
+for _key in ("save_path", "image_save_path", "audio_save_path"):
+    _test_config[_key] = str(_test_outputs)
+_test_config.setdefault("services", {}).update(
+    projects_root_path=str(_test_outputs), active_workspace="default",
+    projects_root_healed=True,
+)
+(_CONFIG_DIR / "wgp_config.json").write_text(json.dumps(_test_config))
+os.environ["CUE_CONFIG_DIR"] = str(_CONFIG_DIR)
 
 # Both `services.*` (launch.py) and `app.services.*` (pytest) module
 # contexts can be loaded in one process; reset singletons in whichever
@@ -59,6 +81,11 @@ def isolate_singletons(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("APP_SQLITE_PATH", str(tmp_path / "app_state.sqlite3"))
     monkeypatch.setenv("APP_CACHE_DIR", str(tmp_path / "cache"))
     _reset_db_singletons()
+    for module_name in ("wgp", "app.wgp"):
+        runtime = sys.modules.get(module_name)
+        if runtime is not None and isinstance(getattr(runtime, "server_config", None), dict):
+            monkeypatch.setattr(runtime, "server_config", copy.deepcopy(runtime.server_config))
+            monkeypatch.setattr(runtime, "server_config_filename", str(tmp_path / "wgp_config.json"))
     yield
     _reset_db_singletons()
 

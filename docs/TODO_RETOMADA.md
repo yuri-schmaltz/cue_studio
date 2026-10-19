@@ -1,3 +1,5 @@
+> **Estado atual — 19/10/2026:** consulte [CURRENT_STATE.md](CURRENT_STATE.md). As seções abaixo são histórico dos commits indicados, não resultados do checkout atual. Dashboard removido em `6ec54ab`; F2 completo permanece sem comprovação até geração real e revisão do master pelo novo gate estrito.
+
 # TODO de retomada — Maestro
 
 Revisão: 2026-09-21. Base observada: commit `5b37a5d` (`v2.1.4`, HEAD

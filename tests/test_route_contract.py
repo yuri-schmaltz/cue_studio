@@ -20,6 +20,13 @@ if str(ROOT / "app") not in sys.path:
 # Full contract: every (method, path) pair served by ``launch.api``.
 # Regenerate with care — a missing entry means an endpoint was dropped.
 EXPECTED_ROUTES = frozenset({
+    ("GET", "/api/v1/capabilities/models"),
+    ("GET", "/api/v1/capabilities/models/{model_id}"),
+    ("GET", "/api/v1/capabilities/check"),
+    ("GET", "/api/v1/takes/{take_id}/provenance"),
+    ("POST", "/api/v1/takes/{take_id}/provenance/revalidate"),
+    ("GET", "/api/v1/takes/{take_id}/provenance/bundle"),
+    ("POST", "/api/v1/takes/{take_id}/provenance/bundle"),
     ("DELETE", "/api/v1/characters/{character_id}"),
     ("DELETE", "/api/v1/director/pipelines/{pid}"),
     ("DELETE", "/api/v1/director/queue/{entry_id}"),

@@ -478,6 +478,7 @@ import pytest  # noqa: E402  — late import keeps the existing preamble readabl
 def pytest_configure(config):  # noqa: D401
     """Register the ``media`` marker so ``--strict-markers`` doesn't
     complain when a test is marked ``@pytest.mark.media``."""
+    config.addinivalue_line("markers", "real_models: opt-in real Studio model generation and reference-film acceptance")
     config.addinivalue_line(
         "markers",
         "media: tests that consume the user's external media library "

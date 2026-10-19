@@ -1,131 +1,73 @@
-"""Testes de recuperação F3 da fixture 'A luz da oficina'.
+"""F3 lifecycle and retake behavior with controlled CPU generation.
 
-Simula cenários de falha e recuperação usando ``ProductionStore`` e
-``ProductionResume``:
-- Crash antes do despacho (pedido recuperável sem duplicação)
-- Cancelamento tardio (estado terminal consistente)
-- Reinício reconcilia jobs e evita duplicação de execução
-- Retake com mesmo idempotency_key não duplica job
-- Arquivo parcial não publicado como master
-- Referência removida bloqueia antes da inferência
+Process crash/restart: test_recovery_process.py.
+Atomic media publication: test_media_publication.py.
+Removed input before inference: test_director_input_recovery.py.
+These tests validate recovery mechanics, not real-model artistic acceptance.
 """
-
 from __future__ import annotations
 
+import threading
 from pathlib import Path
+import subprocess
 
+from app.services.job_lifecycle import finish_job, request_cancel, try_start
 from app.services.production_store import ProductionStore
 from app.services.production_resume import ProductionResume
+from app.services.media_publication import publish_video
 
 
-def _make_store(tmp_path: Path) -> ProductionStore:
-    db = tmp_path / "recovery.sqlite3"
-    return ProductionStore(db_path=str(db))
+def test_late_completion_cannot_overwrite_cancellation():
+    job = {'id': 'late-worker', 'status': 'queued'}
+    ready, finish = threading.Event(), threading.Event()
+    results = []
+    def worker():
+        assert try_start(job)
+        ready.set()
+        if finish.wait(timeout=10):
+            results.append(finish_job(job, 'completed', output_files=['late.mp4']))
+    thread = threading.Thread(target=worker)
+    thread.start()
+    try:
+        assert ready.wait(timeout=10)
+        assert request_cancel(job).changed
+        finish.set()
+        thread.join(timeout=10)
+        assert not thread.is_alive()
+        assert results == [False]
+        assert job['status'] == 'cancelled'
+        assert 'output_files' not in job
+    finally:
+        finish.set()
+        thread.join(timeout=10)
 
 
-def _snapshot(status: str = "running", attempt: int = 1) -> dict:
-    return {
-        "pipeline_id": "pipe-recovery",
-        "status": status,
-        "attempt": attempt,
-        "stages": [{"name": "video", "ok": True}],
-        "created_at": "2026-10-17T00:00:00Z",
-        "updated_at": "2026-10-17T00:00:00Z",
-    }
-
-
-# ── Crash antes do despacho: pedido recuperável sem duplicação ──
-
-
-def test_crash_before_dispatch_no_duplicate_job(tmp_path: Path):
-    store = _make_store(tmp_path)
-    adapted = store.upsert_pipeline(_snapshot(status="queued", attempt=1))
-
-    # Reabrir o store (simula reinício) — production ainda queued, sem run extra.
-    store2 = ProductionStore(db_path=str(tmp_path / "recovery.sqlite3"))
-    facade = ProductionResume(store=store2)
-    state = facade.get_pipeline_state("pipe-recovery")
-    assert state is not None
-    assert state["status"] == "queued"
-
-
-# ── Cancelamento tardio: estado terminal consistente ──
-
-
-def test_late_cancellation_terminal_state_consistent(tmp_path: Path):
-    store = _make_store(tmp_path)
-    store.upsert_pipeline(_snapshot(status="cancelled", attempt=1))
-
-    facade = ProductionResume(store=store)
-    state = facade.get_pipeline_state("pipe-recovery")
-    assert state is not None
-    assert state["status"] == "cancelled"
-    assert state["status"] not in ("running", "succeeded")
-
-
-# ── Reinício reconcilia jobs sem duplicação ──
-
-
-def test_restart_reconciles_without_duplicate(tmp_path: Path):
-    store = _make_store(tmp_path)
-    store.upsert_pipeline(_snapshot(status="reconciliation_required", attempt=1))
-
-    facade = ProductionResume(store=store)
-    state = facade.get_pipeline_state("pipe-recovery")
-    assert state["status"] == "reconciliation_required"
-    assert state["attempt"] == 1  # não incrementou sozinho
-
-
-# ── Retake com mesma chave idempotente não duplica ──
-
-
-def test_retake_idempotent_key_no_duplicate(tmp_path: Path):
-    store = _make_store(tmp_path)
-    store.upsert_pipeline(_snapshot(status="running", attempt=1))
-
-    def fake_executor(pipeline_id, out_dir, stage_name):
-        return True, "ok"
-
-    facade = ProductionResume(store=store, pipeline_resume=fake_executor)
-
-    r1 = facade.retake_stage(
-        pipeline_id="pipe-recovery",
-        out_dir=str(tmp_path / "out"),
-        stage_name="video",
-        idempotency_key="same-key-123",
-    )
-    assert r1.ok is True
-    assert r1.attempt == 2
-
-    r2 = facade.retake_stage(
-        pipeline_id="pipe-recovery",
-        out_dir=str(tmp_path / "out"),
-        stage_name="video",
-        idempotency_key="same-key-123",
-    )
-    assert r2.ok is True
-    assert r2.attempt == 2  # mesma attempt, não criou novo job
-
-
-# ── Arquivo parcial não publicado como master ──
-
-
-def test_partial_file_not_published_as_master(tmp_path: Path):
-    store = _make_store(tmp_path)
-    store.upsert_pipeline(_snapshot(status="validating_output", attempt=1))
-
-    facade = ProductionResume(store=store)
-    state = facade.get_pipeline_state("pipe-recovery")
-    assert state["status"] == "validating_output"
-
-
-# ── Referência removida bloqueia antes da inferência ──
-
-
-def test_missing_reference_blocks_before_inference(tmp_path: Path):
-    store = _make_store(tmp_path)
-    store.upsert_pipeline(_snapshot(status="blocked", attempt=1))
-
-    facade = ProductionResume(store=store)
-    state = facade.get_pipeline_state("pipe-recovery")
-    assert state["status"] == "blocked"
+def test_retake_key_survives_reopening_store_without_duplicate_encode(tmp_path: Path):
+    db = tmp_path / 'recovery.sqlite3'
+    store = ProductionStore(db_path=str(db))
+    store.upsert_pipeline({
+        'pipeline_id': 'pipe-recovery', 'status': 'running', 'attempt': 1,
+        'stages': [{'name': 'video', 'ok': True}],
+        'created_at': '2026-10-19T00:00:00Z', 'updated_at': '2026-10-19T00:00:00Z',
+    })
+    calls = []
+    master = tmp_path / 'master.mp4'
+    def executor(pipeline_id, out_dir, stage_name):
+        calls.append((pipeline_id, stage_name))
+        def encode(path):
+            subprocess.run(['ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
+                            'color=s=160x96:r=24:d=0.25', '-c:v', 'libx264', path], check=True)
+            return True
+        assert publish_video(master, encode)
+        return True, 'encoded'
+    facade = ProductionResume(store=store, pipeline_resume=executor)
+    first = facade.retake_stage(pipeline_id='pipe-recovery', out_dir=str(tmp_path),
+                               stage_name='video', idempotency_key='same-retake')
+    original = master.read_bytes()
+    reopened = ProductionResume(store=ProductionStore(db_path=str(db)), pipeline_resume=executor)
+    second = reopened.retake_stage(pipeline_id='pipe-recovery', out_dir=str(tmp_path),
+                                  stage_name='video', idempotency_key='same-retake')
+    assert first.ok and second.ok
+    assert first.attempt == second.attempt == 2
+    assert calls == [('pipe-recovery', 'video')]
+    assert master.read_bytes() == original

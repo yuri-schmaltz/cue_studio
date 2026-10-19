@@ -1,3 +1,5 @@
+> **Estado atual — 19/10/2026:** consulte [CURRENT_STATE.md](docs/CURRENT_STATE.md). As seções abaixo são histórico dos commits indicados, não resultados do checkout atual. Dashboard removido em `6ec54ab`; F2 completo permanece sem comprovação até geração real e revisão do master pelo novo gate estrito.
+
 # Handoff — Cue Studio fork standalone (2026-09-27)
 
 ## Atualização de retomada — 2026-09-27 tarde (Director UX: Music tab unificado, Auto Mode no composer e polish de botões)

@@ -9,8 +9,11 @@
     "scripts/**",
     ".github/**",
     "CHANGELOG.md",
+    "README.md",
+    "HANDOFF.md",
+    "docs/**",
     "_reversa_forward/**",
     "_reversa_sdd/**"
   ],
-  "allowedPathsNote": "2026-10-18: expandido pelo usuario (gauntlet 'prossiga ate concluir tudo') para cobrir specs P1/P2/P3 A06-A24 + integracao ciclo 4 em app/ e ui/.",
+  "allowedPathsNote": "2026-10-18: expandido pelo usuario (gauntlet 'prossiga ate concluir tudo') para cobrir specs P1/P2/P3 A06-A24 + integracao ciclo 4 em app/ e ui/."
 }
