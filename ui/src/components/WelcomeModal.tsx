@@ -42,7 +42,7 @@ export function WelcomeModal() {
           </div>
           {/* X close button intentionally omitted — clicking the backdrop or the
               "Get started" footer button both dismiss the modal, and an extra
-              close affordance cluttered the header behind the Dashboard tab. */}
+              close affordance cluttered the header behind the active tab. */}
         </div>
 
         {/* Points */}

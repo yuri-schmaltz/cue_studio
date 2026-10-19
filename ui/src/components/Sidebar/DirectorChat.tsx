@@ -2760,7 +2760,7 @@ export function ImagePromptsReview({
   const visibleClipCount = showAllClips
     ? clipPlans.length
     : Math.min(clipPlans.length, CLIP_LIST_PREVIEW_THRESHOLD)
-  // Re-run ONLY this clip via the dashboard backend endpoint. Used by
+  // Re-run ONLY this clip via the Director pipeline endpoint. Used by
   // the per-clip ↻ Regenerate button that appears when a single
   // clip's image generation failed (e.g. transient CUDA OOM on one
   // card while the other 12 succeeded).
@@ -3075,8 +3075,8 @@ export function VideoPromptsReview({
   // Which clip is currently being regenerated. Lets the spinner sit on
   // the correct card even when several clips have failed in sequence.
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
-  // Re-run ONLY this clip's video via the dashboard backend endpoint.
-  // The dashboard already exposes rerunClipVideo, so this is just a
+  // Re-run ONLY this clip's video via the Director pipeline endpoint.
+  // rerunClipVideo is shared with the Editor, so this is just a
   // thin wrapper that owns the spinner state + error dismissal.
   const regenerateClip = async (clipIndex: number) => {
     if (!pipelineId) return

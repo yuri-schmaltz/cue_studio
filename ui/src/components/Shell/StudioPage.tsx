@@ -22,7 +22,7 @@ import { StudioTabs } from './StudioTabs'
  * Studio stays one click away for manual tweaks, single-clip rerolls,
  * and image/video editing without losing the planning context.
  *
- * Layout: original Studio (Sidebar + MainContent, no dashboard column).
+ * Layout: original Studio (Sidebar + MainContent).
  * Style Bibles shortcut sits in the sub-header so the modal stays
  * reachable without polluting the main generation surface.
  *

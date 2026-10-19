@@ -9,7 +9,7 @@ import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { reviewSnapshot } from '../lib/reviewSnapshot'
 import { canonicalDirectorSkill } from '../types'
 import type { DirectorError } from './directorError'
-import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, LlmRolesState, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineListItem, PipelineClipState, PipelineRepairState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
+import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, LlmRolesState, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineClipState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
 import { applyDensity, getStoredDensity, type Density } from '../lib/density'
@@ -47,7 +47,6 @@ import {
   OUTPAINT_ASPECT_RATIOS as _OUTPAINT_ASPECT_RATIOS,
   type OutpaintAspect,
   record as _record,
-  repairNeedsPolling as _repairNeedsPolling,
   restoreModeParams as _restoreModeParams,
   snapshotModeParams as _snapshotModeParams,
   stringArray as _stringArray,
@@ -73,15 +72,7 @@ let _civitDownloadPollTask: Promise<void> | null = null
 let _civitDownloadPollController: AbortController | null = null
 let _civitDownloadPollRequested = false
 const _civitRefreshedCheckpointDownloads = new Set<string>()
-const DIRECTOR_REPAIR_POLL_MS = 2000
-const DIRECTOR_REPAIR_ACTIVE = new Set(['queued', 'running', 'cancelling'])
 const DIRECTOR_PIPELINE_ACTIVE = new Set(['queued', 'running', 'paused'])
-type DirectorRepairPoll = {
-  operationId: string
-  timer: number | null
-}
-const _directorRepairPolls = new Map<string, DirectorRepairPoll>()
-const _directorRepairDiscoveries = new Map<string, object>()
 // Holds the AbortController for the currently running Director v2 plan
 // request ("Writing scenes...", "Writing image/video prompts..."). Lets the
 // UI cancel the in-flight fetch without waiting for the server-side LLM
@@ -102,8 +93,6 @@ let _directorTrackGenController: AbortController | null = null
 let _directorImageGenSequence = 0
 let _directorImageGenJob: string | null = null
 let _directorImageGenPoll: ReturnType<typeof setInterval> | null = null
-let _dashboardPipelineLoadToken = 0
-let _dashboardPipelineListLoadToken = 0
 let _directorPipelineAttachToken = 0
 let _directorPipelineReconnectAttempted = false
 let _directorPipelinePollToken = 0
@@ -257,12 +246,6 @@ async function _loadDirectorImageFile(
   }
 }
 
-function _stopDirectorRepairPoll(pid: string): void {
-  const poll = _directorRepairPolls.get(pid)
-  if (poll?.timer != null) window.clearTimeout(poll.timer)
-  _directorRepairPolls.delete(pid)
-}
-
 // Pure helpers _downloadTimestampMs / _downloadNeedsPolling / _waitForDownloadPoll
 // moved to ./utils — see imports at the top of this file.
 // Note: the visible-grace window constant (formerly CIVIT_DOWNLOAD_COMPLETED_VISIBLE_MS)
@@ -277,10 +260,6 @@ if (import.meta.hot) {
     _civitDownloadPollTask = null
     _civitDownloadPollRequested = false
     _civitRefreshedCheckpointDownloads.clear()
-    for (const pid of _directorRepairPolls.keys()) {
-      _stopDirectorRepairPoll(pid)
-    }
-    _directorRepairDiscoveries.clear()
   })
 }
 
@@ -1143,25 +1122,13 @@ export interface AppState {
   openRetakeDialog: (filename: string) => void
   closeRetakeDialog: () => void
 
-  // CivitAI LoRA Browser
-  // Director Pipeline Dashboard
-  dashboardOpen: boolean
-  dashboardPipelineList: PipelineListItem[]
-  dashboardSelectedPipeline: SavedPipelineState | null
-  dashboardLoading: boolean
-  setDashboardOpen: (open: boolean) => void
-  loadPipelineList: () => Promise<void>
-  loadSavedPipeline: (pid: string) => Promise<void>
-  tagClip: (pid: string, clipIndex: number, tag: string | null) => Promise<void>
-  startPipelineRepair: (pid: string) => Promise<PipelineRepairState>
-  cancelPipelineRepair: (pid: string) => Promise<PipelineRepairState>
-  pollPipelineRepair: (pid: string, operationId: string) => void
+  // Director saved-pipeline actions (shared by Director and Editor)
+  reconnectDirectorPipelines: () => Promise<void>
   rerunClipImage: (pid: string, clipIndex: number, prompt?: string) => Promise<unknown>
   rerunClipVideo: (pid: string, clipIndex: number, prompt?: string) => Promise<unknown>
   rejoinPipelineClips: (pid: string) => Promise<unknown>
   resumePipeline: (pid: string) => Promise<void>
   reattachDirectorPipeline: (pid: string, focusDirector?: boolean) => Promise<void>
-  deletePipeline: (pid: string) => Promise<void>
   loadDirectorFromPipeline: (pid: string) => Promise<void>
   directorQueue: DirectorQueueState | null
   directorQueueLoading: boolean
@@ -2151,8 +2118,6 @@ async function _buildDirectorRestorePatch(
   return {
     appSection: 'director' as const, workspaceStage: 'director' as const, sidebarMode: 'director',
     sidebarOpen: true,
-    dashboardOpen: false,
-    dashboardSelectedPipeline: pipeline,
     directorStep: restoreStep,
     directorSourcePipelineId: pipeline.pipeline_id,
     directorProjectId: pipeline.project_id || pipeline.pipeline_id,
@@ -2890,12 +2855,9 @@ export const useStore = create<AppState>((set, get, store) => ({
   }),
 
   settingsOpen: false,
-  // Fallback for the toggle button in contexts where Dashboard is the
-  // active section: returning to `director` would dump users on a
-  // workspace they may have not opened yet (and that requires a real
-  // workspace selected). Fall back to `projects` so the toggle still
-  // hides the drawer without forcing a tab switch the user didn't ask
-  // for.
+  // Toggle between Configurations and Projects. Returning to `director`
+  // would dump users on a workspace they may not have opened yet (it
+  // requires a real workspace selected), so Projects is the fallback.
   toggleSettings: () => get().setAppSection(get().appSection === 'configurations' ? 'projects' : 'configurations'),
   setSettingsOpen: (open) => {
     if (open) get().setAppSection('configurations')
@@ -2928,42 +2890,22 @@ export const useStore = create<AppState>((set, get, store) => ({
     set({ density })
   },
 
-  // CivitAI LoRA Browser
-  // Director Pipeline Dashboard
+  // Retake dialog
   retakeDialogOpen: false,
   retakeSourceFile: null,
   openRetakeDialog: (filename) => set({ retakeDialogOpen: true, retakeSourceFile: filename }),
   closeRetakeDialog: () => set({ retakeDialogOpen: false, retakeSourceFile: null }),
 
-  dashboardOpen: false,
-  dashboardPipelineList: [],
-  dashboardSelectedPipeline: null,
-  dashboardLoading: false,
   directorQueue: null,
   directorQueueLoading: false,
   directorQueueEditingEntryId: null,
-  setDashboardOpen: (open) => {
-    set({ dashboardOpen: open })
-    if (open) {
-      get().loadPipelineList()
-      const selected = get().dashboardSelectedPipeline
-      if (selected) get().loadSavedPipeline(selected.pipeline_id)
-    }
-  },
-  loadPipelineList: async () => {
-    const loadToken = ++_dashboardPipelineListLoadToken
+  reconnectDirectorPipelines: async () => {
     try {
       const { pipelines } = await api.fetchPipelineList()
-      if (loadToken !== _dashboardPipelineListLoadToken) return
-      set({ dashboardPipelineList: pipelines })
-
-      // Studio jobs already reconnect after a browser reload; Director used
-      // to lose its only in-memory pipelineId and therefore hid both the
-      // gallery progress card and the live chat even though the server worker
-      // kept running. Discover the newest genuinely live pipeline once per
-      // page boot. This is deliberately non-focusing: refresh restores live
-      // progress without yanking a user out of Studio or Editor, while the
-      // explicit Resume action below opens the original Director chat.
+      // Studio jobs already reconnect after a browser reload. Director
+      // discovers the newest live pipeline once per page boot and reattaches
+      // it without focusing the user away from the current screen; the
+      // explicit Resume action is what opens the original Director chat.
       if (!_directorPipelineReconnectAttempted) {
         _directorPipelineReconnectAttempted = true
         const active = pipelines.find(item => DIRECTOR_PIPELINE_ACTIVE.has(item.status))
@@ -2971,244 +2913,45 @@ export const useStore = create<AppState>((set, get, store) => ({
           void get().reattachDirectorPipeline(active.id, false)
         }
       }
-
-      // The repair worker belongs to the server, so a browser reload must
-      // rediscover active operations and resume UI polling without requiring
-      // the Dashboard to be opened first. Keep discovery separate from the
-      // selected pipeline so bootstrapping never opens or changes the overlay.
-      for (const item of pipelines) {
-        if (!item.repair_status || !DIRECTOR_REPAIR_ACTIVE.has(item.repair_status)) continue
-        if (_directorRepairPolls.has(item.id) || _directorRepairDiscoveries.has(item.id)) continue
-
-        const discovery = {}
-        _directorRepairDiscoveries.set(item.id, discovery)
-        void api.fetchSavedPipeline(item.id).then(pipeline => {
-          if (_directorRepairDiscoveries.get(item.id) !== discovery) return
-          if (_directorRepairPolls.has(item.id)) return
-
-          const repair = pipeline.repair
-          if (_repairNeedsPolling(repair)) {
-            get().pollPipelineRepair(item.id, repair!.operation_id)
-            return
-          }
-
-          // The operation may have finished between the list and detail
-          // requests. Reflect that terminal state and refresh newly-created
-          // media instead of waiting for another Dashboard visit.
-          set(s => ({
-            dashboardPipelineList: s.dashboardPipelineList.map(entry =>
-              entry.id === item.id
-                ? { ...entry, repair_status: repair?.status || null }
-                : entry),
-          }))
-          void get().loadOutputs()
-        }).catch(e => {
-          console.warn(`Failed to reconnect Director repair for ${item.id}:`, e)
-        }).finally(() => {
-          if (_directorRepairDiscoveries.get(item.id) === discovery) {
-            _directorRepairDiscoveries.delete(item.id)
-          }
-        })
-      }
     } catch (e) {
-      if (loadToken !== _dashboardPipelineListLoadToken) return
       console.error('Failed to load pipeline list:', e)
     }
   },
-  loadSavedPipeline: async (pid) => {
-    const loadToken = ++_dashboardPipelineLoadToken
-    set({ dashboardLoading: true })
-    try {
-      const pipeline = await api.fetchSavedPipeline(pid)
-      if (loadToken !== _dashboardPipelineLoadToken) return
-      set({ dashboardSelectedPipeline: pipeline, dashboardLoading: false })
-      if (_repairNeedsPolling(pipeline.repair)) {
-        get().pollPipelineRepair(pid, pipeline.repair!.operation_id)
-      }
-    } catch (e) {
-      if (loadToken !== _dashboardPipelineLoadToken) return
-      console.error('Failed to load pipeline:', e)
-      set({ dashboardLoading: false })
-    }
-  },
-  deletePipeline: async (pid) => {
-    // Clear the selection AND drop the pid from the list in the same
-    // update: the dashboard's auto-load effect selects pipelineList[0]
-    // whenever selection is null, so a stale list would immediately
-    // re-fetch the pipeline being deleted (re-mounting its <img>/<video>
-    // elements and re-locking the files on Windows).
-    _dashboardPipelineLoadToken += 1
-    _dashboardPipelineListLoadToken += 1
-    set(s => ({
-      dashboardSelectedPipeline: null,
-      dashboardPipelineList: s.dashboardPipelineList.filter(p => p.id !== pid),
-    }))
-    await api.deletePipeline(pid)
-    await get().loadPipelineList()
-    // Pipeline media were gallery items too — refresh the feed.
-    get().loadOutputs()
-    get().loadWorkspaces()
-  },
-  tagClip: async (pid, clipIndex, tag) => {
-    try {
-      await api.tagPipelineClip(pid, clipIndex, tag)
-      // Update local state
-      set(s => {
-        if (!s.dashboardSelectedPipeline || s.dashboardSelectedPipeline.pipeline_id !== pid) return {}
-        const clips = [...s.dashboardSelectedPipeline.clips]
-        if (clipIndex < clips.length) {
-          clips[clipIndex] = { ...clips[clipIndex], tag: tag as 'good' | 'needs_work' | null }
-        }
-        return { dashboardSelectedPipeline: { ...s.dashboardSelectedPipeline, clips } }
-      })
-    } catch (e) {
-      console.error('Failed to tag clip:', e)
-    }
-  },
-  startPipelineRepair: async (pid: string) => {
-    const { repair } = await api.startPipelineRepair(pid)
-    set(s => {
-      const dashboardPipelineList = s.dashboardPipelineList.map(item =>
-        item.id === pid ? { ...item, repair_status: repair.status } : item)
-      if (!s.dashboardSelectedPipeline || s.dashboardSelectedPipeline.pipeline_id !== pid) {
-        return { dashboardPipelineList }
-      }
-      return {
-        dashboardPipelineList,
-        dashboardSelectedPipeline: {
-          ...s.dashboardSelectedPipeline,
-          repair,
-        },
-      }
-    })
-    get().pollPipelineRepair(pid, repair.operation_id)
-    return repair
-  },
-  cancelPipelineRepair: async (pid: string) => {
-    const { repair } = await api.cancelPipelineRepair(pid)
-    set(s => {
-      const dashboardPipelineList = s.dashboardPipelineList.map(item =>
-        item.id === pid ? { ...item, repair_status: repair.status } : item)
-      if (!s.dashboardSelectedPipeline || s.dashboardSelectedPipeline.pipeline_id !== pid) {
-        return { dashboardPipelineList }
-      }
-      return {
-        dashboardPipelineList,
-        dashboardSelectedPipeline: {
-          ...s.dashboardSelectedPipeline,
-          repair,
-        },
-      }
-    })
-    get().pollPipelineRepair(pid, repair.operation_id)
-    return repair
-  },
-  pollPipelineRepair: (pid: string, operationId: string) => {
-    const existing = _directorRepairPolls.get(pid)
-    if (existing?.operationId === operationId) return
-    if (existing) _stopDirectorRepairPoll(pid)
-
-    const poll: DirectorRepairPoll = { operationId, timer: null }
-    _directorRepairPolls.set(pid, poll)
-
-    const tick = async () => {
-      if (_directorRepairPolls.get(pid) !== poll) return
-      poll.timer = null
-      try {
-        const pipeline = await api.fetchSavedPipeline(pid)
-        if (_directorRepairPolls.get(pid) !== poll) return
-
-        const repair = pipeline.repair
-        set(s => {
-          const dashboardPipelineList = s.dashboardPipelineList.map(item =>
-            item.id === pid ? { ...item, repair_status: repair?.status || null } : item)
-          if (!s.dashboardSelectedPipeline || s.dashboardSelectedPipeline.pipeline_id !== pid) {
-            return { dashboardPipelineList }
-          }
-          return { dashboardPipelineList, dashboardSelectedPipeline: pipeline }
-        })
-
-        if (repair?.operation_id !== operationId) {
-          _stopDirectorRepairPoll(pid)
-          if (_repairNeedsPolling(repair)) {
-            get().pollPipelineRepair(pid, repair!.operation_id)
-          } else {
-            void get().loadPipelineList()
-            void get().loadOutputs()
-          }
-          return
-        }
-        if (!_repairNeedsPolling(repair)) {
-          _stopDirectorRepairPoll(pid)
-          void get().loadPipelineList()
-          void get().loadOutputs()
-          return
-        }
-      } catch (e) {
-        console.warn(`Director repair poll failed for ${pid}; retrying:`, e)
-      }
-
-      if (_directorRepairPolls.get(pid) === poll) {
-        poll.timer = window.setTimeout(tick, DIRECTOR_REPAIR_POLL_MS)
-      }
-    }
-
-    void tick()
-  },
   rerunClipImage: async (pid: string, clipIndex: number, prompt?: string) => {
-    set({ dashboardLoading: true })
     try {
       const result = await api.rerunClipImage(pid, clipIndex, prompt)
-      // Refresh the pipeline to get updated state
-      const pipeline = await api.fetchSavedPipeline(pid)
-      set({ dashboardSelectedPipeline: pipeline, dashboardLoading: false })
       // New files (rerun clip / rejoin video) land in the outputs folder —
       // refresh the gallery so they appear without a browser reload.
       get().loadOutputs()
       return result
     } catch (e) {
       console.error('Re-run image failed:', e)
-      set({ dashboardLoading: false })
       throw e
     }
   },
   rerunClipVideo: async (pid: string, clipIndex: number, prompt?: string) => {
-    set({ dashboardLoading: true })
     try {
       const result = await api.rerunClipVideo(pid, clipIndex, prompt)
-      const pipeline = await api.fetchSavedPipeline(pid)
-      set({ dashboardSelectedPipeline: pipeline, dashboardLoading: false })
-      // New files (rerun clip / rejoin video) land in the outputs folder —
-      // refresh the gallery so they appear without a browser reload.
       get().loadOutputs()
       return result
     } catch (e) {
       console.error('Re-run video failed:', e)
-      set({ dashboardLoading: false })
       throw e
     }
   },
   rejoinPipelineClips: async (pid: string) => {
-    set({ dashboardLoading: true })
     try {
       const result = await api.rejoinPipeline(pid)
-      const pipeline = await api.fetchSavedPipeline(pid)
-      set({ dashboardSelectedPipeline: pipeline, dashboardLoading: false })
-      // New files (rerun clip / rejoin video) land in the outputs folder —
-      // refresh the gallery so they appear without a browser reload.
       get().loadOutputs()
       return result
     } catch (e) {
       console.error('Rejoin failed:', e)
-      set({ dashboardLoading: false })
       throw e
     }
   },
   resumePipeline: async (pid: string) => {
     // Kick the crashed pipeline back into running server-side, then restore
-    // the exact Director project and reconnect its live progress. Previously
-    // this only closed the Dashboard, leaving the user in the gallery with no
-    // route back to the original Director chat.
+    // the exact Director project and reconnect its live progress.
     await api.resumePipeline(pid)
     await get().reattachDirectorPipeline(pid, true)
   },
@@ -3227,7 +2970,6 @@ export const useStore = create<AppState>((set, get, store) => ({
         appSection: 'director' as const, sidebarMode: 'workspace' as const,
         workspaceStage: 'director' as const,
         sidebarOpen: true,
-        dashboardOpen: false,
       } : {}),
       pipelineId: pid,
       pipelineStatus: status,
@@ -3267,12 +3009,10 @@ export const useStore = create<AppState>((set, get, store) => ({
           ...(!focusDirector ? {
             appSection: state.appSection, sidebarMode: state.sidebarMode,
             sidebarOpen: state.sidebarOpen,
-            dashboardOpen: state.dashboardOpen,
           } : {
             appSection: 'director' as const, sidebarMode: 'workspace' as const,
             workspaceStage: 'director' as const,
             sidebarOpen: true,
-            dashboardOpen: false,
           }),
           pipelineId: pid,
           pipelineStatus: liveStatus,
@@ -3286,7 +3026,6 @@ export const useStore = create<AppState>((set, get, store) => ({
           directorError: liveStatus.status === 'failed' || liveStatus.status === 'cancelled'
             ? liveStatus.error || 'Pipeline stopped'
             : null,
-          dashboardSelectedPipeline: pipeline,
           selectedModelPerMode: {
             ...state.selectedModelPerMode,
             ...(imageModel ? { image: imageModel } : {}),
@@ -7760,14 +7499,8 @@ export const useStore = create<AppState>((set, get, store) => ({
   },
 
   // Director (Music Video Director)
-  // Default landing tab = Dashboard. The previous default
-  // ('projects') made the projects page greet first-launch users with
-  // a list view instead of the at-a-glance status surface they expect
-  // from a video production tool. 'dashboard' lets the queue, recent
-  // outputs and the status pills be visible on cold start; the
-  // Projects tab still owns the global tab list so users land there
-  // when they explicitly choose to browse projects.
-  appSection: 'dashboard',
+  // Default landing tab = Projects.
+  appSection: 'projects',
   setAppSection: (section) => {
     // Gate project-scoped sections behind having a real (non-default)
     // workspace selected. Director, Editor and Medias all write or read
@@ -12485,8 +12218,8 @@ export const useStore = create<AppState>((set, get, store) => ({
       }
       // If v2 plan already registered an official pipeline (e.g. via
       // directorPlanPrompts → register_only), continue that pipeline
-      // instead of creating a second registry entry. Otherwise the
-      // Dashboard would show two orphans for the same project.
+      // instead of creating a second registry entry, so the Director does not
+      // end up with two orphan pipelines for the same project.
       const existingPid = get().pipelineId
       const existingStatus = get().pipelineStatus?.status
       if (existingPid && existingStatus

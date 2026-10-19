@@ -3,7 +3,7 @@ import { Film, Play, Square, FolderOpen, Plus, Check, Loader2, X, BookMarked, Tr
 import { TabFilter } from './TabFilter'
 import { MediaGallery } from './MediaGallery'
 import { MediaInspector } from './MediaInspector'
-import { DirectorReview } from '../DirectorDashboard/DirectorReview'
+import { DirectorReview } from '../Director/DirectorReview'
 import { useStore } from '../../stores/useStore'
 import { formatEstimatedClock, formatEtaDuration } from '../../lib/format'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'

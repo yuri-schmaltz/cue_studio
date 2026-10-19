@@ -1217,7 +1217,7 @@ export async function fetchPreflight(): Promise<{ ok: boolean; checks: Preflight
   return res.json()
 }
 
-// ── Director Pipeline Dashboard ──────────────────────────────────────────
+// ── Director saved pipelines (Director + Editor) ──────────────────────
 
 export async function fetchPipelineList(): Promise<{ pipelines: import('../types').PipelineListItem[] }> {
   const res = await fetch(`${BASE}/api/v1/director/pipelines`, { cache: 'no-store' })
@@ -1233,55 +1233,11 @@ export async function fetchSavedPipeline(pid: string): Promise<import('../types'
   return res.json()
 }
 
-export async function tagPipelineClip(pid: string, clipIndex: number, tag: string | null): Promise<void> {
-  const res = await fetch(`${BASE}/api/v1/director/pipelines/${encodeURIComponent(pid)}/clips/${clipIndex}/tag`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tag }),
-  })
-  if (!res.ok) throw new Error('Failed to tag clip')
-}
-
-export async function startPipelineRepair(pid: string): Promise<{
-  pipeline_id: string
-  repair: import('../types').PipelineRepairState
-}> {
-  const res = await fetch(`${BASE}/api/v1/director/pipelines/${encodeURIComponent(pid)}/repair`, {
-    method: 'POST',
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Repair failed to start' }))
-    throw new Error(err.error || err.detail || 'Repair failed to start')
-  }
-  return res.json()
-}
-
-export async function cancelPipelineRepair(pid: string): Promise<{
-  pipeline_id: string
-  repair: import('../types').PipelineRepairState
-}> {
-  const res = await fetch(`${BASE}/api/v1/director/pipelines/${encodeURIComponent(pid)}/repair/cancel`, {
-    method: 'POST',
-  })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Repair cancel failed' }))
-    throw new Error(err.error || err.detail || 'Repair cancel failed')
-  }
-  return res.json()
-}
-
 export async function regenerateReviewImage(pid: string, index: number, prompt: string): Promise<void> {
   const res = await fetch(`${BASE}/api/v1/director/pipeline/${pid}/review-image/${index}`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }),
   })
   if (!res.ok) { const error = await res.json(); throw new Error(error.detail || 'Unable to regenerate image') }
-}
-
-export async function selectSceneTake(pid: string, index: number, kind: 'video' | 'image', filename: string): Promise<void> {
-  const res = await fetch(`${BASE}/api/v1/director/pipelines/${pid}/clips/${index}/take`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind, filename }),
-  })
-  if (!res.ok) { const error = await res.json(); throw new Error(error.detail || 'Unable to select take') }
 }
 
 export async function rerunClipImage(pid: string, clipIndex: number, prompt?: string): Promise<{ filename: string; clip_index: number }> {
@@ -1317,15 +1273,6 @@ export async function rejoinPipeline(pid: string): Promise<{ filename: string }>
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Rejoin failed' }))
     throw new Error(err.error || 'Rejoin failed')
-  }
-  return res.json()
-}
-
-export async function deletePipeline(pid: string): Promise<{ media_deleted: number; media_deferred: number }> {
-  const res = await fetch(`${BASE}/api/v1/director/pipelines/${encodeURIComponent(pid)}`, { method: 'DELETE' })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Delete failed' }))
-    throw new Error(err.detail || 'Delete failed')
   }
   return res.json()
 }

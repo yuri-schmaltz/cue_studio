@@ -95,7 +95,7 @@ function lazyWithCache<T extends ComponentType<unknown>>(
 /**
  * Same as ``lazyWithCache`` but typed as ``ComponentType<any>`` so
  * callers can pass through component-specific props (e.g. an
- * ``embedded`` flag on the dashboard) without TS complaining about
+ * ``embedded`` flag) without TS complaining about
  * missing ``IntrinsicAttributes``. Use sparingly — prefer the
  * strict variant when the component truly has no props.
  */
@@ -115,17 +115,6 @@ function lazyAny(loader: () => Promise<unknown>): ComponentType<any> {
  */
 export const EditorWorkspace = lazyWithCache(
   () => import('../editor/EditorWorkspace'),
-)
-
-/**
- * Director dashboard.
- *
- * The Director pipeline review surface. Embeds activity bars,
- * status panels, and the per-clip review grid. Heavy on motion
- * primitives (framer-motion is in here) and on the LLM poller.
- */
-export const DirectorDashboard = lazyAny(
-  () => import('../components/DirectorDashboard/DirectorDashboard'),
 )
 
 /**
@@ -208,19 +197,6 @@ export const ProjectsPage = lazyWithCache(
  */
 export const RecipesOverlay = lazyWithCache(
   () => import('../components/Recipes/RecipesOverlay'),
-)
-
-/**
- * Work dashboard (A11).
- *
- * The "where is my production" summary block shown above the
- * pipeline-review Dashboard. Lightweight compared to the routes
- * above, but it still pulls the store slices and the queue contract,
- * so it lazy-loads with the dashboard section instead of the cold
- * boot path.
- */
-export const WorkDashboard = lazyWithCache(
-  () => import('../components/Dashboard/WorkDashboard'),
 )
 
 /**

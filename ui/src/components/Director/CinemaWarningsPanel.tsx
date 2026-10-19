@@ -27,7 +27,7 @@ export interface CinemaShotFields {
 
 /**
  * Collapsible panel that surfaces cinema-rule warnings on a single shot.
- * Used inside DirectorReview / DirectorDashboard so the operator can see
+ * Used inside DirectorReview so the operator can see
  * which shots have anachronism, lighting, or era issues BEFORE the
  * pipeline burns GPU on rendering them.
  *

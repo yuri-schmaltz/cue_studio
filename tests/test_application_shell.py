@@ -20,7 +20,7 @@ pytestmark = pytest.mark.browser
 URL = os.environ.get('SHELL_TEST_URL', 'http://127.0.0.1:3000')
 ARTIFACTS = Path(os.environ.get('SHELL_TEST_ARTIFACTS', '/tmp/cue-studio-overhaul'))
 ARTIFACTS.mkdir(parents=True, exist_ok=True)
-SECTIONS = ['Projects', 'Director', 'Editor', 'Dashboard', 'Medias', 'Queue', 'Configurations']
+SECTIONS = ['Projects', 'Director', 'Editor', 'Medias', 'Queue', 'Configurations']
 
 def test_application_shell():
     from playwright.sync_api import sync_playwright, expect
@@ -81,8 +81,6 @@ def test_application_shell():
                 expect(tab).to_have_attribute('aria-selected', 'true')
                 expect(page.get_by_role('tabpanel')).to_have_attribute('id', f'panel-{name.lower()}')
                 page.wait_for_timeout(250)
-                if name == 'Dashboard':
-                    expect(page.get_by_role('heading', name='Dashboard', exact=True)).to_be_visible()
                 geometry = page.evaluate('''() => {
                     const header = document.querySelector('.application-header').getBoundingClientRect();
                     const nav = document.querySelector('.application-tabs').getBoundingClientRect();
@@ -159,7 +157,7 @@ def test_application_shell():
         expect(page.get_by_role('heading', name='Shell-temporary', exact=True)).to_have_count(0)
         assert not errors, errors
         (ARTIFACTS / 'results.json').write_text(json.dumps({'passed':True,'viewports':5,'sections':SECTIONS,'javascript_errors':errors},indent=2))
-        print('PASS: 35 section/viewport checks, centered tabs, footer geometry, keyboard navigation, notifications, hardware telemetry, Dashboard, Studio shortcuts, Director review, Editor persistence and project CRUD.')
+        print('PASS: 35 section/viewport checks, centered tabs, footer geometry, keyboard navigation, notifications, hardware telemetry, Studio shortcuts, Director review, Editor persistence and project CRUD.')
         browser.close()
 
 

@@ -9,7 +9,7 @@ import { InfoTooltip } from './InfoTooltip'
  * Director-owned MiniMax H3 optimization controls.
  *
  * Director intentionally keeps these values separate from Studio: changing a
- * speed recipe here must affect newly generated Director shots, Dashboard
+ * speed recipe here must affect newly generated Director shots, the
  * repair, and regeneration without silently changing Studio's active model.
  */
 export function DirectorH3Optimizations() {

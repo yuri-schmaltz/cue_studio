@@ -2,8 +2,7 @@ import { DirectorTimelineEditor } from '../src/components/Sidebar/DirectorTimeli
 // Browser contract harness. Vite's production entry does not include this file.
 import { createRoot } from 'react-dom/client'
 import { useState } from 'react'
-import { DirectorReview } from '../src/components/DirectorDashboard/DirectorReview'
-import { SceneTakes } from '../src/components/DirectorDashboard/SceneTakes'
+import { DirectorReview } from '../src/components/Director/DirectorReview'
 import { GenerationReviewPanel } from '../src/components/Sidebar/GenerationReviewPanel'
 import { useStore } from '../src/stores/useStore'
 import { resolvedGenerationPlan } from '../src/lib/generationPlan'
@@ -44,17 +43,12 @@ function Harness() {
       setMode('timing')
     },
     timingState: () => ({ clips: useStore.getState().directorPlannedClips, images: useStore.getState().directorClipImages.map(i => ({ index: i.clipIndex, name: i.filename })), plans: useStore.getState().directorClipPlans }),
-    showTakes: () => setMode('takes'),
     changeDraft: () => useStore.setState({ params: { ...useStore.getState().params, prompt: 'UNAPPROVED CHANGES' } }),
   } })
   return <main className="p-4 bg-bg-primary text-text-primary min-h-screen">
     {mode === 'timing' && <DirectorTimelineEditor />}
     {mode === 'director' && <DirectorReview />}
     {mode === 'studio' && <GenerationReviewPanel />}
-    {mode === 'takes' && <SceneTakes pid="browser-project" busy={false} clip={{ index: 0, video_filename: 'a.mp4', tag: 'good', video_takes: [
-      { filename: 'a.mp4', created_at: 1, settings: { video_prompt: 'first take' } },
-      { filename: 'b.mp4', created_at: 2, settings: { video_prompt: 'second take' } },
-    ] } as never} />}
   </main>
 }
 useStore.setState({ pipelineId: fixture.id, pipelineStatus: fixture as never })

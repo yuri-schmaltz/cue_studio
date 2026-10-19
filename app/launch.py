@@ -10472,7 +10472,7 @@ def director_pipeline_resume(pid: str):
     return {"status": "resumed", "pipeline_id": pid}
 
 
-# ── Director Pipeline Dashboard ───────────────────────────────────────────
+# ── Director saved pipelines (shared by Director and Editor) ──
 
 @api.get("/api/v1/director/pipelines")
 def list_saved_pipelines():

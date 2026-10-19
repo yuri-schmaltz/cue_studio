@@ -2,7 +2,6 @@ import { Suspense, useEffect } from 'react'
 import { ApplicationHeader } from './components/Shell/ApplicationHeader'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import {
-  DirectorDashboard,
   DirectorPage,
   MainContent,
   RetakeDialog,
@@ -20,7 +19,6 @@ import {
   RecipesOverlay,
   SettingsDrawer,
   StudioPage,
-  WorkDashboard,
 } from './lib/lazyComponents'
 import { useStore } from './stores/useStore'
 import { useUrlNavigation } from './navigation/useUrlNavigation'
@@ -40,7 +38,7 @@ function App() {
   const loadServicesConfig = useStore(s => s.loadServicesConfig)
   const loadLlmStatus = useStore(s => s.loadLlmStatus)
   const loadLlmModels = useStore(s => s.loadLlmModels)
-  const loadPipelineList = useStore(s => s.loadPipelineList)
+  const reconnectDirectorPipelines = useStore(s => s.reconnectDirectorPipelines)
   const loadSystemStats = useStore(s => s.loadSystemStats)
   const section = useStore(s => s.appSection)
 
@@ -52,10 +50,10 @@ function App() {
     loadServicesConfig()
     loadLlmStatus()
     loadLlmModels()
-    loadPipelineList()
+    reconnectDirectorPipelines()
     reconnectJobs()
     loadSystemStats()
-  }, [loadModels, loadWorkspaces, loadOutputs, loadSystemConfig, loadServicesConfig, loadLlmStatus, loadLlmModels, loadPipelineList, reconnectJobs, loadSystemStats])
+  }, [loadModels, loadWorkspaces, loadOutputs, loadSystemConfig, loadServicesConfig, loadLlmStatus, loadLlmModels, reconnectDirectorPipelines, reconnectJobs, loadSystemStats])
 
   // Poll LLM status to stay in sync with backend auto-load/unload.
   // Owned by App via usePolling (A17): the interval is cleared on
@@ -75,23 +73,6 @@ function App() {
               routes. */}
           {section === 'projects' && <ErrorBoundary section="Projects"><ProjectsPage /></ErrorBoundary>}
           {section === 'queue' && <ErrorBoundary section="Queue"><QueuePage /></ErrorBoundary>}
-          {section === 'dashboard' && (
-            <ErrorBoundary section="Dashboard">
-              {/* A11 work summary on top (continue / queue / outputs),
-                  the existing pipeline-review Dashboard below. The top
-                  block scrolls independently so both stay usable. */}
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="max-h-[50%] shrink-0 overflow-y-auto border-b border-border bg-bg-secondary">
-                  <div className="p-4 pb-6">
-                    <WorkDashboard />
-                  </div>
-                </div>
-                <div className="min-h-0 flex-1">
-                  <DirectorDashboard embedded={true} />
-                </div>
-              </div>
-            </ErrorBoundary>
-          )}
           {section === 'director' && <ErrorBoundary section="Director"><DirectorPage /></ErrorBoundary>}
           {section === 'studio' && <ErrorBoundary section="Studio"><StudioPage /></ErrorBoundary>}
           {section === 'editor' && <ErrorBoundary section="Editor"><EditorWorkspace /></ErrorBoundary>}
@@ -101,7 +82,6 @@ function App() {
       </div>
       <Suspense fallback={null}>
         <LoraBrowser />
-        <DirectorDashboard embedded={false} />
         <RecipesOverlay />
       </Suspense>
       <RetakeDialog />

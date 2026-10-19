@@ -15,8 +15,8 @@ import type { AppRoute } from './types'
 
 describe('parseRoute', () => {
   it('parses the top-level routes', () => {
-    expect(parseRoute('/')).toEqual({ kind: 'dashboard' })
-    expect(parseRoute('')).toEqual({ kind: 'dashboard' })
+    expect(parseRoute('/')).toEqual({ kind: 'projects' })
+    expect(parseRoute('')).toEqual({ kind: 'projects' })
     expect(parseRoute('/projects')).toEqual({ kind: 'projects' })
     expect(parseRoute('/queue')).toEqual({ kind: 'queue' })
     expect(parseRoute('/configurations')).toEqual({ kind: 'configurations' })
@@ -36,9 +36,9 @@ describe('parseRoute', () => {
     expect(parseRoute('/projects/abc/editor')).toEqual({ kind: 'editor', projectId: 'abc' })
   })
 
-  it('falls back to the dashboard for unknown paths', () => {
-    expect(parseRoute('/nope')).toEqual({ kind: 'dashboard' })
-    expect(parseRoute('/projects/abc/bogus')).toEqual({ kind: 'dashboard' })
+  it('falls back to the projects list for unknown paths', () => {
+    expect(parseRoute('/nope')).toEqual({ kind: 'projects' })
+    expect(parseRoute('/projects/abc/bogus')).toEqual({ kind: 'projects' })
   })
 
   it('decodes encoded project ids', () => {
@@ -49,7 +49,6 @@ describe('parseRoute', () => {
 describe('serializeRoute', () => {
   it('serializes every route kind', () => {
     const routes: AppRoute[] = [
-      { kind: 'dashboard' },
       { kind: 'projects' },
       { kind: 'project', projectId: 'abc', section: 'director' },
       { kind: 'project', projectId: 'abc', section: 'studio' },
@@ -59,7 +58,6 @@ describe('serializeRoute', () => {
       { kind: 'configurations' },
     ]
     expect(routes.map(serializeRoute)).toEqual([
-      '/',
       '/projects',
       '/projects/abc/director',
       '/projects/abc/studio',
@@ -71,7 +69,7 @@ describe('serializeRoute', () => {
   })
 
   it('round-trips through parseRoute', () => {
-    for (const path of ['/', '/projects', '/projects/abc/director', '/projects/abc/studio', '/projects/abc/medias', '/projects/abc/editor', '/queue', '/configurations']) {
+    for (const path of ['/projects', '/projects/abc/director', '/projects/abc/studio', '/projects/abc/medias', '/projects/abc/editor', '/queue', '/configurations']) {
       expect(serializeRoute(parseRoute(path))).toBe(path)
     }
   })
@@ -83,7 +81,6 @@ describe('serializeRoute', () => {
 
 describe('routeFromState / sectionFromRoute', () => {
   it('maps global sections to their routes', () => {
-    expect(routeFromState('dashboard', 'default')).toEqual({ kind: 'dashboard' })
     expect(routeFromState('projects', 'default')).toEqual({ kind: 'projects' })
     expect(routeFromState('queue', 'abc')).toEqual({ kind: 'queue' })
     expect(routeFromState('configurations', 'abc')).toEqual({ kind: 'configurations' })

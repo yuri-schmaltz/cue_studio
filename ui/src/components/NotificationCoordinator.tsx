@@ -195,7 +195,7 @@ export function NotificationCoordinator() {
               ? 'Director project failed'
               : 'Director project cancelled',
           status === 'completed'
-            ? 'The completed project is ready in the gallery and Director Dashboard.'
+            ? 'The completed project is ready in the gallery and the Director.'
             : status === 'failed'
               ? (state.pipelineStatus?.error || 'The Director project could not be completed.')
               : 'The Director project was stopped.',

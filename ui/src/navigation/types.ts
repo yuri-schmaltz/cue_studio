@@ -7,8 +7,7 @@
  *
  * | Kind         | URL                                |
  * |--------------|------------------------------------|
- * | `dashboard`  | `/`                                |
- * | `projects`   | `/projects`                        |
+ * | `projects`   | `/` and `/projects`                |
  * | `project`    | `/projects/:projectId/:section`    |
  * | `editor`     | `/projects/:projectId/editor`      |
  * | `queue`      | `/queue`                           |
@@ -29,7 +28,6 @@ import type { AppSection } from '../types'
 export type Section = 'director' | 'studio' | 'medias'
 
 export type AppRoute =
-  | { kind: 'dashboard' }
   | { kind: 'projects' }
   | { kind: 'project'; projectId: string; section: Section }
   | { kind: 'queue' }
@@ -43,15 +41,15 @@ function isProjectSection(value: string): value is Section {
 }
 
 /** Parse a location pathname into an `AppRoute` (unknown paths fall
- *  back to the dashboard so a stale URL never blanks the app). */
+ *  back to the projects list so a stale URL never blanks the app). */
 export function parseRoute(pathname: string): AppRoute {
   const parts = pathname.split('/').filter(Boolean).map(decodeURIComponent)
-  if (parts.length === 0) return { kind: 'dashboard' }
+  if (parts.length === 0) return { kind: 'projects' }
   if (parts.length === 1) {
     if (parts[0] === 'projects') return { kind: 'projects' }
     if (parts[0] === 'queue') return { kind: 'queue' }
     if (parts[0] === 'configurations') return { kind: 'configurations' }
-    return { kind: 'dashboard' }
+    return { kind: 'projects' }
   }
   if (parts[0] === 'projects' && parts[1]) {
     const projectId = parts[1]
@@ -61,13 +59,12 @@ export function parseRoute(pathname: string): AppRoute {
       return { kind: 'project', projectId, section: parts[2] }
     }
   }
-  return { kind: 'dashboard' }
+  return { kind: 'projects' }
 }
 
 /** Serialize an `AppRoute` back into its pathname. */
 export function serializeRoute(route: AppRoute): string {
   switch (route.kind) {
-    case 'dashboard': return '/'
     case 'projects': return '/projects'
     case 'queue': return '/queue'
     case 'configurations': return '/configurations'
@@ -92,8 +89,7 @@ export function routeFromState(section: AppSection, workspace: string): AppRoute
     case 'projects': return { kind: 'projects' }
     case 'queue': return { kind: 'queue' }
     case 'configurations': return { kind: 'configurations' }
-    case 'dashboard':
-    default: return { kind: 'dashboard' }
+    default: return { kind: 'projects' }
   }
 }
 
@@ -105,7 +101,6 @@ export function sectionFromRoute(route: AppRoute): { section: AppSection; projec
     case 'projects': return { section: 'projects' }
     case 'queue': return { section: 'queue' }
     case 'configurations': return { section: 'configurations' }
-    case 'dashboard':
-    default: return { section: 'dashboard' }
+    default: return { section: 'projects' }
   }
 }

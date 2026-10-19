@@ -1070,79 +1070,6 @@ _STYLE_DESCRIBE_PROMPT = (
 )
 
 
-_PIPELINE_TYPE_LABELS = {
-    "music_video": "Music Video",
-    "short_film_audio": "Short Film",
-    "short_film_story": "Short Film",
-    "viral_video": "Viral Video",
-    "podcast": "Podcast",
-    "tutorial": "Tutorial",
-}
-
-# Prepositions / articles to drop when picking a friendly title fragment.
-# Keeps the "headline" punchy and avoids "...the and a..." noise.
-_PIPELINE_TITLE_STOPWORDS = frozenset({
-    "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into",
-    "of", "on", "onto", "or", "over", "so", "the", "to", "up", "with", "yet",
-})
-
-
-def _friendly_pipeline_name(
-    pipeline_type: str,
-    scene_description: str,
-    created_at: Optional[float],
-) -> str:
-    """Build a short, human-friendly pipeline label for the Dashboard.
-
-    Returns something like ``"Music Video · Sunset Drive"`` or, when the
-    scene description is empty, ``"Music Video: run 28 Sep 14:32"``.
-    The label is intentionally short so the Dashboard ``<select>`` stays
-    scannable; full detail still lives in the pipeline card.
-    """
-    workflow_label = _PIPELINE_TYPE_LABELS.get(
-        str(pipeline_type or "").strip(),
-        str(pipeline_type or "").replace("_", " ").strip().title() or "Director",
-    )
-
-    desc = re.sub(r"\s+", " ", str(scene_description or "").strip())
-    title = ""
-    if desc:
-        # First sentence / first line only — a description that begins with a
-        # title-case clause should still surface it as the "headline".
-        head = desc.split(".")[0].split("\n")[0].strip(" -:;\"'")
-        # Strip quote marks the planner often leaves around the title.
-        head = head.strip("“”‘’\"'")
-        # Title-case while preserving already-uppercase abbreviations.
-        words = []
-        for token in head.split(" "):
-            cleaned = token.strip(",;:()[]")
-            if not cleaned:
-                continue
-            if cleaned.isupper() and len(cleaned) <= 5:
-                words.append(cleaned)
-            else:
-                words.append(cleaned[:1].upper() + cleaned[1:])
-        # Drop the leading stopwords so "The morning drive" → "Morning Drive".
-        while words and words[0].lower().strip(",;:()[]") in _PIPELINE_TITLE_STOPWORDS:
-            words.pop(0)
-        candidate = " ".join(words).strip(" ,;:.-—")
-        if candidate and len(candidate) >= 2:
-            title = candidate[:48].rstrip(" ,;:.-—")
-            if len(candidate) > 48:
-                title = title.rsplit(" ", 1)[0] + "…"
-
-    if not title:
-        if created_at:
-            stamp = time.strftime(
-                "%d %b %H:%M", time.localtime(float(created_at))
-            ).lstrip("0").replace(" 0", " ")
-            # Fall back to a single colon-separated form so the dropdown
-            # never renders two stacked "·" separators back to back.
-            return f"{workflow_label}: run {stamp}"
-        return f"{workflow_label}: untitled run"
-
-    return f"{workflow_label} · {title}"
-
 
 def _normalize_style_phrase(raw: str) -> str:
     """Reduce the vision LLM's style answer to a clean, prefix-able phrase.
@@ -1539,14 +1466,6 @@ def list_pipeline_states(out_dir: str) -> list[dict]:
                         "clip_count": len(data.get("clips", [])),
                         "output_count": len(data.get("output_files", [])),
                         "scene_description": (data.get("scene_description", "") or "")[:100],
-                        # Derive on read so helper improvements (stopwords,
-                        # truncation, fallback format) propagate to old
-                        # pipelines without a migration step.
-                        "display_name": _friendly_pipeline_name(
-                            data.get("pipeline_type", ""),
-                            data.get("scene_description", "") or "",
-                            data.get("created_at"),
-                        ),
                         "workspace": os.path.basename(scan_dir) if scan_dir != out_dir else "default",
                         "repair_status": (data.get("repair") or {}).get("status"),
                         "_filepath": filepath,

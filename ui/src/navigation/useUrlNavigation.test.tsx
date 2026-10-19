@@ -11,7 +11,7 @@ import { act, renderHook } from '@testing-library/react'
 vi.mock('../stores/useStore', async () => {
   const { create } = await vi.importActual<typeof import('zustand')>('zustand')
   const useStore = create(() => ({
-    appSection: 'dashboard' as string,
+    appSection: 'projects' as string,
     activeWorkspace: 'default' as string,
     mediaFilter: 'all' as string,
     workspaces: [] as Array<{ name: string }>,
@@ -53,7 +53,7 @@ beforeEach(() => {
   setUrl('/')
   act(() => {
     useStore.setState({
-      appSection: 'dashboard',
+      appSection: 'projects',
       activeWorkspace: 'default',
       mediaFilter: 'all',
       workspaces: [],
@@ -94,8 +94,8 @@ it('falls back when the deep link references an unknown project', async () => {
   act(() => { useStore.setState({ workspaces: [{ name: 'abc' }] } as never) })
   await mount()
   // The URL is replaced with the current state's route, no crash.
-  expect(window.location.pathname).toBe('/')
-  expect(state().appSection).toBe('dashboard')
+  expect(window.location.pathname).toBe('/projects')
+  expect(state().appSection).toBe('projects')
 })
 
 it('applies the URL on popstate (browser Back)', async () => {
@@ -103,12 +103,12 @@ it('applies the URL on popstate (browser Back)', async () => {
   act(() => { state().setAppSection('projects') })
   expect(window.location.pathname).toBe('/projects')
   // Simulate Back to the previous URL.
-  setUrl('/')
+  setUrl('/queue')
   await act(async () => {
     window.dispatchEvent(new PopStateEvent('popstate'))
     await Promise.resolve()
   })
-  expect(state().appSection).toBe('dashboard')
+  expect(state().appSection).toBe('queue')
 })
 
 it('keeps media filter changes in the query string', async () => {

@@ -529,7 +529,7 @@ export interface OutputFile {
  *  kept for backward-compat with any persisted UI state — it now
  *  aliases to 'workspace' + workspaceStage='director' on first read.
  */
-export type AppSection = 'projects' | 'queue' | 'director' | 'studio' | 'editor' | 'dashboard' | 'medias' | 'configurations'
+export type AppSection = 'projects' | 'queue' | 'director' | 'studio' | 'editor' | 'medias' | 'configurations'
 
 export type AppMode = 'workspace' | 'editor'
 /** @deprecated Use `AppMode = 'workspace'` + `workspaceStage =
@@ -1771,7 +1771,7 @@ export interface DirectorV2PlanResponse {
   skill_type: DirectorSkill
 }
 
-// ── Director Pipeline Dashboard ──────────────────────────────────────────
+// ── Director saved pipelines ─────────────────────────────────────────────
 
 export interface SceneTake {
   filename: string

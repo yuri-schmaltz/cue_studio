@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo, LayoutDashboard } from 'lucide-react'
+import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useActiveProject } from '../../navigation/useUrlNavigation'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
@@ -11,7 +11,6 @@ const sections: ReadonlyArray<{
   icon: typeof FolderOpen
   showCount?: boolean
 }> = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'projects', label: 'Projects', icon: FolderOpen },
   { id: 'director', label: 'Director', icon: Clapperboard },
   { id: 'studio', label: 'Studio', icon: SlidersHorizontal },

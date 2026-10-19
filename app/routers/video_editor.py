@@ -94,9 +94,9 @@ def build_video_editor_router(get_editor):
     @router.post("/projects/{project_id}/clips", status_code=201)
     def add_clip(project_id: str, payload: ClipIn = Body(...)) -> dict[str, Any]:
         try:
-    from app.services.video_editor import EditorError
-except ImportError:
-    from services.video_editor import EditorError
+            from app.services.video_editor import EditorError
+        except ImportError:
+            from services.video_editor import EditorError
         try:
             return _ed().add_clip(project_id, payload.model_dump())
         except EditorError as exc:
@@ -105,9 +105,9 @@ except ImportError:
     @router.delete("/projects/{project_id}/clips/{clip_id}", status_code=200)
     def remove_clip(project_id: str, clip_id: str) -> dict[str, Any]:
         try:
-    from app.services.video_editor import EditorError
-except ImportError:
-    from services.video_editor import EditorError
+            from app.services.video_editor import EditorError
+        except ImportError:
+            from services.video_editor import EditorError
         try:
             return _ed().remove_clip(project_id, clip_id)
         except EditorError as exc:
@@ -116,9 +116,9 @@ except ImportError:
     @router.post("/projects/{project_id}/clips/reorder")
     def reorder_clips(project_id: str, payload: ReorderIn = Body(...)) -> dict[str, Any]:
         try:
-    from app.services.video_editor import EditorError
-except ImportError:
-    from services.video_editor import EditorError
+            from app.services.video_editor import EditorError
+        except ImportError:
+            from services.video_editor import EditorError
         try:
             return _ed().reorder_clips(project_id, payload.order)
         except EditorError as exc:
@@ -127,9 +127,9 @@ except ImportError:
     @router.post("/projects/{project_id}/clips/{clip_id}/trim")
     def trim_clip(project_id: str, clip_id: str, payload: TrimIn = Body(...)) -> dict[str, Any]:
         try:
-    from app.services.video_editor import EditorError
-except ImportError:
-    from services.video_editor import EditorError
+            from app.services.video_editor import EditorError
+        except ImportError:
+            from services.video_editor import EditorError
         try:
             return _ed().trim_clip(
                 project_id, clip_id, start=payload.start, end=payload.end,
@@ -140,9 +140,9 @@ except ImportError:
     @router.post("/projects/{project_id}/clips/{clip_id}/split")
     def split_clip(project_id: str, clip_id: str, payload: SplitIn = Body(...)) -> dict[str, Any]:
         try:
-    from app.services.video_editor import EditorError
-except ImportError:
-    from services.video_editor import EditorError
+            from app.services.video_editor import EditorError
+        except ImportError:
+            from services.video_editor import EditorError
         try:
             return _ed().split_clip(project_id, clip_id, at_seconds=payload.at_seconds)
         except EditorError as exc:
@@ -156,9 +156,9 @@ except ImportError:
         payload: ExportIn | None = Body(default=None),
     ) -> dict[str, Any]:
         try:
-    from app.services.video_editor import EditorError
-except ImportError:
-    from services.video_editor import EditorError
+            from app.services.video_editor import EditorError
+        except ImportError:
+            from services.video_editor import EditorError
         output_path = payload.output_path if payload else None
         try:
             return _ed().export(project_id, output_path=output_path)

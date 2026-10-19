@@ -980,7 +980,6 @@ input[type="range"]::-webkit-slider-thumb {
 .application-tab[data-section="projects"].is-active      { background:#0e7490; color:#fff; }
 .application-tab[data-section="director"].is-active      { background:#7c3aed; color:#fff; }
 .application-tab[data-section="editor"].is-active       { background:#be185d; color:#fff; }
-.application-tab[data-section="dashboard"].is-active     { background:#b45309; color:#fff; }
 .application-tab[data-section="medias"].is-active       { background:#15803d; color:#fff; }
 .application-tab[data-section="queue"].is-active        { background:#1d4ed8; color:#fff; }
 .application-tab[data-section="configurations"].is-active { background:#475569; color:#fff; }

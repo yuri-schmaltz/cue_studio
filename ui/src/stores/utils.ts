@@ -7,7 +7,7 @@
  * or window/fetch stays in useStore.ts.
  */
 
-import type { CivitAIDownload, PipelineRepairState, GenerateParams } from '../types'
+import type { CivitAIDownload, GenerateParams } from '../types'
 import type { SavedModeParams } from './studioPersistence'
 
 // --- Outpaint aspect (used both inside the store and by inference helpers) ---
@@ -69,14 +69,6 @@ export function inferOutpaintAspect(width: number, height: number): OutpaintAspe
   // safely recognizes those canvases without pretending an arbitrary ratio
   // is one of the six choices supported by the composer.
   return nearestError <= 0.04 ? nearest : null
-}
-
-// --- Pipeline repair polling status check ---
-
-const DIRECTOR_REPAIR_ACTIVE_STATUSES = new Set(['queued', 'running', 'cancelling'])
-
-export function repairNeedsPolling(repair: PipelineRepairState | null | undefined): boolean {
-  return !!repair && DIRECTOR_REPAIR_ACTIVE_STATUSES.has(repair.status)
 }
 
 // --- Director LoRA state coercion (API payload → typed record) ---

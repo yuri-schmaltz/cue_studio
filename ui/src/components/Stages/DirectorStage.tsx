@@ -1,4 +1,4 @@
-import { DirectorReview } from '../DirectorDashboard/DirectorReview'
+import { DirectorReview } from '../Director/DirectorReview'
 // filepath: ui/src/components/Stages/DirectorStage.tsx
 //
 // DirectorStage — Strategy B (Director-as-Stage) from the
