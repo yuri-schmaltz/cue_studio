@@ -860,7 +860,24 @@ MUSIC VIDEO RULES:
 {image_prompt_rules}
 
 
-OUTPUT — respond with ONLY a JSON array:
+OUTPUT — respond with ONLY a JSON array. Example of ONE valid clip (follow this exact structure):
+[
+  {{
+    "scene_goal": "Establish the performance space and introduce the artist",
+    "scene_type": "performance",
+    "subjects_on_screen": [{{"visual_description": "a woman in a red dress", "position_or_relation": "center frame"}}],
+    "environment": "A dimly lit stage with spotlights and fog",
+    "visual_style": "Cinematic, high contrast, neon accents",
+    "lighting": "Dramatic spotlights from above, blue and red gels",
+    "mood": "Energetic and confident",
+    "action_beats": ["Performer steps into spotlight", "Performer begins singing", "Camera slowly pushes in"],
+    "camera_plan": {{"framing": "medium shot", "movement": "slow dolly in", "movement_intensity": "subtle"}},
+    "ending_beat": "Performer holds final pose as lights flare",
+    "video_prompt": "Medium shot of a woman in a red dress performing on a dimly lit stage with spotlights and fog. Dramatic blue and red gels from above. She steps into the spotlight and begins singing, camera slowly pushes in. Energetic and confident, cinematic, high contrast, neon accents."
+  }}
+]
+
+Now generate the actual clips following the same structure. Output ONLY a JSON array:
 [
   {{
     "scene_goal": "What this clip achieves",

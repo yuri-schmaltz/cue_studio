@@ -7046,6 +7046,31 @@ SHORT FILM PLANNING RULES:
 - video_prompt MUST be a full detailed paragraph (80-150 words) — NOT a brief label.
 {image_planning_rules}
 
+FEW-SHOT EXAMPLE (follow this exact JSON structure for each shot):
+[
+  {{
+    "scene_goal": "Establish the setting and introduce the protagonist",
+    "scene_type": "opening",
+    "subjects_on_screen": [
+      {{"visual_description": "a grey robot with three circular lenses in triangular arrangement", "position_or_relation": "foreground center"}}
+    ],
+    "spatial_setup": "Robot stands in the center of a dimly lit workshop",
+    "environment": "A cluttered workshop with tools on benches, morning light through a window",
+    "visual_style": "Cinematic, warm tones, shallow depth of field",
+    "lighting": "Soft morning light from left, warm ambient fill",
+    "mood": "Curious and contemplative",
+    "action_beats": ["Robot enters through door", "Robot scans the room with its lenses", "Robot approaches a workbench"],
+    "dialogue_beats": [],
+    "camera_plan": {{"framing": "medium shot", "movement": "slow push in", "movement_intensity": "subtle"}},
+    "audio_plan": {{"mode": "ambient", "lip_sync_critical": false}},
+    "ending_beat": "Robot stops at workbench, lenses focused on an object",
+    "image_source": "generated",
+    "image_prompt": "A grey robot with three circular lenses in triangular arrangement standing in a dimly lit workshop, morning light from left, cinematic, warm tones",
+    "visual_changes": [],
+    "video_prompt": "Medium shot of a grey robot with three circular lenses in triangular arrangement standing in a dimly lit workshop. Morning light streams from the left window. The robot slowly scans the room, its lenses adjusting focus. It approaches a workbench and stops, lenses fixed on an object. Slow push in, subtle movement, warm cinematic tones."
+  }}
+]
+
 VIDEO PROMPT (video_prompt) — follow the LTX-2 style guide below closely:
 - One single flowing paragraph, present tense, 4-8 sentences.
 - Start with shot type and visual style early.
@@ -7062,6 +7087,31 @@ VIDEO PROMPT (video_prompt) — follow the LTX-2 style guide below closely:
 
 REFERENCE — LTX-2 video style guide:
 {video_guide if video_guide else "(no guide loaded)"}
+
+FEW-SHOT EXAMPLE (follow this exact JSON structure for each shot):
+[
+  {{
+    "scene_goal": "Establish the setting and introduce the protagonist",
+    "scene_type": "opening",
+    "subjects_on_screen": [
+      {{"visual_description": "a grey robot with three circular lenses in triangular arrangement", "position_or_relation": "foreground center"}}
+    ],
+    "spatial_setup": "Robot stands in the center of a dimly lit workshop",
+    "environment": "A cluttered workshop with tools on benches, morning light through a window",
+    "visual_style": "Cinematic, warm tones, shallow depth of field",
+    "lighting": "Soft morning light from left, warm ambient fill",
+    "mood": "Curious and contemplative",
+    "action_beats": ["Robot enters through door", "Robot scans the room with its lenses", "Robot approaches a workbench"],
+    "dialogue_beats": [],
+    "camera_plan": {{"framing": "medium shot", "movement": "slow push in", "movement_intensity": "subtle"}},
+    "audio_plan": {{"mode": "ambient", "lip_sync_critical": false}},
+    "ending_beat": "Robot stops at workbench, lenses focused on an object",
+    "image_source": "generated",
+    "image_prompt": "A grey robot with three circular lenses in triangular arrangement standing in a dimly lit workshop, morning light from left, cinematic, warm tones",
+    "visual_changes": [],
+    "video_prompt": "Medium shot of a grey robot with three circular lenses in triangular arrangement standing in a dimly lit workshop. Morning light streams from the left window. The robot slowly scans the room, its lenses adjusting focus. It approaches a workbench and stops, lenses fixed on an object. Slow push in, subtle movement, warm cinematic tones."
+  }}
+]
 
 OUTPUT FORMAT — respond with ONLY a JSON array:
 [
