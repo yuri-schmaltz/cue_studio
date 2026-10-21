@@ -26,6 +26,7 @@ from app.services.reference_identity import EXPECTED_LENSES, analyse, check_anch
 from app.services.reference_cube import check_cube_continuity, check_cube_count
 from app.services.reference_robot import check_scale_stability
 from app.services.reference_continuity import check_relative_scale, check_scale_consistency
+from app.services import reference_ground
 
 pytestmark = pytest.mark.real_models
 FIXTURE = Path(__file__).parent / 'fixtures/cue_reference_film_v1'
@@ -261,6 +262,7 @@ def test_f2_generate_and_measure_real_jobs(config):
         clips.append(clip)
     scale_evidence = {}
     relative_evidence = {}
+    ground_evidence = {}
     film_measurements = {}
     for shot in SHOTS:
         clip = clips[next(i for i, s in enumerate(SHOTS) if s['id'] == shot['id'])]
@@ -288,6 +290,11 @@ def test_f2_generate_and_measure_real_jobs(config):
             film_measurements[shot['id']] = relative_evidence[shot['id'] + '-video']
         else:
             relative_evidence[shot['id'] + '-video'] = reference_continuity.analyse(clip)
+        # How high the robot stands above its own shadow. This is
+        # evidence and never a gate: the render only casts a shadow
+        # under the robot in some of the shots, and the creative review
+        # is what accepts the film.
+        ground_evidence[shot['id'] + '-video'] = reference_ground.analyse(clip)
     # The robot keeps one size along the whole film, not only inside a
     # shot. The creative review of the rejected v6 master rejected the
     # film for a robot of different sizes along the video, and this is
@@ -302,6 +309,7 @@ def test_f2_generate_and_measure_real_jobs(config):
         'cube_evidence': cube_evidence,
         'scale_evidence': scale_evidence,
         'relative_evidence': relative_evidence,
+        'ground_evidence': ground_evidence,
         'scale_consistency': consistency,
         'failures': failures,
     }, indent=2))
@@ -356,6 +364,7 @@ def test_f2_generate_and_measure_real_jobs(config):
     report['cube_evidence'] = cube_evidence
     report['scale_evidence'] = scale_evidence
     report['relative_evidence'] = relative_evidence
+    report['ground_evidence'] = ground_evidence
     report['scale_consistency'] = consistency
     partial.replace(master)
     (output / 'technical-report.json').write_text(json.dumps(report, indent=2))

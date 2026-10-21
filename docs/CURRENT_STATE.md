@@ -408,6 +408,36 @@ comparável (as de uma cabeça são do mesmo tamanho físico), o S04 mede 141 px
 em todos os quadros. A mesma correção não mexe no v6: ele continua
 reprovando a porta de escala ao longo do filme (1,71).
 
+### O caminho da revisão humana foi verificado de ponta a ponta
+
+Antes de pedir a revisão, o caminho inteiro foi exercitado num diretório
+temporário, com uma revisão **sintética** — o diretório real do v7 nunca
+recebeu revisão fictícia, e o gate continua reportando "unverified" até
+que a pessoa revise de verdade.
+
+O que foi verificado:
+
+- **a página abre e o filme toca**: `review.html` servida por HTTP carrega
+  `master.mp4` com `readyState 4`, duração 60 s, 1280×720, sem erro, e os
+  quatro `V0*-raw.wav` das falas respondem 200;
+- **o sha da página é o do master**: o `masterHash` embutido no HTML é
+  `6abca524466f8230a906046b2adacf6b3526fb78684ceab9275082e0fbbf8219`, o
+  mesmo do arquivo;
+- **o botão produz um arquivo que o gate aceita**: o JSON gerado pela
+  página (mesmo formato, mesmo sha, as seis dimensões com nota) é aceito
+  por `validate_creative_review()` sem alteração;
+- **o gate reprova sem revisão**: `test_f2_full_acceptance_requires_creative_review`
+  falha com a mensagem "Full F2 remains unverified until the actual master
+  is reviewed";
+- **o gate reprova uma revisão malformada**: hash de outro master, erro
+  crítico preenchido, dimensão sem nota, nota abaixo de 3, fala não
+  conferida, título não conferido e revisor ausente — sete casos, sete
+  recusas, cada uma com a sua mensagem.
+
+Ou seja: a revisão humana é o **único** passo que falta, e ele já tem
+uma página funcionando e um gate que aceita exatamente o que a página
+produz.
+
 ### O que ainda falta
 
 **A revisão artística humana do master v7.** O gate `-k full_acceptance`
@@ -421,6 +451,78 @@ A página de revisão está em
 exibido na página). Depois de assistida, a revisão vira
 `creative-review.json` no mesmo diretório e o gate completo passa a
 verificá-la.
+## O terceiro erro crítico do v6 — o robô flutuando — e por que ele não virou porta
+
+O v6 foi reprovado na revisão humana por três erros críticos: cena com
+dois cubos, robô de tamanhos diferentes ao longo do vídeo e robô
+flutuando. Os dois primeiros viraram portas automáticas. O terceiro
+continua sem porta, e esta seção é o registro do que foi tentado, do
+que a medição mostra e do que a medição **não** consegue mostrar.
+
+### O que é mensurável aqui, e o que não é
+
+`app/services/reference_ground.py` mede a altura em que o robô está
+acima da própria sombra, expressa em larguras de cabeça. A escolha do
+marcador é forçada, e foi verificada quadro a quadro:
+
+- o corpo cinza-claro **não é segmentável** — compartilha a faixa de
+  valor com a parede e com o chão de madeira. A regra mais simples
+  (`s < 70 e v > 150`) não acha corpo algum em nenhum dos 120 quadros
+  do S04 do v7, e quando acha algo, é a borda da mesa;
+- o detalhe azul-escuro do robô é esparso demais para servir de marca;
+- a **sombra que o robô projeta no chão** é o único marcador do plano
+  do piso sob ele.
+
+A distância da cabeça até a sombra é normalizada pela largura da
+cabeça porque o robô é desenhado em escalas muito diferentes entre
+planos, e o defeito é a *altura acima do chão*, não o tamanho na tela.
+Um robô no chão projeta a sombra nos pés; um robô flutuando a projeta
+mais abaixo.
+
+### O que a medição mostra
+
+| Plano | v6 (reprovado, robô flutuando) | v7 (corrigido) |
+|---|---|---|
+| S07 | **4,51** larguras de cabeça acima da sombra | **2,03** |
+| Demais 11 planos | não mensurável (sem sombra no quadro) | não mensurável |
+
+No S07, o único plano em que as duas versões produzem medição quadro a
+quadro, **o robô do v6 está mais alto em 23 dos 23 quadros** em que
+ambos são mensuráveis. A direção é a que a revisão humana apontou.
+
+Ressalva, porque o número sozinho induz a erro: o S07 do **v6 está
+gravado como `measurable: false`** — a cobertura dele é 0,20, abaixo do
+piso de 0,30, e o artefato o marca como não mensurável como plano. O
+4,51 é valor **indicativo**, medido nos 24 quadros em que o v6 tem
+detecção e pareado com os 23 em que o v7 também tem. O v7, com
+cobertura 0,68, é o único plano realmente mensurável dos dois filmes.
+
+### O que a medição não consegue mostrar
+
+**O plano não tem sombra em 11 dos 12 planos de cada filme.** Onde não
+há sombra não há nada no quadro que diga onde o chão está sob o robô, e
+a resposta honesta é "não mensurável", não um número inventado a partir
+da parede atrás. E onde a sombra aparece, a cobertura é baixa: no v6
+o S07 é medido em 20 % dos quadros e no v7 em 68 %.
+
+Por isso a métrica é **evidência, nunca porta**: um gate que só
+dispara em 1 dos 12 planos não pode carregar a aceitação de um filme,
+e um gate disparado por um número sem corpus rotulado rejeitaria um
+filme correto. A medição fica gravada em `shot-evidence.json` e em
+`technical-report.json` (chave `ground_evidence`) para que a revisão
+humana tenha um número por plano em vez de uma impressão.
+
+O piso de sanidade `MIN_STAND_IN_HEAD_WIDTHS = 1.0` existe por causa de
+uma armadilha medida: a faixa escura logo abaixo da cabeça está a
+0,15–0,35 largura de cabeça em **todos** os planos mensuráveis dos dois
+filmes — é a sombra do próprio queixo da cabeça, não a sombra no chão.
+Sem o piso, a métrica lia o queixo como chão e devolvia 0,15 em vez de
+2,03.
+
+**Conclusão honesta: o defeito de "robô flutuando" é mensurável onde o
+render projeta a sombra, e não é mensurável no resto. A revisão
+artística humana continua sendo a porta para ele.**
+
 ## Gate F2 (histórico) — geração real concluída, revisão humana pendente
 
 Um master real de 60 s foi gerado com inferência de IA efetiva e medido em

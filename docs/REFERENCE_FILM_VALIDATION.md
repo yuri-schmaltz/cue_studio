@@ -160,6 +160,68 @@ coisas diferentes em planos diferentes. Agora a cabeça é o vão das três
 lentes, e o grupo de lentes é o mais apertado entre as combinações de
 três. Sem essa correção a porta de consistência mediria ruído.
 
+### O terceiro erro crítico não virou porta, e a medição mostra por quê
+
+A revisão humana do master v6 apontou três erros críticos. Dois viraram
+portas automáticas — a cena com dois cubos e o robô de tamanhos
+diferentes ao longo do vídeo. O terceiro, *"robô flutuando"*, continua
+sem porta. A regra deste projeto é que uma porta mede um defeito: sem
+uma medida que separe o v6 do v7, não há porta.
+
+`app/services/reference_ground.py` é a tentativa de construir essa
+medida. Ela mede a altura em que o robô está acima da **própria sombra**,
+em larguras de cabeça.
+
+**Por que a sombra.** O corpo do robô é cinza-claro e compartilha a
+faixa de valor com a parede e com o chão de madeira: a regra de
+segmentação mais simples (`s < 70 e v > 150`) não encontra corpo em
+nenhum dos quadros do S04 do v7. O detalhe azul-escuro do robô é
+esparso demais para marcar. A sombra projetada no chão é o único
+marcador do plano do piso sob o robô, e é a única coisa no quadro que
+distingue "o robô está a 2 cabeças de altura do chão" de "o robô está
+colado no chão".
+
+**Por que normalizar pela cabeça.** O robô é desenhado em escalas muito
+diferentes entre planos — um close-up mostra uma cabeça maior, e é
+suposto que mostre. A normalização pela largura da cabeça deixa o
+número comparável entre planos: o que muda é a altura acima do chão,
+não o tamanho na tela.
+
+**O que a medida mostra no corpus.** No S07, o único plano em que as
+duas versões produzem medição quadro a quadro, o robô do v6 está mais
+alto em **23 dos 23 quadros** (4,51 contra 2,03 larguras de cabeça). A
+direção é exatamente a que a revisão humana apontou.
+
+Ressalva de honestidade, porque o número sozinho induz a erro: o S07 do
+**v6 está gravado como `measurable: false`** — a cobertura dele é 0,20,
+abaixo do piso de 0,30, então o artefato o marca como não mensurável
+como plano. A tabela acima traz 4,51 como valor **indicativo**, medido
+nos 24 quadros em que o v6 tem detecção e pareado com os 23 quadros em
+que o v7 também tem. O v7, com cobertura 0,68, é o único plano
+mensurável dos dois filmes. A assimetria de cobertura é a própria
+evidência de que os renders são irregulares — e é por isso que a
+métrica é evidência, não porta.
+
+**Por que isso não é uma porta.** Em 11 dos 12 planos de cada filme o
+render não projeta sombra sob o robô, e onde projeta a cobertura é
+baixa (20 % no v6, 68 % no v7). Uma porta que só existe em 1 de 12
+planos não pode decidir a aceitação de um filme; e um limiar escolhido
+sem corpus rotulado rejeitaria um filme correto, que é exatamente o
+erro que este projeto já cometeu uma vez — cada detector que já mudou
+foi recalibrado contra um corpus com rótulo do revisor.
+
+A métrica é portanto gravada como **evidência** (`ground_evidence` em
+`shot-evidence.json` e `technical-report.json`), para que a revisão
+humana tenha um número por plano em vez de uma impressão, e a revisão
+artística humana continua sendo a porta para esse defeito.
+
+**Uma armadilha que a calibração pegou.** A faixa escura logo abaixo da
+cabeça está a 0,15–0,35 largura de cabeça em *todos* os planos
+mensuráveis dos dois filmes: é a sombra do queixo da cabeça, não a
+sombra no chão. Sem o piso `MIN_STAND_IN_HEAD_WIDTHS = 1,0` a métrica lia
+o queixo como chão e devolvia 0,15 onde o valor certo era 2,03 — e a
+comparação entre o v6 e o v7 invertia o sinal.
+
 ### O prompt negativo de imagem só existe com NAG ligado
 
 No `app/models/flux/flux_main.py` o `negative_prompt` é codificado apenas
