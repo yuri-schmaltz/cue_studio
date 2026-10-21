@@ -412,7 +412,12 @@ construção:
   branco, é **recusada** — a página nunca aprova sozinha;
 - a página não é construída para um master cujo relatório técnico não
   bate com o arquivo, nem para um master com check reprovado;
-- a página oferece só as falas que existem em disco.
+- a página oferece só as falas que existem em disco;
+- a página guarda uma **cópia visível do JSON**, preenchida com o mesmo
+  texto que ela baixa, e a âncora do download é clicada já dentro do
+  documento — uma âncora solta é a maneira clássica de o download se
+  perder, e um download bloqueado pela política do navegador não pode
+  custar ao revisor dez minutos de filme.
 
 E o gate do F2 passou a checar o vínculo antes de pedir a revisão: se a
 página em disco for de outro master, a falha diz
@@ -424,6 +429,10 @@ scripts/build_reference_review.py before asking for a review
 
 em vez de o revisor descobrir, depois de dez minutos de filme, que a
 revisão dele não valia.
+
+O JSON que a página produz foi verificado contra a porta real: aceito
+por `validate_creative_review()` com o sha do master v7, sem alteração
+de nenhuma linha.
 
 ## Recuperação F3
 

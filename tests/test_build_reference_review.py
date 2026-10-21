@@ -160,3 +160,20 @@ def test_the_page_offers_the_speech_stems_that_exist(tmp_path):
     assert 'V04-raw.wav' not in page
     for source in re.findall(r'<audio[^>]*src="([^"]+)"', page):
         assert (folder / source).is_file(), f'the page offers {source}, which does not exist'
+
+
+def test_the_page_keeps_a_fallback_when_the_download_does_not_show_up(tmp_path):
+    """A blocked download must not cost the reviewer their ten minutes."""
+    page = (build_review(_folder(tmp_path))).read_text()
+    assert 'id="json"' in page, 'the page needs a visible copy of the review'
+    script = page[page.index('<script>'):]
+    assert "document.querySelector('#json').value=text" in script, (
+        'the page must fill the fallback with the very text it downloads')
+
+
+def test_the_download_anchor_is_in_the_document_when_it_is_clicked(tmp_path):
+    """A detached anchor is the classic way to lose a download."""
+    page = (build_review(_folder(tmp_path))).read_text()
+    script = page[page.index('<script>'):]
+    assert 'document.body.appendChild(link)' in script
+    assert 'link.click()' in script

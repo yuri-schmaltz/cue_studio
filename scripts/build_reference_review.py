@@ -57,7 +57,10 @@ code{overflow-wrap:anywhere;font-size:12px}audio{display:block;width:100%;max-wi
 <label>Erros críticos observados (um por linha; deixe vazio somente se não houver nenhum)<textarea id="errors"></textarea></label>
 <label><input type="checkbox" id="speech"> Conferi todas as falas: texto correto e sem palavras cortadas.</label>
 <label><input type="checkbox" id="title"> Conferi o título: “A luz da oficina”.</label>
-<button>Baixar minha revisão</button><p id="status" role="status"></p></form>
+<button>Baixar minha revisão</button><p id="status" role="status"></p>
+<details id="fallback"><summary>Se o download não aparecer, copie o JSON abaixo</summary>
+<p><small>O mesmo conteúdo do arquivo baixado. Salve como <code>creative-review.json</code> nesta mesma pasta. Se o navegador renomear o arquivo, por exemplo <code>creative-review (1).json</code>, renomeie de volta para <code>creative-review.json</code>.</small></p>
+<textarea id="json" readonly rows="14"></textarea></details></form>
 <p>Salve o arquivo baixado como <code>creative-review.json</code> nesta mesma pasta. A revisão vale apenas para o master identificado acima.</p>
 <script>
 const masterHash=__HASH_JSON__;
@@ -67,8 +70,14 @@ document.querySelector('#review').addEventListener('submit',event=>{
  const review={master_sha256:masterHash,reviewer:document.querySelector('#reviewer').value.trim(),reviewed_at:new Date().toISOString(),scores,
  critical_errors:document.querySelector('#errors').value.split('\n').map(x=>x.trim()).filter(Boolean),
  speech_correct_and_untruncated:document.querySelector('#speech').checked,title_correct:document.querySelector('#title').checked};
- const url=URL.createObjectURL(new Blob([JSON.stringify(review,null,2)],{type:'application/json'}));
- const link=document.createElement('a');link.href=url;link.download='creative-review.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ const text=JSON.stringify(review,null,2);
+ // The download can be blocked by a browser policy or a download shelf
+ // that never shows up. The same text is always visible below, so a
+ // reviewer never loses a ten minute review to a missing file.
+ document.querySelector('#json').value=text;
+ const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+ const link=document.createElement('a');link.href=url;link.download='creative-review.json';
+ document.body.appendChild(link);link.click();setTimeout(()=>{link.remove();URL.revokeObjectURL(url);},1000);
  document.querySelector('#status').textContent='Sua avaliação foi exportada. O teste de aceite verificará notas, erros críticos e vínculo com o master.';
 });</script></html>'''
     document = document.replace('__SPEECH__', speech).replace('__FIELDS__', fields).replace('__HASH__', html.escape(digest)).replace('__HASH_JSON__', json.dumps(digest))
