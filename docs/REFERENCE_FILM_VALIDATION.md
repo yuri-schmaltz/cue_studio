@@ -434,6 +434,40 @@ O JSON que a página produz foi verificado contra a porta real: aceito
 por `validate_creative_review()` com o sha do master v7, sem alteração
 de nenhuma linha.
 
+### Servir a revisão também é ferramenta, não comando solto
+
+Um `python3 -m http.server` manual é a forma mais rápida de perder o
+filme: a porta está ocupada, o servidor morreu, ou a pasta errada está
+sendo servida, e o revisor recebe um 404 depois de sentar diante da
+tela. `scripts/serve_reference_review.py` faz a checagem antes de abrir
+a porta:
+
+```bash
+app/env/bin/python scripts/serve_reference_review.py \
+  app/outputs/validacao-f2-2026-10-21-v7
+```
+
+Ele confere que o master existe, que o relatório técnico ainda descreve
+esse arquivo, que a página está vinculada a esse master, e que todo
+arquivo que a página oferece existe em disco. Se a página estiver
+ausente ou desatualizada, ela é **reconstruída** a partir do master
+validado antes de servir. Se a porta preferida estiver ocupada, ele
+serve em outra e avisa qual. `--check` apenas relata o estado da pasta
+sem servir nada.
+
+```
+ok: the master is technically validated
+ok: the review page is bound to this master
+review served at http://127.0.0.1:8901/review.html
+```
+
+Dois bugs reais apareceram enquanto isso era escrito e agora estão
+cobertos por teste: `SimpleHTTPRequestHandler` ignora um atributo de
+classe chamado `directory` e serve o diretório de trabalho — a página
+respondia 404 mesmo com o servidor no ar — e `free_port(0)` devolvia o
+próprio zero, de modo que o servidor subia numa porta efêmera enquanto
+o cliente tentava a porta 0.
+
 ## Recuperação F3
 
 Os testes comuns cobrem encerramento abrupto de processo após commit SQLite,
