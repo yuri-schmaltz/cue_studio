@@ -425,6 +425,14 @@ else
     err "Importação de torch falhou após pip install."
     exit 5
   fi
+
+  # Dependências do pipeline de áudio/SFX — importadas tarde e só no job,
+  # então a ausência só aparece em tempo de execução. torchdiffeq é usado
+  # pelo MMAudio e o PyAV pela escrita de PCM.
+  if ! run "$PY_BIN" -c 'import torchdiffeq, av; print("torchdiffeq=ok av=", av.__version__)'; then
+    err "Dependências de áudio ausentes (torchdiffeq / av). Rode: $PY_BIN -m pip install -r app/requirements.txt"
+    exit 5
+  fi
 fi
 
 ok "Dependências Python prontas."

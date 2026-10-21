@@ -140,14 +140,51 @@ import tempfile
 from pathlib import Path
 import torch
 
+
+def _write_pcm_wav(path: str, audio: torch.Tensor, sampling_rate: int) -> None:
+    """Write a float PCM tensor to a 16-bit WAV file.
+
+    ``torchaudio.save`` routes through torchcodec, which refuses to load
+    unless the host provides matching FFmpeg shared libraries (versions 4
+    to 8). Installations with only an older system FFmpeg therefore fail
+    the SFX remux with a torchcodec loader error even though the rest of
+    the MMAudio pipeline is healthy. PyAV ships its own FFmpeg build and
+    is already a hard dependency of this module, so writing the
+    intermediate WAV through it keeps the remux independent of the host's
+    FFmpeg version.
+    """
+    samples = audio.detach().to(torch.float32).cpu().numpy()
+    if samples.ndim == 1:
+        samples = samples.reshape(1, -1)
+    elif samples.ndim > 2:
+        samples = samples.reshape(samples.shape[-2], samples.shape[-1])
+    layout = "mono" if samples.shape[0] == 1 else "stereo"
+    with av.open(path, "w") as container:
+        stream = container.add_stream("pcm_s16le", rate=sampling_rate)
+        stream.layout = layout
+        # "fltp" is the planar float layout: PyAV reads it as
+        # (channels, samples), which is the shape torchaudio.save used to
+        # receive. The packed "flt" layout would instead expect a single
+        # interleaved row and reject multi-channel input.
+        frame = av.AudioFrame.from_ndarray(
+            np.ascontiguousarray(samples, dtype=np.float32),
+            format="fltp",
+            layout=layout,
+        )
+        frame.sample_rate = sampling_rate
+        for packet in stream.encode(frame):
+            container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+
+
 def remux_with_audio(video_path: Path, output_path: Path, audio: torch.Tensor, sampling_rate: int):
     from shared.utils.audio_video import extract_audio_tracks, combine_video_with_audio_tracks, cleanup_temp_audio_files
 
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
         temp_path = Path(f.name)
     temp_path_str= str(temp_path)
-    import torchaudio
-    torchaudio.save(temp_path_str, audio.unsqueeze(0) if audio.dim() == 1 else audio, sampling_rate)
+    _write_pcm_wav(temp_path_str, audio, sampling_rate)
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     combine_video_with_audio_tracks(video_path, [temp_path_str], output_path )
     temp_path.unlink(missing_ok=True)
