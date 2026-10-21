@@ -388,6 +388,43 @@ CUE_RUN_REAL_MODELS=1 CUE_F2_CONFIG=/caminho/f2.json \
   -m real_models -k full_acceptance -v
 ```
 
+### A página de revisão também é testada
+
+A página `review.html` é a única interface do revisor humano e é ela que
+produz o `creative-review.json` que a porta final aceita ou recusa. Entre
+a página e a porta não havia nada testado: um elemento renomeado, uma
+dimensão caída da página, ou uma página construída para um master que
+depois foi re-gerado só apareceriam **depois** de o revisor ter assistido
+ao filme inteiro e preenchido o formulário.
+
+`tests/test_build_reference_review.py` amarra a página à porta por
+construção:
+
+- as chaves que o script da página escreve são comparadas com as chaves
+  que a porta realmente lê, lidas do **código-fonte da própria porta** —
+  nenhum dos dois lados pode derivar sem quebrar um teste;
+- a página oferece exatamente as seis dimensões que `ARTISTIC_DIMENSIONS`
+  exige, e não uma a mais nem uma a menos;
+- todo elemento que o script lê (`#reviewer`, `#errors`, `#speech`,
+  `#title`) existe na página;
+- o JSON que a página produz, preenchida como a porta quer, é **aceito**
+  por `validate_creative_review()`; e a página intocada, com tudo em
+  branco, é **recusada** — a página nunca aprova sozinha;
+- a página não é construída para um master cujo relatório técnico não
+  bate com o arquivo, nem para um master com check reprovado;
+- a página oferece só as falas que existem em disco.
+
+E o gate do F2 passou a checar o vínculo antes de pedir a revisão: se a
+página em disco for de outro master, a falha diz
+
+```
+the review page belongs to another master: rebuild it with
+scripts/build_reference_review.py before asking for a review
+```
+
+em vez de o revisor descobrir, depois de dez minutos de filme, que a
+revisão dele não valia.
+
 ## Recuperação F3
 
 Os testes comuns cobrem encerramento abrupto de processo após commit SQLite,

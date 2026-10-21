@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import wave
 
 import pytest
@@ -374,8 +375,18 @@ def test_f2_generate_and_measure_real_jobs(config):
 def test_f2_full_acceptance_requires_creative_review(config):
     output = Path(config['validation_dir']).resolve()
     master = output / 'master.mp4'
-    assert master.is_file(), 'Generate and measure the real master first'
+    assert master.is_file(), 'Generate and measure the master first'
     validate_master(master, EXPECTED)
+    # A review page left over from an earlier master would produce a
+    # review bound to the wrong file, and the reviewer would only find
+    # out after watching the whole film. Say so before they start.
+    page = output / 'review.html'
+    if page.is_file():
+        embedded = re.search(r'const masterHash=("(?:[^"\\]|\\.)*")', page.read_text())
+        assert embedded, 'the review page lost its master binding'
+        assert json.loads(embedded.group(1)) == file_hash(master), (
+            'the review page belongs to another master: rebuild it with '
+            'scripts/build_reference_review.py before asking for a review')
     review_path = output / 'creative-review.json'
     assert review_path.is_file(), 'Full F2 remains unverified until the actual master is reviewed'
     validate_creative_review(master, json.loads(review_path.read_text()))

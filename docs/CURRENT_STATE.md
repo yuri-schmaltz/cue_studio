@@ -432,7 +432,18 @@ O que foi verificado:
 - **o gate reprova uma revisão malformada**: hash de outro master, erro
   crítico preenchido, dimensão sem nota, nota abaixo de 3, fala não
   conferida, título não conferido e revisor ausente — sete casos, sete
-  recusas, cada uma com a sua mensagem.
+  recusas, cada uma com a sua mensagem;
+- **a página é testada contra a porta**: `tests/test_build_reference_review.py`
+  compara as chaves que o script da página escreve com as chaves que a
+  porta lê (lidas do código da própria porta), exige as seis dimensões
+  exatas, confere que todo elemento lido pelo script existe, e prova
+  que a revisão que a página produz é aceita pela porta enquanto a
+  página intocada é recusada. Três mutações deliberadas do builder —
+  renomear `#title`, trocar `appearance` por `aparencia`, fixar o hash —
+  foram cada uma pegadas pelo teste correspondente;
+- **o gate confere o vínculo da página**: se `review.html` for de outro
+  master, a falha diz para reconstruir a página, em vez de o revisor
+  descobrir no fim que a revisão dele não valia.
 
 Ou seja: a revisão humana é o **único** passo que falta, e ele já tem
 uma página funcionando e um gate que aceita exatamente o que a página
