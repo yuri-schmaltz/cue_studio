@@ -468,6 +468,25 @@ respondia 404 mesmo com o servidor no ar — e `free_port(0)` devolvia o
 próprio zero, de modo que o servidor subia numa porta efêmera enquanto
 o cliente tentava a porta 0.
 
+### O som do filme depende de HTTP Range
+
+Um terceiro bug só apareceu quando o revisor reclamou que o filme era
+mudo. O master v7 tem faixa de áudio AAC estéreo de 60 s (−16,17 LUFS,
+pico verdadeiro −2,24 dBTP, fala perceptível em ~6 s, 16 s, 36 s e
+50 s): o filme nunca foi silencioso. O que faltava era o servidor
+responder `Range`, porque `SimpleHTTPRequestHandler` devolve `200` com o
+arquivo inteiro. O Chrome toca o vídeo e **descarta a trilha de áudio**
+de um media servido sem suporte a range, então o revisor assistiu a um
+filme mudo e marcou `pt_br_voice: 0` e `sound_editing: 0`.
+
+O servidor agora responde `206 Partial Content` com `Accept-Ranges:
+bytes` e `Content-Range` correto para `bytes=início-fim`,
+`bytes=início-` e `bytes=-sufixo`, e `416` com
+`Content-Range: bytes */<tamanho>` para faixa insatisfazível. O teste
+`test_a_range_request_is_answered_with_partial_content` fixa esse
+contrato, porque a falha é silenciosa: sem range o vídeo abre e apenas
+o som some.
+
 ## Recuperação F3
 
 Os testes comuns cobrem encerramento abrupto de processo após commit SQLite,

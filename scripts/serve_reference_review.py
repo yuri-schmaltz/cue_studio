@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import http.server
 import json
+import os
 import re
 import socket
 import sys
@@ -108,15 +109,77 @@ def free_port(preferred: int) -> int:
 def handler_for(folder: Path):
     """A request handler that serves the given folder.
 
-    SimpleHTTPRequestHandler ignores a class attribute called
-    ``directory`` and serves the working directory instead, so the
-    directory has to be passed to the constructor.
+    Two things are not what they look like:
+
+    * SimpleHTTPRequestHandler ignores a class attribute called
+      ``directory`` and serves the working directory instead, so the
+      directory has to be passed to the constructor;
+    * it does not answer range requests. Chrome refuses to play the
+      audio track of a media file served without range support, and the
+      reviewer would score the sound of a silent film. Range is
+      answered here with 206 Partial Content.
     """
     class Handler(http.server.SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(folder), **kwargs)
 
+        def send_head(self):
+            requested = self.headers.get('Range')
+            if not requested or not requested.startswith('bytes='):
+                return super().send_head()
+            path = self.translate_path(self.path)
+            if os.path.isdir(path) or not os.path.isfile(path):
+                return super().send_head()
+            size = os.path.getsize(path)
+            span = requested[len('bytes='):].split(',')[0].strip()
+            try:
+                if span.startswith('-'):
+                    length = int(span[1:])
+                    start = max(0, size - length)
+                    end = size - 1
+                else:
+                    first, _, last = span.partition('-')
+                    start = int(first)
+                    end = int(last) if last else size - 1
+            except ValueError:
+                return super().send_head()
+            if start >= size or start > end:
+                self.send_response(416)
+                self.send_header('Content-Range', f'bytes */{size}')
+                self.end_headers()
+                return None
+            end = min(end, size - 1)
+            self.send_response(206)
+            self.send_header('Content-type', self.guess_type(path))
+            self.send_header('Accept-Ranges', 'bytes')
+            self.send_header('Content-Range', f'bytes {start}-{end}/{size}')
+            self.send_header('Content-Length', str(end - start + 1))
+            self.end_headers()
+            file = open(path, 'rb')
+            file.seek(start)
+            return _LimitedReader(file, end - start + 1)
+
     return Handler
+
+
+class _LimitedReader:
+    """The file object the copyfile expects, limited to the range."""
+
+    def __init__(self, file, remaining: int):
+        self._file = file
+        self._remaining = remaining
+
+    def read(self, amount=-1):
+        if self._remaining <= 0:
+            return b''
+        if amount is None or amount < 0:
+            amount = self._remaining
+        chunk = self._file.read(min(amount, self._remaining))
+        self._remaining -= len(chunk)
+        return chunk
+
+    def close(self):
+        self._file.close()
 
 
 def serve(folder: Path, port: int) -> None:

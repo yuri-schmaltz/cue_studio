@@ -142,3 +142,61 @@ def _fetch(port: int, name: str, attempts: int = 40) -> bytes:
         except urllib.error.URLError:
             time.sleep(0.05)
     raise AssertionError(f'{name} was never served')
+
+
+def _fetch_range(port: int, name: str, span: str) -> tuple[int, dict, bytes]:
+    """Fetch a byte range and return the status, the headers and the body."""
+    import http.client
+
+    for _ in range(40):
+        try:
+            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+            connection.request('GET', f'/{name}', headers={'Range': span})
+            response = connection.getresponse()
+            body = response.read()
+            headers = dict(response.getheaders())
+            status = response.status
+            connection.close()
+            return status, headers, body
+        except OSError:
+            time.sleep(0.05)
+    raise AssertionError(f'{name} was never served')
+
+
+def test_a_range_request_is_answered_with_partial_content(tmp_path):
+    """Chrome only plays the audio of a media file served with ranges.
+
+    Without this the reviewer watches the film in silence and scores the
+    sound of a film that has sound. The master always had audio; the
+    serving was what dropped it.
+    """
+    import http.server
+    import threading
+
+    folder = _folder(tmp_path)
+    (folder / 'master.mp4').write_bytes(b'0123456789abcdef')
+    port = free_port(0)
+    with http.server.ThreadingHTTPServer(('127.0.0.1', port), handler_for(folder)) as httpd:
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            status, headers, body = _fetch_range(port, 'master.mp4', 'bytes=0-3')
+            assert status == 206
+            assert headers.get('Accept-Ranges') == 'bytes'
+            assert headers.get('Content-Range') == 'bytes 0-3/16'
+            assert body == b'0123'
+
+            status, headers, body = _fetch_range(port, 'master.mp4', 'bytes=8-')
+            assert status == 206
+            assert headers.get('Content-Range') == 'bytes 8-15/16'
+            assert body == b'89abcdef'
+
+            status, headers, body = _fetch_range(port, 'master.mp4', 'bytes=-4')
+            assert status == 206
+            assert body == b'cdef'
+
+            status, headers, _ = _fetch_range(port, 'master.mp4', 'bytes=99-')
+            assert status == 416
+            assert headers.get('Content-Range') == 'bytes */16'
+        finally:
+            httpd.shutdown()
