@@ -87,6 +87,31 @@ def test_a_cyan_highlight_that_is_not_round_is_not_a_lens():
     assert head_cluster(image) is None
 
 
+def test_a_highlight_next_to_the_lenses_does_not_shrink_the_head():
+    """A small bright spot on the head is not a fourth lens.
+
+    The three lenses of a head are the same size, so a blob much
+    smaller than the others is a highlight. Without this rule the
+    detector would group the highlight with two lenses and measure a
+    head of half its real size, which reads as a robot that changes
+    size inside the shot.
+    """
+    image = _scaled_head(20)
+    cv2.circle(image, (300, 180), 3, (255, 255, 40), thickness=-1)
+    head = head_cluster(image)
+    assert head is not None
+    assert head['w'] == pytest.approx(head_cluster(_scaled_head(20))['w'], rel=0.05)
+
+
+def test_a_head_of_lenses_of_very_different_sizes_is_not_measured():
+    """Three blobs of very different sizes are not three lenses."""
+    image = np.full((360, 640, 3), 160, dtype=np.uint8)
+    cv2.circle(image, (300, 160), 20, (255, 255, 40), thickness=-1)
+    cv2.circle(image, (340, 160), 20, (255, 255, 40), thickness=-1)
+    cv2.circle(image, (320, 200), 4, (255, 255, 40), thickness=-1)
+    assert head_cluster(image) is None
+
+
 def test_the_ruler_measures_the_head_against_the_cube():
     image = _cube(_head(_triangle()))
     ratio = head_to_cube_ratio(image)

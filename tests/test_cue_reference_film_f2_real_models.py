@@ -106,6 +106,34 @@ def _place_audio(source, dest, start, gain=1, loop=False):
     validate_pcm(dest, EXPECTED['audio_samples_per_channel'])
 
 
+def _release_models(client):
+    """Give the GPU memory back before the next model loads.
+
+    The Studio keeps the model of a job resident between jobs on purpose,
+    so a retry with the same model skips the load. The video model does
+    not fit in the GPU next to the image model, and the release endpoint
+    is the documented way to give the memory back: the Studio reloads
+    the model transparently on the next job.
+    """
+    client.request('/api/v1/system/release-model', {})
+
+
+def _generate(client, output: Path, label: str, params: dict, extensions: set[str]) -> Path:
+    """Run a job, repeating it when the previous attempt failed.
+
+    A failed job leaves no artifact, so its receipt protects no
+    evidence: removing it lets the work be done again instead of
+    replaying a job that already failed. A receipt of a completed job
+    is never touched, and neither is the artifact it points to.
+    """
+    receipt = output / 'receipts' / (label + '.json')
+    if receipt.is_file():
+        previous = json.loads(receipt.read_text())
+        if previous.get('status') in {'failed', 'cancelled'}:
+            receipt.unlink()
+    return client.generate(label, params, extensions)
+
+
 def _collect(failures: list[str], label: str, check, *args, **kwargs):
     """Run a gate, record its failure instead of aborting the run.
 
@@ -128,7 +156,7 @@ def test_f2_generate_and_measure_real_jobs(config):
                                        token=os.environ.get('CUE_F2_TOKEN', ''), timeout=config.get('job_timeout', 3600))
     stems, clips = [], []
     for cue in SPEECH['cues']:
-        raw = client.generate(cue['id'], {**config['speech'], 'prompt': cue['text']}, {'.wav', '.flac'})
+        raw = _generate(client, output, cue['id'], {**config['speech'], 'prompt': cue['text']}, {'.wav', '.flac'})
         normalized = output / (cue['id'] + '-raw.wav')
         _normalize_audio(raw, normalized)
         with wave.open(str(normalized), 'rb') as audio:
@@ -136,7 +164,7 @@ def test_f2_generate_and_measure_real_jobs(config):
         stem = output / (cue['id'] + '.wav')
         _place_audio(normalized, stem, cue['start_seconds'])
         stems.append(Stem(stem, 'speech'))
-    raw = client.generate('music', {**config['music'], 'duration_seconds': 60}, {'.wav', '.flac'})
+    raw = _generate(client, output, 'music', {**config['music'], 'duration_seconds': 60}, {'.wav', '.flac'})
     music = output / 'music.wav'
     _normalize_audio(raw, music, EXPECTED['audio_samples_per_channel'])
     validate_pcm(music, EXPECTED['audio_samples_per_channel'])
@@ -174,7 +202,7 @@ def test_f2_generate_and_measure_real_jobs(config):
             # generic one: the canonical prompt alone does not pin the
             # lens count, and a wrong anchor would repeat the defect.
             params['seed'] = config.get('character_anchor_seed', 99)
-        anchors[kind] = client.generate('anchor-' + kind, params, {'.png', '.jpg', '.jpeg', '.webp'})
+        anchors[kind] = _generate(client, output, 'anchor-' + kind, params, {'.png', '.jpg', '.jpeg', '.webp'})
     # Fail before rendering the expensive shots: an anchor with the wrong
     # lens count makes the whole film wrong.
     lens_evidence = {'anchor-character': check_anchor_lenses(anchors['character'])}
@@ -188,7 +216,7 @@ def test_f2_generate_and_measure_real_jobs(config):
         guides = [anchors['location']]
         if shot['characters']:
             guides.insert(0, anchors['character'])
-        references[shot['id']] = client.generate(shot['id'] + '-image', {
+        references[shot['id']] = _generate(client, output, shot['id'] + '-image', {
             **image_params, 'prompt': VISUAL['style'] + ' ' + VISUAL['shots'][shot['id']]['image'],
             'image_refs': [str(path) for path in guides], 'video_prompt_type': 'KI',
         }, {'.png', '.jpg', '.jpeg', '.webp'})
@@ -218,8 +246,11 @@ def test_f2_generate_and_measure_real_jobs(config):
     if s10_image['distribution'].get(EXPECTED_LENSES) != s10_image['frames']:
         failures.append(
             f"S10 close-up must show exactly {EXPECTED_LENSES} lenses: {s10_image['distribution']}")
+    # The video model does not fit in the GPU next to the image model,
+    # so the memory is given back before the batch of clips starts.
+    _release_models(client)
     for shot in SHOTS:
-        video = client.generate(shot['id'] + '-video', {
+        video = _generate(client, output, shot['id'] + '-video', {
             **video_params, 'prompt': VISUAL['style'] + ' ' + VISUAL['shots'][shot['id']]['motion'], 'image_start': str(references[shot['id']]), 'image_prompt_type': 'S',
         }, {'.mp4', '.mkv', '.webm'})
         clip = output / (shot['id'] + '.mp4')
@@ -276,10 +307,13 @@ def test_f2_generate_and_measure_real_jobs(config):
     }, indent=2))
     assert not failures, 'The film was rejected by its own measurements:\n' + '\n'.join(
         f'  - {failure}' for failure in failures)
+    # The sound effects use a third model, and it does not fit in the GPU
+    # next to the video model either.
+    _release_models(client)
     for effect in SOUND['effects']:
         shot_index = next((i for i, s in enumerate(SHOTS) if s['id'] == effect['shot']), 0)
-        raw = client.generate(effect['id'], {**config['sfx'], 'prompt': effect['type'],
-                                              'video_guide': str(clips[shot_index])}, {'.wav', '.flac', '.mp4'})
+        raw = _generate(client, output, effect['id'], {**config['sfx'], 'prompt': effect['type'],
+                                                       'video_guide': str(clips[shot_index])}, {'.wav', '.flac', '.mp4'})
         stem = output / (effect['id'] + '.wav')
         _place_audio(raw, stem, effect['start_seconds'], effect['gain'], effect.get('loop', False))
         # The ambient bed is a room tone under everything; the other effects

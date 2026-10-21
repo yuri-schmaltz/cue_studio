@@ -248,6 +248,179 @@ O gate `-k full_acceptance` reprova por ausência de
 `validate_master()` do master v6 passa, e o que falta é o julgamento
 humano, que o código não pode inferir.
 
+## Gate F2 v7 — duas causas-raiz provadas, detectores recalibrados
+
+O master v6 passou no gate técnico (8/8) e foi **reprovado na revisão
+artística humana** com três erros críticos: *"cena com dois cubos"*,
+*"robô de tamanhos diferentes ao longo do vídeo"* e *"robô flutuando"*.
+A revisão está em `app/outputs/validacao-f2-2026-10-20-v6/creative-review.json`
+(hash `d892bd08…`, identidade 2, demais dimensões 4).
+
+### Duas causas-raiz independentes, ambas provadas por medição
+
+**1. O `negative_prompt` de imagem nunca foi aplicado.** No
+`app/models/flux/flux_main.py:288-293` o prompt negativo só é codificado
+quando `nag_scale > 1` **e** `guide_scale <= 1`. O bloco `image` do
+`f2-config.json` do v6 tinha `guidance_scale: 1` e **nenhum** `NAG_scale`:
+o `NAG` ficava `None` e o `negative_prompt` era descartado em silêncio.
+Consequência medida: um segundo cubo e uma quarta lente. O v7 acrescenta
+`NAG_scale 1.5` / `NAG_tau 3.5` / `NAG_alpha 0.5` ao bloco `image`, e o
+teste do F2 passa a **exigir** `NAG_scale > 1` e `guidance_scale <= 1`,
+porque um `negative_prompt` sem essas duas condições é uma promessa vazia.
+
+**2. O cubo estava gravado na âncora de ambiente.** O prompt de `location` do
+v6 terminava com *"Exactly one small matte red cube rests on this table"*.
+Como `location` é passada como `image_refs` para todos os planos, **todo
+plano do v6 herdava um cubo vermelho nas mesmas coordenadas de tela**
+(943,453): S01 (111×102 px), S02 (112×103), S06 (114×102 **mais** um segundo
+de 81×75 na mão do robô) e S11 (111×102). O prompt de `location` do v7 é
+livre de cubo (*"a bare, completely empty tabletop"*) e a âncora de ambiente
+agora mede **0 blobs**.
+
+Descartado por A/B: passar a âncora do cubo como terceiro `image_ref` **não**
+é a causa — com o prompt negativo forte, `{char, loc}` e `{char, loc, cube}`
+dão exatamente 1 cubo em S02 e S11. Por isso o teste passa só
+`[character?, location]` como referências.
+
+### Detectores recalibrados contra um corpus rotulado
+
+O corpus é o conjunto de 12 stills + 3 âncoras do v7 **e** os 12 stills +
+2 âncoras + 12 clips do v6 (26 stills rotulados + 12 clipes).
+
+**`app/services/reference_cube.py` (reescrito).** O limite absoluto
+`MAX_CUBE_WIDTH = 150` havia sido calibrado só no v6, onde os cubos reais
+mediam 91–134 px; o v7 desenha o cubo de 46 px (plano geral) a 177 px
+(close-up da mão, S08) e 388 px (`anch-cube`), então o limite absoluto
+rejeitava cubos reais. Os limites passaram a ser **relativos ao quadro**
+(`MAX_CUBE_WIDTH_FRACTION = 0.40`, `MAX_CUBE_AREA_FRACTION = 0.25`), o que
+ainda rejeita uma parede vermelha ocupando a imagem. A pureza de matiz é
+**segura na virada do círculo** (OpenCV põe vermelho em 0/179): o teste é
+`median(min(hue, 180 - hue)) <= 5°`, e todo cubo real mede 1–4°. Piso de
+valor 100 e de saturação 150 (cubos reais: valor 107–222, saturação
+164–241; madeira em âmbar: valor 75–90). Resultado: **0 erros** nos 12
+stills do v7, e o v6 S06 ainda mede **2 cubos** — a regressão continua
+reprovando o master rejeitado.
+
+**`app/services/reference_identity.py`.** `MIN_FILL` de 0,55 → 0,45: as
+lentes do v7 preenchem 0,486–0,543 do próprio bounding box (o desenho do
+v7 tem aro escuro na lente, o v6 não), e nenhum plano de nenhum dos dois
+filmes mostra uma quarta lente a 0,45. Com isso o S10 do v7 passa a contar
+3 lentes (antes: 0).
+
+### A régua de escala tinha um bug: media cabeças diferentes
+
+`app/services/reference_robot.py` media a cabeça **unindo blobs** de lente
+com uma distância **absoluta** de 40 px. Em close-up essa distância é
+pequena demais e a união cobria **só 2 das 3 lentes**: o S10 do v7 media
+277 px de cabeça quando o vão real das três lentes é 462 px. A régua media
+coisas diferentes em planos diferentes — justamente onde ela precisa ser
+comparável. A medição passa a ser o **vão das três lentes** (as lentes são
+triangulares, então o vão descreve a cabeça em qualquer plano), e o grupo
+escolhido é o mais apertado entre as combinações de três.
+
+Efeito medido nas mesmos pares de planos:
+
+| Medição | S04 | S07 | Dispersão |
+|---|---|---|---|
+| Cabeça (união com gap absoluto, v6) | 1,48 | 2,13 | **44 %** |
+| Cabeça (vão das 3 lentes, v6) | 1,53 | 1,05 | 46 % |
+| Cabeça (vão das 3 lentes, v7) | 2,30 | 2,13 | **8 %** |
+
+### Gate novo: o robô mantém um tamanho ao longo do filme
+
+`app/services/reference_continuity.py` ganhou
+`check_scale_consistency()`. Como a cabeça e o cubo são rígidos e a régua
+só é válida onde o robô segura o cubo, a razão tem de ser a mesma em
+todos esses planos: um robô que cresce ou encolhe ao longo do filme move
+esse número. O limite `MAX_CROSS_SHOT_RATIO = 1.25` fica entre os dois
+filmes medidos — o v6 reprovado abre **1,70** (0,91 em S07 contra 1,55 em
+S04) e o v7 corrigido mantém **1,08** (2,30 / 2,13 / 2,16). A mensagem de
+falha reproduz a reclamação da revisão humana.
+
+### Portas do gate F2 (v7)
+
+| Medida | Onde | Tipo |
+|---|---|---|
+| Contagem de lentes na âncora de personagem | antes de renderizar os planos | dura |
+| Contagem de lentes no S03 e no S10 | imagem | dura |
+| Contagem de cubos por still | 12 imagens | dura |
+| Continuidade do cubo por clip | 12 vídeos | dura |
+| Estabilidade de escala dentro do plano | S02, S04, S06, S07, S11 | dura |
+| Régua cabeça/cubo | S04–S08 | dura |
+| **Consistência de escala ao longo do filme** | S04, S06, S07 | **dura (nova)** |
+
+A banda da régua passou de `[0,75 ; 1,45]` para `[1,0 ; 3,5]`: o valor
+anterior foi calibrado contra uma medição que media a cabeça errada.
+
+### Ordem de execução: medir depois de gerar
+
+O teste do F2 agora **renderiza tudo antes de medir**. A medição é o que
+decide a aceitação e a renderização é a parte cara; medir durante a
+geração jogaria fora os planos nunca alcançados porque um anterior
+falhou. Além disso todas as portas são avaliadas antes de qualquer uma ser
+reportada (uma execução conta a história inteira do filme), as falhas são
+somadas e só então o som — que também precisa da GPU — é gerado se o
+filme passou nas medições. A evidência é gravada em
+`shot-evidence.json` antes da falha, para que um filme recusado possa ser
+medido e recalibrado sem renderizar de novo.
+
+### Requisito de VRAM
+
+O filme consome **7,1 GB** de VRAM no pico (medido no job de vídeo). Um
+servidor local de LLM do LM Studio com **8,65 GB** faz o primeiro job de
+imagem falhar com `CUDA out of memory` (restavam 966 MiB para uma
+alocação de 1,16 GiB). O LLM precisa estar **encerrado** durante a
+geração.
+
+
+### Estado do gate v7 — master gerado e medido, revisão humana pendente
+
+O master v7 foi gerado com inferência real e passou em todas as portas
+automáticas. `app/outputs/validacao-f2-2026-10-21-v7/` contém o master de
+60 s, os 12 clipes, os 12 stills, o `technical-report.json`, o
+`shot-evidence.json` e a página `review.html`.
+
+| Critério | Esperado | Medido |
+|---|---|---|
+| Frames / FPS | 1440 / 24 | 1440 / 24 |
+| Sample rate / canais | 48 000 Hz / 2 | 48 000 Hz / 2 |
+| Drift A/V | ≤ 1 frame | ≤ 1 frame |
+| Loudness | −16 LUFS ± 1 | **−16,17 LUFS** |
+| True peak | ≤ −1 dBTP | **−2,24 dBTP** |
+
+SHA-256 do master v7: `6abca524466f8230a906046b2adacf6b3526fb78684ceab9275082e0fbbf8219`.
+
+Evidência das portas novas (medida no v7 contra o v6 reprovado):
+
+| Medida | v7 | v6 (reprovado) |
+|---|---|---|
+| Segundo cubo por clip | **0 de 12 clipes** (1 cubo em 100 % dos quadros de 11 deles; no S10, que o roteiro exclui, 1 quadro de 120) | S06: 2 cubos em 97,5 % dos quadros |
+| Cabeça por plano (vão das 3 lentes) | S04 141 px, S07 105 px, S03 477 px, S10 462 px | idem, com 2 lentes medidas |
+| Deriva dentro do plano | S04 1,09, S07 1,56, S03 1,15 (limite 1,8) | S04 1,19, S10 1,97 |
+| Régua cabeça/cubo | S04 2,33, S07 2,31 (banda 1,0–3,5) | S02 0,97, S04 1,55, S07 0,90 |
+| **Escala ao longo do filme** | **1,005** (S04 2,33 contra S07 2,31) — aprovado | **1,71** — reprovado |
+
+O que só a medição diria: no S04 o detetor de cabeça media 81 px em 28 dos
+120 quadros. Não era o robô encolhendo: era um **highlight de 6 px** ao lado
+das lentes que o detector agrupava com duas delas, porque o grupo mais
+apertado wins. Com a exigência de que as três lentes tenham tamanho
+comparável (as de uma cabeça são do mesmo tamanho físico), o S04 mede 141 px
+em todos os quadros. A mesma correção não mexe no v6: ele continua
+reprovando a porta de escala ao longo do filme (1,71).
+
+### O que ainda falta
+
+**A revisão artística humana do master v7.** O gate `-k full_acceptance`
+reprova por ausência de `creative-review.json`, e **é o comportamento
+esperado**: `validate_creative_review()` exige o `master_sha256` do master
+revisado, `critical_errors == []` e as seis dimensões com nota 3 ou 4. A
+revisão do v6 não vale para o v7: o hash é outro.
+
+A página de revisão está em
+`app/outputs/validacao-f2-2026-10-21-v7/review.html` (com o hash do v7
+exibido na página). Depois de assistida, a revisão vira
+`creative-review.json` no mesmo diretório e o gate completo passa a
+verificá-la.
 ## Gate F2 (histórico) — geração real concluída, revisão humana pendente
 
 Um master real de 60 s foi gerado com inferência de IA efetiva e medido em

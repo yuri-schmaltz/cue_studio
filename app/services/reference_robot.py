@@ -45,6 +45,14 @@ MIN_BLOB_AREA = 30
 # is wide.
 MIN_LENS_FILL = 0.45
 MIN_LENS_ASPECT, MAX_LENS_ASPECT = 0.55, 1.80
+# The three lenses of one head are the same physical size, so their
+# measured sizes are comparable: a blob much smaller than the others is
+# a highlight on the head, not a lens. Without this the detector picks a
+# small highlight together with two lenses and measures a head of half
+# its real size in a few frames of the shot, which reads as a robot that
+# changes size. The measured ratio of the smallest lens over the largest
+# is 0.56-0.81 in every measurable shot of both films.
+MIN_LENS_SIZE_RATIO = 0.5
 # The head carries its three lenses in a triangle, so the three lenses
 # never spread wider than this multiple of the largest of them. A group
 # of cyan blobs spread wider than that is not a head.
@@ -121,16 +129,24 @@ def _head_group(lenses: list[tuple[int, int, int, int, int]]) -> list[tuple[int,
     absolute distance merges the three lenses of a close-up into one
     blob and splits the lenses of a wide shot into several, so the
     measured width stops describing the head at all.
+
+    A group of lenses of comparable size is required, because the three
+    lenses of a head are the same size: a small highlight next to the
+    lenses would otherwise form a tighter group and measure a head of
+    half its real size.
     """
     if len(lenses) < 3:
         return None
     best = None
     best_span = None
     for group in combinations(lenses, 3):
+        widths = [item[3] for item in group]
+        if min(widths) < MIN_LENS_SIZE_RATIO * max(widths):
+            continue
         left = min(item[1] for item in group)
         right = max(item[1] + item[3] for item in group)
         width = right - left
-        largest = max(item[3] for item in group)
+        largest = max(widths)
         if width > MAX_HEAD_SPAN_IN_LENSES * largest:
             continue
         if best_span is None or width < best_span:

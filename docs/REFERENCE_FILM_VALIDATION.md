@@ -127,6 +127,86 @@ Para auditar qualquer artefato:
 app/env/bin/python scripts/count_lenses.py app/outputs/<arquivo>.mp4
 ```
 
+### As portas do v7 e o que elas medem
+
+O master v6 passou no gate técnico e foi reprovado na revisão humana. As
+portas que faltavam foram adicionadas, e cada uma mede o defeito que a
+revisão apontou:
+
+- **contagem de cubos por still** (`reference_cube.check_cube_count`) — o
+  still de cada plano é medido contra o número de cubos que o roteiro pede
+  (1, e 0 no S10, cujo close-up exclui o cubo). O v6 reprovava aqui: o S06
+  media 2 cubos.
+- **continuidade do cubo por clip** (`reference_cube.check_cube_continuity`) —
+  a fração de quadros com um segundo cubo não pode passar de 25 %. O S06 do
+  v6 media 97,5 % de quadros com dois cubos.
+- **estabilidade de escala dentro do plano** (`reference_robot.check_scale_stability`)
+  — a largura da cabeça medida pelo vão das três lentes não pode variar mais
+  que 1,8× entre o percentil 10 e o 90 dos quadros medidos.
+- **régua cabeça/cubo** (`reference_continuity.check_relative_scale`) — a
+  largura da cabeça dividida pela largura do cubo, medida só onde o robô
+  segura o cubo, tem de cair na banda `[1,0 ; 3,5]` e variar menos que
+  1,35× dentro do plano.
+- **consistência de escala ao longo do filme**
+  (`reference_continuity.check_scale_consistency`) — a mesma régua, comparada
+  entre os planos, não pode variar mais que 1,25×. É esta porta que mede
+  *"robô de tamanhos diferentes ao longo do vídeo"*: o v6 reprovado abre
+  1,70× (0,91 em S07 contra 1,55 em S04).
+
+A régua de escala antes media a cabeça por **união** de blobs de lente com
+uma distância absoluta de 40 px. Em close-up essa distância é pequena
+demais e a união cobria só 2 das 3 lentes, de modo que a régua media
+coisas diferentes em planos diferentes. Agora a cabeça é o vão das três
+lentes, e o grupo de lentes é o mais apertado entre as combinações de
+três. Sem essa correção a porta de consistência mediria ruído.
+
+### O prompt negativo de imagem só existe com NAG ligado
+
+No `app/models/flux/flux_main.py` o `negative_prompt` é codificado apenas
+quando `nag_scale > 1` **e** `guide_scale <= 1`. Com `guidance_scale: 1` e
+sem `NAG_scale`, o `negative_prompt` é aceito pelo backend e **descartado
+em silêncio**: é o que produziu o segundo cubo e a quarta lente do master
+v6. O bloco `image` do `f2-config.json` precisa trazer `NAG_scale 1.5`,
+`NAG_tau 3.5` e `NAG_alpha 0.5`, e o teste do F2 verifica as duas condições
+antes de renderizar — um prompt negativo sem elas é uma promessa vazia.
+
+O prompt negativo faz parte da **receita do filme**, não da máquina que o
+renderiza, então ele mora com os prompts, em
+`tests/fixtures/cue_reference_film_v1/visual_prompts.json` (chave
+`negative`, com `image` e `video`), e o teste o anexa aos parâmetros.
+
+### Nada de cubo na âncora de ambiente
+
+A âncora de ambiente é passada como `image_ref` para todos os planos. Se o
+seu prompt mencionar o cubo, **todo plano herda o cubo nas mesmas
+coordenadas de tela** — foi assim que o v6 pôs um cubo vermelho em S01,
+S02, S06 e S11. O prompt de `location` descreve a mesa como
+*"a bare, completely empty tabletop"* e a âncora de ambiente é medida
+(0 blobs) antes de o filme continuar.
+
+
+### Memória entre lotes e repetição de job falho
+
+Duas proteções no teste do F2, ambas nacidas de uma falha real do v7:
+
+- **Devolver a VRAM entre os lotes.** O Studio mantém o modelo de um job
+  residente entre jobs de propósito, para que uma repetição do mesmo
+  modelo não recarregue o checkpoint. O modelo de vídeo **não cabe** na GPU
+  ao lado do modelo de imagem: com o Flux2 ainda residente, o primeiro
+  clip morre com `CUDA out of memory` (o job pedia 368 MiB e havia 115 MiB
+  livres). O teste chama `POST /api/v1/system/release-model` antes do lote
+  de vídeo e antes do lote de efeitos — é o mecanismo previsto pelo
+  backend para devolver a memória, e o Studio recarrega o modelo de forma
+  transparente no job seguinte.
+- **Repetir um job que falhou.** Um job falhado não deixa artefato, então o
+  recibo dele não protege nenhuma evidência: o teste remove o recibo com
+  `status: failed` ou `cancelled` antes de tentar de novo. Um recibo de job
+  **concluído** nunca é tocado, e o artefato que ele aponta também não.
+
+Um segundo fato da mesma falha: o servidor de LLM do LM Studio **volta
+sozinho** quando outro aplicativo (o Strata, que faz transcrição) pede o
+modelo de novo. Enquanto ele estiver na GPU, o primeiro job de imagem já
+falha. A VRAM precisa estar livre durante a geração.
 ### Armadilhas conhecidas
 
 - **Balance do mix vs. voz PT-BR.** O `ace_step` entrega um leito ~12 dB acima
@@ -180,9 +260,12 @@ app/env/bin/python scripts/count_lenses.py app/outputs/<arquivo>.mp4
   gerador salva um arquivo por janela e o cliente estrito recusa
   ("expected one generated artifact"). Use `video_length: 129` — uma janela,
   acima dos 120 frames exigidos pelo gate.
-- **VRAM ocupada por outro processo.** Um servidor local de LLM (LM Studio)
-  pode tomar ~9,5 GB dos 12 GB da GPU e causar OOM no TTS. Verifique
-  `nvidia-smi` antes de disparar jobs.
+- **VRAM ocupada por outro processo.** O filme consome **7,1 GB** de VRAM
+  no pico (medido no job de vídeo do LTX-2). Um servidor local de LLM do
+  LM Studio com **8,65 GB** faz o **primeiro job de imagem** falhar com
+  `CUDA out of memory` (restavam 966 MiB para uma alocação de 1,16 GiB).
+  Verifique `nvidia-smi` antes de disparar jobs e encerre o LLM: o filme
+  não cabe na GPU com ele ligado.
 - **Ambiente incompleto.** `torchdiffeq` é importado por
   `app/postprocessing/mmaudio/model/flow_matching.py` e consta em
   `app/requirements.txt`; ambientes criados antes dessa dependência precisam
