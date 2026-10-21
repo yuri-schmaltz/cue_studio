@@ -246,6 +246,42 @@ S02, S06 e S11. O prompt de `location` descreve a mesa como
 *"a bare, completely empty tabletop"* e a âncora de ambiente é medida
 (0 blobs) antes de o filme continuar.
 
+### O prompt por plano tem de dizer o que está no quadro
+
+A âncora de ambiente descrevia a cena certa e mesmo assim o v7 pintou uma
+lâmpada acesa ao lado do cubo no S08, um plano sem pedestal e um plano
+sem mesa. A causa: os prompts por plano diziam o **estado** — *"a lâmpada
+do pedestal está OFF"*, *"a mesa está vazia"* — e nunca diziam o **que
+está no quadro**. Um prompt que só nomeia a mão, o cubo e o encaixe
+(S08) deixa o modelo inventar o resto, e foi o que aconteceu.
+
+A regra que saiu disso:
+
+- **todo plano aberto declara a presença** da mesa (à direita) e do
+  pedestal (no meio), com o encaixe quadrado e a lâmpada, e diz que são
+  as únicas peças de mobília do quadro;
+- **todo plano fechado declara o limite do quadro** e proíbe lâmpada,
+  lanterna e objeto aceso;
+- **o prompt negativo proíbe a lâmpada extra, não a lâmpada legítima**.
+  `extra lamp`, `oil lamp`, `table lamp`, `lantern` são proibições
+  válidas; `lamp` e `light bulb` sozinhos apagariam a lâmpada do pedestal
+  de S09, S11 e S12, que é o momento do filme em que ela acende.
+
+`tests/test_cue_reference_film_visual_prompts.py` guarda essa regra: sem
+ela a receita volta a descrever estados e o defeito volta junto.
+
+### Uma porta de "lâmpada acesa" seria desonesta
+
+Não há porta que detecte a lâmpada acesa. A contagem de pixels âmbar é
+dominada pela madeira quente (S10: 139 643 px, S03: 76 690) e o
+contraste local dos manchões é ≈1,00 em todos os planos, o que não separa
+a lâmpada do fundo. O único sinal com alguma separação (âmbar saturado
+localmente mais claro que a vizinhança) marca 10 516 px no S08 e 6 931 px
+no S09 — e o S09 é **legitimamente** aceso. Sem uma tabela de estado
+esperado por plano, qualquer limiar absoluto reprovaria o filme certo.
+Porta não confiável é pior do que porta nenhuma: a correção foi na
+receita, e o estado da lâmpada fica como evidência por plano.
+
 
 ### Memória entre lotes e repetição de job falho
 

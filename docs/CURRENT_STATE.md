@@ -462,6 +462,89 @@ A página de revisão está em
 exibido na página). Depois de assistida, a revisão vira
 `creative-review.json` no mesmo diretório e o gate completo passa a
 verificá-la.
+
+## Gate F2 v8 — a revisão do v7 reprovou o filme por três defeitos de cena
+
+A revisão criativa do master v7 **ocorreu e reprovou**. O revisor foi
+`yuri`, em `2026-10-21T21:25:47.407Z`, sobre o master
+`6abca524466f8230a906046b2adacf6b3526fb78684ceab9275082e0fbbf8219`. As
+notas foram identidade 3, continuidade 3, movimento 2, aparência 4,
+`pt_br_voice` 0 e `sound_editing` 0, com os erros críticos:
+
+- *"no momento que o robô vai colocar o cubo vermelho na mesa sai uma
+  lampião junto"* — uma lâmpada acesa ao lado do cubo no S08;
+- *"em algumas cenas o pedestal da lampada não aparece"*;
+- *"em algumas cenas a mesa não aparece"*;
+- *"não avaliei as vozes e montagem sonora pois o video não tinha audio"*.
+
+As duas últimas dimensões estão com 0 **por causa de um bug meu de
+serviço, não do filme**: a página de revisão era servida por
+`SimpleHTTPRequestHandler`, que responde `200` com o arquivo inteiro e
+ignora o cabeçalho `Range`. O Chrome então descarta a faixa de áudio em
+silêncio e a trilha não toca. Corrigido em `9011f84`: o servidor passa a
+responder `206 Partial Content` com `Accept-Ranges: bytes` e
+`Content-Range` correto (`416` com `bytes */<size>` para faixa
+insatisfazível), coberto por 10 testes em
+`tests/test_serve_reference_review.py`. As duas dimensões ficam **sem
+avaliação** até a nova revisão, não reprovadas por som ruim.
+
+### A causa-raiz dos três defeitos era o prompt, não o modelo
+
+A âncora de ambiente (`location`) já descrevia a cena certa: mesa à
+direita com tampo vazio, pedestal separado no meio com o encaixe
+quadrado e **uma única lâmpada âmbar apagada** em cima, "no other lamps",
+nada na mesa, nada no chão. O defeito é que os prompts **por plano**
+diziam o *estado* sem dizer o *que está no quadro*:
+
+| Plano | O que o prompt dizia | O que o modelo pintou |
+|---|---|---|
+| S08 | mão + cubo + encaixe | mão + cubo + **lâmpada acesa** |
+| S01 | "a lâmpada do pedestal está OFF" | mesa e robô, **sem pedestal** |
+| S10 | "cabeça iluminada pela lâmpada acesa" | robô e mesa, **sem pedestal** |
+
+E nenhum prompt negativo proibia uma lâmpada extra, uma mesa extra ou um
+pedestal extra — só o cubo duplicado e a quarta lente.
+
+### O que mudou no v8
+
+Em `tests/fixtures/cue_reference_film_v1/visual_prompts.json`:
+
+- `location` passa a dizer que **a mesa e o pedestal são as únicas peças
+  de mobília** e que a lâmpada do pedestal é a **única luminária** da cena;
+- `negative.image` e `negative.video` passam a proibir `extra lamp`,
+  `second lamp`, `oil lamp`, `kerosene lamp`, `table lamp`, `desk lamp`,
+  `floor lamp`, `hanging lamp`, `chandelier`, `lantern`, `oil lantern`,
+  `paper lantern`, `extra table`, `second table`, `extra pedestal` e
+  `second pedestal` — **sem** proibir `lamp` ou `light bulb` isolados, que
+  apagariam a lâmpada legítima de S09, S11 e S12;
+- S01, S02, S04, S06, S07, S11 e S12 **declaram** a mesa à direita e o
+  pedestal no meio do quadro, com o encaixe e a lâmpada;
+- S03, S05, S08 e S10 declaram o conteúdo do quadro e **proíbem**
+  lâmpada, lanterna e objeto aceso;
+- S08 passa a dizer que o quadro contém **só** a mão direita, o cubo, a
+  base do pedestal e o encaixe, e que a lâmpada está **fora do quadro**;
+- S09 mantém a lâmpada única no quadro, começando apagada.
+
+`tests/test_cue_reference_film_visual_prompts.py` (7 testes) guarda a
+receita contra a regressão dos três defeitos: a cena declara as duas
+peças de mobília, o prompt negativo proíbe a lâmpada extra sem proibir a
+légima, os planos abertos declaram mesa e pedestal, os fechados proíbem
+qualquer lâmpada, o S08 fecha o quadro e o S09 mantém a lâmpada.
+
+### O que **não** foi feito: uma porta de "lâmpada acesa"
+
+Uma porta automática de lâmpada acesa foi investigada e **descartada**.
+A contagem de pixels âmbar saturados é dominada pela madeira quente
+(S10: 139 643 px, S03: 76 690, S01: 13 678) e o contraste local dos
+manchões é ≈1,00 em todos os planos — o sinal não separa a lâmpada
+ligada do fundo de madeira. O único sinal com alguma promising
+separação (âmbar saturado localmente mais claro que a vizinhança) dá
+10 516 px no S08, 6 931 no S09 e 6 285 no S12 — e o S09 e o S12 são
+**legitimamente** acesos. Sem uma tabela de estado esperado por plano,
+qualquer limiar absoluto reprovaria o filme certo. **Porta não confiável é
+pior do que porta nenhuma**: a correção foi na receita, e a medição fica
+como evidência por plano, não como gate.
+
 ## O terceiro erro crítico do v6 — o robô flutuando — e por que ele não virou porta
 
 O v6 foi reprovado na revisão humana por três erros críticos: cena com
