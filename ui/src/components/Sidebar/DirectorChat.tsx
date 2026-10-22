@@ -1108,79 +1108,74 @@ export function DirectorChat() {
                       />
                     </div>
                   ) : (
-                    <div className="shrink-0 h-[96px]">
-                      {loading && !audioFile ? (
-                        <div className="h-full bg-bg-tertiary rounded-lg p-3 border border-border flex items-center justify-center gap-2.5">
-                          <Loader2 size={16} className="animate-spin text-violet-400" />
-                          <span className="text-xs text-text-secondary font-medium">
-                            {loadingMessage || 'Generating song…'}
-                          </span>
-                        </div>
-                      ) : (
-                        <DirectorSongSetup hideSongLength={false} />
-                      )}
+                    <div className="shrink-0">
+                      <DirectorSongSetup hideSongLength={false} />
                     </div>
                   )}
 
-                  {/* Clip Structure card moved above the Voices & Characters card so
-                      the planning surface (clips, pacing) sits visually
-                      closer to the model/upload row, and the speaker
-                      panel sits right above the description composer. */}
-                  {!isStoryPath && (
-                    <section className="shrink-0 min-h-[110px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
-                      <header className="flex items-center justify-between gap-2 shrink-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
-                            {isShortFilm ? 'Scene structure' : 'Clip structure'}
+                  {/* Clip Structure and Voices & Characters cards are only relevant
+                      when audio exists or when uploading a file. While the user is
+                      configuring parameters in Generate mode, we hide them so the creation
+                      station has full focus and space without showing empty states. */}
+                  {((musicSource ?? 'upload') === 'upload' || Boolean(audioFile)) && (
+                    <>
+                      {!isStoryPath && (
+                        <section className="shrink-0 min-h-[110px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
+                          <header className="flex items-center justify-between gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                                {isShortFilm ? 'Scene structure' : 'Clip structure'}
+                              </h3>
+                              {plannedClips.length > 0 && (
+                                <span className="text-2xs text-text-muted font-normal shrink-0">
+                                  ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
+                                </span>
+                              )}
+                            </div>
+                          </header>
+                          <StructureView
+                            plannedClips={plannedClips}
+                            energyBias={energyBias}
+                            localBias={localBias}
+                            setLocalBias={setLocalBias}
+                            sliderRef={sliderRef}
+                            setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
+                            loading={loading}
+                            confirmStructure={confirmStructure}
+                            isActive={atStep('structure')}
+                            isShortFilm={isShortFilm}
+                          />
+                          <DirectorTimelineEditor />
+                        </section>
+                      )}
+
+                      {/* Voices & Characters card */}
+                      <section className="h-[270px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col shrink-0">
+                        <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
+                          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+                            IDENTIFIED VOICES &amp; CHARACTERS
                           </h3>
-                          {plannedClips.length > 0 && (
-                            <span className="text-2xs text-text-muted font-normal shrink-0">
-                              ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
+                          {speakers.length > 0 && (
+                            <span className="text-2xs text-text-muted font-normal">
+                              ({speakers.length})
                             </span>
                           )}
+                        </header>
+                        <div id="chat-identified-voices-panel" className="flex-1 overflow-y-auto pr-0.5 space-y-2">
+                          <StyleForm
+                            speakers={speakers}
+                            speakerMappings={speakerMappings}
+                            speakerSamples={speakerSamples}
+                            setSpeakerMapping={setSpeakerMapping}
+                            insertSpeakerMention={insertSpeakerMention}
+                            isActive={atStep('style')}
+                            isShortFilm={isShortFilm}
+                            isStoryPath={isStoryPath}
+                          />
                         </div>
-                      </header>
-                      <StructureView
-                        plannedClips={plannedClips}
-                        energyBias={energyBias}
-                        localBias={localBias}
-                        setLocalBias={setLocalBias}
-                        sliderRef={sliderRef}
-                        setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
-                        loading={loading}
-                        confirmStructure={confirmStructure}
-                        isActive={atStep('structure')}
-                        isShortFilm={isShortFilm}
-                      />
-                      <DirectorTimelineEditor />
-                    </section>
+                      </section>
+                    </>
                   )}
-
-                  {/* Voices & Characters card */}
-                  <section className="h-[270px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col shrink-0">
-                    <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
-                      <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                        IDENTIFIED VOICES &amp; CHARACTERS
-                      </h3>
-                      {speakers.length > 0 && (
-                        <span className="text-2xs text-text-muted font-normal">
-                          ({speakers.length})
-                        </span>
-                      )}
-                    </header>
-                    <div id="chat-identified-voices-panel" className="flex-1 overflow-y-auto pr-0.5 space-y-2">
-                      <StyleForm
-                        speakers={speakers}
-                        speakerMappings={speakerMappings}
-                        speakerSamples={speakerSamples}
-                        setSpeakerMapping={setSpeakerMapping}
-                        insertSpeakerMention={insertSpeakerMention}
-                        isActive={atStep('style')}
-                        isShortFilm={isShortFilm}
-                        isStoryPath={isStoryPath}
-                      />
-                    </div>
-                  </section>
                 </div>
               )}
 
