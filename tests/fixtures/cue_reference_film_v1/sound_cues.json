@@ -1,13 +1,26 @@
 {
   "project_id": "cue-reference-film-v1",
   "sample_rate": 48000,
-  "music": {"bpm": 96, "time_signature": "4/4", "duration_seconds": 60, "style": "instrumental_suave"},
+  "music": {
+    "bpm": 96,
+    "time_signature": "4/4",
+    "duration_seconds": 60,
+    "request_seconds": 75,
+    "style": "instrumental_suave"
+  },
   "effects": [
     {"id": "steps_S02", "shot": "S02", "start_seconds": 2.0, "type": "steps", "gain": 0.5},
     {"id": "cube_touch_S04", "shot": "S04", "start_seconds": 6.0, "type": "touch", "gain": 0.6},
     {"id": "fit_37_5", "shot": "S08", "start_seconds": 37.5, "type": "fit", "gain": 0.7},
     {"id": "light_on_40", "shot": "S09", "start_seconds": 40.0, "type": "ambient_rise", "gain": 0.4},
-    {"id": "ambient_continuous", "shot": "all", "start_seconds": 0.0, "type": "ambient", "gain": 0.2, "loop": true}
+    {
+      "id": "ambient_continuous",
+      "shot": "all",
+      "start_seconds": 0.0,
+      "type": "ambient",
+      "gain": 0.2,
+      "loop": {"seamless": true, "crossfade_seconds": 0.5}
+    }
   ],
   "title_cue": {"shot": "S12", "text": "A luz da oficina", "type": "editorial_overlay"}
 }

@@ -163,6 +163,76 @@ def _fetch_range(port: int, name: str, span: str) -> tuple[int, dict, bytes]:
     raise AssertionError(f'{name} was never served')
 
 
+def _fetch_head(port: int, name: str, attempts: int = 40) -> tuple[int, dict]:
+    """Ask for the headers only, as a player probes a media file."""
+    import http.client
+
+    for _ in range(attempts):
+        try:
+            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+            connection.request('HEAD', f'/{name}')
+            response = connection.getresponse()
+            response.read()
+            headers = dict(response.getheaders())
+            status = response.status
+            connection.close()
+            return status, headers
+        except OSError:
+            time.sleep(0.05)
+    raise AssertionError(f'{name} was never served')
+
+
+def test_a_plain_request_advertises_that_the_file_is_rangeable(tmp_path):
+    """The player asks about the file before it plays it.
+
+    A plain 200 that does not say the file can be served in pieces is
+    taken by the player as "this is not seekable", and the audio track
+    is dropped without a word. The master always had sound; it was the
+    advertisement that was missing.
+    """
+    import http.server
+    import threading
+
+    folder = _folder(tmp_path)
+    port = free_port(0)
+    with http.server.ThreadingHTTPServer(('127.0.0.1', port), handler_for(folder)) as httpd:
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            status, headers, _ = _fetch_range(port, 'master.mp4', 'bytes=0-3')
+            assert status == 206
+
+            connection_status, connection_headers, body = _fetch_full(port, 'master.mp4')
+            assert connection_status == 200
+            assert connection_headers.get('Accept-Ranges') == 'bytes'
+            assert body
+
+            head_status, head_headers = _fetch_head(port, 'master.mp4')
+            assert head_status == 200
+            assert head_headers.get('Accept-Ranges') == 'bytes'
+        finally:
+            httpd.shutdown()
+
+
+def _fetch_full(port: int, name: str, attempts: int = 40) -> tuple[int, dict, bytes]:
+    """Fetch a whole file and return the status, the headers and the body."""
+    import http.client
+
+    for _ in range(attempts):
+        try:
+            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+            connection.request('GET', f'/{name}')
+            response = connection.getresponse()
+            body = response.read()
+            headers = dict(response.getheaders())
+            status = response.status
+            connection.close()
+            return status, headers, body
+        except OSError:
+            time.sleep(0.05)
+    raise AssertionError(f'{name} was never served')
+
+
 def test_a_range_request_is_answered_with_partial_content(tmp_path):
     """Chrome only plays the audio of a media file served with ranges.
 

@@ -656,16 +656,84 @@ O teste do harness que reprova é apenas
 `test_f2_full_acceptance_requires_creative_review`, que exige o
 `creative-review.json` — o **passo humano**, não uma falha de geração.
 
+### O som do v9 tinha dois defeitos que nenhuma porta media
+
+O v9 passou em todas as portas de **imagem**, mas o som carregava dois
+defeitos que nenhuma porta media. Ambos foram medidos sobre os artefatos
+reais do v9 e ambos viraram porta automática:
+
+**Causa A — o leito repetia o silêncio do gerador.** O take do MMAudio
+abre com **0,108549 s** de silêncio quase digital (envelope: −78,0,
+−77,1, −48,1, −37,4 dBFS antes de subir para o nível de regime, −15,89
+dBFS). O `-stream_loop -1` repetia o arquivo inteiro, então o silêncio
+era repetido a cada ciclo: **12 grupos de buraco** no leito de 60 s, o
+mais longo de **250 ms**. A porta `check_bed_continuity` reprova um
+leito que cai 18 dB abaixo da própria mediana por 100 ms ou mais, e
+reprova o v9 tanto no stem colocado quanto no nivelado (mediana
+−30,40 dBFS, limiar −48,40 dBFS).
+
+**Causa B — a música morria antes do fim.** O LM do ACE-Step escreve
+cerca de **86 %** dos tokens pedidos e depois repete `codes[-1]`: a
+cauda congela. A fração acompanha a duração pedida (60 s → morte em
+51,2 s; 70 s → 60,6 s; 75 s → 65,3 s). A porta `check_music_coverage`
+reprova quando a mediana dos últimos 3 s cai mais de 12 dB abaixo da
+mediana do corpo; no v9 a queda é de **36,7 dB**, no stem colocado e no
+nivelado.
+
+Uma leitura anterior sugeria um degrau de "+8 dB" na música. A medição
+do envelope de 50 ms **não** mostra degrau: o que existe é a rampa de
+nível do take do MMAudio repetida a cada ciclo do leito. O degrau é do
+loop, não da música — hipótese descartada por medição.
+
+**As correções.** O leito passa por `build_seamless_loop`, que **mede** a
+região sustentada do take (mediana do último quarto como referência;
+faixa que nunca cai mais de 6 dB abaixo dela) e monta o ciclo com
+*crossfade* de potência igual. A emenda do arquivo coincide exatamente
+(descontinuidade medida 0,000061 contra p99,9 = 0,0125 do resto do
+sinal) e o leito repetido sob 60 s não abre buraco. A música passa a ser
+pedida com **75 s** e aparada pela **cabeça** para 60 s — o corte pela
+cauda foi testado e reprova (39,7 dB), o que confirma que a cabeça é o
+corte certo. A música de 75 s aparada dá queda de **−1,1 dB** (cauda mais
+alta = saudável).
+
+As duas portas rodam sobre os **stems colocados, antes do mix**; as
+falhas são coletadas, gravadas em `sound-evidence.json`, e o teste aborta
+antes de mixar, para que um som reprovado não produza um master.
+
+### O v10 corrigiu os dois defeitos de som e passou em todas as portas
+
+O render do **v10** (`app/outputs/validacao-f2-2026-10-22-v10/`) aplicou
+as duas correções de áudio. O `shot-evidence.json` está **sem nenhuma
+falha** e o `sound-evidence.json` também:
+
+| Porta | v9 | v10 |
+|---|---|---|
+| `bed_continuity` (buracos no leito) | 12 grupos, pior 250 ms — reprovado | **0 buracos** (mediana −29,17 dBFS, limiar −47,17 dBFS) |
+| `music_coverage` (queda na cauda) | 36,7 dB — reprovado | **−1,06 dB** (cauda mais alta = saudável) |
+
+O master `9911589e…` passa em todas as portas técnicas: 60,0 s, 24 fps,
+48 kHz estéreo, −16,14 LUFS, −1,80 dBTP, drift A/V dentro de um frame.
+
+O custo do v10 foi de ~7 min de GPU, e não ~78 min como o v9: os **30
+recibos** cujo pedido é byte a byte idêntico ao do v9 (12 imagens, 12
+vídeos, 4 falas, 2 âncoras) foram copiados, e só a **música** (pedido
+alterado para 75 s) e os **5 SFX** (o `video_guide` embute o diretório de
+validação) foram regerados. A verificação de reaproveitamento foi feita
+**antes** do render, reconstruindo os params que o harness pediria e
+comparando com cada recibo — é o que garante que o cliente estrito não
+rejeite o lote com "Receipt parameters changed".
+
 ### O que ainda falta
 
-A página de revisão do v9 foi reconstruída
+A página de revisão do **v10** foi reconstruída
 (`scripts/build_reference_review.py`) e está sendo servida em
-`http://127.0.0.1:8901/review.html` com suporte a `Range` (o som
-toca). Falta **apenas** a revisão criativa humana, com as **seis**
-dimensões — `pt_br_voice` e `sound_editing` nunca foram avaliadas de
-verdade, porque o som só apareceu depois do bug de HTTP Range. O
-`creative-review.json` tem de ser emitido contra o hash
-`b1a38c1dc23fa2920d8fbf87115ef7261a3f7bc554953ca6201597703181c1b0`;
+`http://127.0.0.1:8901/review.html` com suporte a `Range` (verificado:
+`206` com `Content-Range` correto, faixa de áudio AAC estéreo 48 kHz de
+60 s, vídeo tocando no navegador). Falta **apenas** a revisão criativa
+humana, com as **seis** dimensões — `pt_br_voice` e `sound_editing`
+nunca foram avaliadas de verdade, porque o som só apareceu depois do bug
+de HTTP Range. O `creative-review.json` tem de ser emitido contra o
+hash `9911589e77b614644e3da8188d02d5a10410c39dd1fc384a352c55457ce6b97b`;
 os arquivos antigos não valem (o hash do master mudou).
 
 

@@ -160,6 +160,20 @@ coisas diferentes em planos diferentes. Agora a cabeça é o vão das três
 lentes, e o grupo de lentes é o mais apertado entre as combinações de
 três. Sem essa correção a porta de consistência mediria ruído.
 
+Duas portas de **som** foram adicionadas depois, e medem os defeitos que
+o v9 carregava sem que nenhuma porta os visse — o detalhamento está na
+seção *"Os dois defeitos de áudio do v9 e as portas que os medem"*:
+
+- **continuidade do leito** (`reference_mix.check_bed_continuity`) — o
+  leito ambiente não pode cair 18 dB abaixo da própria mediana por
+  100 ms ou mais.
+- **cobertura da música** (`reference_mix.check_music_coverage`) — a
+  mediana dos últimos 3 s da música não pode cair mais de 12 dB abaixo
+  da mediana do corpo.
+
+As duas rodam sobre os **stems colocados, antes do mix**, de modo que o
+veredito descreve o som e não a mistura.
+
 ### O terceiro erro crítico não virou porta, e a medição mostra por quê
 
 A revisão humana do master v6 apontou três erros críticos. Dois viraram
@@ -391,6 +405,14 @@ falha. A VRAM precisa estar livre durante a geração.
   desejado.
 - **`video_guide` dos SFX embute caminho absoluto.** Mudar o diretório de
   validação invalida todos os recibos, inclusive os de áudio.
+- **Reaproveitar recibos exige comparar os params, não adivinhar.** O
+  cliente recusa com "Receipt parameters changed" quando o pedido não é
+  idêntico. Para saber o que pode ser copiado, reconstrua os params que
+  o harness vai pedir e compare com cada recibo: no v10, 30 dos 36
+  recibos eram byte a byte idênticos (12 imagens, 12 vídeos, 4 falas,
+  2 âncoras) e só a música (pedido de 75 s) e os 5 SFX (o `video_guide`
+  embute o diretório de validação) precisaram ser regerados. O custo do
+  render caiu de ~78 min para ~7 min.
 - **Janelas de vídeo.** `app/models/_settings.json` define
   `sliding_window_size: 129` global. Com `video_length` maior que isso, o
   gerador salva um arquivo por janela e o cliente estrito recusa
@@ -560,6 +582,74 @@ bytes` e `Content-Range` correto para `bytes=início-fim`,
 `test_a_range_request_is_answered_with_partial_content` fixa esse
 contrato, porque a falha é silenciosa: sem range o vídeo abre e apenas
 o som some.
+
+## Os dois defeitos de áudio do v9 e as portas que os medem
+
+O v9 passou em todas as portas de imagem, mas o som tinha dois defeitos
+que nenhuma porta media. Ambos foram medidos, e ambos viraram porta.
+
+### Causa A — o leito ambiente repetia o silêncio do gerador
+
+O take do MMAudio (`sfx_ambient_42(5).mp4`, 5,0155 s, 44,1 kHz mono)
+**abre com 0,108549 s de silêncio quase digital**: o envelope das
+primeiras janelas de 50 ms mede −78,0, −77,1, −48,1, −37,4 dBFS antes de
+subir para o nível de regime (−15,89 dBFS). O `-stream_loop -1` do
+harness repetia o arquivo inteiro, então **aquele silêncio era repetido a
+cada ciclo** — 12 grupos de buraco no leito de 60 s, o mais longo de
+**250 ms**.
+
+A porta `check_bed_continuity` reprova um leito que caia 18 dB abaixo da
+própria mediana por 100 ms ou mais. No v9 ela reprova tanto o stem
+colocado (`ambient_continuous.wav`) quanto o nivelado
+(`leveled/09-ambient_continuous.wav`): mediana −30,40 dBFS, limiar
+−48,40 dBFS, 12 grupos, pior 250 ms.
+
+A correção não é um deslocamento fixo: `build_seamless_loop` **mede** a
+região sustentada do take (a mediana do último quarto do envelope é a
+referência; a faixa é o trecho que nunca cai mais de 6 dB abaixo dela) e
+monta o **ciclo** com *crossfade* de potência igual
+(`tail·cos(π/2·t) + head·sin(π/2·t)`). O primeiro sample do ciclo é o
+último sample da cauda, de modo que a emenda do arquivo coincide
+exatamente e a emenda do loop é contínua: a descontinuidade medida na
+emenda é 0,000061 contra p99,9 = 0,0125 do resto do sinal. A rampa de
+nível do take original fica **fora** do ciclo. Repetido sob 60 s, o leito
+resultante não abre buraco algum.
+
+### Causa B — a música morria antes do fim do filme
+
+O LM do ACE-Step escreve cerca de **86 %** dos tokens pedidos e depois
+repete `codes[-1]`: a cauda fica congelada. A fração acompanha a
+duração pedida (60 s → morte em 51,2 s; 70 s → 60,6 s; 75 s → 65,3 s).
+A porta `check_music_coverage` reprova quando a mediana dos últimos 3 s
+cai mais de 12 dB abaixo da mediana do corpo. No v9 a queda é de
+**36,7 dB**, tanto no stem colocado (`music.wav`) quanto no nivelado
+(`leveled/04-music.wav`).
+
+A correção é pedir **mais** música do que o filme precisa e aparar pela
+cabeça: `request_seconds: 75` com `duration_seconds: 60`, e o
+`atrim=end_sample` do `_normalize_audio` corta pelo começo, que é
+justamente a parte que o gerador escreveu. A música de 75 s aparada a 60 s
+dá queda de **−1,1 dB** — cauda mais alta, não mais baixa. O corte pela
+cauda foi testado e **reprova** (39,7 dB), o que confirma que o corte
+pela cabeça é o correto.
+
+### O descarte do falso "+8 dB step"
+
+Uma leitura anterior sugeria que a música do v9 caía 8 dB e depois
+subia 8 dB — um degrau. A medição do envelope de 50 ms não mostra
+degrau: o que existe é a rampa de nível do **take do MMAudio** (−78 dBFS
+até −13 dBFS) repetida a cada ciclo do leito. O degrau é do loop, não da
+música, e o ciclo seamless o elimina por construção. A hipótese foi
+descartada por medição, não por argumento.
+
+### Onde as portas rodam
+
+As duas portas rodam sobre os **stems colocados, antes do mix** — o
+veredito descreve o som, não a mistura. As falhas são coletadas por
+`_collect`, gravadas em `sound-evidence.json`, e o teste aborta **antes**
+de mixar e masterizar, para que um som reprovado não produza um master.
+`report['bed_continuity']` e `report['music_coverage']` vão para o
+`technical-report.json`.
 
 ## Recuperação F3
 

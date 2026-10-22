@@ -20,7 +20,8 @@ from app.services.reference_acceptance import (
     file_hash, run_media, validate_creative_review, validate_master, validate_pcm,
 )
 from app.services.reference_mix import (
-    MIN_SPEECH_MARGIN_DB, Stem, level_stems, mix_stems, narration_margin_db,
+    MIN_SPEECH_MARGIN_DB, Stem, build_seamless_loop, check_bed_continuity,
+    check_music_coverage, level_stems, mix_stems, narration_margin_db,
 )
 from app.services import reference_continuity, reference_robot
 from app.services.reference_identity import EXPECTED_LENSES, analyse, check_anchor_lenses
@@ -166,7 +167,15 @@ def test_f2_generate_and_measure_real_jobs(config):
         stem = output / (cue['id'] + '.wav')
         _place_audio(normalized, stem, cue['start_seconds'])
         stems.append(Stem(stem, 'speech'))
-    raw = _generate(client, output, 'music', {**config['music'], 'duration_seconds': 60}, {'.wav', '.flac'})
+    # The music is asked for longer than the film needs and trimmed back.
+    # The generator's language model writes real music for about 86% of the
+    # duration it is given and repeats its last code from there on, so a
+    # 60 s request leaves the last seconds of the picture with a frozen
+    # track. The request is longer than the film, and the trim keeps the
+    # beginning, which is the part the generator wrote.
+    raw = _generate(client, output, 'music',
+                    {**config['music'], 'duration_seconds': SOUND['music']['request_seconds']},
+                    {'.wav', '.flac'})
     music = output / 'music.wav'
     _normalize_audio(raw, music, EXPECTED['audio_samples_per_channel'])
     validate_pcm(music, EXPECTED['audio_samples_per_channel'])
@@ -324,11 +333,38 @@ def test_f2_generate_and_measure_real_jobs(config):
         raw = _generate(client, output, effect['id'], {**config['sfx'], 'prompt': effect['type'],
                                                        'video_guide': str(clips[shot_index])}, {'.wav', '.flac', '.mp4'})
         stem = output / (effect['id'] + '.wav')
-        _place_audio(raw, stem, effect['start_seconds'], effect['gain'], effect.get('loop', False))
+        loop = effect.get('loop')
+        if isinstance(loop, dict) and loop.get('seamless'):
+            # The bed is a short take repeated under the whole film. The
+            # take opens with digital silence, so repeating it as it is
+            # repeats that silence at every cycle and the film carries the
+            # holes. The take is cut into a cycle that joins itself first,
+            # and the cycle is what the film repeats.
+            cycle = output / (effect['id'] + '-cycle.wav')
+            build_seamless_loop(raw, cycle, crossfade_seconds=loop.get('crossfade_seconds', 0.5))
+            _place_audio(cycle, stem, effect['start_seconds'], effect['gain'], loop=True)
+        else:
+            _place_audio(raw, stem, effect['start_seconds'], effect['gain'], bool(loop))
         # The ambient bed is a room tone under everything; the other effects
         # are transients, whose authored gain is their relative weight.
         kind = 'ambient' if effect['type'] == 'ambient' else 'effect'
         stems.append(Stem(stem, kind, effect['gain']))
+    # The sound is measured on its own terms before it is mixed: the bed
+    # has to hold its level for the whole film, and the music has to still
+    # be playing when the picture ends. Both are measured on the placed
+    # stems, so the verdict describes the sound and not the mix.
+    sound_failures: list[str] = []
+    bed_stem = next((stem.path for stem in stems if stem.kind == 'ambient'), None)
+    assert bed_stem is not None, 'The recipe declares no ambient bed, so the film has no room tone'
+    bed_evidence = _collect(sound_failures, 'ambient_continuous', check_bed_continuity, bed_stem)
+    music_evidence = _collect(sound_failures, 'music', check_music_coverage, music)
+    (output / 'sound-evidence.json').write_text(json.dumps({
+        'bed_continuity': bed_evidence,
+        'music_coverage': music_evidence,
+        'failures': sound_failures,
+    }, indent=2))
+    assert not sound_failures, 'The sound was rejected by its own measurements:\n' + '\n'.join(
+        f'  - {failure}' for failure in sound_failures)
     mixed = output / 'mix.wav'
     # Every stem is levelled against its own role anchor before the mix, so
     # the narration stays above the bed instead of being buried by a music
@@ -354,7 +390,12 @@ def test_f2_generate_and_measure_real_jobs(config):
                '-af', 'alimiter=limit=0.891251:attack=1:release=20:level=disabled',
                '-vf', f"drawtext=textfile='{title}':fontcolor=white:fontsize=48:x=(w-tw)/2:y=h*0.8:enable='gte(t,55)'",
                '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', '-ac', '2',
-               '-frames:v', '1440', '-t', '60', str(partial)])
+               '-frames:v', '1440', '-t', '60',
+               # The index has to come before the pictures. Without it the
+               # player has to fetch the whole file before it can start,
+               # and it gives up on the audio track of a file it cannot
+               # seek in.
+               '-movflags', '+faststart', str(partial)])
     report = validate_master(partial, EXPECTED)
     # The lens metric is evidence for the reviewer: which shots were measured
     # under neutral light (where the count is reliable) and which were only
@@ -367,6 +408,10 @@ def test_f2_generate_and_measure_real_jobs(config):
     report['relative_evidence'] = relative_evidence
     report['ground_evidence'] = ground_evidence
     report['scale_consistency'] = consistency
+    # The two sound measurements that decided whether the bed and the
+    # music are playable, kept with the film like every other measurement.
+    report['bed_continuity'] = bed_evidence
+    report['music_coverage'] = music_evidence
     partial.replace(master)
     (output / 'technical-report.json').write_text(json.dumps(report, indent=2))
     assert file_hash(master) == report['master_sha256']

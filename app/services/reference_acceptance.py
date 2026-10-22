@@ -20,6 +20,20 @@ def run_media(args: list[str]) -> subprocess.CompletedProcess:
     return result
 
 
+def run_media_bytes(args: list[str]) -> bytes:
+    """Run a media command and return its raw stdout.
+
+    Audio measurements need the samples themselves, and a text-mode pipe
+    would corrupt them. The decoding still goes through this module, so
+    there is one way to call ffmpeg in the project.
+    """
+    result = subprocess.run(args, capture_output=True, timeout=600)
+    if result.returncode:
+        stderr = result.stderr.decode('utf-8', 'replace')
+        raise RuntimeError(f"Media command failed: {args[0]}\n{stderr[-4000:]}")
+    return result.stdout
+
+
 def file_hash(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open('rb') as stream:

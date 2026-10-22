@@ -21,8 +21,9 @@ import json
 import math
 from pathlib import Path
 import tempfile
+import wave
 
-from .reference_acceptance import run_media
+from .reference_acceptance import run_media, run_media_bytes
 
 # Absolute anchors per stem role. The narration is the foreground; the bed
 # sits a decade below it, the room tone below the bed, and transient effects
@@ -50,6 +51,36 @@ LOUDNESS_TOLERANCE_LU = 0.2
 # The narration has to be measurably above the bed, otherwise the mix
 # masks it again no matter what the integrated loudness says.
 MIN_SPEECH_MARGIN_DB = 3.0
+
+# The ambient bed is generated as one short take and repeated under the
+# whole film. The take opens with digital silence and swells to its steady
+# level, so repeating the raw file repeats that silence at every cycle and
+# the mix carries the holes. The bed is therefore built as a single
+# continuous cycle: the sustained stretch of the take is kept and its end
+# is crossfaded over its beginning.
+AMBIENT_LOOP_CROSSFADE_SECONDS = 0.5
+AMBIENT_LOOP_LEVEL_TOLERANCE_DB = 6.0
+AMBIENT_LOOP_REFERENCE_FRACTION = 0.25
+
+# The level of a file is read in windows this long. A gap shorter than
+# this cannot be seen, and the windows have to be short enough to catch
+# the 100 ms holes the looping bed produced.
+ENVELOPE_WINDOW_SECONDS = 0.05
+
+# The bed must hold its level: a hole in the room tone is heard as a gap
+# in the film. The stem is rejected when it drops this far below its own
+# median for at least this long. The v9 bed falls 18 dB below its median
+# in groups of up to 250 ms; the seamless bed never falls more than
+# 4,42 dB below its median.
+BED_HOLE_TOLERANCE_DB = 18.0
+BED_HOLE_MIN_SECONDS = 0.1
+
+# The music has to still be playing when the picture ends. The generator
+# stops writing new music before the requested duration and repeats its
+# last code, so a long request ends in silence. The stem is rejected when
+# its last seconds fall this far below the body of the track.
+MUSIC_TAIL_SECONDS = 3.0
+MUSIC_TAIL_DROP_DB = 12.0
 
 
 @dataclass(frozen=True)
@@ -200,3 +231,166 @@ def narration_margin_db(mix: Path, speech: tuple[float, float], bed: tuple[float
     programme as a whole happens to be.
     """
     return window_loudness(mix, *speech) - window_loudness(mix, *bed)
+
+
+def _numpy():
+    import numpy as np
+    return np
+
+
+def _pcm(path: Path, sample_rate: int = 48000) -> 'np.ndarray':
+    """Decode a media file into stereo float samples.
+
+    The samples themselves are needed, not a summary of them: a gap in the
+    bed and a frozen tail in the music are only visible in the waveform.
+    """
+    np = _numpy()
+    raw = run_media_bytes([
+        'ffmpeg', '-v', 'error', '-i', str(path), '-vn',
+        '-f', 's16le', '-ac', '2', '-ar', str(sample_rate), '-',
+    ])
+    return np.frombuffer(raw, '<i2').astype(np.float32).reshape(-1, 2) / 32768.0
+
+
+def _envelope_db(path: Path, window_seconds: float = ENVELOPE_WINDOW_SECONDS) -> 'np.ndarray':
+    """The level of a file in short windows, in dBFS."""
+    np = _numpy()
+    samples = _pcm(path)
+    window = int(window_seconds * 48000)
+    count = len(samples) // window
+    if not count:
+        raise ValueError(f"{Path(path).name}: file is shorter than one measurement window")
+    blocks = samples[:count * window].reshape(count, window, 2)
+    power = (blocks.astype(np.float64) ** 2).sum(axis=2).mean(axis=1)
+    return 10 * np.log10(np.maximum(power, 1e-20))
+
+
+def _runs_below(envelope: 'np.ndarray', threshold: float) -> list[tuple[float, float]]:
+    """Every stretch of the envelope under a threshold, as (start, length)."""
+    below = envelope < threshold
+    runs: list[tuple[float, float]] = []
+    index = 0
+    while index < len(below):
+        if below[index]:
+            end = index
+            while end < len(below) and below[end]:
+                end += 1
+            runs.append((index * ENVELOPE_WINDOW_SECONDS, (end - index) * ENVELOPE_WINDOW_SECONDS))
+            index = end
+        else:
+            index += 1
+    return runs
+
+
+def build_seamless_loop(source: Path, destination: Path, *,
+                        crossfade_seconds: float = AMBIENT_LOOP_CROSSFADE_SECONDS) -> dict:
+    """Write a cycle of the take that loops without a gap.
+
+    The generator returns one short take of room tone that opens with
+    digital silence and swells up to its steady level. Repeating that file
+    as it is repeats the silence at every cycle, and the mix then carries
+    the holes. This builds the cycle instead: the sustained part of the
+    take is kept, and its end is crossfaded over its beginning with equal
+    power, so the cycle joins itself without a discontinuity and without
+    the level change the raw take would bring.
+
+    The sustained part is found by measurement, not by a fixed offset: the
+    level of the last quarter of the take is the reference, and the window
+    kept is the stretch that never falls below that level by more than
+    AMBIENT_LOOP_LEVEL_TOLERANCE_DB.
+    """
+    np = _numpy()
+    samples = _pcm(source)
+    envelope = _envelope_db(source)
+    reference = float(np.median(envelope[int(len(envelope) * (1 - AMBIENT_LOOP_REFERENCE_FRACTION)):]))
+    threshold = reference - AMBIENT_LOOP_LEVEL_TOLERANCE_DB
+    below = envelope < threshold
+    half = len(below) // 2
+    start = 0
+    for index in range(half):
+        if below[index]:
+            start = index + 1
+    end = len(below)
+    for index in range(len(below) - 1, half, -1):
+        if below[index]:
+            end = index
+    window = int(ENVELOPE_WINDOW_SECONDS * 48000)
+    body = samples[start * window:end * window]
+    overlap = int(round(crossfade_seconds * 48000))
+    if len(body) <= 2 * overlap:
+        raise ValueError(f"{Path(source).name}: the take is too short to loop")
+    head = body[:overlap]
+    tail = body[-overlap:]
+    # Equal power: the two halves of the fade keep the sum of the powers
+    # constant, so the seam does not dip below the level around it.
+    ramp = np.linspace(0.0, 1.0, overlap, endpoint=False)[:, None]
+    blend = tail * np.cos(np.pi / 2 * ramp) + head * np.sin(np.pi / 2 * ramp)
+    cycle = np.concatenate([blend, body[overlap:len(body) - overlap]])
+    data = np.clip(cycle, -1.0, 1.0)
+    with wave.open(str(destination), 'wb') as audio:
+        audio.setnchannels(2)
+        audio.setsampwidth(2)
+        audio.setframerate(48000)
+        audio.writeframes((data * 32767).astype('<i2').tobytes())
+    return {
+        'source': Path(source).name,
+        'cycle_seconds': len(cycle) / 48000,
+        'sustained_from_seconds': start * ENVELOPE_WINDOW_SECONDS,
+        'sustained_to_seconds': end * ENVELOPE_WINDOW_SECONDS,
+        'reference_dbfs': reference,
+        'crossfade_seconds': crossfade_seconds,
+    }
+
+
+def check_bed_continuity(path: Path) -> dict:
+    """The bed has to hold its level for the whole film.
+
+    A hole in the room tone is heard as a gap under the picture, and no
+    amount of loudness elsewhere hides it. The stem is measured against its
+    own median, so the gate does not depend on how loud the bed was
+    levelled to.
+    """
+    envelope = _envelope_db(path)
+    median = float(_numpy().median(envelope))
+    threshold = median - BED_HOLE_TOLERANCE_DB
+    holes = _runs_below(envelope, threshold)
+    worst = max((length for _, length in holes), default=0.0)
+    if worst >= BED_HOLE_MIN_SECONDS:
+        raise ValueError(
+            f"{Path(path).name}: the bed falls {BED_HOLE_TOLERANCE_DB:.0f} dB below its median "
+            f"for {worst * 1000:.0f} ms; the ambient loop repeats a gap")
+    return {
+        'median_dbfs': median,
+        'threshold_dbfs': threshold,
+        'worst_hole_seconds': worst,
+        'holes': len(holes),
+    }
+
+
+def check_music_coverage(path: Path) -> dict:
+    """The music has to still be playing when the picture ends.
+
+    The music generator stops writing new music before the duration it was
+    asked for and repeats its last code from there on, so a long request
+    ends in a frozen tail. The stem is rejected when its last seconds sit
+    far below the body of the track.
+    """
+    np = _numpy()
+    envelope = _envelope_db(path)
+    tail_blocks = int(MUSIC_TAIL_SECONDS / ENVELOPE_WINDOW_SECONDS)
+    if len(envelope) <= tail_blocks:
+        raise ValueError(f"{Path(path).name}: the music is shorter than its own tail window")
+    body = envelope[:-tail_blocks]
+    tail = envelope[-tail_blocks:]
+    body_median = float(np.median(body))
+    tail_median = float(np.median(tail))
+    drop = body_median - tail_median
+    if drop > MUSIC_TAIL_DROP_DB:
+        raise ValueError(
+            f"{Path(path).name}: the music falls {drop:.1f} dB in its last {MUSIC_TAIL_SECONDS:.0f} s; "
+            f"the track dies before the picture ends")
+    return {
+        'body_median_dbfs': body_median,
+        'tail_median_dbfs': tail_median,
+        'tail_drop_db': drop,
+    }

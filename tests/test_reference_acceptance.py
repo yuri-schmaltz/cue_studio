@@ -4,7 +4,7 @@ import wave
 import pytest
 
 from app.services.reference_acceptance import (
-    ARTISTIC_DIMENSIONS, file_hash, run_media,
+    ARTISTIC_DIMENSIONS, file_hash, run_media, run_media_bytes,
     validate_creative_review, validate_master, validate_pcm,
 )
 
@@ -77,3 +77,25 @@ def test_real_ffmpeg_measurement_rejects_wrong_frame_count(tmp_path):
     assert report['checks']['frames']
     with pytest.raises(ValueError, match='frames'):
         validate_master(master, {**expected, 'total_frames': 25})
+
+
+def test_media_bytes_returns_the_raw_samples(tmp_path):
+    """The audio measurements need the samples, not a text pipe."""
+    tone = tmp_path / 'tone.wav'
+    run_media([
+        'ffmpeg', '-y', '-v', 'error', '-f', 'lavfi', '-i',
+        'sine=frequency=440:sample_rate=48000:duration=1',
+        '-ac', '2', '-c:a', 'pcm_s16le', str(tone),
+    ])
+    raw = run_media_bytes([
+        'ffmpeg', '-v', 'error', '-i', str(tone), '-vn',
+        '-f', 's16le', '-ac', '2', '-ar', '48000', '-',
+    ])
+    assert len(raw) == 48000 * 2 * 2
+    with wave.open(str(tone), 'rb') as audio:
+        assert audio.readframes(audio.getnframes()) == raw
+
+
+def test_media_bytes_reports_the_failure(tmp_path):
+    with pytest.raises(RuntimeError, match='Media command failed'):
+        run_media_bytes(['ffmpeg', '-v', 'error', '-i', str(tmp_path / 'missing.wav'), '-'])

@@ -117,16 +117,37 @@ def handler_for(folder: Path):
     * it does not answer range requests. Chrome refuses to play the
       audio track of a media file served without range support, and the
       reviewer would score the sound of a silent film. Range is
-      answered here with 206 Partial Content.
+      answered here with 206 Partial Content;
+    * it also omits the ``Accept-Ranges`` advertisement on plain 200
+      and HEAD answers. A player that probes the file with HEAD before
+      playing it then believes the media is not seekable and silently
+      drops the audio track, so the header is announced for every
+      response that carries a regular file.
     """
     class Handler(http.server.SimpleHTTPRequestHandler):
+        # The request is handled inside __init__, so these have to exist
+        # before the instance is built.
+        _accept_ranges_pending = False
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(folder), **kwargs)
+
+        def end_headers(self):
+            if self._accept_ranges_pending:
+                self._accept_ranges_pending = False
+                self.send_header('Accept-Ranges', 'bytes')
+            super().end_headers()
 
         def send_head(self):
             requested = self.headers.get('Range')
             if not requested or not requested.startswith('bytes='):
-                return super().send_head()
+                path = self.translate_path(self.path)
+                self._accept_ranges_pending = (
+                    not os.path.isdir(path) and os.path.isfile(path))
+                try:
+                    return super().send_head()
+                finally:
+                    self._accept_ranges_pending = False
             path = self.translate_path(self.path)
             if os.path.isdir(path) or not os.path.isfile(path):
                 return super().send_head()
