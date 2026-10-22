@@ -247,6 +247,7 @@ def test_f2_generate_and_measure_real_jobs(config):
         # video is anchored to.
         cube_evidence[shot['id'] + '-image'] = _collect(
             failures, shot['id'] + '-image', check_cube_count,
+            references[shot['id']], expected=CUBE_EXPECTED[shot['id']])
     # Verify lens count on all shots featuring the robot starting stills
     for shot_id in sorted(ROBOT_LENS_STILL_SHOTS):
         _collect(failures, shot_id + '-image-lenses', check_shot_lenses,
