@@ -635,14 +635,39 @@ O probe prova que a **receita** corrige os quatro defeitos. O v9 é o
 render completo com a mesma receita, para confirmar que a correção
 sobrevive aos 12 planos e ao encadeamento de âncoras.
 
+### O v9 renderizou e passou em todas as portas
+
+O render completo do **v9** (`app/outputs/validacao-f2-2026-10-21-v9/`,
+~78 min) terminou com **`shot-evidence.json` sem nenhuma falha** — as
+4 portas que reprovaram o v8 passaram:
+
+| Porta | v8 | v9 |
+|---|---|---|
+| `S11-image` (contagem de cubos) | `{0: 1}` — reprovado | `{1: 1}` — ok |
+| `S04-video` (presença do cubo) | 48,3 % — reprovado | **87,5 %** (`{0: 15, 1: 105}`) |
+| `S04-video` (spread da escala) | 1,3979 — reprovado | **1,1146** (limite 1,35) |
+| `S11-video` (presença do cubo) | 38,3 % — reprovado | **100 %** (`{1: 120}`) |
+
+Os 12 stills têm exatamente 1 cubo cada (S10 tem 0, como esperado) e o
+`technical-report.json` do master `b1a38c1d…` passa em todas as portas
+técnicas (60,0 s, 24 fps, 48 kHz estéreo, −16,16 LUFS, −1,83 dBTP).
+
+O teste do harness que reprova é apenas
+`test_f2_full_acceptance_requires_creative_review`, que exige o
+`creative-review.json` — o **passo humano**, não uma falha de geração.
+
 ### O que ainda falta
 
-O render do **v9** está em curso em
-`app/outputs/validacao-f2-2026-10-21-v9/`. Depois dele: conferir
-`shot-evidence.json` para as 4 portas, reconstruir a página de revisão e
-pedir **nova revisão criativa** com as seis dimensões — as duas de áudio
-(`pt_br_voice`, `sound_editing`) nunca foram avaliadas de verdade,
-porque o som só apareceu depois do bug de HTTP Range.
+A página de revisão do v9 foi reconstruída
+(`scripts/build_reference_review.py`) e está sendo servida em
+`http://127.0.0.1:8901/review.html` com suporte a `Range` (o som
+toca). Falta **apenas** a revisão criativa humana, com as **seis**
+dimensões — `pt_br_voice` e `sound_editing` nunca foram avaliadas de
+verdade, porque o som só apareceu depois do bug de HTTP Range. O
+`creative-review.json` tem de ser emitido contra o hash
+`b1a38c1dc23fa2920d8fbf87115ef7261a3f7bc554953ca6201597703181c1b0`;
+os arquivos antigos não valem (o hash do master mudou).
+
 
 ## O terceiro erro crítico do v6 — o robô flutuando — e por que ele não virou porta
 
