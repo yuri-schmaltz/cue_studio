@@ -270,6 +270,44 @@ A regra que saiu disso:
 `tests/test_cue_reference_film_visual_prompts.py` guarda essa regra: sem
 ela a receita volta a descrever estados e o defeito volta junto.
 
+### Declarar presença não é o mesmo que declarar estado
+
+O v8 aplicou a regra acima e **reprovou 4 portas de medição** — o cubo
+achata no S11 (aspecto 2,17), some do S04 depois do frame 55 e some de
+metade do S11. A causa não foi a regra: foi o **texto** que a implementou.
+
+O parágrafo de mobília do v8 dizia que a mesa estava *"bare, completely
+empty top"* e que o pedestal tinha *"its empty square cube-sized
+socket"* — nos mesmos planos em que o cubo **está** em cima da mesa
+(S01, S02, S04) ou **assentado** no encaixe (S11, S12). O prompt se
+contradizia, e o modelo resolveu a contradição do lado dele: em S11 o
+cubo saiu achatado, em S04 o cubo desapareceu.
+
+Além disso, exigir que as duas peças de mobília apareçam **no mesmo
+plano** obriga a câmera a recuar e subir. O blob do cubo em S04 é
+rastreado de 2470 px (f0) a 2675 px (f55) e **depois some até f119**; a
+contagem estrita de pixels vermelhos cai de 2852 para 0. O cubo não
+está sendo perdido por limiar — ele saiu do quadro.
+
+As duas regras que saem daí:
+
+- **quem descreve a mobília descreve o que está em cima dela.** Se o cubo
+  está na mesa, a mesa não é vazia; se o cubo está no encaixe, o encaixe
+  não é vazio. Declarar a presença de uma peça não autoriza declarar o
+  vazio da superfície onde o objeto está;
+- **"presença no quadro" não é "no mesmo plano, no mesmo tamanho".**
+  Quando as duas peças não cabem no mesmo plano, uma vai para o fundo e
+  menor, e a câmera fica no distância média — sem recuo.
+
+O S11 ganha ainda uma instrução de ponto de vista: a câmera **rasante ao
+encaixe**, para que o cubo assentado seja visto de lado e leia como
+sólido, e não como uma forma chapada.
+
+`tests/test_cue_reference_film_visual_prompts.py` guarda as duas regras
+com três testes (`test_no_prompt_contradicts_itself_about_the_cube`,
+`test_s04_keeps_the_robot_and_the_cube_inside_the_frame`,
+`test_s11_sees_the_seated_cube_from_the_side`).
+
 ### Uma porta de "lâmpada acesa" seria desonesta
 
 Não há porta que detecte a lâmpada acesa. A contagem de pixels âmbar é

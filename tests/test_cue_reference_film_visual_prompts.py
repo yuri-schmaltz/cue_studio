@@ -121,3 +121,54 @@ def test_every_shot_has_a_prompt():
     for shot_id in SHOT_IDS:
         assert VISUAL["shots"][shot_id]["image"].strip(), f"{shot_id} está sem prompt de imagem"
         assert VISUAL["shots"][shot_id]["motion"].strip(), f"{shot_id} está sem prompt de movimento"
+
+
+# O cubo aparece em cada plano, sobre a mesa ou no encaixe do pedestal.
+# Um prompt que declara o mesmo objeto como vazio e ao mesmo tempo
+# ocupado é uma contradição que o modelo resolve por conta própria, e a
+# medição do cubo passa a medir o que o modelo decidiu desenhar.
+ON_THE_TABLE = {"S01", "S02", "S03", "S04"}
+IN_THE_SOCKET = {"S09", "S11", "S12"}
+
+
+def test_no_prompt_contradicts_itself_about_the_cube():
+    """Nenhum plano declara vazio o que está ocupado pelo cubo."""
+    for shot_id in sorted(ON_THE_TABLE):
+        prompt = _shot(shot_id)
+        assert "completely empty top" not in prompt, (
+            f"{shot_id} declara a mesa vazia enquanto o cubo está em cima dela")
+        assert "empty tabletop" not in prompt, (
+            f"{shot_id} declara a mesa vazia enquanto o cubo está em cima dela")
+    for shot_id in sorted(IN_THE_SOCKET):
+        prompt = _shot(shot_id)
+        assert "empty square cube-sized socket" not in prompt, (
+            f"{shot_id} declara o encaixe vazio enquanto o cubo está sentado nele")
+
+
+def test_s04_keeps_the_robot_and_the_cube_inside_the_frame():
+    """S04 é o plano do cubo na mão: a câmera não recua nem o robô sai."""
+    prompt = _shot("s04")
+    assert "does not pull back" in prompt, (
+        "S04 precisa dizer que a câmera mantém a distância média e não recua")
+    assert "background" in prompt, (
+        "S04 precisa mandar o pedestal para o fundo, e não para o meio do quadro")
+    motion = VISUAL["shots"]["S04"]["motion"].lower()
+    assert "never leaves the frame" in motion, (
+        "S04 precisa proibir que o robô saia do quadro com o cubo")
+    assert "fully visible" in motion, (
+        "S04 precisa exigir que o cubo na mão fique visível em todo quadro")
+
+
+def test_s11_sees_the_seated_cube_from_the_side():
+    """S11 é o plano do cubo no encaixe: ele tem de ler como cubo."""
+    prompt = _shot("s11")
+    assert "level with the pedestal socket" in prompt, (
+        "S11 precisa pedir uma câmera nivelada com o encaixe, para o cubo "
+        "assentado não sair achatado pelo ângulo alto")
+    assert "flat shape" in prompt, (
+        "S11 precisa avisar que o cubo assentado não pode virar uma mancha achatada")
+    motion = VISUAL["shots"]["S11"]["motion"].lower()
+    assert "stays seated in the pedestal socket" in motion, (
+        "S11 precisa manter o cubo assentado no encaixe durante todo o plano")
+    assert "fully visible in the frame" in motion, (
+        "S11 precisa exigir que o cubo assentado fique visível em todo quadro")

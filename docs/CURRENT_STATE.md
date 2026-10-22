@@ -545,6 +545,105 @@ qualquer limiar absoluto reprovaria o filme certo. **Porta não confiável é
 pior do que porta nenhuma**: a correção foi na receita, e a medição fica
 como evidência por plano, não como gate.
 
+## Gate F2 v8 — o render passou a geração, mas reprovou 4 portas de medição
+
+O v8 **renderizou inteiro** (fala V01–V04, música, 12 stills, 12 clipes,
+~70 min) e a fase de medição escreveu
+`app/outputs/validacao-f2-2026-10-21-v8/shot-evidence.json` com **4
+falhas**:
+
+| Porta | Esperado | Medido no v8 |
+|---|---|---|
+| `S11-image` (contagem de cubos) | 1 | `{0: 1}` — nenhum cubo aceito |
+| `S04-video` (presença do cubo) | ≥ 50 % dos frames | 48,3 % (`{0: 62, 1: 58}`) |
+| `S04-video` (escala relativa) | spread ≤ 1,35 | 1,3979 — robô muda de tamanho contra o cubo |
+| `S11-video` (presença do cubo) | ≥ 50 % dos frames | 38,3 % (`{0: 74, 1: 46}`) |
+
+A evidência do v7 era limpa (`{1: 120}` em todos os frames de vídeo, 1
+cubo nos dois stills) ⇒ **regressão introduzida pelas mudanças de prompt
+do v8**, não deriva do modelo.
+
+### Duas causas-raiz, provadas por medição
+
+**1. Contradição de conteúdo no próprio prompt.** O v8 passou a declarar
+mesa e pedestal em S01, S02, S04, S06, S07, S11 e S12, mas copiou
+"bare, completely empty top" para a mesa e "its empty square cube-sized
+socket" para o pedestal — **justamente onde o cubo está**: em cima da
+mesa (S01, S02, S04) e assentado no encaixe (S11, S12). O modelo
+resolve a contradição como lhe convém: em S11 o cubo saiu achatado
+(blob `area 972, w 50, h 23, aspect 2,17`) — reprovado só por
+`MAX_ASPECT = 2,00`; em S04 o cubo desapareceu.
+
+**2. Enquadramento largo forçado.** O parágrafo de mobília do v8 ("a mesa
+no alto à direita **e** o pedestal no meio do quadro") obrigava a câmera
+a recuar e subir. O rastreamento do blob em S04 mostra f0 (2470 px) →
+f30 (3022) → f40 (2104) → f50 (2163) → f55 (2675) → **nenhum blob de
+f60 a f119**, e a contagem estrita de pixels vermelhos cai de 2852 px
+(f55) para 50/10/2/6/9/0 px (f58–f119): o cubo está **genuinamente
+ausente** depois de f55, não é limiar.
+
+### A correção foi na receita, não no limiar
+
+`MAX_ASPECT` **continua 2,00**. Subir para ~2,20 seria frágil: a "faixa
+vermelha de mesa" do v6 media 2,23 e a margem de 0,03 não é defensável.
+Em `tests/fixtures/cue_reference_film_v1/visual_prompts.json`:
+
+- S01/S02: a mesa passa a ter "its bare wooden top holding only the
+  single small matte red cube";
+- S03: a mesa ao fundo passa a ser "blurred wooden tabletop" (o cubo
+  está visível nela);
+- S11/S12: o pedestal passa a ter "with the single small matte red cube
+  seated in its square cube-sized socket in the base… switched on and
+  glowing warm amber";
+- S04 (imagem): o pedestal vai **para o fundo à esquerda, menor no
+  quadro**, e entra "The camera holds this medium distance and does not
+  pull back; the robot and the cube fill the frame";
+- S04 (movimento): sem a frase de mobília, com "never leaves the
+  frame" e "fully visible in the centre of the frame";
+- S11 (imagem): "The camera is low, level with the pedestal socket, so
+  the seated cube is seen from the side and reads as a solid cube and not
+  as a flat shape";
+- S11 (movimento): "The cube stays seated in the pedestal socket" e
+  "the seated cube stays fully visible in the frame for the whole shot".
+
+`tests/test_cue_reference_film_visual_prompts.py` passou de 7 para **10
+testes**: o novo `test_no_prompt_contradicts_itself_about_the_cube`
+exige que nenhum plano declare mesa/encaixe vazio onde o cubo está,
+`test_s04_keeps_the_robot_and_the_cube_inside_the_frame` fixa o
+enquadramento médio e a ausência de recuo, e
+`test_s11_sees_the_seated_cube_from_the_side` fixa a câmera rasante ao
+encaixe e a permanência do cubo no quadro.
+
+### Validação por render-alvo (probe S04/S11)
+
+Antes de refazer o filme inteiro, os **quatro** artefatos problemáticos
+foram regerados isoladamente (imagem e vídeo de S04 e de S11, reaproveitando
+as âncoras do v8) e medidos com os mesmos detectores do gate. **Todos os
+gates passaram**:
+
+| Métrica | v8 | probe v9 | Porta |
+|---|---|---|---|
+| STILL S04 | 2539 px, 57×49, aspect 1,17 | 2565 px, 57×48, aspect 1,19 | aspect ≤ 2,00 ✓ |
+| STILL S11 | 972 px, 50×23, **aspect 2,17 (reprovado)** | 1842 px, 61×34, aspect 1,79 | aspect ≤ 2,00 ✓ |
+| VIDEO S04 presença | **48,3 % (reprovado)** | 87,5 % | ≥ 50 % ✓ |
+| VIDEO S04 spread | **1,3979 (reprovado)** | 1,1146 | ≤ 1,35 ✓ |
+| VIDEO S04 head drift | — | 1,5141 | ≤ 1,80 ✓ |
+| VIDEO S11 presença | **38,3 % (reprovado)** | 100 % | ≥ 50 % ✓ |
+| S04 ratio head/cubo | — | 2,4603 | [1,0, 3,5] ✓ |
+
+O probe prova que a **receita** corrige os quatro defeitos. O v9 é o
+render completo com a mesma receita, para confirmar que a correção
+sobrevive aos 12 planos e ao encadeamento de âncoras.
+
+### O que ainda falta
+
+O render do **v9** está em curso em
+`app/outputs/validacao-f2-2026-10-21-v9/`. Depois dele: conferir
+`shot-evidence.json` para as 4 portas, reconstruir a página de revisão e
+pedir **nova revisão criativa** com as seis dimensões — as duas de áudio
+(`pt_br_voice`, `sound_editing`) nunca foram avaliadas de verdade,
+porque o som só apareceu depois do bug de HTTP Range.
+
 ## O terceiro erro crítico do v6 — o robô flutuando — e por que ele não virou porta
 
 O v6 foi reprovado na revisão humana por três erros críticos: cena com
