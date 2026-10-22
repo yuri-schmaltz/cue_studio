@@ -6,13 +6,12 @@ import type { AppSection, ProjectSetupDefaults } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import type { ProjectType } from '../../types/projects'
 import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspaceCoverUrl, submitGeneration, type Workspace } from '../../api/client'
-import { applyPreset, presetById, presetForType, presetSummary, trackOverrides, DEFAULT_PRESETS } from '../../projects/presets'
+import { applyPreset, presetById, presetForType, trackOverrides } from '../../projects/presets'
 import { ProjectSetupForm, ProjectSetupSummary } from './ProjectSetupForm'
 import { SkeletonGrid } from '../shared/Skeleton'
 import { AppDialog } from '../shared/AppDialog'
 import { Button } from '../shared/Button'
 import { TextField } from '../shared/TextField'
-import { Select } from '../shared/Select'
 
 /**
  * Projects page — one-to-one with workspaces on the backend.
