@@ -111,3 +111,36 @@ def test_check_cube_count_rejects_a_missing_cube(tmp_path):
 def test_anchor_seeds_are_declared():
     assert CUBE_ANCHOR_SEEDS
     assert all(isinstance(seed, int) for seed in CUBE_ANCHOR_SEEDS)
+
+
+def test_check_cube_lamp_separation_passes_when_separated(tmp_path):
+    from app.services.reference_cube import check_cube_lamp_separation
+    # Frame with red cube at (100, 100) and warm bulb at (300, 100)
+    img = np.full((360, 640, 3), 160, dtype=np.uint8)
+    cv2.rectangle(img, (80, 80), (120, 120), (20, 20, 215), thickness=-1)
+    # Warm bulb: HSV h in [10, 40], s>=120, v>=170 -> BGR
+    bulb_hsv = np.uint8([[[25, 200, 220]]])
+    bulb_bgr = cv2.cvtColor(bulb_hsv, cv2.COLOR_HSV2BGR)[0][0]
+    cv2.rectangle(img, (280, 80), (320, 120), tuple(int(c) for c in bulb_bgr), thickness=-1)
+    
+    path = tmp_path / 'shot.png'
+    cv2.imwrite(str(path), img)
+    res = check_cube_lamp_separation(path, sample=1, min_gap=0)
+    assert res['verdict'] == 'separated'
+    assert res['min_gap'] > 0
+
+
+def test_check_cube_lamp_separation_fails_when_overlapping(tmp_path):
+    from app.services.reference_cube import check_cube_lamp_separation
+    # Overlapping bounding boxes: red cube at (80, 80)-(120, 120), bulb at (100, 100)-(150, 150)
+    # The cube is outside the bulb's top-left, so both keep their blobs and overlap in [100, 120]
+    img = np.full((360, 640, 3), 160, dtype=np.uint8)
+    cv2.rectangle(img, (70, 70), (120, 120), (20, 20, 215), thickness=-1)
+    bulb_hsv = np.uint8([[[25, 200, 220]]])
+    bulb_bgr = cv2.cvtColor(bulb_hsv, cv2.COLOR_HSV2BGR)[0][0]
+    cv2.rectangle(img, (100, 100), (150, 150), tuple(int(c) for c in bulb_bgr), thickness=-1)
+    
+    path = tmp_path / 'shot_overlap.png'
+    cv2.imwrite(str(path), img)
+    with pytest.raises(ValueError, match='lamp bulb and red cube overlap'):
+        check_cube_lamp_separation(path, sample=1, min_gap=0)

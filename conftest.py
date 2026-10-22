@@ -46,9 +46,17 @@ from typing import Any
 _REPO_ROOT = Path(__file__).resolve().parent
 _APP_DIR = _REPO_ROOT / "app"
 
-for _path in (str(_APP_DIR), str(_REPO_ROOT)):
+for _path in (str(_APP_DIR), str(_REPO_ROOT), str(_REPO_ROOT / "tests")):
     if _path not in sys.path:
         sys.path.insert(0, _path)
+
+try:
+    import tests
+    _local_tests = str(_REPO_ROOT / "tests")
+    if hasattr(tests, "__path__") and _local_tests not in tests.__path__:
+        tests.__path__.insert(0, _local_tests)
+except ImportError:
+    pass
 
 
 # Modules that Maestro treats as optional. If the real package isn't

@@ -195,23 +195,26 @@ def check_relative_scale(path: Path, min_ratio: float = MIN_HEAD_TO_CUBE,
 
 
 def check_scale_consistency(measurements: dict[str, dict],
-                            max_ratio: float = MAX_CROSS_SHOT_RATIO) -> dict:
-    """Fail loudly when the robot changes size between shots.
+                            max_ratio: float = MAX_CROSS_SHOT_RATIO,
+                            required_shots: set[str] | list[str] | None = None,
+                            min_measured_shots: int = 2) -> dict:
+    """Fail loudly when the robot changes size between shots or when required shots are unmeasurable.
 
     ``measurements`` maps a shot id to the result of ``analyse`` on its
     clip. Only the shots whose ruler was measurable take part: a shot
     where the head could not be measured says nothing about the size of
     the robot.
-
-    This is the measurement behind the creative review that rejected the
-    v6 master for a robot of different sizes along the video. The head
-    and the cube are both rigid, so a robot that keeps its size keeps
-    the ratio in every shot where it holds the cube; the spread between
-    those shots is the size error of the film.
     """
     measured = {shot: result['median_ratio'] for shot, result in measurements.items()
                 if result.get('measurable') and result.get('median_ratio') is not None}
-    if len(measured) < 2:
+    if required_shots:
+        missing = [s for s in required_shots if s not in measured]
+        if missing:
+            raise ValueError(
+                f"Required scale consistency shots not measurable: {', '.join(sorted(missing))}; "
+                f"the robot head and cube must be measurable to verify scale consistency."
+            )
+    if len(measured) < min_measured_shots:
         return {'verdict': 'not-measurable', 'shots': measured}
     smallest = min(measured, key=measured.get)
     largest = max(measured, key=measured.get)

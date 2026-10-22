@@ -279,9 +279,9 @@ app/env/bin/python scripts/serve_reference_review.py <validation_dir> --port 890
 | id | Tarefa | Status |
 |---|---|---|
 | `v11-serving` | Accept-Ranges em 200/HEAD + faststart | **done** (commit `eea818e`) |
-| `v11-lenses` | Gate de lentes ciano por plano | pending |
-| `v11-scale` | Régua de escala color-independente + falha quando cega | pending |
-| `v11-lamp` | Gate de forma e separação da lâmpada | pending |
-| `v11-prompts` | Prompts do v11 (ciano, bulbo, distância) | pending |
+| `v11-lenses` | Gate de lentes ciano por plano | **done** (`check_shot_lenses`) |
+| `v11-scale` | Régua de escala utilizável + falha quando cega | **done** (`required_shots`) |
+| `v11-lamp` | Gate de forma e separação da lâmpada | **done** (`check_cube_lamp_separation`) |
+| `v11-prompts` | Prompts do v11 (ciano, bulbo, distância) | **done** (`visual_prompts.json`) |
 | `v11-render` | Render do v11 | pending |
-| `v11-docs` | Documentação e commit | pending |
+| `v11-docs` | Documentação e commit | in_progress |

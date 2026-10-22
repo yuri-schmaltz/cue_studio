@@ -24,8 +24,8 @@ from app.services.reference_mix import (
     check_music_coverage, level_stems, mix_stems, narration_margin_db,
 )
 from app.services import reference_continuity, reference_robot
-from app.services.reference_identity import EXPECTED_LENSES, analyse, check_anchor_lenses
-from app.services.reference_cube import check_cube_continuity, check_cube_count
+from app.services.reference_identity import EXPECTED_LENSES, analyse, check_anchor_lenses, check_shot_lenses
+from app.services.reference_cube import check_cube_continuity, check_cube_count, check_cube_lamp_separation
 from app.services.reference_robot import check_scale_stability
 from app.services.reference_continuity import check_relative_scale, check_scale_consistency
 from app.services import reference_ground
@@ -73,6 +73,11 @@ ROBOT_SCALE_WITH_CUBE = {'S04', 'S05', 'S06', 'S07', 'S08'}
 # for a robot of different sizes along the video, and this is the
 # measurement that catches it.
 ROBOT_SCALE_FILM_SHOTS = {'S04', 'S06', 'S07'}
+# Shots featuring the robot whose starting still must show exactly 3 circular cyan lenses:
+# S02 to S08, S10 (amber close-up), and S11.
+ROBOT_LENS_STILL_SHOTS = {'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S10', 'S11'}
+# Shots where the lamp bulb and the red cube are both present and must remain spatially separated
+CUBE_LAMP_SEPARATION_SHOTS = {'S01', 'S02', 'S04', 'S06', 'S07', 'S08', 'S09', 'S11', 'S12'}
 
 
 @pytest.fixture(scope='module')
@@ -242,17 +247,24 @@ def test_f2_generate_and_measure_real_jobs(config):
         # video is anchored to.
         cube_evidence[shot['id'] + '-image'] = _collect(
             failures, shot['id'] + '-image', check_cube_count,
-            references[shot['id']], expected=CUBE_EXPECTED[shot['id']])
+    # Verify lens count on all shots featuring the robot starting stills
+    for shot_id in sorted(ROBOT_LENS_STILL_SHOTS):
+        _collect(failures, shot_id + '-image-lenses', check_shot_lenses,
+                 references[shot_id], expected=EXPECTED_LENSES)
+
+    separation_evidence = {}
+    for shot in SHOTS:
+        if shot['id'] in CUBE_LAMP_SEPARATION_SHOTS:
+            separation_evidence[shot['id'] + '-image'] = _collect(
+                failures, shot['id'] + '-image-separation', check_cube_lamp_separation,
+                references[shot['id']])
     # S03 is the neutral-light close-up, so its lens count is measurable and
-    # is part of acceptance. Every other shot is recorded as evidence: under
-    # amber light the lenses lose saturation and the detector miscounts.
+    # is part of acceptance.
     s03_image = lens_evidence['S03-image']
     if s03_image['distribution'].get(EXPECTED_LENSES) != s03_image['frames']:
         failures.append(
             f"S03 close-up must show exactly {EXPECTED_LENSES} lenses: {s03_image['distribution']}")
-    # S10 is the amber-lit close-up that shipped the four-lens defect: the
-    # lenses stay saturated there, so the count is measurable and the
-    # identity fix is guarded instead of merely recorded.
+    # S10 is the amber-lit close-up that shipped the four-lens defect
     s10_image = lens_evidence['S10-image']
     if s10_image['distribution'].get(EXPECTED_LENSES) != s10_image['frames']:
         failures.append(
@@ -309,7 +321,8 @@ def test_f2_generate_and_measure_real_jobs(config):
     # shot. The creative review of the rejected v6 master rejected the
     # film for a robot of different sizes along the video, and this is
     # the measurement that catches it.
-    consistency = _collect(failures, 'film', check_scale_consistency, film_measurements)
+    consistency = _collect(failures, 'film', check_scale_consistency, film_measurements,
+                           required_shots=ROBOT_SCALE_FILM_SHOTS)
     # The measurements are written before the sound is generated: the
     # sound needs the GPU, and a film whose shots were rejected does not
     # deserve one. The evidence stays on disk either way, so a rejected
@@ -317,6 +330,7 @@ def test_f2_generate_and_measure_real_jobs(config):
     (output / 'shot-evidence.json').write_text(json.dumps({
         'lens_evidence': lens_evidence,
         'cube_evidence': cube_evidence,
+        'separation_evidence': separation_evidence,
         'scale_evidence': scale_evidence,
         'relative_evidence': relative_evidence,
         'ground_evidence': ground_evidence,

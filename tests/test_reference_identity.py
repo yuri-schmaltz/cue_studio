@@ -70,3 +70,19 @@ def test_check_anchor_lenses_rejects_four_and_names_the_working_seeds(tmp_path):
     message = str(error.value)
     assert '4' in message
     assert '99' in message
+
+
+def test_check_shot_lenses_accepts_exact_count(tmp_path):
+    from app.services.reference_identity import check_shot_lenses
+    path = tmp_path / 'S03-image.png'
+    cv2.imwrite(str(path), _frame(_triangle()))
+    assert check_shot_lenses(path)['distribution'] == {EXPECTED_LENSES: 1}
+
+
+def test_check_shot_lenses_rejects_mismatch(tmp_path):
+    from app.services.reference_identity import check_shot_lenses
+    path = tmp_path / 'S07-image.png'
+    cv2.imwrite(str(path), _frame(_diamond()))
+    with pytest.raises(ValueError) as error:
+        check_shot_lenses(path)
+    assert 'must show exactly 3 cyan lenses' in str(error.value)

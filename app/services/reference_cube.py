@@ -156,6 +156,8 @@ def cube_blobs(image) -> list[dict]:
             continue
         cubes.append({
             'area': area,
+            'x': left,
+            'y': top,
             'w': box_width,
             'h': box_height,
             'cx': int(centroids[label][0]),
@@ -320,3 +322,87 @@ def check_cube_count(path: Path, expected: int = 1) -> dict:
             f'{distribution}; the cube continuity of the shot is broken.'
         )
     return result
+
+
+def lamp_bulb_blobs(image, vmin=170, smin=120, hmin=10, hmax=40, minarea=200) -> list[dict]:
+    """Return warm amber/yellow glowing bulb blobs in the frame."""
+    cv2 = _cv2()
+    np = _numpy()
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    h, s, v = hsv[:, :, 0], hsv[:, :, 1], hsv[:, :, 2]
+    mask = ((h >= hmin) & (h <= hmax) & (s >= smin) & (v >= vmin)).astype(np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    count, _, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    bulbs = []
+    for label in range(1, count):
+        area = int(stats[label, cv2.CC_STAT_AREA])
+        box_width = int(stats[label, cv2.CC_STAT_WIDTH])
+        box_height = int(stats[label, cv2.CC_STAT_HEIGHT])
+        if area < minarea or not box_width or not box_height:
+            continue
+        bulbs.append({
+            'area': area,
+            'x': int(stats[label, cv2.CC_STAT_LEFT]),
+            'y': int(stats[label, cv2.CC_STAT_TOP]),
+            'w': box_width,
+            'h': box_height,
+            'cx': int(centroids[label][0]),
+            'cy': int(centroids[label][1]),
+            'fill': round(area / (box_width * box_height), 2),
+            'aspect': round(box_width / box_height, 2),
+        })
+    return sorted(bulbs, key=lambda d: -d['area'])
+
+
+def bounding_box_gap(box_a: dict, box_b: dict) -> int:
+    """Return positive pixel gap between two bounding boxes, or negative value if overlapping."""
+    # Horizontal gap: positive if separated, negative if intervals overlap
+    x_dist = max(box_a['x'] - (box_b['x'] + box_b['w']), box_b['x'] - (box_a['x'] + box_a['w']))
+    # Vertical gap: positive if separated, negative if intervals overlap
+    y_dist = max(box_a['y'] - (box_b['y'] + box_b['h']), box_b['y'] - (box_a['y'] + box_a['h']))
+    if x_dist > 0 or y_dist > 0:
+        return max(x_dist, y_dist)
+    # Overlapping in both dimensions
+    return max(x_dist, y_dist)
+
+
+def check_cube_lamp_separation(path: Path, sample: int = 10, min_gap: int = 0) -> dict:
+    """Fail loudly if the cube and the lamp bulb overlap in any sampled frame.
+
+    The creative review rejected the film because the lamp and cube overlapped
+    in some scenes. This gate verifies that wherever both are detected, they remain
+    spatially separated.
+    """
+    path = Path(path)
+    gaps = []
+    overlapping_frames = 0
+    sampled_frames = 0
+    paired_frames = 0
+
+    for index, frame in _frames(path):
+        if index % sample:
+            continue
+        sampled_frames += 1
+        cubes = cube_blobs(frame)
+        bulbs = lamp_bulb_blobs(frame)
+        if cubes and bulbs:
+            paired_frames += 1
+            # Check largest cube against largest bulb in the frame
+            g = bounding_box_gap(cubes[0], bulbs[0])
+            gaps.append(g)
+            if g < min_gap:
+                overlapping_frames += 1
+
+    if overlapping_frames > 0:
+        raise ValueError(
+            f"{path.name}: lamp bulb and red cube overlap in {overlapping_frames} of {paired_frames} "
+            f"paired frames (min gap: {min(gaps)}px); cube and lamp must remain physically separated."
+        )
+
+    return {
+        'path': str(path),
+        'sampled_frames': sampled_frames,
+        'paired_frames': paired_frames,
+        'min_gap': min(gaps) if gaps else None,
+        'verdict': 'separated' if (not gaps or min(gaps) >= min_gap) else 'overlapping',
+    }

@@ -162,6 +162,16 @@ def test_shots_without_a_measurable_ruler_do_not_decide_the_gate():
     assert check_scale_consistency({'S06': measurements['S06']})['verdict'] == 'not-measurable'
 
 
+def test_scale_consistency_fails_when_required_shots_not_measurable():
+    measurements = {
+        'S04': {'measurable': True, 'median_ratio': 2.10},
+        'S06': {'measurable': False, 'median_ratio': None},
+        'S07': {'measurable': True, 'median_ratio': 2.02},
+    }
+    with pytest.raises(ValueError, match='Required scale consistency shots not measurable: S06'):
+        check_scale_consistency(measurements, required_shots={'S04', 'S06', 'S07'})
+
+
 def test_a_still_is_measured_the_same_way_as_a_clip(tmp_path):
     """The metric reads a still and a clip with the same code."""
     path = tmp_path / 'head.png'

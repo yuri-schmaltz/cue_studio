@@ -158,3 +158,19 @@ def check_anchor_lenses(path: Path, expected: int = EXPECTED_LENSES) -> dict:
             f'{", ".join(str(seed) for seed in CHARACTER_ANCHOR_SEEDS)}.'
         )
     return result
+
+
+def check_shot_lenses(path: Path, expected: int = EXPECTED_LENSES) -> dict:
+    """Measure lens count on a shot still or clip and fail loudly if lenses mismatch.
+
+    Used by the F2 reference film harness to ensure the robot retains its three cyan
+    lenses in every shot featuring the character.
+    """
+    result = analyse(Path(path))
+    distribution = result['distribution']
+    correct = distribution.get(expected, 0)
+    if correct != result['frames']:
+        raise ValueError(
+            f"{Path(path).name} must show exactly {expected} cyan lenses: {distribution}"
+        )
+    return result
