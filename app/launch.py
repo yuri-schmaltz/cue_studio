@@ -29420,7 +29420,21 @@ if os.path.isfile(_cue_studio_web_icon):
 
 _ui_dist = os.path.normpath(os.path.join(_app_dir, "..", "ui", "dist"))
 if os.path.isdir(_ui_dist):
-    api.mount("/", StaticFiles(directory=_ui_dist, html=True))
+    from starlette.exceptions import HTTPException as _StarletteHTTPException
+
+    class _SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):
+            try:
+                response = await super().get_response(path, scope)
+                if response.status_code == 404:
+                    return await super().get_response("index.html", scope)
+                return response
+            except _StarletteHTTPException as exc:
+                if exc.status_code == 404:
+                    return await super().get_response("index.html", scope)
+                raise exc
+
+    api.mount("/", _SPAStaticFiles(directory=_ui_dist, html=True))
     print(f"[Cue Studio] React UI serving from {_ui_dist}")
 else:
     @api.get("/")
