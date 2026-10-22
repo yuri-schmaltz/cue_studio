@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Clapperboard, Copy, Film, FolderOpen, ImagePlus, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Sparkles, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Check, Clapperboard, Copy, Film, FolderOpen, ImagePlus, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Sparkles, Trash2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
@@ -118,12 +118,10 @@ export function ProjectsPage() {
   const [name, setName] = useState('')
   const [setup, setSetup] = useState<ProjectSetupDefaults>(DEFAULT_PROJECT_SETUP)
   const [destination, setDestination] = useState<AppSection>('director')
-  // Quick-create path (A10): type drives the recommended preset; the
-  // preset fills the technical defaults so the dialog stays a two-field
-  // affair until the user asks for more.
+  // Quick-create path: type drives the recommended preset; the
+  // preset fills the technical defaults.
   const [projectType, setProjectType] = useState<ProjectType>('music-video')
   const [presetId, setPresetId] = useState<string>(presetForType('music-video').id)
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
@@ -383,7 +381,6 @@ export function ProjectsPage() {
     const preset = presetForType(type)
     setProjectType(type)
     setPresetId(preset.id)
-    setShowAdvanced(false)
     setSetup(applyPreset(DEFAULT_PROJECT_SETUP, preset))
     setPendingCover(null)
     setCoverError('')
@@ -579,28 +576,14 @@ export function ProjectsPage() {
                   </button>
                 ))}
               </div>
-              {/* Progressive setup: technical options stay one click away
-                  without duplicating the type/skill selection. */}
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={() => setShowAdvanced(v => !v)}
-                aria-expanded={showAdvanced}
-                className="mt-3 flex w-full items-center justify-between rounded-lg border border-border/60 px-2.5 py-2 text-xs text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50"
-              >
-                <span>Adjust… more options</span>
-                {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-              {showAdvanced && (
-                <div className="mt-3 border-t border-border/40 pt-3">
-                  <ProjectSetupForm
-                    value={setup}
-                    onChange={setSetup}
-                    hideSkill
-                    studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }}
-                  />
-                </div>
-              )}
+              <div className="mt-4 border-t border-border/40 pt-3">
+                <ProjectSetupForm
+                  value={setup}
+                  onChange={setSetup}
+                  hideSkill
+                  studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }}
+                />
+              </div>
             </>
           ) : (
             <>
