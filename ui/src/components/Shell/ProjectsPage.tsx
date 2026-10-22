@@ -519,9 +519,7 @@ export function ProjectsPage() {
                 </div>
                 <CoverSquareButton workspaceName={null} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
               </div>
-              {/* Quick path (A10): type + recommended preset. The
-                  technical fields stay hidden until the user asks for
-                  them — one decision per row, then Create. */}
+              {/* Quick path: type drives the project defaults cleanly. */}
               <div className="mt-3">
                 <span className="text-xs text-text-secondary">Type</span>
                 <div className="mt-1 grid grid-cols-3 gap-1.5" role="radiogroup" aria-label="Project type">
@@ -560,34 +558,6 @@ export function ProjectsPage() {
                   ))}
                 </div>
               </div>
-              <div className="mt-3">
-                <Select
-                  id="project-preset"
-                  label="Preset"
-                  hint={(() => {
-                    const preset = presetById(presetId)
-                    return preset ? `Applies: ${presetSummary(preset)}` : undefined
-                  })()}
-                  value={presetId}
-                  onChange={nextId => {
-                    setPresetId(nextId)
-                    const preset = presetById(nextId)
-                    if (preset) {
-                      setSetup(prev => {
-                        const current = presetById(presetId)
-                        const diverged = current ? trackOverrides(prev, current) : []
-                        const patch = Object.fromEntries(diverged.map(f => [f, prev[f]]))
-                        return applyPreset(prev, preset, patch)
-                      })
-                    }
-                  }}
-                  options={DEFAULT_PRESETS.map(p => ({
-                    value: p.id,
-                    label: p.recommendedFor.includes(projectType) ? `${p.label} (recommended)` : p.label,
-                  }))}
-                  disabled={busy !== null}
-                />
-              </div>
               <div className="mt-3 grid grid-cols-3 gap-1.5">
                 <span className="text-xs text-text-secondary col-span-3">Open in</span>
                 {([
@@ -610,9 +580,8 @@ export function ProjectsPage() {
                   </button>
                 ))}
               </div>
-              {/* Progressive setup (A10): the full form stays one click
-                  away but never blocks the quick path. Expanded edits
-                  are recorded as preset overrides on save. */}
+              {/* Progressive setup: technical options stay one click away
+                  without duplicating the type/skill selection. */}
               <button
                 type="button"
                 disabled={busy !== null}
@@ -625,7 +594,12 @@ export function ProjectsPage() {
               </button>
               {showAdvanced && (
                 <div className="mt-3 border-t border-border/40 pt-3">
-                  <ProjectSetupForm value={setup} onChange={setSetup} studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
+                  <ProjectSetupForm
+                    value={setup}
+                    onChange={setSetup}
+                    hideSkill
+                    studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }}
+                  />
                 </div>
               )}
             </>

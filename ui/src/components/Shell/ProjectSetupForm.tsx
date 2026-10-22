@@ -74,6 +74,8 @@ export interface ProjectSetupFormProps {
   /** Render compact version (less spacing) — used inside the small
    *  Edit setup modal so it fits next to other controls. */
   compact?: boolean
+  /** Hide the skill selector (e.g. when already chosen via project Type). */
+  hideSkill?: boolean
   /** Current Studio model selection per kind, used to name the
    *  effective default in "Use last selected (LTX-2 22B)". Optional —
    *  without it the option shows the plain label. */
@@ -95,6 +97,7 @@ export function ProjectSetupForm({
   onChange,
   disabled = false,
   compact = false,
+  hideSkill = false,
   studioModels,
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
@@ -141,36 +144,38 @@ export function ProjectSetupForm({
           Chosen once here so the Director chat never asks again;
           changing it later re-syncs the Director through
           applyWorkspaceSetup. */}
-      <fieldset className={sectionCls} aria-label="Director skill">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Skill</legend>
-        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Director skill">
-          {([
-            { id: 'music_video' as const, label: 'Music Video', desc: 'Automated music video from audio', Icon: Music },
-            { id: 'short_film' as const, label: 'Short Film', desc: 'Dialogue-driven scenes from audio', Icon: Film },
-          ]).map(({ id, label, desc, Icon }) => {
-            const active = (safeValue.director_skill || 'music_video') === id
-            return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                title={desc}
-                disabled={disabled}
-                onClick={() => update({ director_skill: id })}
-                className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                  active
-                    ? 'border-accent-blue/60 bg-accent-blue/5'
-                    : 'border-border hover:border-border-light'
-                }`}
-              >
-                <Icon size={15} className={active ? 'text-accent-blue shrink-0' : 'text-text-muted shrink-0'} />
-                <span className="text-xs font-medium text-text-primary truncate">{label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </fieldset>
+      {!hideSkill && (
+        <fieldset className={sectionCls} aria-label="Director skill">
+          <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Skill</legend>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Director skill">
+            {([
+              { id: 'music_video' as const, label: 'Music Video', desc: 'Automated music video from audio', Icon: Music },
+              { id: 'short_film' as const, label: 'Short Film', desc: 'Dialogue-driven scenes from audio', Icon: Film },
+            ]).map(({ id, label, desc, Icon }) => {
+              const active = (safeValue.director_skill || 'music_video') === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  title={desc}
+                  disabled={disabled}
+                  onClick={() => update({ director_skill: id })}
+                  className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                    active
+                      ? 'border-accent-blue/60 bg-accent-blue/5'
+                      : 'border-border hover:border-border-light'
+                  }`}
+                >
+                  <Icon size={15} className={active ? 'text-accent-blue shrink-0' : 'text-text-muted shrink-0'} />
+                  <span className="text-xs font-medium text-text-primary truncate">{label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+      )}
 
       {/* Output — aspect + resolution. Always visible because every
           project needs a render format and "use whatever was last"
