@@ -46,17 +46,18 @@ set -euo pipefail
 #      app/ckpts/llm/bin from there (works regardless of where the
 #      repo is checked out — Cue Studio, Maestro, or any fork).
 #   3. Hardcoded Maestro path as a last-resort fallback.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 if [[ $# -ge 1 && -n "$1" ]]; then
   BIN_DIR="$1"
-elif BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../ckpts/llm/bin" 2>/dev/null && pwd)"; then
-  : # resolved from script location
 else
-  BIN_DIR="/home/yuri/Documentos/maestro/app/ckpts/llm/bin"
+  BIN_DIR="$APP_DIR/ckpts/llm/bin"
 fi
 
 if [[ ! -d "$BIN_DIR" ]]; then
-  echo "[fix_llama_symlinks] directory not found: $BIN_DIR" >&2
-  exit 0  # not fatal — no llama.cpp bundle installed yet
+  # Sem bundle de llama.cpp instalado ainda — sai silenciosamente
+  exit 0
 fi
 
 # Each entry: soname -> glob of versioned files we want to point at.
