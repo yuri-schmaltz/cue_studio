@@ -265,7 +265,7 @@ export function AdditionalRefsSection() {
           }`}
         >
           <Users size={11} className={activeRefTab === 'char' ? 'text-white shrink-0' : 'text-text-muted shrink-0'} />
-          <span>Character refs</span>
+          <span>Characters</span>
           {charCount > 0 && (
             <span className={`px-1.5 rounded-full text-[10px] leading-tight ${
               activeRefTab === 'char' ? 'bg-white/20 text-white' : 'bg-bg-secondary text-text-muted'
@@ -284,7 +284,7 @@ export function AdditionalRefsSection() {
           }`}
         >
           <MapPin size={11} className={activeRefTab === 'loc' ? 'text-white shrink-0' : 'text-text-muted shrink-0'} />
-          <span>Location refs</span>
+          <span>Locations</span>
           {locCount > 0 && (
             <span className={`px-1.5 rounded-full text-[10px] leading-tight ${
               activeRefTab === 'loc' ? 'bg-white/20 text-white' : 'bg-bg-secondary text-text-muted'
