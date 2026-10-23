@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Clock, Music, Sparkles, ChevronDown, ChevronUp, Loader2, Play, Pause, Volume2, ListPlus, Settings } from 'lucide-react'
+import { Clock, Music, Sparkles, ChevronDown, ChevronUp, Loader2, Play, Pause, Volume2, ListPlus, Settings, AlertTriangle } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { getFileUrl } from '../../api/client'
 import { formatTimecode, parseTimecode } from '../../lib/durationPlanning'
@@ -113,6 +113,14 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
   const isMusic3 = selectedModel?.architecture === 'minimax_music3'
   const maximumDuration = isMusic3 ? 300 : 360
 
+  const [durationWarning, setDurationWarning] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!durationWarning) return
+    const timer = setTimeout(() => setDurationWarning(null), 5000)
+    return () => clearTimeout(timer)
+  }, [durationWarning])
+
   useEffect(() => {
     if (effectiveModel && effectiveModel !== musicModel) {
       setMusicModel(effectiveModel)
@@ -128,7 +136,15 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
     const text = (customText ?? formatTimecode(duration).slice(3)).trim()
     const parsed = parseTimecode(text)
     if (parsed != null) {
-      const bounded = Math.min(maximumDuration, Math.max(5, Math.round(parsed)))
+      const rounded = Math.round(parsed)
+      if (rounded > maximumDuration) {
+        const maxStr = formatTimecode(maximumDuration).slice(3)
+        const modelLabel = selectedModel?.name || effectiveModel
+        setDurationWarning(`O limite máximo para o modelo ${modelLabel} é de ${maxStr} (${Math.floor(maximumDuration / 60)} min). Duração ajustada para o teto suportado.`)
+      } else if (rounded < 5) {
+        setDurationWarning('A duração mínima permitida é de 5 segundos.')
+      }
+      const bounded = Math.min(maximumDuration, Math.max(5, rounded))
       setDuration(bounded)
       setCustomText(formatTimecode(bounded).slice(3))
     } else {
@@ -225,6 +241,20 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
             >
               <Settings size={11} />
               Configurar
+            </button>
+          </div>
+        )}
+
+        {durationWarning && (
+          <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-2xs animate-in fade-in duration-200">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-400" />
+            <span className="flex-1 leading-tight">{durationWarning}</span>
+            <button
+              type="button"
+              onClick={() => setDurationWarning(null)}
+              className="text-amber-400 hover:text-amber-200 shrink-0 font-bold px-1"
+            >
+              ✕
             </button>
           </div>
         )}
