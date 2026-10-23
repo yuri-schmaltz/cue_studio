@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
-import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Send, Users, FileText, ListVideo, Sparkles, BookOpen, Film, Wand2 } from 'lucide-react'
+import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Pause, Send, Users, FileText, ListVideo, Sparkles, BookOpen, Film, Wand2 } from 'lucide-react'
 import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
 import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
@@ -1433,6 +1433,44 @@ function UploadZone({
   // backend path so the next upload doesn't silently overwrite an old
   // analysis result on disk. Used by the remove button below.
   const clearAudio = useStore(s => s.directorSetAudioFile)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [audioFile])
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!audioFile) return
+    if (!audioRef.current) {
+      const url = URL.createObjectURL(audioFile)
+      const audio = new Audio(url)
+      audioRef.current = audio
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false)
+        URL.revokeObjectURL(url)
+        audioRef.current = null
+      })
+    }
+    if (isPlaying) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      audioRef.current.play().then(() => {
+        setIsPlaying(true)
+      }).catch(err => {
+        console.warn('Playback error:', err)
+        setIsPlaying(false)
+      })
+    }
+  }
+
   return (
     <div
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -1460,20 +1498,40 @@ function UploadZone({
         <>
           <button
             type="button"
-            onClick={() => clearAudio(null)}
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.pause()
+                audioRef.current = null
+              }
+              setIsPlaying(false)
+              clearAudio(null)
+            }}
             aria-label="Remove uploaded audio"
             title="Remove uploaded audio"
             className="absolute top-2 right-2 rounded-md p-1 text-text-muted hover:bg-bg-hover hover:text-text-primary transition-colors"
           >
             <X size={12} />
           </button>
-          <div className="flex items-center justify-center gap-2.5 px-6 w-full min-w-0">
-            <span
-              className="text-xs text-text-primary truncate font-medium"
-              title={audioFile.name}
+          <div className="flex items-center gap-3 px-4 w-full min-w-0 z-10">
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="flex items-center justify-center w-8 h-8 rounded-full bg-accent-blue hover:bg-accent-blue-hover text-white shrink-0 shadow transition-colors"
+              title={isPlaying ? 'Pausar áudio' : 'Ouvir áudio'}
             >
-              {audioFile.name}
-            </span>
+              {isPlaying ? <Pause size={14} className="fill-current" /> : <Play size={14} className="fill-current ml-0.5" />}
+            </button>
+            <div className="min-w-0 flex-1">
+              <span
+                className="text-xs text-text-primary truncate font-medium block"
+                title={audioFile.name}
+              >
+                {audioFile.name}
+              </span>
+              <span className="text-2xs text-text-muted">
+                {isPlaying ? 'Reproduzindo...' : 'Clique no play para ouvir'}
+              </span>
+            </div>
           </div>
         </>
       ) : loading ? (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Clock, Music, Sparkles, ChevronDown, ChevronUp, Loader2, Play, ListPlus, Settings } from 'lucide-react'
+import { Clock, Music, Sparkles, ChevronDown, ChevronUp, Loader2, Play, Pause, Volume2, ListPlus, Settings } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { getFileUrl } from '../../api/client'
 import { formatTimecode, parseTimecode } from '../../lib/durationPlanning'
 
 const DIRECTOR_MUSIC_MODEL_ORDER = [
@@ -43,6 +44,58 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
   const activityLabel = useStore(s => s.directorActivityLabel)
   const setSettingsOpen = useStore(s => s.setSettingsOpen)
   const setAppSection = useStore(s => s.setAppSection)
+  const audioPath = useStore(s => s.directorAudioPath)
+  const audioFile = useStore(s => s.directorAudioFile)
+
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0)
+  const [audioTotalDuration, setAudioTotalDuration] = useState(0)
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null)
+
+  const audioSrc = audioFile
+    ? URL.createObjectURL(audioFile)
+    : audioPath
+      ? getFileUrl(audioPath.replace(/\\/g, '/').split('/').pop() || '')
+      : null
+
+  useEffect(() => {
+    return () => {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause()
+        audioPlayerRef.current = null
+      }
+    }
+  }, [])
+
+  const togglePlayback = () => {
+    if (!audioSrc) return
+    if (!audioPlayerRef.current) {
+      const audio = new Audio(audioSrc)
+      audioPlayerRef.current = audio
+      audio.addEventListener('timeupdate', () => {
+        setAudioCurrentTime(audio.currentTime)
+      })
+      audio.addEventListener('loadedmetadata', () => {
+        setAudioTotalDuration(audio.duration)
+      })
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false)
+        setAudioCurrentTime(0)
+      })
+    }
+
+    if (isPlaying) {
+      audioPlayerRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      audioPlayerRef.current.play().then(() => {
+        setIsPlaying(true)
+      }).catch(err => {
+        console.warn('Playback error:', err)
+        setIsPlaying(false)
+      })
+    }
+  }
 
   const [showLyrics, setShowLyrics] = useState(false)
   const [customText, setCustomText] = useState<string | null>(null)
@@ -246,6 +299,48 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
 
       {/* 5. Ações de Início & Fila */}
       <div className="pt-2 border-t border-border/50 space-y-2 shrink-0">
+        {/* Tocador da música atual / gerada */}
+        {audioSrc && !loading && (
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-violet-950/30 border border-violet-500/40">
+            <button
+              type="button"
+              onClick={togglePlayback}
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-violet-600 hover:bg-violet-500 text-white shrink-0 shadow transition-colors"
+              title={isPlaying ? 'Pausar reprodução' : 'Ouvir faixa'}
+            >
+              {isPlaying ? <Pause size={13} className="fill-current" /> : <Play size={13} className="fill-current ml-0.5" />}
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between text-2xs text-violet-300 font-medium mb-1">
+                <span className="truncate flex items-center gap-1.5">
+                  <Volume2 size={12} className="text-violet-400 shrink-0" />
+                  <span>Trilha Gerada ({audioFile?.name || audioPath?.replace(/\\/g, '/').split('/').pop() || 'áudio'})</span>
+                </span>
+                <span className="font-mono text-text-muted shrink-0 ml-1">
+                  {formatTimecode(Math.round(audioCurrentTime)).slice(3)} / {formatTimecode(Math.round(audioTotalDuration || duration)).slice(3)}
+                </span>
+              </div>
+              <div
+                className="w-full h-1.5 bg-bg-secondary rounded-full overflow-hidden cursor-pointer relative"
+                onClick={e => {
+                  if (!audioPlayerRef.current || !audioTotalDuration) return
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+                  audioPlayerRef.current.currentTime = pct * audioTotalDuration
+                  setAudioCurrentTime(pct * audioTotalDuration)
+                }}
+              >
+                <div
+                  className="h-full bg-violet-500 rounded-full transition-all duration-100"
+                  style={{
+                    width: `${audioTotalDuration > 0 ? (audioCurrentTime / audioTotalDuration) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -259,7 +354,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
             ) : (
               <Play size={14} className="fill-current" />
             )}
-            <span>{loading ? 'Gerando…' : 'Gerar Trilha'}</span>
+            <span>{loading ? 'Gerando…' : audioSrc ? 'Regerar Trilha' : 'Gerar Trilha'}</span>
           </button>
 
           <button
