@@ -1120,7 +1120,7 @@ export function DirectorChat() {
                   {((musicSource ?? 'upload') === 'upload' || Boolean(audioFile)) && (
                     <>
                       {!isStoryPath && (
-                        <section className="shrink-0 min-h-[110px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
+                        <section className="flex-1 min-h-[140px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
                           <header className="flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
@@ -1133,24 +1133,26 @@ export function DirectorChat() {
                               )}
                             </div>
                           </header>
-                          <StructureView
-                            plannedClips={plannedClips}
-                            energyBias={energyBias}
-                            localBias={localBias}
-                            setLocalBias={setLocalBias}
-                            sliderRef={sliderRef}
-                            setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
-                            loading={loading}
-                            confirmStructure={confirmStructure}
-                            isActive={atStep('structure')}
-                            isShortFilm={isShortFilm}
-                          />
+                          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pr-0.5">
+                            <StructureView
+                              plannedClips={plannedClips}
+                              energyBias={energyBias}
+                              localBias={localBias}
+                              setLocalBias={setLocalBias}
+                              sliderRef={sliderRef}
+                              setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
+                              loading={loading}
+                              confirmStructure={confirmStructure}
+                              isActive={atStep('structure')}
+                              isShortFilm={isShortFilm}
+                            />
+                          </div>
                           <DirectorTimelineEditor />
                         </section>
                       )}
 
                       {/* Voices & Characters card */}
-                      <section className="h-[270px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col shrink-0">
+                      <section className="flex-1 min-h-[160px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden">
                         <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
                           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                             IDENTIFIED VOICES &amp; CHARACTERS
@@ -1161,7 +1163,7 @@ export function DirectorChat() {
                             </span>
                           )}
                         </header>
-                        <div id="chat-identified-voices-panel" className="flex-1 overflow-y-auto pr-0.5 space-y-2">
+                        <div id="chat-identified-voices-panel" className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-2">
                           <StyleForm
                             speakers={speakers}
                             speakerMappings={speakerMappings}
