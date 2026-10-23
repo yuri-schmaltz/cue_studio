@@ -582,7 +582,6 @@ export function ProjectsPage() {
                   value={setup}
                   onChange={setSetup}
                   hideSkill
-                  defaultOpenAdvanced
                   studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }}
                 />
               </div>

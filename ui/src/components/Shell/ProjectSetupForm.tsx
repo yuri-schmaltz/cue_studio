@@ -76,8 +76,6 @@ export interface ProjectSetupFormProps {
   compact?: boolean
   /** Hide the skill selector (e.g. when already chosen via project Type). */
   hideSkill?: boolean
-  /** Whether Advanced defaults should be open by default */
-  defaultOpenAdvanced?: boolean
   /** Current Studio model selection per kind, used to name the
    *  effective default in "Use last selected (LTX-2 22B)". Optional —
    *  without it the option shows the plain label. */
@@ -100,7 +98,6 @@ export function ProjectSetupForm({
   disabled = false,
   compact = false,
   hideSkill = false,
-  defaultOpenAdvanced = false,
   studioModels,
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
@@ -247,97 +244,83 @@ export function ProjectSetupForm({
           starts from a known baseline. Video/image share the full
           non-audio catalog; audio-only models (TTS/voice/music) get
           their own picker bound to `music_model`, which the Director
-          already consumes for track generation. Empty string means
-          "use whatever the Studio already has", which lets the form
-          stay usable when the model catalog isn't loaded yet
           (offline / first paint). */}
-      {/* Advanced defaults (models + about) start collapsed so the New
-          project dialog fits without scrolling — one click expands. */}
-      <details open={defaultOpenAdvanced ? true : undefined} className="rounded-lg border border-border/60">
-        <summary className="cursor-pointer select-none px-2.5 py-2 text-xs text-text-secondary hover:text-text-primary transition-colors">
-          Advanced defaults
-        </summary>
-        <div className="px-2.5 pb-2.5 space-y-3">
-      {/* NSFW toggle — moved here from the Integrations drawer so
-          users opt in to adult content generation at the moment
-          they're creating the project that will actually need it.
-          Lives inside Advanced defaults (collapsed by default) to
-          keep the visible top of the form focused on skill + format
-          + workflow + models. The toggle binds to the global
-          ``servicesConfig.nsfw_mode`` flag, so LoRAs / model
-          selectors / the LLM prompt start honoring the new value the
-          moment it's flipped on — no extra wiring required. The
-          ``disabled`` prop is forwarded so the Edit modal can lock
-          the whole form (Edit doesn't change NSFW state). */}
-      <fieldset className={sectionCls} aria-label="Content mode">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Content mode</legend>
-        <NsfwToggle disabled={disabled} />
-      </fieldset>
 
-      <fieldset className={sectionCls} aria-label="Default models">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
-        <div className="flex gap-2">
-          <div className="flex-1 min-w-0">
-            <FormSelect
-              label="Video model"
-              value={safeValue.video_model || ''}
-              onChange={next => update({ video_model: next })}
-              options={modelOptions}
-              disabled={disabled}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <FormSelect
-              label="Image model"
-              value={safeValue.image_model || ''}
-              onChange={next => update({ image_model: next })}
-              options={imageModelOptions}
-              disabled={disabled}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <FormSelect
-              label="Audio model"
-              value={safeValue.music_model || ''}
-              onChange={next => update({ music_model: next })}
-              options={audioModelOptions}
-              disabled={disabled}
-            />
-          </div>
-        </div>
-      </fieldset>
+      {/* Advanced options (content mode, models, about) */}
+      <div className="rounded-lg border border-border/60 p-2.5 space-y-3">
+        {/* NSFW toggle — moved here from the Integrations drawer so
+            users opt in to adult content generation at the moment
+            they're creating the project that will actually need it.
+            The toggle binds to the global ``servicesConfig.nsfw_mode``
+            flag, so LoRAs / model selectors / the LLM prompt start
+            honoring the new value the moment it's flipped on. */}
+        <fieldset className={sectionCls} aria-label="Content mode">
+          <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Content mode</legend>
+          <NsfwToggle disabled={disabled} />
+        </fieldset>
 
-      {/* About — optional metadata shown on the project card. Kept at
-          the bottom so the technical defaults stay the focus. */}
-      <fieldset className={sectionCls} aria-label="About this project">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">About</legend>
-        <div className="grid grid-cols-2 gap-2 items-start">
-          <label className="block min-w-0">
-            <span className="text-xs text-text-secondary block mb-1">Description</span>
-            <input
-              type="text"
-              value={safeValue.description || ''}
-              onChange={e => update({ description: e.target.value })}
-              disabled={disabled}
-              placeholder="What is this project about?"
-              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
-            />
-          </label>
-          <label className="block min-w-0">
-            <span className="text-xs text-text-secondary block mb-1">Tags</span>
-            <input
-              type="text"
-              value={(safeValue.tags || []).join(', ')}
-              onChange={e => update({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-              disabled={disabled}
-              placeholder="film, draft, reel"
-              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
-            />
-          </label>
-        </div>
-      </fieldset>
-        </div>
-      </details>
+        <fieldset className={sectionCls} aria-label="Default models">
+          <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
+          <div className="flex gap-2">
+            <div className="flex-1 min-w-0">
+              <FormSelect
+                label="Video model"
+                value={safeValue.video_model || ''}
+                onChange={next => update({ video_model: next })}
+                options={modelOptions}
+                disabled={disabled}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <FormSelect
+                label="Image model"
+                value={safeValue.image_model || ''}
+                onChange={next => update({ image_model: next })}
+                options={imageModelOptions}
+                disabled={disabled}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <FormSelect
+                label="Audio model"
+                value={safeValue.music_model || ''}
+                onChange={next => update({ music_model: next })}
+                options={audioModelOptions}
+                disabled={disabled}
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        {/* About — optional metadata shown on the project card. */}
+        <fieldset className={sectionCls} aria-label="About this project">
+          <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">About</legend>
+          <div className="grid grid-cols-2 gap-2 items-start">
+            <label className="block min-w-0">
+              <span className="text-xs text-text-secondary block mb-1">Description</span>
+              <input
+                type="text"
+                value={safeValue.description || ''}
+                onChange={e => update({ description: e.target.value })}
+                disabled={disabled}
+                placeholder="What is this project about?"
+                className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+              />
+            </label>
+            <label className="block min-w-0">
+              <span className="text-xs text-text-secondary block mb-1">Tags</span>
+              <input
+                type="text"
+                value={(safeValue.tags || []).join(', ')}
+                onChange={e => update({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                disabled={disabled}
+                placeholder="film, draft, reel"
+                className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+              />
+            </label>
+          </div>
+        </fieldset>
+      </div>
     </div>
   )
 }
