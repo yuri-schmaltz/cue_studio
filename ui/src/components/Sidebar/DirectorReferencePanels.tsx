@@ -306,7 +306,7 @@ export function AdditionalRefsSection() {
             ))}
             <RefAddCard
               testid="ref-add-card-char"
-              title="Add ref"
+              title="Add Character"
               onFiles={files => handleFiles(files, 'char')}
               accept={IMAGE_ACCEPT}
             />
@@ -320,7 +320,7 @@ export function AdditionalRefsSection() {
             ))}
             <RefAddCard
               testid="ref-add-card-loc"
-              title="Add ref"
+              title="Add Location"
               onFiles={files => handleFiles(files, 'loc')}
               accept={IMAGE_ACCEPT}
             />
