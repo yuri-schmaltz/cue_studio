@@ -92,24 +92,13 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
     >
       {/* 1. Header & Modelo */}
       <div className="space-y-1.5 shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <label
-            htmlFor="music-model-select"
-            className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider font-semibold"
-          >
-            <Music size={13} className="text-violet-400" />
-            <span>Modelo & Formato</span>
-          </label>
-          <label className="flex items-center gap-1.5 cursor-pointer text-xs text-text-secondary hover:text-text-primary transition-colors select-none">
-            <input
-              type="checkbox"
-              checked={instrumental}
-              onChange={e => setInstrumental(e.target.checked)}
-              className="accent-violet-500 rounded cursor-pointer"
-            />
-            <span className="font-medium">Apenas Instrumental</span>
-          </label>
-        </div>
+        <label
+          htmlFor="music-model-select"
+          className="flex items-center gap-1.5 text-xs text-text-muted uppercase tracking-wider font-semibold"
+        >
+          <Music size={13} className="text-violet-400" />
+          <span>Modelo & Formato</span>
+        </label>
 
         {musicModels.length > 0 ? (
           <div className="flex items-center gap-2">
@@ -152,6 +141,23 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
                 />
               </div>
             )}
+
+            <label
+              className={`flex items-center gap-1.5 shrink-0 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors select-none ${
+                instrumental
+                  ? 'bg-violet-500/15 border-violet-500/50 text-violet-300'
+                  : 'bg-bg-secondary border-border text-text-muted hover:text-text-primary'
+              }`}
+              title="Alternar entre faixa apenas instrumental ou com vocais"
+            >
+              <input
+                type="checkbox"
+                checked={instrumental}
+                onChange={e => setInstrumental(e.target.checked)}
+                className="accent-violet-500 rounded cursor-pointer w-3.5 h-3.5"
+              />
+              <span className="whitespace-nowrap">Instrumental</span>
+            </label>
           </div>
         ) : (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-300 flex items-center justify-between gap-2">
