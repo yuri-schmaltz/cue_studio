@@ -604,19 +604,7 @@ export function DirectorChat() {
   const [scriptLoading, setScriptLoading] = useState(false)
   const [scriptError, setScriptError] = useState('')
   // Active tab in the Director chat column: 'music' | 'references' | 'description'
-  const [activeTab, setActiveTab] = useState<DirectorSidebarTab>(() => {
-    if (step === 'style' || pastStep('style')) return 'description'
-    return 'music'
-  })
-
-  // Automatically focus the Description tab when audio analysis completes and step becomes 'style'
-  const prevStepRef = useRef(step)
-  useEffect(() => {
-    if (prevStepRef.current !== 'style' && step === 'style') {
-      setActiveTab('description')
-    }
-    prevStepRef.current = step
-  }, [step])
+  const [activeTab, setActiveTab] = useState<DirectorSidebarTab>('music')
 
   const handleChatSubmit = useCallback(() => {
     // Music Video "Generate a track": the chat is the song description, and
