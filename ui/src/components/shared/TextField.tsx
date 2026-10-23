@@ -27,6 +27,7 @@ export function TextField({
   error,
   required,
   disabled,
+  hideLabel = false,
   value,
   onChange,
   placeholder,
@@ -34,7 +35,7 @@ export function TextField({
   autoFocus,
   success,
 }: TextFieldProps) {
-  const baseClasses = 'mt-2 w-full rounded-lg border bg-bg-primary px-3 py-2.5 text-sm text-text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-blue'
+  const baseClasses = `${label && !hideLabel ? 'mt-2' : ''} w-full rounded-lg border bg-bg-primary px-3 py-2.5 text-sm text-text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent-blue`
   const borderClasses = error
     ? 'border-red-500/60'
     : success
@@ -42,14 +43,17 @@ export function TextField({
       : 'border-border'
   return (
     <div className="block min-w-0 flex-1 text-xs text-text-secondary">
-      <label htmlFor={id} className="block">
-        {label}
-        {required && <span aria-hidden="true" className="ml-0.5 text-red-400">*</span>}
-      </label>
+      {label && !hideLabel && (
+        <label htmlFor={id} className="block">
+          {label}
+          {required && <span aria-hidden="true" className="ml-0.5 text-red-400">*</span>}
+        </label>
+      )}
       <input
         id={id}
         name={id}
         type={type}
+        aria-label={hideLabel ? label : undefined}
         value={value}
         placeholder={placeholder}
         autoFocus={autoFocus}

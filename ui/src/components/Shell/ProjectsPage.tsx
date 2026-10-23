@@ -506,6 +506,7 @@ export function ProjectsPage() {
                   <TextField
                     id="project-name"
                     label="Project name"
+                    hideLabel
                     required
                     autoFocus
                     value={name}

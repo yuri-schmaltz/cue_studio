@@ -12,11 +12,12 @@ import type { ReactNode } from 'react'
 /** Common props for every form field primitive. */
 export interface BaseFieldProps {
   id: string
-  label: string
+  label?: string
   hint?: string
   error?: string
   required?: boolean
   disabled?: boolean
+  hideLabel?: boolean
 }
 
 export interface DialogProps {
