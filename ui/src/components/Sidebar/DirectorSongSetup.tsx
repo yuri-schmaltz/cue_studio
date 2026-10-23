@@ -8,12 +8,6 @@ const DIRECTOR_MUSIC_MODEL_ORDER = [
   'minimax_music3',
 ]
 
-const QUICK_DURATIONS = [
-  { label: '30s', seconds: 30 },
-  { label: '1m', seconds: 60 },
-  { label: '2m', seconds: 120 },
-  { label: '3m', seconds: 180 },
-]
 
 const STYLE_PRESETS = [
   'Dark Synthwave, Cyberpunk',
@@ -52,7 +46,6 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
 
   const [showLyrics, setShowLyrics] = useState(false)
   const [customText, setCustomText] = useState<string | null>(null)
-  const isCustom = customText !== null
 
   const musicModels = DIRECTOR_MUSIC_MODEL_ORDER
     .map(modelType => models.find(model => model.model_type === modelType))
@@ -176,31 +169,8 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
             </button>
           </div>
         )}
-
-        {/* Chips de duração rápida */}
-        {!hideSongLength && (
-          <div className="flex items-center gap-1.5 pt-0.5">
-            <span className="text-2xs text-text-muted mr-1">Duração:</span>
-            {QUICK_DURATIONS.map(q => (
-              <button
-                key={q.label}
-                type="button"
-                onClick={() => {
-                  setDuration(q.seconds)
-                  setCustomText(null)
-                }}
-                className={`px-2 py-0.5 rounded text-2xs font-mono transition-colors border ${
-                  duration === q.seconds && !isCustom
-                    ? 'bg-violet-500/20 border-violet-500/50 text-violet-300 font-semibold'
-                    : 'bg-bg-secondary/60 border-border text-text-muted hover:text-text-primary'
-                }`}
-              >
-                {q.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+
 
       {/* 2. Gênero / Estilo musical */}
       <div className="space-y-1.5 shrink-0">
