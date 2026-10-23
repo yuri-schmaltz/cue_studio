@@ -1674,7 +1674,6 @@ function ReferenceImageUpload({
           <div className="flex flex-col items-center gap-1.5">
             <ImageIcon size={22} className="text-accent-blue/60" />
             <span className="text-xs text-text-secondary">Drop reference photo or click to upload</span>
-            <span className="text-2xs text-text-muted">PNG, JPG, WEBP</span>
           </div>
           <input
             type="file"
