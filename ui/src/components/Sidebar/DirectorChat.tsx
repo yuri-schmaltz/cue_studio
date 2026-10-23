@@ -1108,7 +1108,7 @@ export function DirectorChat() {
                       />
                     </div>
                   ) : (
-                    <div className="shrink-0">
+                    <div className="flex-1 min-h-0 flex flex-col">
                       <DirectorSongSetup hideSongLength={false} />
                     </div>
                   )}

@@ -94,11 +94,11 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
 
   return (
     <section
-      className="bg-bg-tertiary rounded-lg p-3.5 border border-border space-y-3 shadow-sm transition-all"
+      className="flex-1 min-h-0 bg-bg-tertiary rounded-lg p-3.5 border border-border flex flex-col space-y-3 shadow-sm transition-all overflow-hidden"
       aria-label="Song generation settings"
     >
       {/* 1. Header & Modelo */}
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <label
             htmlFor="music-model-select"
@@ -203,7 +203,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
       </div>
 
       {/* 2. Gênero / Estilo musical */}
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 shrink-0">
         <label className="text-xs text-text-muted uppercase tracking-wider font-semibold flex items-center gap-1">
           <Sparkles size={12} className="text-violet-400" />
           <span>Gênero &amp; Estilo Musical</span>
@@ -231,26 +231,25 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
       </div>
 
       {/* 3. Tema & Descrição Criativa da Trilha */}
-      <div className="space-y-1.5">
-        <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+      <div className={`space-y-1.5 min-h-0 flex flex-col ${showLyrics && !instrumental ? 'flex-[1]' : 'flex-1'}`}>
+        <label className="text-xs text-text-muted uppercase tracking-wider font-semibold shrink-0">
           Tema &amp; Atmosfera da Faixa
         </label>
         <textarea
-          rows={3}
           value={songDescription}
           onChange={e => setSongDescription(e.target.value)}
           placeholder="Descreva a atmosfera da música, instrumentos em destaque, ritmo e a progressão sonora do vídeo..."
-          className="w-full bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-violet-500 transition-colors"
+          className="w-full flex-1 min-h-[70px] bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-violet-500 transition-colors"
         />
       </div>
 
       {/* 4. Letra Personalizada (Opcional) */}
       {!instrumental && (
-        <div className="border-t border-border/50 pt-2 space-y-1.5">
+        <div className={`border-t border-border/50 pt-2 space-y-1.5 min-h-0 flex flex-col ${showLyrics ? 'flex-[1.2]' : 'shrink-0'}`}>
           <button
             type="button"
             onClick={() => setShowLyrics(!showLyrics)}
-            className="flex items-center justify-between w-full text-xs text-text-secondary hover:text-text-primary transition-colors py-1"
+            className="flex items-center justify-between w-full text-xs text-text-secondary hover:text-text-primary transition-colors py-1 shrink-0"
           >
             <span className="font-medium flex items-center gap-1">
               {showLyrics ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -260,18 +259,17 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
           </button>
           {showLyrics && (
             <textarea
-              rows={4}
               value={songLyrics}
               onChange={e => setSongLyrics(e.target.value)}
               placeholder="Cole os versos ou estrutura lírica [Verse], [Chorus]..."
-              className="w-full bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary font-mono placeholder:text-text-muted resize-none focus:outline-none focus:border-violet-500 transition-colors"
+              className="w-full flex-1 min-h-[90px] bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary font-mono placeholder:text-text-muted resize-none focus:outline-none focus:border-violet-500 transition-colors"
             />
           )}
         </div>
       )}
 
       {/* 5. Ações de Início & Fila */}
-      <div className="pt-2 border-t border-border/50 space-y-2">
+      <div className="pt-2 border-t border-border/50 space-y-2 shrink-0">
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
