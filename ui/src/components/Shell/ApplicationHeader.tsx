@@ -68,7 +68,7 @@ export function ApplicationHeader() {
   const activeProject = useActiveProject()
 
   useEffect(() => {
-    document.title = activeProject ? `Cue Studio - "${activeProject}"` : 'Cue Studio'
+    document.title = activeProject ? `Cue Studio - ${activeProject}` : 'Cue Studio'
   }, [activeProject])
 
   return (
