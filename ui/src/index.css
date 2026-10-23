@@ -956,15 +956,12 @@ input[type="range"]::-webkit-slider-thumb {
    header without a hairline divider. The .application-tabs pill
    already has its own rounded border, so removing the parent
    separator doesn't leave any unintended gap. */
-.application-header { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; min-height:64px; flex-shrink:0; padding:10px 16px; gap:0; background:var(--color-bg-secondary); z-index:30; }
+.application-header { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; min-height:52px; flex-shrink:0; padding:8px 16px; gap:0; background:var(--color-bg-secondary); z-index:30; }
 .application-brand { display:none; }
 .application-actions { justify-self:end; display:flex; align-items:center; gap:8px; }
 .application-navigation { min-width:0; width:100%; }
-/* Active project chip in a separate header row (A09) —
-   always visible so the selected project never leaves the screen. */
-.application-header { position:relative; }
-.application-header-project { position:static; justify-self:end; margin-top:6px; display:inline-flex; align-items:center; gap:6px; max-width:100%; padding:4px 10px; border:1px solid var(--color-border); border-radius:999px; background:var(--color-bg-primary); font-size:var(--text-xs); color:var(--color-text-secondary); }
-.application-header-project-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.application-header-project { display:none; }
+.application-header-project-name { display:none; }
 /* The tabs row stretches edge-to-edge inside the header. flex:1 1 0 on
    each tab guarantees the 7 sections share the row equally instead of
    clustering at the start. */

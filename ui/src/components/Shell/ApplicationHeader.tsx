@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useActiveProject } from '../../navigation/useUrlNavigation'
@@ -66,6 +66,11 @@ export function ApplicationHeader() {
 
   const select = (id: AppSection) => navigate(id)
   const activeProject = useActiveProject()
+
+  useEffect(() => {
+    document.title = activeProject ? `Cue Studio - "${activeProject}"` : 'Cue Studio'
+  }, [activeProject])
+
   return (
     <header className="application-header" data-testid="application-header">
       <nav className="application-navigation" aria-label="Main navigation">
@@ -102,17 +107,6 @@ export function ApplicationHeader() {
           })}
         </div>
       </nav>
-      {/* Active project chip — persistent context on every route (A09). */}
-      {activeProject && (
-        <span
-          className="application-header-project"
-          data-testid="active-project-chip"
-          title={`Active project: ${activeProject}`}
-        >
-          <FolderOpen size={13} aria-hidden="true" />
-          <span className="application-header-project-name">{activeProject}</span>
-        </span>
-      )}
     </header>
   )
 }
