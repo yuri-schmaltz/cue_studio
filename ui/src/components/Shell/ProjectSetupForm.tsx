@@ -8,33 +8,65 @@ import { DEFAULT_PROJECT_SETUP } from '../../types'
 import { fetchModels, type ApiModel } from '../../api/client'
 import { NsfwToggle } from '../NSFW/NsfwToggle'
 
-/** Speed/quality tier shown as a text suffix in the model pickers
- *  ("LTX-2 22B Distilled · Fastest"). Native <select> options can't
- *  carry badges or colors, so the classification lives in the label.
- *
- *  Heuristic from naming signals only — the catalog exposes no
- *  measured benchmarks. Fast variants name themselves (distilled,
- *  turbo, schnell, lightning, lite, klein-4B, 1.3B-class); quality
- *  variants too (dev, pro, max, ultra, radiance, XL/full, 14B+).
- *  Anything else is Balanced. Fastest wins ties (a "14B turbo" is
- *  still built for speed). */
+/** Curated models registry for clean, noise-free project selection with meaningful labels */
+export interface CuratedModelInfo {
+  name: string
+  badge: string
+  category: 'video' | 'image' | 'audio'
+}
+
+export const CURATED_MODELS: Record<string, CuratedModelInfo> = {
+  // === VIDEO ===
+  'scail2_14B': { name: 'SCAIL-2 14B', badge: 'Top Qualidade · 14B', category: 'video' },
+  'scail2_14B_fast': { name: 'SCAIL-2 14B Fast', badge: 'Equilibrado · Rápido', category: 'video' },
+  'ltx2_25': { name: 'LTX-2.5 Distilled', badge: 'Mais Rápido · 4-step', category: 'video' },
+  'ltx2_25_dev': { name: 'LTX-2.5 Dev', badge: 'Alta Fidelidade · 22B', category: 'video' },
+  'ltx2_22B_distilled_1_1': { name: 'LTX-2.3 Distilled 1.1', badge: 'Equilibrado · Fluido', category: 'video' },
+  'ltx2_22B': { name: 'LTX-2.3 Dev 22B', badge: 'Alta Qualidade · 22B', category: 'video' },
+  'minimax_h3': { name: 'MiniMax H3 First/Last', badge: 'Top Cenas Longas', category: 'video' },
+  'minimax_h3_ref2va': { name: 'MiniMax H3 Omni', badge: 'Consistência de Personagem', category: 'video' },
+  'ovi_1_1': { name: 'Wan 2.2 Ovi 10B', badge: 'Alta Dinâmica · 10B', category: 'video' },
+  't2v_2_2': { name: 'Wan 2.2 14B', badge: 'Top Qualidade · Cinema', category: 'video' },
+  't2v_1.3B': { name: 'Wan 2.1 1.3B', badge: 'Super Leve · Rápido', category: 'video' },
+  'vace_ditto_14B': { name: 'Ditto 14B', badge: 'Especializado: Lip-Sync', category: 'video' },
+  'fantasy': { name: 'Fantasy Talking 14B', badge: 'Especializado: Lip-Sync', category: 'video' },
+
+  // === IMAGE ===
+  'flux2_dev': { name: 'Flux 2 Dev 32B', badge: 'Top Qualidade Absoluta', category: 'image' },
+  'flux': { name: 'Flux 1 Dev 12B', badge: 'Padrão Ouro · LoRAs', category: 'image' },
+  'flux2_klein_9b': { name: 'Flux 2 Klein 9B', badge: 'Mais Equilibrado · 9B', category: 'image' },
+  'flux2_klein_4b': { name: 'Flux 2 Klein 4B', badge: 'Super Rápido · 4B', category: 'image' },
+  'flux_chroma_radiance': { name: 'Flux 1 Radiance 8.9B', badge: 'Cores Cinematográficas', category: 'image' },
+  'krea2_raw': { name: 'Krea 2 RAW', badge: 'Fotorrealismo & Textura', category: 'image' },
+  'krea2_turbo': { name: 'Krea 2 Turbo', badge: 'Rápido & Criativo', category: 'image' },
+  'qwen_image_20B': { name: 'Qwen Image 20B', badge: 'Prompt Rico · 20B', category: 'image' },
+  'qwen_image_edit_20B': { name: 'Qwen Image Edit 20B', badge: 'Edição & Inpainting', category: 'image' },
+  'z_image': { name: 'Z-Image Turbo 6B', badge: 'Leve & Rápido · 6B', category: 'image' },
+
+  // === AUDIO ===
+  'minimax_music3': { name: 'MiniMax-Music3', badge: 'Música: Top Arranjo & Vocal', category: 'audio' },
+  'ace_step_v1_5_xl_sft': { name: 'ACE-Step v1.5 XL 4B', badge: 'Música: Alta Fidelidade', category: 'audio' },
+  'ace_step_v1_5': { name: 'ACE-Step v1.5 Turbo 2B', badge: 'Música: Rápido & Batidas', category: 'audio' },
+  'kugelaudio_0_open': { name: 'KugelAudio 0 Open 7B', badge: 'Voz: Top Expressão & Fala', category: 'audio' },
+  'chatterbox': { name: 'Chatterbox Multilingual', badge: 'Voz: Multilíngue', category: 'audio' },
+  'qwen3_tts_base': { name: 'Qwen3 TTS 1.7B', badge: 'Voz: Leve & Rápido', category: 'audio' },
+  'dramabox_audio': { name: 'DramaBox Audio', badge: 'Efeitos & Ambiência', category: 'audio' },
+}
+
 export type ModelSpeedTier = 'Fastest' | 'Balanced' | 'Best quality'
 
 const FAST_MODEL_RE = /(distill|turbo|schnell|lightning|flash|hyper|lite|klein[_-]?4b|(^|[\s_.-])1[._]3b\b|_1b\b)/
 const QUALITY_MODEL_RE = /(^|[\s_.-])(dev|pro|max|ultra|radiance|xl|full)(?=[\s_.-]|$)|(^|[\s_.-])(1[49]|19|20|22|25)b\b/
 
-export function modelSpeedTier(model: ApiModel): ModelSpeedTier {
+export function modelSpeedTier(model: ApiModel): string {
+  const curated = CURATED_MODELS[model.model_type]
+  if (curated) return curated.badge
   const haystack = `${model.name || ''} ${model.model_type || ''} ${model.architecture || ''}`.toLowerCase()
-  if (FAST_MODEL_RE.test(haystack)) return 'Fastest'
-  if (QUALITY_MODEL_RE.test(haystack)) return 'Best quality'
-  return 'Balanced'
+  if (FAST_MODEL_RE.test(haystack)) return 'Rápido'
+  if (QUALITY_MODEL_RE.test(haystack)) return 'Alta Qualidade'
+  return 'Equilibrado'
 }
 
-/** Audio-only models (TTS / voice / music generators). They get their
- *  own picker bound to `music_model` instead of polluting the video /
- *  image lists — verified against the live catalog (ACE-Step, Chatterbox,
- *  IndexTTS, Qwen3-TTS, MiniMax-Music, DramaBox/Scenema/Kugel audio…).
- *  Talking-head *video* models (Ditto, Fantasy Talking) don't match. */
 const AUDIO_MODEL_RE = /audio|tts|music|voice|vocal/
 
 export function isAudioModel(model: ApiModel): boolean {
@@ -117,23 +149,53 @@ export function ProjectSetupForm({
   const supportsUltraWide = (safeValue.video_model || '').toLowerCase().startsWith('minimax_h3')
   const aspectOptions = PROJECT_SETUP_ASPECT_RATIOS.filter(opt => opt.value !== '21:9' || supportsUltraWide)
 
-  // Video/image pickers list the full installed catalog minus
-  // audio-only models (those get their own picker below), each tagged
-  // with its speed tier. Empty string means "use whatever the Studio
-  // already has", which lets the form stay usable when the model
-  // catalog isn't loaded yet (offline / first paint).
-  const deduped = [...models]
-    .filter((m, i, arr) => arr.findIndex(o => o.model_type === m.model_type) === i)
-    .sort((a, b) => (a.name || a.model_type).localeCompare(b.name || b.model_type))
-  const withTier = (m: ApiModel) => ({ value: m.model_type, label: `${m.name || m.model_type} · ${modelSpeedTier(m)}` })
+  const isCuratedVideo = (m: ApiModel) => CURATED_MODELS[m.model_type]?.category === 'video'
+  const isCuratedImage = (m: ApiModel) => CURATED_MODELS[m.model_type]?.category === 'image'
+
+  const toOption = (m: ApiModel) => {
+    const curated = CURATED_MODELS[m.model_type]
+    const label = curated ? `${curated.name} · ${curated.badge}` : `${m.name || m.model_type} · ${modelSpeedTier(m)}`
+    return { value: m.model_type, label }
+  }
+
   const lastSelectedLabel = (current?: string) =>
     current ? `Use last selected (${shortModelLabel(current)})` : 'Use last selected'
-  const visualList = deduped.filter(m => !isAudioModel(m)).map(withTier)
-  const modelOptions = [{ value: '', label: lastSelectedLabel(studioModels?.video) }, ...visualList]
-  const imageModelOptions = [{ value: '', label: lastSelectedLabel(studioModels?.image) }, ...visualList]
-  const audioModelOptions = [
+
+  // Curated models in stable curated order + any currently selected model that may not be in curated
+  const curatedVideoList = Object.keys(CURATED_MODELS)
+    .filter(k => CURATED_MODELS[k].category === 'video')
+    .map(k => models.find(m => m.model_type === k))
+    .filter((m): m is ApiModel => Boolean(m))
+    .map(toOption)
+
+  const curatedImageList = Object.keys(CURATED_MODELS)
+    .filter(k => CURATED_MODELS[k].category === 'image')
+    .map(k => models.find(m => m.model_type === k))
+    .filter((m): m is ApiModel => Boolean(m))
+    .map(toOption)
+
+  const curatedAudioList = Object.keys(CURATED_MODELS)
+    .filter(k => CURATED_MODELS[k].category === 'audio')
+    .map(k => models.find(m => m.model_type === k))
+    .filter((m): m is ApiModel => Boolean(m))
+    .map(toOption)
+
+  // Fallback to full list if models haven't loaded or curated returns empty
+  const rawVideo = models.filter(m => !isAudioModel(m) && !isCuratedImage(m)).map(toOption)
+  const rawImage = models.filter(m => !isAudioModel(m) && !isCuratedVideo(m)).map(toOption)
+  const rawAudio = models.filter(isAudioModel).map(toOption)
+
+  const videoOptions = [
+    { value: '', label: lastSelectedLabel(studioModels?.video) },
+    ...(curatedVideoList.length ? curatedVideoList : rawVideo),
+  ]
+  const imageOptions = [
+    { value: '', label: lastSelectedLabel(studioModels?.image) },
+    ...(curatedImageList.length ? curatedImageList : rawImage),
+  ]
+  const audioOptions = [
     { value: '', label: lastSelectedLabel(studioModels?.audio) },
-    ...deduped.filter(isAudioModel).map(withTier),
+    ...(curatedAudioList.length ? curatedAudioList : rawAudio),
   ]
 
   const sectionCls = compact ? 'space-y-1.5' : 'space-y-2'
@@ -267,7 +329,7 @@ export function ProjectSetupForm({
                 label="Video model"
                 value={safeValue.video_model || ''}
                 onChange={next => update({ video_model: next })}
-                options={modelOptions}
+                options={videoOptions}
                 disabled={disabled}
               />
             </div>
@@ -276,7 +338,7 @@ export function ProjectSetupForm({
                 label="Image model"
                 value={safeValue.image_model || ''}
                 onChange={next => update({ image_model: next })}
-                options={imageModelOptions}
+                options={imageOptions}
                 disabled={disabled}
               />
             </div>
@@ -285,7 +347,7 @@ export function ProjectSetupForm({
                 label="Audio model"
                 value={safeValue.music_model || ''}
                 onChange={next => update({ music_model: next })}
-                options={audioModelOptions}
+                options={audioOptions}
                 disabled={disabled}
               />
             </div>
