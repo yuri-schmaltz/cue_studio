@@ -812,11 +812,7 @@ export function DirectorChat() {
     : 'Reviewing...'
 
   const renderComposer = (headerTitle?: string, fillSpace?: boolean) => (
-    // Skip the inter-block gap when no header is rendered — Description's
-    // fillSpace mode passes no title, so the previous `space-y-2` was
-    // pushing the textarea down ~8px for no visual benefit, breaking the
-    // rhythm set by Music/References (gap-3 → UploadZone, no header).
-    <div className={`${headerTitle ? 'space-y-2' : ''} ${fillSpace ? 'flex-1 min-h-0 flex flex-col' : ''}`}>
+    <div className={`gap-3 flex flex-col ${headerTitle ? 'space-y-2' : ''} ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
       {headerTitle ? (
         <header className="flex items-center justify-between gap-2 shrink-0">
           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
