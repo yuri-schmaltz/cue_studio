@@ -245,14 +245,14 @@ export function AdditionalRefsSection() {
        wrapper is preserved so the section still respects the 40vh
        ceiling and shows the only visible scrollbar in the chat
        column. */
-    <div className="mt-1.5 space-y-2">
+    <div className="flex-1 min-h-0 flex flex-col space-y-2">
       {/* Two equal-width tabs styled as rounded buttons (matching the
           "Upload a track" / "References" pill aesthetic): each tab is
           a self-contained pill with border + rounded corners and a
           small `gap-2` separates them. They stay fixed at the top
           while only the content panel scrolls below. */}
       <div role="tablist" aria-label="Reference images"
-        className="flex w-full gap-2">
+        className="shrink-0 flex w-full gap-2">
         <button
           type="button"
           role="tab"
@@ -294,9 +294,9 @@ export function AdditionalRefsSection() {
       </div>
 
       {/* Active tab's content panel — scrollable independently so the
-          tabs above stay pinned in place, with generous vertical room
-          now that the composer was moved to the Description tab. */}
-      <div role="tabpanel" className="space-y-1.5 max-h-[58vh] overflow-y-auto scrollbar-visible">
+          tabs above stay pinned in place, and only this card grid container
+          scrolls vertically when cards exceed available vertical space. */}
+      <div role="tabpanel" className="flex-1 min-h-0 overflow-y-auto scrollbar-visible pr-1 space-y-1.5">
         {activeRefTab === 'char' ? (
           <div className="grid grid-cols-4 gap-2">
             {charRefs.map((f, i) => (
