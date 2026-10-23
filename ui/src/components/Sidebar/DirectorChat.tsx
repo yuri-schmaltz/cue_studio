@@ -1618,16 +1618,11 @@ function ReferenceImageUpload({
   }, [setReferenceImage])
 
   return (
-    <div className="space-y-2">
+    <div className="w-full shrink-0">
       {referenceImage && refImagePreview ? (
-        /* Reference loaded state: card locks at h-[160px] and uses
-           object-cover with bg-bg-tertiary as fallback so the image
-           fills the whole rectangle without black bars on the sides
-           (which appeared with object-contain when the image was
-           wider than tall). The "click to change" label disappears
-           once the image is confirmed on the backend — the "Uploaded"
-           chip continues to show at the bottom. */
-        <div className="relative h-[160px] w-full bg-bg-tertiary rounded-lg border border-border overflow-hidden shrink-0">
+        /* Reference loaded state: fixed h-[192px] matching the empty state
+           so size and position remain perfectly unchanged when an image is loaded. */
+        <div className="relative h-[192px] w-full bg-bg-tertiary rounded-lg border border-border overflow-hidden shrink-0">
           <label className="cursor-pointer block w-full h-full">
             <img
               src={refImagePreview}
@@ -1655,20 +1650,18 @@ function ReferenceImageUpload({
           </span>
         </div>
       ) : (
-        /* Empty state: fixed 96px height matches the Music tab's
-           UploadZone so the two upload cards line up perfectly across
-           Music and References. Flex centering keeps the icon + helper
-           text visually in the middle. */
+        /* Empty state: doubled height (h-[192px]) matching the loaded card,
+           fixed and stable in position. */
         <label
-          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center h-[96px] flex items-center justify-center transition-colors ${
+          className={`cursor-pointer block border-2 border-dashed rounded-lg p-4 text-center h-[192px] flex items-center justify-center transition-colors shrink-0 ${
             dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
           }`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >
-          <div className="flex flex-col items-center gap-1.5">
-            <ImageIcon size={22} className="text-accent-blue/60" />
+          <div className="flex flex-col items-center gap-2">
+            <ImageIcon size={26} className="text-accent-blue/60" />
             <span className="text-xs text-text-secondary">Drop reference photo or click to upload</span>
           </div>
           <input
