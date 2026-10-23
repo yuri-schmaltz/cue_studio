@@ -167,7 +167,7 @@ export function DirectorStage() {
 
   return (
     <div
-      className="flex flex-col h-full min-h-0 bg-bg-secondary"
+      className="flex flex-col h-full min-h-0 gap-3"
       data-testid="director-stage"
       data-pipeline-status={pipelineStatus?.status ?? 'idle'}
       data-mobile={isMobile ? 'true' : 'false'}
