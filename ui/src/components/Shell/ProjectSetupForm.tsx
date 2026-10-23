@@ -76,6 +76,8 @@ export interface ProjectSetupFormProps {
   compact?: boolean
   /** Hide the skill selector (e.g. when already chosen via project Type). */
   hideSkill?: boolean
+  /** Whether Advanced defaults should be open by default */
+  defaultOpenAdvanced?: boolean
   /** Current Studio model selection per kind, used to name the
    *  effective default in "Use last selected (LTX-2 22B)". Optional —
    *  without it the option shows the plain label. */
@@ -98,6 +100,7 @@ export function ProjectSetupForm({
   disabled = false,
   compact = false,
   hideSkill = false,
+  defaultOpenAdvanced = false,
   studioModels,
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
@@ -250,7 +253,7 @@ export function ProjectSetupForm({
           (offline / first paint). */}
       {/* Advanced defaults (models + about) start collapsed so the New
           project dialog fits without scrolling — one click expands. */}
-      <details className="rounded-lg border border-border/60">
+      <details open={defaultOpenAdvanced ? true : undefined} className="rounded-lg border border-border/60">
         <summary className="cursor-pointer select-none px-2.5 py-2 text-xs text-text-secondary hover:text-text-primary transition-colors">
           Advanced defaults
         </summary>
