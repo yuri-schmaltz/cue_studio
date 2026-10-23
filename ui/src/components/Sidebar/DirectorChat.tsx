@@ -1163,7 +1163,7 @@ export function DirectorChat() {
                             </span>
                           )}
                         </header>
-                        <div id="chat-identified-voices-panel" className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-2">
+                        <div id="chat-identified-voices-panel" className="flex-1 min-h-0 overflow-y-auto pr-0.5 space-y-2 flex flex-col">
                           <StyleForm
                             speakers={speakers}
                             speakerMappings={speakerMappings}
@@ -2602,11 +2602,17 @@ export function StyleForm({
   isShortFilm?: boolean
   isStoryPath?: boolean
 }) {
+  const audioFile = useStore(s => s.directorAudioFile)
+
   if (!isStoryPath && speakers.length === 0) {
     return (
-      <div className="flex items-center gap-2 py-1 text-2xs text-text-muted">
-        <Users size={13} className="text-text-muted/50 shrink-0" />
-        <span>Instrumental track — no voices detected.</span>
+      <div className="flex-1 h-full flex flex-col items-center justify-center gap-2 py-4 text-center text-text-muted min-h-0">
+        <Users size={22} className="shrink-0 text-text-muted/60" />
+        <span className="text-xs leading-relaxed max-w-[280px]">
+          {audioFile
+            ? 'Instrumental track — no voices detected in the audio analysis.'
+            : 'No voices or characters detected yet. Upload audio to identify speakers and characters.'}
+        </span>
       </div>
     )
   }
