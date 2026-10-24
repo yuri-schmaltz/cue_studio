@@ -161,6 +161,20 @@ export function ServicesSettingsPanel() {
         />
 
         <ApiKeyField
+          label="OpenRouter API Key"
+          maskedValue={servicesConfig.openrouter_api_key}
+          isSet={servicesConfig.openrouter_api_key_set}
+          onSave={val => updateConfig({ openrouter_api_key: val })}
+        />
+
+        <ApiKeyField
+          label="OpenCode API Key"
+          maskedValue={servicesConfig.opencode_api_key}
+          isSet={servicesConfig.opencode_api_key_set}
+          onSave={val => updateConfig({ opencode_api_key: val })}
+        />
+
+        <ApiKeyField
           label="CivitAI API Key"
           maskedValue={servicesConfig.civitai_api_key}
           isSet={servicesConfig.civitai_api_key_set}

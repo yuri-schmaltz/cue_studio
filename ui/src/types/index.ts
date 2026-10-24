@@ -330,6 +330,10 @@ export interface GenerateParams {
   ltx_window_prompts?: string[]
   /** Original overall idea retained while the compiled prompts are visible. */
   _ltx_original_prompt?: string
+  sharpen_amount?: number
+  film_grain_intensity?: number
+  film_grain_saturation?: number
+  spatial_upsampling?: string
 }
 
 export type WindowPromptMode = 'auto' | 'creative' | 'manual'
@@ -1173,6 +1177,10 @@ export interface ServicesConfig {
   anthropic_api_key_set: boolean
   minimax_api_key: string
   minimax_api_key_set: boolean
+  openrouter_api_key: string
+  openrouter_api_key_set: boolean
+  opencode_api_key: string
+  opencode_api_key_set: boolean
   use_director_v2: boolean
   nsfw_mode: boolean
   nsfw_accepted_at: string | null

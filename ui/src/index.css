@@ -1204,7 +1204,7 @@ input[type="range"]::-webkit-slider-thumb {
    left of the scene description textarea. */
 .director-stage-chat .border-l-2 { border-left-width: 0 !important; padding-left: 0 !important; }
 .director-stage-plan { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); padding:12px 12px 0; gap:12px; }
-.director-stage-options { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; padding:12px 12px 0; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); overflow-y:auto; gap:12px; }
+.director-stage-options { min-width:0; min-height:0; display:flex; flex-direction:column; overflow:hidden; padding:12px 12px 0; border:1px solid var(--color-border); border-radius:12px; background:var(--color-bg-secondary); gap:12px; }
 /* Responsive: the 3-column stage only fits on wide viewports. Between
    801px and 1100px the chat takes the full first row (its message list
    scrolls internally) and Plan/Options share the second row. At or below

@@ -184,12 +184,13 @@ export function ProjectsPage() {
     setGeneratingCover(true)
     try {
       // Pull the project's image model from setup (or fall back to
-      // empty — the user already knows "use whatever was last" from
-      // elsewhere in the form). We always request a single image
+      // studioModels or default image model). We always request a single image
       // because the cover is a 1:1 square thumbnail.
+      const resolvedImageModel = setup.image_model || studioModels?.image || 'flux2_klein_9b'
       const params: Record<string, unknown> = {
         workspace: workspaceName,
         prompt: userPrompt,
+        model_type: resolvedImageModel,
         duration_ms: 1,
         frame_count: 1,
         frames: 1,
@@ -197,7 +198,7 @@ export function ProjectsPage() {
         resolution: '720p',
         aspect_ratio: '1:1',
         video_model: setup.video_model || '',
-        image_model: setup.image_model || '',
+        image_model: resolvedImageModel,
         still_only: true,
         mode: 'image',
         generation_mode: 'image',

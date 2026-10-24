@@ -341,6 +341,7 @@ export function createStudioModelSlice(
           // guard compares against selectedModelPerMode[mode].
           selectedModelPerMode: { ...selectedModelPerMode, [mode]: initialModelType },
           selectedModelPerAudioSubMode,
+          savedPromptPerMode: saved?.savedPromptPerMode || {},
           studioVideoWorkflow: restoredVideoWorkflow,
           studioImageWorkflow: restoredImageWorkflow,
           audioSubMode: restoredAudioSubMode,
@@ -351,6 +352,7 @@ export function createStudioModelSlice(
           ...(mode === 'image' ? { resolutionPreset: 'auto' as ResolutionPreset, aspectRatio: 'auto' as AspectRatio } : {}),
           params: {
             ...s.params,
+            prompt: s.params.prompt || (saved?.savedPromptPerMode?.[mode] ?? ''),
             model_type: initialModelType || s.params.model_type,
             ...(mode === 'image' ? {
               image_mode: restoredImageWorkflow === 'inpaint' || restoredImageWorkflow === 'outpaint' ? 2 : 1,
@@ -375,9 +377,11 @@ export function createStudioModelSlice(
           models,
           modelsLoaded: true,
           selectedModelPerMode: { [mode]: initialModelType },
+          savedPromptPerMode: {},
           ...(mode === 'image' ? { resolutionPreset: 'auto' as ResolutionPreset, aspectRatio: 'auto' as AspectRatio } : {}),
           params: {
             ...s.params,
+            prompt: s.params.prompt || '',
             model_type: initialModelType || s.params.model_type,
             ...(mode === 'image' ? { image_mode: 1 } : {}),
           },

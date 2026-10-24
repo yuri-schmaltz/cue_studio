@@ -144,10 +144,10 @@ export function preparedEditorMediaItems(project: EditorProject, time: number): 
 }
 
 export function editorProjectDuration(project: EditorProject | null): number {
-  if (!project) return 0
+  if (!project || !Array.isArray(project.tracks)) return 0
   return project.tracks.reduce((maximum, track) => (
-    track.items.reduce((trackMaximum, item) => (
-      item.disabled ? trackMaximum : Math.max(trackMaximum, item.start + item.duration)
+    (Array.isArray(track?.items) ? track.items : []).reduce((trackMaximum, item) => (
+      item?.disabled ? trackMaximum : Math.max(trackMaximum, (item?.start || 0) + (item?.duration || 0))
     ), maximum)
   ), 0)
 }

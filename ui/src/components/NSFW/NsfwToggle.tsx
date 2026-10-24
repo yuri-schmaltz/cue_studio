@@ -7,7 +7,7 @@ import { useStore } from '../../stores/useStore'
  *  toggle locks to OFF (and renders disabled) while one of these is
  *  selected so we never accidentally send explicit prompts upstream.
  *  Matches the set used by ServicesSettingsPanel and LoraBrowser. */
-export const NSFW_PUBLIC_PROVIDERS = new Set(['openai', 'anthropic', 'minimax'])
+export const NSFW_PUBLIC_PROVIDERS = new Set(['openai', 'anthropic', 'minimax', 'openrouter', 'opencode'])
 
 /** Lightweight toggle row + matching disclaimer modal. Lives in its
  *  own module so it can be embedded in any surface (project setup

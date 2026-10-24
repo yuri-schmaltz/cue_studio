@@ -157,6 +157,8 @@ export function createStudioModeSlice(
 ): StudioModeSlice {
   const { _initialStudioVideoRoutePreferences, _saveStudioVideoRoutePreferences, _studioCreateInputState, _resolveStudioCreateModel, modelSupportsStudioVideoMediaIntent, getDefaultModelForMode, DEFAULT_RECAST_MAPPING, _persistStickyStudioPreferences, _snapshotModeParams, _saveSettings, _restoreModeParams, _normalizeStudioImageWorkflow, _normalizeStudioVideoWorkflow, defaultParams, sfxModelTypes, _applyModelDefaults, captureVideoSubModeStash, BLANK_VIDEO_INPUT_PARAMS } = dependencies
   let _preScail2AvatarModel = ''
+  let _studioPromptSaveDebounce: ReturnType<typeof setTimeout> | null = null
+  const STUDIO_PROMPT_DEBOUNCE_MS = 500
   return ({
   // Generation mode
   generationMode: 'video',
@@ -903,6 +905,23 @@ export function createStudioModeSlice(
         ...(invalidatesH3Plan ? { promptEnhanceError: null } : {}),
       }
     })
+    if (key === 'prompt' && typeof value === 'string') {
+      const mode = get().generationMode
+      const savedPrompts = { ...get().savedPromptPerMode, [mode]: value }
+      set({ savedPromptPerMode: savedPrompts })
+      if (_studioPromptSaveDebounce) clearTimeout(_studioPromptSaveDebounce)
+      _studioPromptSaveDebounce = setTimeout(() => {
+        _studioPromptSaveDebounce = null
+        const curr = get()
+        _saveSettings({
+          generationMode: curr.generationMode,
+          selectedModelPerMode: curr.selectedModelPerMode,
+          savedParamsPerMode: curr.savedParamsPerMode,
+          savedLoraPerMode: curr.savedLoraPerMode,
+          savedPromptPerMode: curr.savedPromptPerMode,
+        }, curr.loraIdByFilename)
+      }, STUDIO_PROMPT_DEBOUNCE_MS)
+    }
     // Auto-parse speaker names from prompt whenever audio mode has at least
     // one voice slot. Previously gated on audio_prompt_type.includes('B')
     // (multi-voice only), but the user expects single-voice ("Peter: hello")

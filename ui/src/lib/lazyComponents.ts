@@ -205,7 +205,7 @@ export const RecipesOverlay = lazyWithCache(
  * only hydrates when the user opens that tab.
  */
 export const MainContent = lazyAny(
-  () => import('../components/MainContent/MainContent'),
+  () => import('../components/MainContent/MainContent').then(m => ({ default: m.default || m.MainContent })),
 )
 
 /**

@@ -487,6 +487,23 @@ export async function submitToolUpscale(params: {
   return res.json()
 }
 
+export async function submitToolSharpen(params: {
+  video_path: string
+  amount: number
+  workspace?: string
+}): Promise<{ job_id: string }> {
+  const res = await fetch(`${BASE}/api/v1/tools/sharpen`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Sharpen failed' }))
+    throw new Error(err.detail || 'Sharpen failed')
+  }
+  return res.json()
+}
+
 export async function submitToolFilmGrain(params: {
   video_path: string
   intensity: number
@@ -646,6 +663,67 @@ export async function deleteWorkspaceCover(name: string): Promise<void> {
  *  after the cover is replaced. */
 export function workspaceCoverUrl(name: string, coverImage: string): string {
   return `${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/cover?v=${encodeURIComponent(coverImage)}`
+}
+
+// --- Director Drafts (in-progress unsubmitted planning) ---
+
+export interface DirectorDraft {
+  directorSkill?: string | null
+  directorStep?: string | null
+  directorAudioPath?: string | null
+  directorAudioName?: string | null
+  directorAnalysis?: import('../types').AudioAnalysisResult | null
+  directorPlannedClips?: import('../types').PlannedClip[]
+  directorClipPlans?: import('../types').ClipPlan[]
+  directorSceneDescription?: string
+  directorEnergyBias?: number
+  directorSpeakers?: string[]
+  directorSpeakerMappings?: import('../types').SpeakerMapping[]
+  directorSeamless?: boolean
+  directorAutoMode?: boolean
+  directorShotImageGuidance?: import('../types').DirectorShotImageGuidance
+  directorSongDescription?: string
+  directorSongLyrics?: string
+  directorSongStyle?: string
+  directorSongInstrumental?: boolean
+  snapshots?: Array<{
+    timestamp: number
+    label?: string
+    plannedClips?: import('../types').PlannedClip[]
+    clipPlans?: import('../types').ClipPlan[]
+    sceneDescription?: string
+  }>
+  updatedAt?: number
+}
+
+export async function fetchDirectorDraft(name: string): Promise<DirectorDraft | null> {
+  const res = await fetch(`${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/director-draft`, { cache: 'no-store' })
+  if (!res.ok) return null
+  const body = await res.json()
+  return (body?.draft ?? null) as DirectorDraft | null
+}
+
+export async function saveDirectorDraft(name: string, draft: DirectorDraft): Promise<DirectorDraft> {
+  const res = await fetch(`${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/director-draft`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ draft }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Failed to save director draft' }))
+    throw new Error(err.detail || 'Failed to save director draft')
+  }
+  const body = await res.json()
+  return (body?.draft ?? draft) as DirectorDraft
+}
+
+export async function deleteDirectorDraft(name: string): Promise<boolean> {
+  const res = await fetch(`${BASE}/api/v1/workspaces/${encodeURIComponent(name)}/director-draft`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) return false
+  const body = await res.json().catch(() => ({ deleted: false }))
+  return Boolean(body?.deleted)
 }
 
 // --- Editor projects ---

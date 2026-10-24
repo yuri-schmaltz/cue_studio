@@ -728,26 +728,46 @@ def get_available_models(provider: str = "local", remote_url: str = "", api_key:
     remote_models: list[dict] = []
 
     # Query remote OpenAI-compatible server (LM Studio, etc.)
-    if provider in ("remote", "openai") and remote_url:
+    if provider in ("remote", "openai", "openrouter", "opencode"):
+        default_url = "https://openrouter.ai/api" if provider == "openrouter" else ("https://opencode.ai/inference" if provider == "opencode" else "https://api.openai.com")
+        effective_url = (remote_url or default_url).rstrip("/")
         try:
             headers = {}
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
-            url = remote_url.rstrip("/")
-            resp = requests.get(f"{url}/v1/models", headers=headers, timeout=10)
+            if provider == "openrouter":
+                headers["HTTP-Referer"] = "https://github.com/yuri-schmaltz/cue_studio"
+                headers["X-Title"] = "Cue Studio"
+            endpoint = f"{effective_url}/v1/models" if not effective_url.endswith("/v1") else f"{effective_url}/models"
+            resp = requests.get(endpoint, headers=headers, timeout=10)
             if resp.ok:
                 data = resp.json()
                 for m in data.get("data", []):
                     mid = m.get("id", "")
                     if mid:
+                        label_suffix = {
+                            "remote": "(Remote)",
+                            "openai": "(OpenAI)",
+                            "openrouter": "(OpenRouter)",
+                            "opencode": "(OpenCode)",
+                        }.get(provider, "")
                         remote_models.append({
                             "id": mid,
-                            "label": f"{mid} (Remote)" if provider == "remote" else f"{mid} (OpenAI)",
+                            "label": f"{mid} {label_suffix}".strip(),
                             "size_hint": provider,
                             "provider": provider,
                         })
+            elif provider == "openrouter" and not remote_models:
+                # Curated fallbacks if list is rate-limited or unauthenticated
+                for fid, flabel in [
+                    ("anthropic/claude-3.5-sonnet", "Claude 3.5 Sonnet (OpenRouter)"),
+                    ("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B (OpenRouter)"),
+                    ("qwen/qwen-2.5-72b-instruct", "Qwen 2.5 72B (OpenRouter)"),
+                    ("deepseek/deepseek-chat", "DeepSeek V3 (OpenRouter)"),
+                ]:
+                    remote_models.append({"id": fid, "label": flabel, "size_hint": "openrouter", "provider": "openrouter"})
         except Exception as e:
-            print(f"[LLM] Failed to query remote models at {remote_url}: {e}")
+            print(f"[LLM] Failed to query {provider} models at {effective_url}: {e}")
 
     # Anthropic models (curated list — no /models endpoint)
     if provider == "anthropic" and api_key:
@@ -793,6 +813,8 @@ PROVIDER_API_KEY_SETTING = {
     "openai": "openai_api_key",
     "anthropic": "anthropic_api_key",
     "minimax": "minimax_api_key",
+    "openrouter": "openrouter_api_key",
+    "opencode": "opencode_api_key",
     # Ollama doesn't require auth by default but supports an
     # OLLAMA_AUTH-style header via the same `llm_remote_api_key` slot
     # as Remote — keeps credentials in one place rather than adding
@@ -921,7 +943,7 @@ def _finalize_payload(payload: dict) -> dict:
     llama.cpp-only fields such as ``cache_prompt`` and ``min_p``.
     """
 
-    if _provider not in ("remote", "openai", "ollama"):
+    if _provider not in ("remote", "openai", "ollama", "openrouter", "opencode"):
         return payload
     prepared = {
         key: value
@@ -951,30 +973,44 @@ def _server_url() -> str:
     """
     if _provider == "ollama":
         return _ollama_base_url(_remote_url)
+    if _provider == "openrouter":
+        url = (_remote_url or "https://openrouter.ai/api").rstrip("/")
+        if url.endswith("/v1"):
+            return url[:-3]
+        return url
+    if _provider == "opencode":
+        url = (_remote_url or "https://opencode.ai/inference").rstrip("/")
+        if url.endswith("/v1"):
+            url = url[:-3]
+        if not url.endswith("/openai"):
+            url = f"{url}/openai"
+        return url
     if _provider in ("remote", "openai") and _remote_url:
         # Strip a user-supplied /v1 if they put one — call sites add it back.
         url = _remote_url.rstrip("/")
         if url.endswith("/v1"):
             return url[:-3]
         return url
+    if _provider == "openai":
+        return "https://api.openai.com"
     return f"http://127.0.0.1:{_server_port}"
 
 
 def _api_headers() -> dict:
     """Build headers for API calls (adds auth for remote providers)."""
     headers = {"Content-Type": "application/json"}
-    if _provider in ("remote", "openai", "anthropic", "minimax", "ollama") and _api_key:
+    if _provider in ("remote", "openai", "anthropic", "minimax", "ollama", "openrouter", "opencode") and _api_key:
         if _provider == "anthropic":
             headers["x-api-key"] = _api_key
             headers["anthropic-version"] = "2023-06-01"
         elif _provider == "minimax":
-            # MiniMax M3 is Anthropic-compatible on the wire: same headers,
-            # same /v1/messages endpoint. The only difference is the base
-            # URL — see _anthropic_base_url() and _generate_anthropic_at().
             headers["x-api-key"] = _api_key
             headers["anthropic-version"] = "2023-06-01"
         else:
             headers["Authorization"] = f"Bearer {_api_key}"
+            if _provider == "openrouter":
+                headers["HTTP-Referer"] = "https://github.com/yuri-schmaltz/cue_studio"
+                headers["X-Title"] = "Cue Studio"
     return headers
 
 
@@ -1370,7 +1406,7 @@ def _log_generation_metrics(metrics: dict) -> None:
 
 
 def is_loaded() -> bool:
-    if _provider in ("remote", "openai", "anthropic", "minimax", "ollama"):
+    if _provider in ("remote", "openai", "anthropic", "minimax", "ollama", "openrouter", "opencode"):
         return bool(_model_id)
     return _process is not None and _process.poll() is None
 
@@ -1888,7 +1924,7 @@ def load_model(
     global _provider, _remote_url, _api_key
 
     # Handle remote/API providers — no subprocess needed
-    if provider in ("remote", "openai", "anthropic", "minimax", "ollama"):
+    if provider in ("remote", "openai", "anthropic", "minimax", "ollama", "openrouter", "opencode"):
         with _lock:
             if (
                 is_loaded()

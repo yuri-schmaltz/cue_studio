@@ -38,6 +38,8 @@ export function LlmConfigurationCard({
   const isLocal = provider === 'local'
   const isMiniMax = provider === 'minimax'
   const isOllama = provider === 'ollama'
+  const isOpenRouter = provider === 'openrouter'
+  const isOpenCode = provider === 'opencode'
   const [refreshing, setRefreshing] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionResult, setConnectionResult] = useState<{ status: string; latency_ms: number; models?: string[]; error?: string } | null>(null)
@@ -114,14 +116,16 @@ export function LlmConfigurationCard({
           <option value="local">Local (llama-server)</option>
           <option value="remote">Remote OpenAI-Compatible (LM Studio, etc.)</option>
           <option value="ollama">Ollama (local daemon)</option>
+          <option value="openrouter">OpenRouter API</option>
+          <option value="opencode">OpenCode API</option>
           <option value="openai">OpenAI API</option>
           <option value="anthropic">Anthropic API</option>
           <option value="minimax">MiniMax M3 (Anthropic-compatible)</option>
         </select>
       </div>
 
-      {/* Remote URL (for remote/openai/ollama/MiniMax providers) */}
-      {(isRemote || isOpenAI || isMiniMax || isOllama) && (
+      {/* Remote URL (for remote/openai/ollama/MiniMax/openrouter/opencode providers) */}
+      {(isRemote || isOpenAI || isMiniMax || isOllama || isOpenRouter || isOpenCode) && (
         <div className="space-y-3">
           <div>
             <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
@@ -135,9 +139,13 @@ export function LlmConfigurationCard({
                 ? 'http://192.168.1.100:1234'
                 : isOllama
                   ? 'http://localhost:11434'
-                  : isMiniMax
-                    ? 'https://api.minimax.com'
-                    : 'https://api.openai.com'}
+                  : isOpenRouter
+                    ? 'https://openrouter.ai/api'
+                    : isOpenCode
+                      ? 'https://opencode.ai/inference'
+                      : isMiniMax
+                        ? 'https://api.minimax.com'
+                        : 'https://api.openai.com'}
               className="w-full bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-accent-blue"
             />
             <p className="text-2xs text-text-muted mt-1">
@@ -145,11 +153,47 @@ export function LlmConfigurationCard({
                 ? 'URL of your LM Studio or other OpenAI-compatible server'
                 : isOllama
                   ? 'Ollama daemon URL. Leave blank for default http://localhost:11434. Models are auto-detected from /api/tags.'
-                  : isMiniMax
-                    ? 'MiniMax M3 gateway URL. Leave blank for default https://api.minimax.com'
-                    : 'Leave blank for default OpenAI endpoint'}
+                  : isOpenRouter
+                    ? 'OpenRouter endpoint. Leave blank for default https://openrouter.ai/api'
+                    : isOpenCode
+                      ? 'OpenCode endpoint. Leave blank for default https://opencode.ai/inference (or https://opencode.ai/inference/go)'
+                      : isMiniMax
+                        ? 'MiniMax M3 gateway URL. Leave blank for default https://api.minimax.com'
+                        : 'Leave blank for default OpenAI endpoint'}
             </p>
           </div>
+
+          {isOpenRouter && (
+            <div>
+              <ApiKeyField
+                label="OpenRouter API Key"
+                maskedValue={servicesConfig.openrouter_api_key}
+                isSet={servicesConfig.openrouter_api_key_set}
+                onSave={value => {
+                  void updateConfig({ openrouter_api_key: value }).then(() => loadLlmModels())
+                }}
+              />
+              <p className="text-2xs text-text-muted mt-1">
+                Enter your OpenRouter key (sk-or-v1-...). Required to query models and route generations.
+              </p>
+            </div>
+          )}
+
+          {isOpenCode && (
+            <div>
+              <ApiKeyField
+                label="OpenCode API Key"
+                maskedValue={servicesConfig.opencode_api_key}
+                isSet={servicesConfig.opencode_api_key_set}
+                onSave={value => {
+                  void updateConfig({ opencode_api_key: value }).then(() => loadLlmModels())
+                }}
+              />
+              <p className="text-2xs text-text-muted mt-1">
+                Enter your OpenCode API Key.
+              </p>
+            </div>
+          )}
 
           {(isRemote || isOllama) && (
             <div>

@@ -29,6 +29,7 @@ import {
   durationWindowPlan,
 } from '../lib/durationPlanning'
 import { buildGenerationPlan, resolvedGenerationPlan, type ReviewPlan } from '../lib/generationPlan'
+import { addPromptToHistory } from '../lib/promptHistory'
 import { createWorkspaceSlice } from './workspaceSlice'
 import { createStudioWorkflowSlice } from './studioWorkflowSlice'
 import {
@@ -1254,6 +1255,8 @@ export interface AppState {
   // Post-processing (shared for Studio mode)
   spatialUpsampling: string
   setSpatialUpsampling: (v: string) => void
+  sharpenAmount: number
+  setSharpenAmount: (v: number) => void
   filmGrainIntensity: number
   setFilmGrainIntensity: (v: number) => void
   filmGrainSaturation: number
@@ -1469,6 +1472,17 @@ export interface AppState {
    *  Studio model selectors. Called on hydration AND on save so the
    *  editor reflects the user's choices without a workspace hop. */
   applyWorkspaceSetup: (setup: ProjectSetupDefaults) => void
+  loadDirectorDraft: (name: string) => Promise<void>
+  saveDirectorDraftNow: () => Promise<void>
+  clearDirectorDraft: () => Promise<void>
+  directorDraftSnapshots: Array<{
+    timestamp: number
+    label?: string
+    plannedClips?: PlannedClip[]
+    clipPlans?: ClipPlan[]
+    sceneDescription?: string
+  }>
+  restoreDraftSnapshot: (index: number) => Promise<void>
 
   // LoRA picker sort order — store-backed (not per-component state) so
   // simultaneously mounted pickers (e.g. Director's Image + Video
@@ -3968,6 +3982,8 @@ export const useStore = create<AppState>((set, get, store) => ({
   // Post-processing defaults (shared for Studio)
   spatialUpsampling: '',
   setSpatialUpsampling: (v) => set({ spatialUpsampling: v }),
+  sharpenAmount: 0,
+  setSharpenAmount: (v) => set({ sharpenAmount: v }),
   filmGrainIntensity: 0,
   setFilmGrainIntensity: (v) => {
     set({ filmGrainIntensity: v })
@@ -4268,6 +4284,9 @@ export const useStore = create<AppState>((set, get, store) => ({
   startGeneration: async (submissionMode = 'now', snapshot, prepareReview = false) => {
     const reviewToken = _reviewRequestToken
     let state = snapshot || get()
+    if (state.params?.prompt && !prepareReview) {
+      addPromptToHistory(state.generationMode, String(state.params.prompt))
+    }
     const primaryStudioCreate = (
       state.generationMode === 'video'
       && (state.studioVideoWorkflow === 'frames' || state.studioVideoWorkflow === 'references')
@@ -5617,6 +5636,7 @@ export const useStore = create<AppState>((set, get, store) => ({
 
     // Post-processing settings
     if (state.spatialUpsampling) params.spatial_upsampling = state.spatialUpsampling
+    if (state.sharpenAmount > 0) params.sharpen_amount = state.sharpenAmount
     if (state.filmGrainIntensity > 0) {
       params.film_grain_intensity = state.filmGrainIntensity
       params.film_grain_saturation = state.filmGrainSaturation
@@ -7982,11 +8002,29 @@ export const useStore = create<AppState>((set, get, store) => ({
           }
         }
       }
-      const speakerMappings: SpeakerMapping[] = speakers.map(s => ({
-        speakerId: s,
-        name: '',
-        role: '' as const,
-      }))
+      const existingMappings = get().directorSpeakerMappings
+      const existingCharRefs = get().directorCharacterRefs
+      const existingCharLabels = get().directorCharacterRefLabels
+      const speakerMappings: SpeakerMapping[] = speakers.map((s, idx) => {
+        const prev = existingMappings.find(m => m.speakerId === s)
+        if (prev) return prev
+        const existingRef = existingCharRefs[idx]
+        const existingLabel = existingCharLabels[idx] || ''
+        if (existingRef) {
+          return {
+            speakerId: s,
+            name: existingLabel,
+            role: '' as const,
+            image: existingRef,
+            imagePreview: URL.createObjectURL(existingRef),
+          }
+        }
+        return {
+          speakerId: s,
+          name: '',
+          role: '' as const,
+        }
+      })
       set({ directorSpeakers: speakers, directorSpeakerMappings: speakerMappings })
 
       // Plan beat-aligned clip structure right after analysis
@@ -8483,10 +8521,21 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (!directorPlannedClips.length || !directorAnalysis) return
 
       // Upload all reference images
-      const { refImagePath, charPaths, locPaths } = await get()._uploadDirectorRefs()
+      const { refImagePath, charPaths, locPaths, speakerImagePaths } = await get()._uploadDirectorRefs()
       const { directorCharacterRefLabels: charLabels, directorLocationRefLabels: locLabels } = get()
+      const mergedCharPaths = [...charPaths]
+      const mergedCharLabels = [...charLabels]
+      for (const m of get().directorSpeakerMappings) {
+        if (m.image && speakerImagePaths[m.speakerId]) {
+          const p = speakerImagePaths[m.speakerId]
+          if (!mergedCharPaths.includes(p)) {
+            mergedCharPaths.push(p)
+            mergedCharLabels.push(m.name.trim() || m.speakerId)
+          }
+        }
+      }
       const extraRefs = {
-        ...(charPaths.length > 0 ? { character_ref_paths: charPaths, character_ref_labels: charLabels } : {}),
+        ...(mergedCharPaths.length > 0 ? { character_ref_paths: mergedCharPaths, character_ref_labels: mergedCharLabels } : {}),
         ...(locPaths.length > 0 ? { location_ref_paths: locPaths, location_ref_labels: locLabels } : {}),
       }
       const generateShotImages = _directorUsesGeneratedShotImages(get())
@@ -9404,10 +9453,21 @@ export const useStore = create<AppState>((set, get, store) => ({
     const stopStreamPoll = _startDirectLlmStreamPolling(set, get)
     try {
       // Upload all reference images
-      const { refImagePath, charPaths, locPaths } = await get()._uploadDirectorRefs()
+      const { refImagePath, charPaths, locPaths, speakerImagePaths } = await get()._uploadDirectorRefs()
       const { directorCharacterRefLabels: charLabels, directorLocationRefLabels: locLabels } = get()
+      const mergedCharPaths = [...charPaths]
+      const mergedCharLabels = [...charLabels]
+      for (const m of get().directorSpeakerMappings) {
+        if (m.image && speakerImagePaths[m.speakerId]) {
+          const p = speakerImagePaths[m.speakerId]
+          if (!mergedCharPaths.includes(p)) {
+            mergedCharPaths.push(p)
+            mergedCharLabels.push(m.name.trim() || m.speakerId)
+          }
+        }
+      }
       const extraRefs = {
-        ...(charPaths.length > 0 ? { character_ref_paths: charPaths, character_ref_labels: charLabels } : {}),
+        ...(mergedCharPaths.length > 0 ? { character_ref_paths: mergedCharPaths, character_ref_labels: mergedCharLabels } : {}),
         ...(locPaths.length > 0 ? { location_ref_paths: locPaths, location_ref_labels: locLabels } : {}),
       }
       const generateShotImages = _directorUsesGeneratedShotImages(get())
@@ -12083,6 +12143,7 @@ export const useStore = create<AppState>((set, get, store) => ({
           directorQueueEditingEntryId: null,
           directorError: null,
         })
+        void get().clearDirectorDraft()
         return
       }
       // If v2 plan already registered an official pipeline (e.g. via
@@ -12094,6 +12155,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       if (existingPid && existingStatus
           && !['completed', 'failed', 'cancelled'].includes(existingStatus)) {
         await api.continuePipeline(existingPid, undefined)
+        void get().clearDirectorDraft()
         set({
           pipelinePolling: true,
           directorStep: 'plan',
@@ -12104,6 +12166,7 @@ export const useStore = create<AppState>((set, get, store) => ({
         return
       }
       const { pipeline_id } = await api.startPipeline(pipelineParams)
+      void get().clearDirectorDraft()
       _directorPipelineAttachToken += 1
       set({
         pipelineId: pipeline_id,

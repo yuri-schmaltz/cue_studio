@@ -66,6 +66,7 @@ sys.argv = _wgp_argv
 # layer picks up from the partial file. Also hooks tqdm to track
 # download progress for the UI's downloads-in-progress banner.
 print("[Cue Studio] Installing download stall protection...")
+from services import torchaudio_compat  # noqa: F401 (side-effect import: monkeypatch torchaudio for pyannote/speechbrain)
 from services import safe_download  # noqa: F401 (side-effect import)
 from services.checkpoint_compatibility import (
     CheckpointCompatibilityError,
@@ -89,6 +90,13 @@ from services.workspace_setup import (
     save_cover_image,
     setup_path,
     migrate_setup,
+)
+from services.director_draft import (
+    DirectorDraftError,
+    delete_draft as delete_director_draft_file,
+    draft_path as director_draft_path,
+    load_draft as load_director_draft_file,
+    save_draft as save_director_draft_file,
 )
 from services.editor_projects import (
     build_editor_media_preview,
@@ -889,6 +897,24 @@ def _persist_workspace_setup(name: str, setup: dict) -> dict:
         return persist_setup(base, name, setup)
     except WorkspaceSetupError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _load_director_draft(name: str) -> dict | None:
+    base = os.path.abspath(_projects_root())
+    return load_director_draft_file(base, name)
+
+
+def _persist_director_draft(name: str, draft: dict) -> dict:
+    base = os.path.abspath(_projects_root())
+    try:
+        return save_director_draft_file(base, name, draft)
+    except DirectorDraftError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _delete_director_draft(name: str) -> bool:
+    base = os.path.abspath(_projects_root())
+    return delete_director_draft_file(base, name)
 
 
 def _workspace_browse_dir(workspace: str) -> str | None:
@@ -7283,7 +7309,7 @@ def _mask_key(key: str) -> str:
     return key[:4] + "..." + key[-4:]
 
 
-_PUBLIC_LLM_PROVIDERS = {"openai", "anthropic", "minimax"}
+_PUBLIC_LLM_PROVIDERS = {"openai", "anthropic", "minimax", "openrouter", "opencode"}
 # Providers that run against a user-controlled daemon. NSFW stays
 # available because nothing leaves the box — unlike the public APIs
 # above which ban adult content per their terms of service.
@@ -7309,6 +7335,8 @@ def _llm_api_key_for_provider(services: dict, provider: str) -> str:
         "openai": "openai_api_key",
         "anthropic": "anthropic_api_key",
         "minimax": "minimax_api_key",
+        "openrouter": "openrouter_api_key",
+        "opencode": "opencode_api_key",
         # Ollama shares the Remote API key slot — auth is opt-in via
         # OLLAMA_AUTH / reverse-proxy, no separate credential needed.
         "ollama": "llm_remote_api_key",
@@ -7367,6 +7395,10 @@ def get_services_config():
         "anthropic_api_key_set": bool(services.get("anthropic_api_key", "")),
         "minimax_api_key": _mask_key(services.get("minimax_api_key", "")),
         "minimax_api_key_set": bool(services.get("minimax_api_key", "")),
+        "openrouter_api_key": _mask_key(services.get("openrouter_api_key", "")),
+        "openrouter_api_key_set": bool(services.get("openrouter_api_key", "")),
+        "opencode_api_key": _mask_key(services.get("opencode_api_key", "")),
+        "opencode_api_key_set": bool(services.get("opencode_api_key", "")),
         # Director v2 (layered architecture: structured shot planning,
         # mode-specific renderers, prompt validation) is now the default
         # as of 2026-05-03 after weeks of real-world validation. v1 had
@@ -7446,7 +7478,7 @@ async def update_services_config(request: Request):
         "llm_model_id", "llm_device", "llm_provider", "llm_remote_url",
         "enhance_llm_model_id", "enhance_llm_device",
         "google_api_key", "llm_remote_api_key", "openai_api_key", "anthropic_api_key",
-        "minimax_api_key",
+        "minimax_api_key", "openrouter_api_key", "opencode_api_key",
         "use_director_v2", "nsfw_mode", "nsfw_accepted_at", "director_prompt_polish",
         "civitai_api_key", "voice_reference_enabled", "ltx_progressive_pipeline",
         "show_experimental", "auto_performance", "storage_allow_linked_removal",
@@ -7510,6 +7542,9 @@ api.include_router(build_workspaces_router(WorkspaceDeps(
     cover_image_path=cover_image_path,
     safe_join=_safe_join,
     workspace_setup_error=WorkspaceSetupError,
+    load_director_draft=_load_director_draft,
+    persist_director_draft=_persist_director_draft,
+    delete_director_draft=_delete_director_draft,
 )))
 
 # ============================================================================
@@ -8033,9 +8068,17 @@ async def test_llm_connection(request: Request):
             headers = {}
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
-            url = remote_url or "https://api.openai.com"
+            if provider == "openrouter":
+                headers["HTTP-Referer"] = "https://github.com/yuri-schmaltz/cue_studio"
+                headers["X-Title"] = "Cue Studio"
+                default_url = "https://openrouter.ai/api"
+            elif provider == "opencode":
+                default_url = "https://opencode.ai/inference"
+            else:
+                default_url = "https://api.openai.com"
+            url = remote_url or default_url
             endpoint = f"{url}/v1/models" if not url.endswith("/v1") else f"{url}/models"
-            resp = requests.get(endpoint, headers=headers, timeout=5)
+            resp = requests.get(endpoint, headers=headers, timeout=8)
             latency_ms = round((time.time() - start_time) * 1000, 1)
             if resp.ok:
                 models = [m.get("id") for m in resp.json().get("data", [])]
@@ -10513,8 +10556,8 @@ try:
     def _get_video_editor():
         return VideoEditor()
 
-    api.include_router(build_video_editor_router(get_editor=_get_video_editor))
-    _mcp_log.info("[video_editor] router mounted at /api/v1/editor")
+    api.include_router(build_video_editor_router(get_editor=_get_video_editor), prefix="/api/v1/editor/timeline")
+    _mcp_log.info("[video_editor] router mounted at /api/v1/editor/timeline")
 except Exception as _ve_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[video_editor] router unavailable: %s", _ve_import_err)
 
@@ -23006,6 +23049,109 @@ def _apply_film_grain_to_file_impl(video_path: str, intensity: float, saturation
         _replace_with_retry(tmp_path, video_path)
 
 
+def _apply_sharpen_to_file(video_path: str, amount: float):
+    """Apply adaptive sharpening (unsharp mask) to an already-saved video file.
+
+    Reads frames with decord, applies edge sharpening on GPU if available,
+    re-encodes in-place using current output codec settings.
+    """
+    import torch
+    import decord
+    from postprocessing.sharpen import adaptive_sharpen
+    from shared.utils.audio_video import save_video
+    decord.bridge.set_bridge('torch')
+    try:
+        return _apply_sharpen_to_file_impl(video_path, amount,
+                                           torch=torch, decord=decord,
+                                           adaptive_sharpen=adaptive_sharpen,
+                                           save_video=save_video)
+    finally:
+        try:
+            decord.bridge.set_bridge('native')
+        except Exception:
+            pass
+
+
+def _apply_sharpen_to_file_impl(video_path: str, amount: float,
+                                *, torch, decord, adaptive_sharpen, save_video):
+    reader = decord.VideoReader(video_path)
+    fps = round(reader.get_avg_fps())
+    frames = reader.get_batch(range(len(reader)))
+    frames = frames.permute(3, 0, 1, 2)
+    if torch.cuda.is_available():
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()
+    try:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        frames_dev = frames.to(device)
+        frames = adaptive_sharpen(frames_dev, amount=amount).cpu()
+        del frames_dev
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except torch.cuda.OutOfMemoryError:
+        print("  [Sharpen] GPU OOM, falling back to CPU")
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        frames = adaptive_sharpen(frames, amount=amount)
+
+    has_audio = False
+    audio_tmp = None
+    try:
+        import subprocess
+        probe = subprocess.run(
+            ['ffprobe', '-v', 'quiet', '-select_streams', 'a', '-show_entries', 'stream=codec_type', '-of', 'csv=p=0', video_path],
+            capture_output=True, text=True, timeout=10
+        )
+        has_audio = 'audio' in probe.stdout
+        if has_audio:
+            import tempfile
+            audio_tmp = tempfile.mktemp(suffix='.aac')
+            subprocess.run(
+                ['ffmpeg', '-y', '-i', video_path, '-vn', '-acodec', 'copy', audio_tmp],
+                capture_output=True, timeout=60
+            )
+    except Exception:
+        has_audio = False
+
+    codec_type = wgp.server_config.get("video_output_codec", "libx264_8")
+    container = wgp.server_config.get("video_container", "mp4")
+    tmp_path = video_path + ".sharp_tmp." + container
+    save_video(tensor=frames.unsqueeze(0), save_file=tmp_path, fps=fps, nrow=1,
+               normalize=False, codec_type=codec_type, container=container)
+
+    def _replace_with_retry(src, dst, max_retries=5):
+        import gc
+        for attempt in range(max_retries):
+            try:
+                os.replace(src, dst)
+                return
+            except (PermissionError, OSError):
+                if attempt < max_retries - 1:
+                    gc.collect()
+                    time.sleep(1)
+                else:
+                    raise
+
+    if has_audio and audio_tmp and os.path.exists(audio_tmp):
+        try:
+            import subprocess
+            muxed_path = video_path + ".muxed." + container
+            subprocess.run(
+                ['ffmpeg', '-y', '-i', tmp_path, '-i', audio_tmp, '-c:v', 'copy', '-c:a', 'aac', '-shortest', muxed_path],
+                capture_output=True, timeout=120
+            )
+            _replace_with_retry(muxed_path, video_path)
+            os.remove(tmp_path)
+        except Exception:
+            _replace_with_retry(tmp_path, video_path)
+        finally:
+            if os.path.exists(audio_tmp):
+                os.remove(audio_tmp)
+    else:
+        _replace_with_retry(tmp_path, video_path)
+
+
 # ── Per-job VRAM coefficient adjustment ────────────────────────────
 # Auto-tune sets a single base coefficient (e.g. 0.80 for a 24 GB
 # card) but real jobs vary in memory pressure based on:
@@ -24384,6 +24530,120 @@ def _run_tool_film_grain(job_id: str):
             unregister_abort_state(job_id, _active_gen_states, abort_state)
 
 
+def _run_tool_sharpen(job_id: str):
+    """Background worker: apply adaptive edge sharpening to an existing clip.
+    Always writes a NEW file (copy first, convert the copy) — the source clip
+    is never overwritten in-place.
+    """
+    job = _jobs.get(job_id)
+    if not job:
+        return False
+
+    start_time = time.time()
+    abort_state = object()
+    final_path = None
+
+    with generation_slot(_gen_lock, job) as acquired:
+        if not acquired:
+            return False
+        try:
+            if not try_start(
+                job, message="Preparing sharpening...", phase="Preparing",
+            ):
+                return False
+            if not register_abort_state(
+                job, job_id, _active_gen_states, abort_state,
+            ):
+                return False
+
+            params = job["params"]
+            workspace = job.get("workspace")
+            out_dir = job.get("out_dir") or wgp.save_path
+            os.makedirs(out_dir, exist_ok=True)
+
+            video_source = _resolve_tool_clip_path(
+                params.get("video_path"), workspace,
+            )
+            if not video_source:
+                finish_job(
+                    job, "failed", error="Input clip not found",
+                    message="Error: input clip not found",
+                )
+                return False
+
+            amount = max(0.0, min(1.0, float(params.get("amount", 0.5))))
+            if amount <= 0:
+                finish_job(
+                    job, "failed", error="Sharpen amount must be above zero",
+                    message="Error: choose a sharpen amount above zero",
+                )
+                return False
+
+            container = str(wgp.server_config.get("video_container", "mp4"))
+            final_path = wgp.get_available_filename(
+                out_dir,
+                os.path.basename(video_source),
+                "_sharpened",
+                force_extension=f".{container}",
+            )
+            if is_cancel_requested(job):
+                return False
+            shutil.copyfile(video_source, final_path)
+
+            if not update_job(
+                job,
+                message="Applying edge sharpening...",
+                phase="Sharpen",
+                progress=10,
+            ):
+                os.remove(final_path)
+                final_path = None
+                return False
+
+            _apply_sharpen_to_file(final_path, amount)
+            if is_cancel_requested(job):
+                os.remove(final_path)
+                final_path = None
+                return False
+
+            filename = os.path.basename(final_path)
+            record_job_outputs(job, [filename])
+            _write_tool_sidecar(
+                out_dir,
+                filename,
+                source_name=os.path.basename(video_source),
+                tool="sharpen",
+                params={
+                    "amount": amount,
+                    "model_type": "post_processing",
+                    "_studio_video_workflow": "sharpen",
+                },
+                elapsed=time.time() - start_time,
+                job_id=job_id,
+            )
+            completed = finish_job(
+                job, "completed", progress=100, phase="", message="Done",
+            )
+            print(
+                f"[Tools/sharpen] {os.path.basename(video_source)} -> "
+                f"{filename} ({wgp.format_time(time.time() - start_time)})"
+            )
+            return completed
+        except Exception as error:
+            traceback.print_exc()
+            if final_path and os.path.isfile(final_path):
+                try:
+                    os.remove(final_path)
+                except OSError:
+                    pass
+            finish_job(
+                job, "failed", error=str(error), message=f"Error: {error}",
+            )
+            return False
+        finally:
+            unregister_abort_state(job_id, _active_gen_states, abort_state)
+
+
 def _run_tool_revoice(job_id: str):
     """Background worker: replace the voice(s) in an existing clip via SeedVC.
     Always writes a NEW file (copy first, convert the copy) — the source clip
@@ -24619,6 +24879,67 @@ async def tools_film_grain(request: Request):
     }
     threading.Thread(
         target=_run_tool_film_grain,
+        args=(job_id,),
+        daemon=False,
+    ).start()
+    return {"job_id": job_id, "status": "queued"}
+
+
+@api.post("/api/v1/tools/sharpen")
+async def tools_sharpen(request: Request):
+    """Add adaptive edge sharpening to an existing clip. Poll /api/v1/status/{job_id}.
+
+    Body: { video_path: str, amount: float, workspace?: str }
+    """
+    body = await request.json()
+    video_path = body.get("video_path")
+    if not video_path:
+        raise HTTPException(status_code=400, detail="video_path is required")
+    workspace = body.get("workspace") or _get_active_workspace()
+    resolved = _resolve_tool_clip_path(video_path, workspace)
+    if not resolved:
+        raise HTTPException(status_code=400, detail=f"Clip not found: {video_path}")
+
+    try:
+        amount = float(body.get("amount", 0.5))
+    except (TypeError, ValueError) as error:
+        raise HTTPException(
+            status_code=400,
+            detail="amount must be a number",
+        ) from error
+    if not math.isfinite(amount):
+        raise HTTPException(
+            status_code=400,
+            detail="amount must be a finite number",
+        )
+    amount = max(0.0, min(1.0, amount))
+    if amount <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Sharpen amount must be above zero",
+        )
+
+    job_id = uuid.uuid4().hex[:8]
+    _jobs[job_id] = {
+        "id": job_id,
+        "status": "queued",
+        "progress": 0,
+        "step": 0,
+        "total_steps": 0,
+        "phase": "",
+        "message": "Queued (sharpen)",
+        "created_at": time.time(),
+        "params": {
+            "video_path": resolved,
+            "amount": amount,
+        },
+        "output_files": [],
+        "error": None,
+        "workspace": workspace,
+        "out_dir": _workspace_dir(workspace),
+    }
+    threading.Thread(
+        target=_run_tool_sharpen,
         args=(job_id,),
         daemon=False,
     ).start()
@@ -25008,9 +25329,11 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
             # (single image is instant, no slowdown issue).
             gen_mode = raw_params.get("generation_mode", "video")
             if gen_mode != "image":
+                pp_sharpen_amount = float(raw_params.pop("sharpen_amount", 0) or 0)
                 pp_film_grain_intensity = raw_params.pop("film_grain_intensity", 0)
                 pp_film_grain_saturation = raw_params.pop("film_grain_saturation", 0.5)
             else:
+                pp_sharpen_amount = 0
                 pp_film_grain_intensity = 0
                 pp_film_grain_saturation = 0.5
 
@@ -26893,6 +27216,26 @@ def _run_generation(job_id: str, *, finalize: bool = True) -> bool:
                             print(f"  [Upscale] Done: {fname}")
                         except Exception as up_err:
                             print(f"  [Upscale] Warning: failed on {fname} (keeping original): {up_err}")
+                            traceback.print_exc()
+
+                # Post-generation edge sharpening pass (applied before film grain)
+                if success and pp_sharpen_amount > 0:
+                    video_exts = {".mp4", ".webm", ".mkv"}
+                    for fname in new_files:
+                        ext = os.path.splitext(fname)[1].lower()
+                        if ext not in video_exts:
+                            continue
+                        video_path = os.path.join(out_dir, fname)
+                        try:
+                            if not update_job(
+                                job, message=f"Applying edge sharpening to {fname}...",
+                            ):
+                                return False
+                            print(f"  [Sharpen] Applying to {fname} (amount={pp_sharpen_amount})")
+                            _apply_sharpen_to_file(video_path, pp_sharpen_amount)
+                            print(f"  [Sharpen] Done: {fname}")
+                        except Exception as sh_err:
+                            print(f"  [Sharpen] Warning: failed on {fname}: {sh_err}")
                             traceback.print_exc()
 
                 # Post-generation film grain pass (applied to output files, not during inference)
