@@ -27,6 +27,7 @@
 
 import { useStore } from '../../stores/useStore'
 import { useMemo } from 'react'
+import { Sparkles } from 'lucide-react'
 import {
   ImagePromptsReview,
   ImageGenView,
@@ -176,40 +177,10 @@ export function DirectorPlanColumn() {
     return out
   }, [analysis])
 
-  // If the user has no skill selected yet (or is still at the upload step
-  // for a non-story path), there's nothing to plan — render an empty hint
-  // instead of empty cards.
-  const showPlanSurfaces = Boolean(skill) && (
-    isStoryPath
-      ? pastStep('style')
-      : (pastStep('analyze') || pastStep('structure') || pastStep('style'))
-  )
-
-  if (!showPlanSurfaces) {
-    // The three skill-specific messages (audio upload, dialogue upload,
-    // story description) used to live here. The user asked to collapse
-    // them into a single generic placeholder while the column is empty
-    // — the actual call-to-action for picking a skill lives in the
-    // chat column on the left, so repeating it here is redundant.
-    //
-    // The audio-analysis summary card (BPM / beats / sections / lyrics
-    // preview) used to surface here too, but the user asked to remove
-    // it from the central column entirely — the analysis state is
-    // already implied by the pipeline status panel + the chat column's
-    // CLIP STRUCTURE card, so duplicating the numbers on the right
-    // was just visual noise. Drop straight to the empty placeholder
-    // until the plan surfaces take over.
-    return (
-      <div className="h-full flex flex-col" data-testid="director-plan-empty">
-        <div className="flex-1 flex items-center justify-center p-6 text-center">
-          <p className="text-xs text-text-muted leading-relaxed">
-            Planning controls will appear here.
-          </p>
-        </div>
-        <DirectorStatusPanel />
-      </div>
-    )
-  }
+  // Has planning started or completed?
+  const hasPlan = clipPlans.length > 0 || pastStep('plan') || atStep('review') || pastStep('review')
+  const isPlanningActive = loading && atStep('plan')
+  const cardTitle = isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'
 
   return (
     /* Wrapper padding: p-4 (16px) matches the inner padding of the
@@ -219,67 +190,68 @@ export function DirectorPlanColumn() {
        visible inset is 36px from the column's rounded border —
        generous enough to let the cards breathe without wasting
        vertical real estate. */
-    <div className="h-full flex flex-col space-y-3" data-testid="director-plan-column">
-      {/* 1) Structure — moved to the chat column (DirectorChat). The
-          plan column starts at the post-upload planning surface. */}
-
-      {/* 2) Style / scene description — moved to the chat column
-          (DirectorChat) right under the CLIP STRUCTURE card so the
-          speaker-mapping + brief inputs live next to the upload and
-          audio analysis. The card is **collapsed by default** so the
-          chat column doesn't grow tall after the user submits the
-          brief. Nothing to render in this column for the style step
-          any more — the plan column starts at the post-style planning
-          surface (image prompts / video prompts / image gen). */}
-
-      {/* 3) Plan loading + log — the first LLM pass writes
-          image_prompt per clip. During the loading phase we render the
-          DirectorActivityBlock so the user sees a live phase label
-          ("Planning with LLM…", "Polishing prompts…"), an indeterminate
-          or determinate progress bar, and a token-streaming counter.
-          After loading finishes we fall through to the collapsible log
-          so the full reasoning stays readable without scrolling back
-          through chat. Previously this card only rendered AFTER the
-          load completed, leaving the entire middle column blank during
-          the (often multi-minute) planning pass. */}
-      {(pastStep('plan') || atStep('plan')) && (
-        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider">
-            {isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'}
+    <div className="h-full flex flex-col min-h-0" data-testid="director-plan-column">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 -mr-1">
+      {/* 1) Fixed and permanent Image and video prompts card:
+          - Shows empty state before planning starts
+          - Shows live activity & progress during planning
+          - Shows prompt review cards once planning completes */}
+      <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3" data-testid="director-prompts-card">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+            {cardTitle}
           </h3>
-          <DirectorActivityBlock />
-          {!loading && (
+          {clipPlans.length > 0 && (
+            <span className="text-2xs text-text-muted px-2 py-0.5 rounded bg-bg-tertiary border border-border">
+              {clipPlans.length} {clipPlans.length === 1 ? 'cena' : 'cenas'}
+            </span>
+          )}
+        </div>
+
+        {/* State A: Loading / Planning actively with LLM */}
+        {isPlanningActive && (
+          <div className="space-y-3">
+            <DirectorActivityBlock />
+          </div>
+        )}
+
+        {/* State B: Prompt review cards once plan is ready */}
+        {!isPlanningActive && hasPlan && usesShotImages && (
+          <div className="space-y-3">
+            <ImagePromptsReview
+              clipPlans={clipPlans}
+              plannedClips={plannedClips}
+              speakerMappings={speakerMappings}
+              editClipPlan={editPlanWithHistory}
+              planPrompts={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
+              planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
+              generateStartImages={generateStartImages}
+              loading={loading}
+              isActive={atStep('review') || atStep('plan')}
+              isShortFilm={isShortFilm}
+            />
             <LlmLogStage
               stage="plan"
-              label={isShortFilm ? 'Scene planning' : usesShotImages ? 'Image and video prompts' : 'Video planning'}
+              label={cardTitle}
             />
-          )}
-        </section>
-      )}
+          </div>
+        )}
 
-      {/* 4) Image prompts review — one card per clip with an editable
-          image_prompt textarea. The user can re-roll the whole batch or
-          move to image generation. The "Start Image Prompts" header
-          used to live here as an <h3>, but the inner ImagePromptsReview
-          already renders an identical label alongside the Regenerate
-          button — keeping both produced two back-to-back headers in the
-          middle column, so the outer one was removed. */}
-      {usesShotImages && (atStep('review') || pastStep('review')) && (
-        <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
-          <ImagePromptsReview
-            clipPlans={clipPlans}
-            plannedClips={plannedClips}
-            speakerMappings={speakerMappings}
-            editClipPlan={editPlanWithHistory}
-            planPrompts={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
-            planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
-            generateStartImages={generateStartImages}
-            loading={loading}
-            isActive={atStep('review')}
-            isShortFilm={isShortFilm}
-          />
-        </section>
-      )}
+        {/* State C: Empty State when no planning has occurred yet */}
+        {!isPlanningActive && !hasPlan && (
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-3 bg-bg-tertiary/40 rounded-lg border border-dashed border-border/80">
+            <div className="h-10 w-10 rounded-full bg-accent-blue/10 flex items-center justify-center text-accent-blue">
+              <Sparkles size={20} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-text-primary">Nenhum prompt gerado ainda</p>
+              <p className="text-2xs text-text-muted max-w-sm leading-relaxed">
+                Configure a música, referências visuais e a descrição da cena na coluna ao lado. Os roteiros visuais e prompts detalhados de cada corte serão organizados aqui.
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* 5) Image generation — progress + the actual images that came
           back from the image model. Each card is tagged with the clip
@@ -340,6 +312,7 @@ export function DirectorPlanColumn() {
           />
         </section>
       )}
+      </div>
       <DirectorStatusPanel />
     </div>
   )
