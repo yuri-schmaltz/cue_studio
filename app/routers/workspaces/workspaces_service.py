@@ -46,6 +46,9 @@ class WorkspaceDeps:
     cover_image_path: Callable[..., str | None]
     safe_join: Callable[..., str | None]
     workspace_setup_error: type[Exception]
+    load_director_draft: Callable[[str], dict | None] | None = None
+    persist_director_draft: Callable[[str, dict], dict] | None = None
+    delete_director_draft: Callable[[str], bool] | None = None
 
 
 def register_routes(router: APIRouter, deps: WorkspaceDeps) -> APIRouter:
@@ -129,6 +132,38 @@ def register_routes(router: APIRouter, deps: WorkspaceDeps) -> APIRouter:
         raw_setup = body.get("setup", body)
         persisted = deps.persist_workspace_setup(name, raw_setup)
         return {"status": "ok", "name": name, "setup": persisted}
+
+    # --------------------------------------------------------------- director draft
+    @router.get("/api/v1/workspaces/{name}/director-draft")
+    def get_director_draft(name: str):
+        """Return the unsubmitted Director planning draft for a workspace, if any."""
+        loader = deps.load_director_draft
+        if loader is None:
+            raise HTTPException(status_code=501, detail="Director draft service not configured.")
+        draft = loader(name)
+        return {"status": "ok", "name": name, "draft": draft}
+
+    @router.put("/api/v1/workspaces/{name}/director-draft")
+    async def put_director_draft(name: str, request: Request):
+        """Save the in-progress Director planning draft for a workspace."""
+        persister = deps.persist_director_draft
+        if persister is None:
+            raise HTTPException(status_code=501, detail="Director draft service not configured.")
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise HTTPException(status_code=400, detail="Request body must be a JSON object.")
+        raw_draft = body.get("draft", body)
+        persisted = persister(name, raw_draft)
+        return {"status": "ok", "name": name, "draft": persisted}
+
+    @router.delete("/api/v1/workspaces/{name}/director-draft")
+    def delete_director_draft(name: str):
+        """Delete the Director planning draft for a workspace."""
+        remover = deps.delete_director_draft
+        if remover is None:
+            raise HTTPException(status_code=501, detail="Director draft service not configured.")
+        deleted = remover(name)
+        return {"status": "ok", "name": name, "deleted": deleted}
 
     # --------------------------------------------------------------- cover
     @router.post("/api/v1/workspaces/{name}/cover")

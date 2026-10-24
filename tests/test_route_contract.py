@@ -362,5 +362,8 @@ def test_workspaces_router_factory_matches_contract():
         ("GET", "/api/v1/workspaces/{name}/cover"),
         ("DELETE", "/api/v1/workspaces/{name}/cover"),
         ("DELETE", "/api/v1/workspaces/{name}"),
+        ("GET", "/api/v1/workspaces/{name}/director-draft"),
+        ("PUT", "/api/v1/workspaces/{name}/director-draft"),
+        ("DELETE", "/api/v1/workspaces/{name}/director-draft"),
     }
     assert registered == expected

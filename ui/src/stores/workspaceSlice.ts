@@ -4,6 +4,7 @@ import * as api from '../api/client'
 import type {
   AppSection,
   AspectRatio,
+  DirectorSkill,
   GenerationMode,
   ProjectsRootInfo,
   ResolutionPreset,
@@ -14,7 +15,9 @@ export type WorkspaceSlice = Pick<AppState,
   'workspaces' | 'activeWorkspace' | 'activeWorkspaceSetup' | 'activeWorkspaceSetupLoading' |
   'workspacesLoading' | 'browsingUploads' | 'loadWorkspaceSetup' | 'saveWorkspaceSetup' | 'applyWorkspaceSetup' |
   'loadWorkspaces' | 'switchWorkspace' | 'createWorkspace' | 'deleteWorkspace' |
-  'projectsRoot' | 'loadProjectsRoot' | 'setProjectsRoot'
+  'projectsRoot' | 'loadProjectsRoot' | 'setProjectsRoot' |
+  'loadDirectorDraft' | 'saveDirectorDraftNow' | 'clearDirectorDraft' |
+  'directorDraftSnapshots' | 'restoreDraftSnapshot'
 >
 
 /** Workspace state and actions composed into the root store. */
@@ -169,6 +172,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       }
       if (activeIsReal && data.active !== previousActive) {
         get().loadWorkspaceSetup(data.active)
+        get().loadDirectorDraft(data.active)
       }
     } catch (error) {
       console.error('Failed to load workspaces:', error)
@@ -191,6 +195,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       get().loadOutputs()
       get().loadWorkspaces()
       get().loadWorkspaceSetup(name)
+      get().loadDirectorDraft(name)
     } catch (error) {
       console.error('Failed to switch workspace:', error)
     }
@@ -219,6 +224,169 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       get().loadOutputs()
     }
     get().loadWorkspaces()
+  },
+
+  loadDirectorDraft: async (name: string) => {
+    const current = get()
+    if (current.pipelineId && current.pipelineStatus && !['completed', 'failed', 'cancelled'].includes(current.pipelineStatus.status)) {
+      return
+    }
+    try {
+      const draft = await api.fetchDirectorDraft(name)
+      if (!draft) return
+
+      const patch: Partial<AppState> = {}
+      if (draft.directorSkill && draft.directorSkill !== current.directorSkill) {
+        patch.directorSkill = draft.directorSkill as DirectorSkill
+      }
+      if (draft.directorStep) {
+        patch.directorStep = draft.directorStep as AppState['directorStep']
+      }
+      if (draft.directorSceneDescription !== undefined) {
+        patch.directorSceneDescription = draft.directorSceneDescription
+      }
+      if (draft.directorAudioPath) {
+        patch.directorAudioPath = draft.directorAudioPath
+        const audioName = draft.directorAudioName || draft.directorAudioPath.replace(/\\/g, '/').split('/').pop() || 'Director Audio'
+        patch.directorAudioFile = new File([], audioName, { type: 'audio/wav' })
+      }
+      if (draft.directorAnalysis) {
+        patch.directorAnalysis = draft.directorAnalysis
+      }
+      if (Array.isArray(draft.directorPlannedClips)) {
+        patch.directorPlannedClips = draft.directorPlannedClips
+      }
+      if (Array.isArray(draft.directorClipPlans)) {
+        patch.directorClipPlans = draft.directorClipPlans
+      }
+      if (Array.isArray(draft.directorSpeakers)) {
+        patch.directorSpeakers = draft.directorSpeakers
+      }
+      if (Array.isArray(draft.directorSpeakerMappings)) {
+        patch.directorSpeakerMappings = draft.directorSpeakerMappings
+      }
+      if (typeof draft.directorEnergyBias === 'number') {
+        patch.directorEnergyBias = draft.directorEnergyBias
+      }
+      if (typeof draft.directorSeamless === 'boolean') {
+        patch.directorSeamless = draft.directorSeamless
+      }
+      if (typeof draft.directorAutoMode === 'boolean') {
+        patch.directorAutoMode = draft.directorAutoMode
+      }
+      if (draft.directorShotImageGuidance) {
+        patch.directorShotImageGuidance = draft.directorShotImageGuidance
+      }
+      if (draft.directorSongDescription !== undefined) {
+        patch.directorSongDescription = draft.directorSongDescription
+      }
+      if (draft.directorSongLyrics !== undefined) {
+        patch.directorSongLyrics = draft.directorSongLyrics
+      }
+      if (draft.directorSongStyle !== undefined) {
+        patch.directorSongStyle = draft.directorSongStyle
+      }
+      if (typeof draft.directorSongInstrumental === 'boolean') {
+        patch.directorSongInstrumental = draft.directorSongInstrumental
+      }
+      if (Array.isArray(draft.snapshots)) {
+        patch.directorDraftSnapshots = draft.snapshots
+      }
+
+      set(patch)
+    } catch (e) {
+      console.warn('Failed to load director draft:', e)
+    }
+  },
+
+  directorDraftSnapshots: [],
+
+  restoreDraftSnapshot: async (index: number) => {
+    const s = get()
+    const snap = s.directorDraftSnapshots[index]
+    if (!snap) return
+    set({
+      directorPlannedClips: snap.plannedClips || [],
+      directorClipPlans: snap.clipPlans || [],
+      directorSceneDescription: snap.sceneDescription ?? s.directorSceneDescription,
+    })
+    await get().saveDirectorDraftNow()
+  },
+
+  saveDirectorDraftNow: async () => {
+    const s = get()
+    const workspace = s.activeWorkspace
+    if (!workspace || workspace === '__uploads__') return
+    if (s.pipelineId && s.pipelineStatus && !['completed', 'failed', 'cancelled'].includes(s.pipelineStatus.status)) {
+      return
+    }
+    const hasContent = Boolean(
+      s.directorAudioPath
+      || s.directorAnalysis
+      || s.directorPlannedClips.length > 0
+      || s.directorClipPlans.length > 0
+      || s.directorSceneDescription.trim()
+      || s.directorSongDescription.trim()
+    )
+    if (!hasContent) return
+
+    const currentSnapshots = [...(s.directorDraftSnapshots || [])]
+    const hasClips = s.directorPlannedClips.length > 0
+    if (hasClips) {
+      const lastSnap = currentSnapshots[currentSnapshots.length - 1]
+      const snapClips = lastSnap?.plannedClips || []
+      const isDifferent = JSON.stringify(snapClips) !== JSON.stringify(s.directorPlannedClips)
+      if (isDifferent) {
+        currentSnapshots.push({
+          timestamp: Date.now(),
+          label: `Storyboard ${currentSnapshots.length + 1} (${s.directorPlannedClips.length} scenes)`,
+          plannedClips: s.directorPlannedClips,
+          clipPlans: s.directorClipPlans,
+          sceneDescription: s.directorSceneDescription,
+        })
+        while (currentSnapshots.length > 5) currentSnapshots.shift()
+        set({ directorDraftSnapshots: currentSnapshots })
+      }
+    }
+
+    const draft: api.DirectorDraft = {
+      directorSkill: s.directorSkill,
+      directorStep: s.directorStep,
+      directorAudioPath: s.directorAudioPath,
+      directorAudioName: s.directorAudioFile?.name || null,
+      directorAnalysis: s.directorAnalysis,
+      directorPlannedClips: s.directorPlannedClips,
+      directorClipPlans: s.directorClipPlans,
+      directorSceneDescription: s.directorSceneDescription,
+      directorEnergyBias: s.directorEnergyBias,
+      directorSpeakers: s.directorSpeakers,
+      directorSpeakerMappings: s.directorSpeakerMappings,
+      directorSeamless: s.directorSeamless,
+      directorAutoMode: s.directorAutoMode,
+      directorShotImageGuidance: s.directorShotImageGuidance,
+      directorSongDescription: s.directorSongDescription,
+      directorSongLyrics: s.directorSongLyrics,
+      directorSongStyle: s.directorSongStyle,
+      directorSongInstrumental: s.directorSongInstrumental,
+      snapshots: currentSnapshots,
+      updatedAt: Date.now(),
+    }
+    try {
+      await api.saveDirectorDraft(workspace, draft)
+    } catch (err) {
+      console.warn('[Director] Save draft failed:', err)
+    }
+  },
+
+  clearDirectorDraft: async () => {
+    const workspace = get().activeWorkspace
+    if (!workspace || workspace === '__uploads__') return
+    try {
+      await api.deleteDirectorDraft(workspace)
+      set({ directorDraftSnapshots: [] })
+    } catch (err) {
+      console.warn('[Director] Clear draft failed:', err)
+    }
   },
   })
 }

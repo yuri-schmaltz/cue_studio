@@ -32,6 +32,7 @@ def state(tmp_path: Path):
         "jobs": {},
         "active_gen_states": {},
         "covers": {},
+        "drafts": {},
         "root": tmp_path,
         "deleted": [],
     }
@@ -66,6 +67,11 @@ def client(state):
         ),
         safe_join=lambda base, name: str(Path(base) / name),
         workspace_setup_error=FakeWorkspaceSetupError,
+        load_director_draft=lambda name: state["drafts"].get(name),
+        persist_director_draft=lambda name, draft: (
+            state["drafts"].__setitem__(name, dict(draft)) or dict(draft)
+        ),
+        delete_director_draft=lambda name: bool(state["drafts"].pop(name, None)),
     )
     app = FastAPI()
     app.include_router(build_workspaces_router(deps))
@@ -179,3 +185,39 @@ def test_delete_removes_folder(client, state, tmp_path):
     assert body["status"] == "ok"
     assert body["name"] == "antigo"
     assert not (tmp_path / "antigo").exists()
+
+
+# -------------------------------------------------------- director draft
+
+
+def test_director_draft_lifecycle(client, state):
+    # 1. Initial state: no draft
+    resp = client.get("/api/v1/workspaces/proj1/director-draft")
+    assert resp.status_code == 200
+    assert resp.json() == {"status": "ok", "name": "proj1", "draft": None}
+
+    # 2. Save draft
+    payload = {
+        "directorStep": "scenes",
+        "directorSceneDescription": "Cyberpunk night alley",
+        "directorPlannedClips": [{"start": 0, "end": 4}],
+    }
+    put_resp = client.put("/api/v1/workspaces/proj1/director-draft", json={"draft": payload})
+    assert put_resp.status_code == 200
+    assert put_resp.json()["status"] == "ok"
+    assert put_resp.json()["draft"] == payload
+
+    # 3. Retrieve draft
+    get_resp = client.get("/api/v1/workspaces/proj1/director-draft")
+    assert get_resp.status_code == 200
+    assert get_resp.json()["draft"] == payload
+
+    # 4. Delete draft
+    del_resp = client.delete("/api/v1/workspaces/proj1/director-draft")
+    assert del_resp.status_code == 200
+    assert del_resp.json()["deleted"] is True
+
+    # 5. After delete: returns None
+    get_after = client.get("/api/v1/workspaces/proj1/director-draft")
+    assert get_after.status_code == 200
+    assert get_after.json()["draft"] is None
