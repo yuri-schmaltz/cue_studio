@@ -40,13 +40,12 @@ import { DirectorReview } from '../Director/DirectorReview'
 // the chat picks up at the new skill's "upload" step. Cancelling
 // leaves the existing skill untouched.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from '../../stores/useStore'
 import { useIsMobile } from '../../lib/useIsMobile'
 import {
   deriveDirectorStep,
   DIRECTOR_LABELS,
-  tabForHref,
   tabForStep,
   type DirectorMobileTab,
 } from '../../director/types'
@@ -55,7 +54,6 @@ import {
   DirectorGenerationOptions,
 } from '../Sidebar/DirectorChat'
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
-import { DirectorHeader } from './DirectorHeader'
 import { DirectorTourOverlay } from './DirectorTourOverlay'
 
 /**
@@ -111,19 +109,49 @@ export function DirectorStage() {
     tabForStep(deriveDirectorStep(directorStep)),
   )
 
-  // Header action links: switch the mobile tab first, then scroll the
-  // target column into view on the next frame (so a panel unhidden by
-  // the tab switch has been laid out before scrolling).
-  const handleNavigate = useCallback((href: string) => {
-    const tab = tabForHref(href)
-    if (tab) setActiveTab(tab)
-    window.requestAnimationFrame(() => {
-      const target = document.querySelector(href)
-      if (target instanceof HTMLElement) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      }
-    })
-  }, [])
+  const activeWorkspace = useStore(s => s.activeWorkspace)
+  const loadDirectorDraft = useStore(s => s.loadDirectorDraft)
+  const saveDirectorDraftNow = useStore(s => s.saveDirectorDraftNow)
+  const directorAudioPath = useStore(s => s.directorAudioPath)
+  const directorAnalysis = useStore(s => s.directorAnalysis)
+  const directorPlannedClips = useStore(s => s.directorPlannedClips)
+  const directorClipPlans = useStore(s => s.directorClipPlans)
+  const directorSceneDescription = useStore(s => s.directorSceneDescription)
+  const directorSongDescription = useStore(s => s.directorSongDescription)
+
+  // Ensure draft is loaded when DirectorStage mounts for active workspace
+  useEffect(() => {
+    if (activeWorkspace && activeWorkspace !== '__uploads__' && activeWorkspace !== 'default') {
+      void loadDirectorDraft(activeWorkspace)
+    }
+  }, [activeWorkspace, loadDirectorDraft])
+
+  // Autosave draft on planning changes
+  useEffect(() => {
+    if (
+      !directorAudioPath
+      && !directorAnalysis
+      && (!directorPlannedClips || directorPlannedClips.length === 0)
+      && (!directorClipPlans || directorClipPlans.length === 0)
+      && !directorSceneDescription?.trim()
+      && !directorSongDescription?.trim()
+    ) {
+      return
+    }
+    const timer = setTimeout(() => {
+      void saveDirectorDraftNow()
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [
+    directorAudioPath,
+    directorAnalysis,
+    directorPlannedClips,
+    directorClipPlans,
+    directorSceneDescription,
+    directorSongDescription,
+    directorStep,
+    saveDirectorDraftNow,
+  ])
 
   // Roving-focus keyboard navigation for the mobile tablist
   // (ArrowLeft/ArrowRight wrap, Home/End jump to the ends).
@@ -177,7 +205,6 @@ export function DirectorStage() {
           the columns container so its fixed positioning can cover the
           full viewport while still highlighting each column. */}
       <DirectorTourOverlay />
-      <DirectorHeader pipelineStep={directorStep} onNavigate={handleNavigate} />
       {isCompact && (
         <div
           role="tablist"
@@ -224,7 +251,7 @@ export function DirectorStage() {
           style={panelVisible('scenes') ? undefined : { display: 'none' }}
           {...panelA11y()}
         >
-          <div className="flex-1 min-h-0 min-w-0 overflow-auto">
+          <div className="flex-1 min-h-0 min-w-0 flex flex-col">
             {pipelineStatus?.status === 'paused' ? (
               <section aria-label="Production review and progress">
                 <DirectorReview />
