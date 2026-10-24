@@ -38,6 +38,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import type { SpeakerMapping } from '../../types'
 import { SectionBadge, EnergyDot } from './DirectorChatBadges'
 
 // Constants and helpers lifted from ``DirectorChat.tsx`` so the
@@ -116,6 +117,114 @@ export function DraggableRefRow({ file, label, index, onRemove, onLabelChange, o
   )
 }
 
+/** Card for an identified audio voice / speaker reference, synchronized
+ *  directly with `directorSpeakerMappings` (Music tab). Displays the
+ *  voice tag (`SPEAKER_01`), vocal role if present, photo preview or
+ *  dashed upload zone, and character name input. */
+export function SpeakerRefCard({
+  mapping,
+  onRemoveImage,
+  onImageChange,
+  onNameChange,
+}: {
+  mapping: SpeakerMapping
+  onRemoveImage: () => void
+  onImageChange: (file: File) => void
+  onNameChange: (name: string) => void
+}) {
+  const [dragOver, setDragOver] = useState(false)
+
+  return (
+    <div
+      onDragOver={e => {
+        e.preventDefault()
+        setDragOver(true)
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={e => {
+        e.preventDefault()
+        setDragOver(false)
+        const file = e.dataTransfer.files?.[0]
+        if (file && file.type.startsWith('image/')) {
+          onImageChange(file)
+        }
+      }}
+      className={`flex flex-col gap-1 group rounded border border-border bg-bg-secondary p-1 transition-colors ${
+        dragOver ? 'border-accent-blue bg-accent-blue/10' : 'hover:border-border-light'
+      }`}
+    >
+      <div className="relative aspect-square bg-bg-tertiary rounded border border-border overflow-hidden flex items-center justify-center">
+        {mapping.imagePreview ? (
+          <>
+            <img
+              src={mapping.imagePreview}
+              alt={mapping.name || mapping.speakerId}
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+            />
+            <button
+              type="button"
+              onClick={onRemoveImage}
+              className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              title="Remove image"
+            >
+              <X size={8} className="text-white" />
+            </button>
+            <span
+              className="absolute bottom-0 left-0 bg-accent-blue/80 backdrop-blur-xs text-white text-[10px] font-semibold px-1 rounded-tr rounded-bl pointer-events-none flex items-center gap-0.5"
+              title={`Identified voice: ${mapping.speakerId}`}
+            >
+              <Mic size={8} />
+              {mapping.speakerId}
+            </span>
+            {mapping.role && (
+              <span
+                className="absolute top-0 left-0 bg-black/60 text-text-muted text-[9px] px-1 rounded-br pointer-events-none"
+                title={`Vocal role: ${mapping.role}`}
+              >
+                {mapping.role}
+              </span>
+            )}
+          </>
+        ) : (
+          <label
+            className="w-full h-full flex flex-col items-center justify-center gap-1 p-2 cursor-pointer bg-accent-blue/5 hover:bg-accent-blue/10 border border-dashed border-accent-blue/40 hover:border-accent-blue rounded transition-colors text-center group/card"
+            title={`Upload reference photo for ${mapping.speakerId}`}
+          >
+            <div className="flex items-center justify-center h-6 w-6 rounded-full bg-accent-blue/15 text-accent-blue">
+              <Plus size={14} className="text-accent-blue" />
+            </div>
+            <span className="text-[10px] font-medium text-text-secondary group-hover/card:text-text-primary leading-tight">
+              Add photo
+            </span>
+            <span className="inline-flex items-center gap-0.5 text-[9px] px-1 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue font-semibold">
+              <Mic size={7} />
+              {mapping.speakerId}
+            </span>
+            <input
+              type="file"
+              accept={IMAGE_ACCEPT}
+              className="sr-only"
+              onChange={e => {
+                const f = e.target.files?.[0]
+                if (f) onImageChange(f)
+                e.target.value = ''
+              }}
+            />
+          </label>
+        )}
+      </div>
+      <input
+        type="text"
+        value={mapping.name}
+        onChange={e => onNameChange(e.target.value)}
+        placeholder="e.g. Thor"
+        title="Character name (synced with Music tab)"
+        className="w-full min-w-0 bg-bg-tertiary border border-border rounded px-1.5 py-0.5 text-2xs text-text-primary placeholder:text-text-muted focus:border-accent-blue outline-none"
+      />
+    </div>
+  )
+}
+
 /** Square "add a reference" card used as the empty-state for the
  *  Character / Location / Voice reference tabs and as a trailing tile
  *  next to the grid when the list is already populated. Wraps a
@@ -182,6 +291,8 @@ function RefAddCard({
 }
 
 export function AdditionalRefsSection() {
+  const speakerMappings = useStore(s => s.directorSpeakerMappings)
+  const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
   const charRefs = useStore(s => s.directorCharacterRefs)
   const charLabels = useStore(s => s.directorCharacterRefLabels)
   const locRefs = useStore(s => s.directorLocationRefs)
@@ -220,18 +331,24 @@ export function AdditionalRefsSection() {
 
   const handleFiles = useCallback((files: FileList | null, type: 'char' | 'loc') => {
     if (!files) return
-    const add = type === 'char' ? addCharRef : addLocRef
-    Array.from(files).forEach(f => { if (f.type.startsWith('image/')) add(f) })
-    // Switch to the tab the user just dropped into so the new ref is
-    // visible without a second click.
-    setActiveRefTab(type)
+    if (type === 'loc') {
+      Array.from(files).forEach(f => { if (f.type.startsWith('image/')) addLocRef(f) })
+      setActiveRefTab('loc')
+      return
+    }
+
+    const imgFiles = Array.from(files).filter(f => f.type.startsWith('image/'))
+    // "Add Character" adds pure standalone characters.
+    // Identified speakers have their own dedicated "Add photo" card if the user wants to assign a photo to a specific voice.
+    imgFiles.forEach(f => addCharRef(f))
+    setActiveRefTab('char')
   }, [addCharRef, addLocRef])
 
   const nativeVoiceReference = voiceReferenceMode === 'native_reference'
   const showVoiceReference = supportsVoiceReference
     && (nativeVoiceReference || voiceReferenceEnabled)
 
-  const charCount = charRefs.length
+  const charCount = speakerMappings.length + charRefs.length
   const locCount = locRefs.length
 
   return (
@@ -299,6 +416,20 @@ export function AdditionalRefsSection() {
       <div role="tabpanel" className="flex-1 min-h-0 overflow-y-auto scrollbar-visible pr-1 space-y-1.5">
         {activeRefTab === 'char' ? (
           <div className="grid grid-cols-4 gap-2">
+            {speakerMappings.map(m => (
+              <SpeakerRefCard
+                key={m.speakerId}
+                mapping={m}
+                onRemoveImage={() => setSpeakerMapping(m.speakerId, m.name, m.role, null, null)}
+                onImageChange={file => {
+                  const preview = URL.createObjectURL(file)
+                  setSpeakerMapping(m.speakerId, m.name, m.role, file, preview)
+                }}
+                onNameChange={name => {
+                  setSpeakerMapping(m.speakerId, name, m.role, m.image, m.imagePreview)
+                }}
+              />
+            ))}
             {charRefs.map((f, i) => (
               <DraggableRefRow key={`c${i}-${f.name}`} file={f} label={charLabels[i] || ''} index={i}
                 onRemove={removeCharRef} onLabelChange={setCharLabel} onReorder={reorderCharRefs}
