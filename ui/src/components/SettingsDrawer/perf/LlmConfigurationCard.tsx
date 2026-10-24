@@ -42,11 +42,10 @@ export function LlmConfigurationCard({
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionResult, setConnectionResult] = useState<{ status: string; latency_ms: number; models?: string[]; error?: string } | null>(null)
 
-  // Filter models by current provider (show local + remote of current provider)
+  // Filter models strictly by current provider (e.g., only show Ollama models when Ollama is selected)
   const filteredModels = llmModels.filter(m => {
     const mp = (m as { provider?: string }).provider || 'local'
-    if (isLocal) return mp === 'local'
-    return mp === 'local' || mp === provider
+    return mp === provider
   })
 
   const handleRefreshModels = async () => {
