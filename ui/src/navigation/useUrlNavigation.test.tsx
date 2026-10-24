@@ -121,3 +121,17 @@ it('keeps media filter changes in the query string', async () => {
   act(() => { state().setMediaFilter('videos') })
   expect(window.location.pathname + window.location.search).toBe('/projects/abc/medias?filter=videos')
 })
+
+it('restores last active project and section from localStorage when visiting root URL', async () => {
+  localStorage.setItem('cue-studio-last-active', JSON.stringify({ workspace: 'abc', section: 'director' }))
+  act(() => {
+    useStore.setState({ workspaces: [{ name: 'abc' }] } as never)
+  })
+  setUrl('/')
+  await mount()
+
+  expect(state().activeWorkspace).toBe('abc')
+  expect(state().appSection).toBe('director')
+  expect(window.location.pathname).toBe('/projects/abc/director')
+})
+

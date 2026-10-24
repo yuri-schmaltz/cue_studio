@@ -50,7 +50,6 @@ def test_create_edit_and_reopen_project_setup():
         page.get_by_role('tab', name='Projects', exact=True).click()
         page.get_by_role('button', name='New project', exact=True).click()
         page.get_by_role('textbox', name='Project name', exact=True).fill('Setup contract')
-        page.get_by_role('button', name='Adjust… more options', exact=True).click()
         page.get_by_role('combobox', name='Aspect ratio', exact=True).select_option('9:16')
         page.get_by_role('combobox', name='Resolution', exact=True).select_option('480p')
         page.get_by_role('button', name='Create project', exact=True).click()

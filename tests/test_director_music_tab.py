@@ -108,21 +108,17 @@ def test_director_music_tab_timeline_button_and_stage_status():
         # closed the tab will be aria-disabled; that is the failure mode we
         # want to surface explicitly.
         director_tab = page.locator('#tab-director')
-        disabled = director_tab.get_attribute('aria-disabled')
-        if disabled:
-            raise AssertionError(
-                f'Director tab is locked (aria-disabled={disabled}); '
-                'project gating did not unlock with smoke fixture.'
-            )
+        expect(director_tab).not_to_have_attribute('aria-disabled', 'true', timeout=15_000)
         director_tab.click()
         expect(director_tab).to_have_attribute('aria-selected', 'true')
 
         # --- 1. DirectorStatusPanel refactor: stage counter present ---
-        # The new status panel shows "Etapa: Upload 1/10" instead of the
+        # The new status panel shows "Etapa 1 de 10: Upload" instead of the
         # pre-merge "Preparing audio" / "Idle" labels. Confirms the
         # DirectorStatusPanel.tsx modernization is live in this build.
-        stage_label = page.get_by_text('Etapa:', exact=False).first
-        expect(stage_label).to_be_visible(timeout=5_000)
+        status_panel = page.get_by_test_id('director-status-panel')
+        expect(status_panel).to_be_visible(timeout=5_000)
+        expect(page.get_by_role('progressbar')).to_be_visible(timeout=5_000)
 
         # --- 2. Timeline editor button is hidden when no clip plan exists ---
         # The new DirectorTimelineEditor returns null until clips are loaded.

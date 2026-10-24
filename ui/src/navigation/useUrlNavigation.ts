@@ -21,10 +21,11 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '../stores/useStore'
 import type { MediaFilter } from '../types'
-import { parseRoute, routeFromState, serializeRoute, sectionFromRoute } from './types'
+import { parseRoute, routeFromState, serializeRoute, sectionFromRoute, PROJECT_SECTIONS } from './types'
 import type { AppRoute } from './types'
 
 const MEDIA_FILTERS: readonly MediaFilter[] = ['all', 'images', 'videos', 'audio', 'avatars', 'multiclip', 'favorites']
+const LAST_ACTIVE_KEY = 'cue-studio-last-active'
 
 function currentHref(): string {
   return window.location.pathname + window.location.search
@@ -82,7 +83,25 @@ export function useUrlNavigation(): void {
   // Apply a URL to the store, then canonicalize the address bar so
   // the store→URL effect finds nothing left to write.
   const applyFromLocation = async () => {
-    const route = parseRoute(window.location.pathname)
+    let route = parseRoute(window.location.pathname)
+    if (route.kind === 'projects' && window.location.pathname === '/') {
+      try {
+        const raw = localStorage.getItem(LAST_ACTIVE_KEY)
+        if (raw) {
+          const last = JSON.parse(raw)
+          if (last.workspace && workspaces.some((w) => w.name === last.workspace)) {
+            if (last.section === 'editor') {
+              route = { kind: 'editor', projectId: last.workspace }
+            } else if (last.section && (PROJECT_SECTIONS as readonly string[]).includes(last.section)) {
+              route = { kind: 'project', projectId: last.workspace, section: last.section }
+            }
+          }
+        }
+      } catch {
+        /* ignore invalid storage entry */
+      }
+    }
+
     applyingRef.current = true
     try {
       // On failure (unknown project) the canonical URL of the current
@@ -138,6 +157,13 @@ export function useUrlNavigation(): void {
     if (target === currentHref()) return
     if (changed) {
       window.history.pushState(null, '', target)
+      try {
+        if (workspace && workspace !== 'default') {
+          localStorage.setItem(LAST_ACTIVE_KEY, JSON.stringify({ workspace, section }))
+        }
+      } catch {
+        /* ignore storage quota errors */
+      }
     } else {
       // Filter-only change: replace so history isn't polluted.
       window.history.replaceState(null, '', target)

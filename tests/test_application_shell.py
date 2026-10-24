@@ -11,6 +11,7 @@ install dependency). Opt in with ``pytest tests/ -m browser`` or
 """
 import json
 import os
+import re
 from pathlib import Path
 import pytest
 from urllib.parse import urlparse
@@ -74,7 +75,7 @@ def test_application_shell():
                 route.fulfill(json={'workspaces':workspaces,'active':active[0]})
         page.route('**/api/v1/workspaces**', projects_api)
         page.goto(URL, wait_until='domcontentloaded')
-        expect(page.get_by_test_id('active-project-chip')).to_contain_text('shell-fixture')
+        expect(page).to_have_title(re.compile(r'shell-fixture'))
         for width, height in [(1440, 960), (1024, 768), (768, 1024), (390, 844), (320, 740)]:
             page.set_viewport_size({'width': width, 'height': height})
             for name in SECTIONS:
@@ -176,7 +177,7 @@ def test_director_opens_without_runtime_errors():
         page.route('**/api/v1/workspaces/browser-fixture/setup',
                    lambda route: route.fulfill(json={'setup': dict(DEFAULT_PROJECT_SETUP)}))
         page.goto(URL, wait_until='domcontentloaded')
-        expect(page.get_by_test_id('active-project-chip')).to_contain_text('browser-fixture')
+        expect(page).to_have_title(re.compile(r'browser-fixture'))
         page.get_by_role('tab', name='Director', exact=True).click()
         expect(page.get_by_label('Director chat & decisions')).to_be_visible()
         expect(page.get_by_role('tablist', name='Music source', exact=True)).to_be_visible()
