@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
-import { Sparkles, Loader2, ChevronDown, ChevronUp, Brain, PenLine, RefreshCw } from 'lucide-react'
+import { Sparkles, Loader2, ChevronDown, ChevronUp, Brain, PenLine, RefreshCw, X, History, Trash2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { getPromptHistory, removePromptFromHistory, clearPromptHistory } from '../../lib/promptHistory'
 import {
   effectiveH3OmniSequenceFrames,
   h3OmniSequenceWindowCount,
@@ -168,8 +169,10 @@ export function PromptInput() {
     && !!item.h3WindowPlan
   ))?.h3WindowPlan?.signature || '')
   const [ttsMenuOpen, setTtsMenuOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [closedWindowPlanSignature, setClosedWindowPlanSignature] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const historyMenuRef = useRef<HTMLDivElement>(null)
 
   const isAudioOnly = modelOptions?.audio_only
   const voiceCount = useStore(s => s.ttsVoiceCount)
@@ -333,6 +336,16 @@ export function PromptInput() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [ttsMenuOpen])
+
+  // Close prompt history menu on outside click
+  useEffect(() => {
+    if (!historyOpen) return
+    const handler = (e: MouseEvent) => {
+      if (historyMenuRef.current && !historyMenuRef.current.contains(e.target as Node)) setHistoryOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [historyOpen])
 
   // A newly planned storyboard opens automatically. Store only the signature
   // the user explicitly closed so a replacement plan opens without a state-
@@ -579,6 +592,85 @@ export function PromptInput() {
             : modePlaceholder}
           className="block w-full min-h-[112px] resize-none overflow-hidden bg-bg-tertiary border border-border rounded-lg px-3 py-2 pr-10 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
         />
+        <div className="absolute right-2 top-2 flex items-center gap-1 z-10">
+          <div ref={historyMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(!historyOpen)}
+              title="Recent prompts history"
+              className={`p-1 rounded-md text-text-muted/60 hover:text-text-primary hover:bg-bg-hover transition-colors ${
+                historyOpen ? 'text-accent-blue bg-bg-hover' : ''
+              }`}
+            >
+              <History size={13} />
+            </button>
+            {historyOpen && (
+              <div className="absolute right-0 top-full mt-1 w-72 max-h-64 overflow-y-auto bg-bg-secondary border border-border rounded-lg shadow-xl p-2 z-50 text-xs">
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-border/60">
+                  <span className="font-medium text-text-secondary text-2xs uppercase tracking-wider">
+                    Recent Prompts ({generationMode})
+                  </span>
+                  {getPromptHistory(generationMode).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        clearPromptHistory(generationMode)
+                        setHistoryOpen(false)
+                      }}
+                      className="text-2xs text-text-muted hover:text-red-400 flex items-center gap-1 transition-colors"
+                    >
+                      <Trash2 size={10} /> Clear
+                    </button>
+                  )}
+                </div>
+                {getPromptHistory(generationMode).length === 0 ? (
+                  <div className="py-4 text-center text-text-muted text-2xs">
+                    No saved prompts for {generationMode} mode yet.
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {getPromptHistory(generationMode).map((histPrompt, idx) => (
+                      <div
+                        key={idx}
+                        className="group flex items-start justify-between gap-1.5 p-1.5 rounded hover:bg-bg-hover text-left transition-colors cursor-pointer"
+                        onClick={() => {
+                          setParam('prompt', histPrompt)
+                          setHistoryOpen(false)
+                        }}
+                      >
+                        <span className="text-2xs text-text-secondary group-hover:text-text-primary line-clamp-2 leading-relaxed flex-1">
+                          {histPrompt}
+                        </span>
+                        <button
+                          type="button"
+                          title="Remove from history"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removePromptFromHistory(generationMode, idx)
+                            setHistoryOpen(true)
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-0.5 text-text-muted hover:text-red-400 rounded transition-opacity"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {prompt.trim() && (
+            <button
+              type="button"
+              onClick={() => setParam('prompt', '')}
+              title="Clear prompt"
+              className="p-1 rounded-md text-text-muted/60 hover:text-text-primary hover:bg-bg-hover transition-colors"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
         {prompt.trim() && !usesManualWindowPrompts && (
         isAudioOnly ? (
           /* TTS: mode-aware split button. Main button uses default mode based

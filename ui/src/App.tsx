@@ -24,11 +24,14 @@ import { useStore } from './stores/useStore'
 import { useUrlNavigation } from './navigation/useUrlNavigation'
 import { usePolling } from './lib/usePolling'
 import { emitTelemetry } from './lib/telemetry'
+import { useUnloadProtection } from './lib/useUnloadProtection'
 
 function App() {
   // Keep the URL and the store's navigation in lock-step (A09):
   // deep links restore project + section, Back walks real URLs.
   useUrlNavigation()
+  // Intercept beforeunload when generations or unsaved edits are active
+  useUnloadProtection()
   useEffect(() => { void emitTelemetry('app_started', {}) }, [])
   const loadModels = useStore(s => s.loadModels)
   const loadOutputs = useStore(s => s.loadOutputs)
