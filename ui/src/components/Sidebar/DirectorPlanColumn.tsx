@@ -192,68 +192,69 @@ export function DirectorPlanColumn() {
        vertical real estate. */
     <div className="h-full flex flex-col min-h-0" data-testid="director-plan-column">
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 -mr-1">
-      {/* 1) Fixed and permanent Image and video prompts card:
+      {/* 1) When planning with LLM is actively running:
+          Directly show the Planning with LLM activity block as the single container,
+          without enclosing it in another container. */}
+      {isPlanningActive && (
+        <DirectorActivityBlock />
+      )}
+
+      {/* 2) When not actively planning:
           - Shows empty state before planning starts
-          - Shows live activity & progress during planning
           - Shows prompt review cards once planning completes, filling vertical space */}
-      <section className={`bg-bg-secondary rounded-lg p-4 border border-border flex flex-col min-h-0 ${hasPlan ? 'flex-1' : 'space-y-3'}`} data-testid="director-prompts-card">
-        <div className="flex items-center justify-between pb-2 shrink-0">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-            {cardTitle}
-          </h3>
-          {clipPlans.length > 0 && (
-            <span className="text-2xs text-text-muted px-2 py-0.5 rounded bg-bg-tertiary border border-border">
-              {clipPlans.length} {clipPlans.length === 1 ? 'cena' : 'cenas'}
-            </span>
-          )}
-        </div>
-
-        {/* State A: Loading / Planning actively with LLM */}
-        {isPlanningActive && (
-          <div className="space-y-3">
-            <DirectorActivityBlock />
+      {!isPlanningActive && (
+        <section className={`bg-bg-secondary rounded-lg p-4 border border-border flex flex-col min-h-0 ${hasPlan ? 'flex-1' : 'space-y-3'}`} data-testid="director-prompts-card">
+          <div className="flex items-center justify-between pb-2 shrink-0">
+            <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+              {cardTitle}
+            </h3>
+            {clipPlans.length > 0 && (
+              <span className="text-2xs text-text-muted px-2 py-0.5 rounded bg-bg-tertiary border border-border">
+                {clipPlans.length} {clipPlans.length === 1 ? 'cena' : 'cenas'}
+              </span>
+            )}
           </div>
-        )}
 
-        {/* State B: Prompt review cards once plan is ready */}
-        {!isPlanningActive && hasPlan && usesShotImages && (
-          <div className="flex-1 flex flex-col min-h-0 space-y-3">
-            <ImagePromptsReview
-              clipPlans={clipPlans}
-              plannedClips={plannedClips}
-              speakerMappings={speakerMappings}
-              editClipPlan={editPlanWithHistory}
-              planPrompts={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
-              planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
-              generateStartImages={generateStartImages}
-              loading={loading}
-              isActive={atStep('review') || atStep('plan')}
-              isShortFilm={isShortFilm}
-            />
-            <div className="shrink-0">
-              <LlmLogStage
-                stage="plan"
-                label={cardTitle}
+          {/* State B: Prompt review cards once plan is ready */}
+          {hasPlan && usesShotImages && (
+            <div className="flex-1 flex flex-col min-h-0 space-y-3">
+              <ImagePromptsReview
+                clipPlans={clipPlans}
+                plannedClips={plannedClips}
+                speakerMappings={speakerMappings}
+                editClipPlan={editPlanWithHistory}
+                planPrompts={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
+                planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
+                generateStartImages={generateStartImages}
+                loading={loading}
+                isActive={atStep('review') || atStep('plan')}
+                isShortFilm={isShortFilm}
               />
+              <div className="shrink-0">
+                <LlmLogStage
+                  stage="plan"
+                  label={cardTitle}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* State C: Empty State when no planning has occurred yet */}
-        {!isPlanningActive && !hasPlan && (
-          <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-3 bg-bg-tertiary/40 rounded-lg border border-dashed border-border/80">
-            <div className="h-10 w-10 rounded-full bg-accent-blue/10 flex items-center justify-center text-accent-blue">
-              <Sparkles size={20} />
+          {/* State C: Empty State when no planning has occurred yet */}
+          {!hasPlan && (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center space-y-3 bg-bg-tertiary/40 rounded-lg border border-dashed border-border/80">
+              <div className="h-10 w-10 rounded-full bg-accent-blue/10 flex items-center justify-center text-accent-blue">
+                <Sparkles size={20} />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-text-primary">Nenhum prompt gerado ainda</p>
+                <p className="text-2xs text-text-muted max-w-sm leading-relaxed">
+                  Configure a música, referências visuais e a descrição da cena na coluna ao lado. Os roteiros visuais e prompts detalhados de cada corte serão organizados aqui.
+                </p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-text-primary">Nenhum prompt gerado ainda</p>
-              <p className="text-2xs text-text-muted max-w-sm leading-relaxed">
-                Configure a música, referências visuais e a descrição da cena na coluna ao lado. Os roteiros visuais e prompts detalhados de cada corte serão organizados aqui.
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
+          )}
+        </section>
+      )}
 
       {/* 5) Image generation — progress + the actual images that came
           back from the image model. Each card is tagged with the clip
