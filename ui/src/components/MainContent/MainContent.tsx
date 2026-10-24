@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useEffect, useMemo } from 'react'
-import { Film, Play, Square, FolderOpen, Plus, Check, Loader2, X, BookMarked, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Film, Play, Square, Loader2, X, BookMarked, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { TabFilter } from './TabFilter'
 import { MediaGallery } from './MediaGallery'
 import { MediaInspector } from './MediaInspector'
@@ -9,131 +9,6 @@ import { formatEstimatedClock, formatEtaDuration } from '../../lib/format'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
 import type { GenerationJob } from '../../types'
 
-export function WorkspaceSelector() {
-  const workspaces = useStore(s => s.workspaces)
-  const activeWorkspace = useStore(s => s.activeWorkspace)
-
-  const switchWorkspace = useStore(s => s.switchWorkspace)
-  const deleteWorkspace = useStore(s => s.deleteWorkspace)
-  const [open, setOpen] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [deleting, setDeleting] = useState<string | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  const handleDelete = async (name: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (confirmDelete !== name) {
-      setConfirmDelete(name)
-      setTimeout(() => setConfirmDelete(c => (c === name ? null : c)), 4000)
-      return
-    }
-    setConfirmDelete(null)
-    setDeleting(name)
-    setDeleteError(null)
-    try {
-      await deleteWorkspace(name)
-    } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : String(err))
-      setTimeout(() => setDeleteError(null), 6000)
-    } finally {
-      setDeleting(null)
-    }
-  }
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors border border-border"
-        title="Switch workspace"
-      >
-        <FolderOpen size={12} />
-        <span className="max-w-[120px] truncate">{activeWorkspace}</span>
-      </button>
-
-      {open && (
-        <div className="absolute left-0 bottom-full mb-2 w-64 bg-bg-secondary border border-border rounded-lg shadow-lg z-50 overflow-hidden">
-          <div className="px-2 py-1.5 border-b border-border">
-            <span className="text-2xs text-text-muted uppercase tracking-wider">Projects</span>
-          </div>
-          <div className="max-h-[200px] overflow-y-auto">
-            {/* Filter "default" — it's the backend's implicit root
-                outputs/ folder, not a real user project. Showing it would
-                let users switch to a non-project bucket and defeat the
-                per-project organization. */}
-            {workspaces.filter(ws => ws.name !== 'default').map(ws => (
-              <div key={ws.name} className="flex items-center group hover:bg-bg-hover transition-colors">
-                <button
-                  onClick={() => { switchWorkspace(ws.name); setOpen(false) }}
-                  className={`flex-1 min-w-0 text-left px-3 py-2 text-xs flex items-center justify-between ${
-                    ws.name === activeWorkspace ? 'text-accent-blue' : 'text-text-secondary'
-                  }`}
-                >
-                  <span className="truncate">{ws.name}</span>
-                  {ws.name === activeWorkspace && <Check size={12} className="shrink-0" />}
-                </button>
-                {/* default IS filtered out above, so all listed projects
-                    are real user projects and can be deleted here too. */}
-                <button
-                  onClick={e => handleDelete(ws.name, e)}
-                  disabled={deleting === ws.name}
-                  className={`px-2 py-2 shrink-0 transition-colors ${
-                    confirmDelete === ws.name
-                      ? 'text-red-400 bg-red-500/15'
-                      : deleting === ws.name
-                        ? 'text-text-muted cursor-wait'
-                        : 'text-text-muted opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-red-400'
-                  }`}
-                  title={confirmDelete === ws.name
-                    ? `Click again to permanently delete "${ws.name}" and its ${ws.file_count ?? 0} files`
-                    : `Delete project (${ws.file_count ?? 0} files)`}
-                >
-                  {deleting === ws.name ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                </button>
-              </div>
-            ))}
-          </div>
-          {deleteError && (
-            <div className="px-3 py-1.5 text-2xs text-red-400 border-t border-border leading-snug">{deleteError}</div>
-          )}
-          {/* Project management happens on the Projects page — that's
-              where projects (= workspaces) are created and deleted.
-              This dropdown just lets the user jump back there from
-              wherever they are, or quickly create a new project. */}
-          <div className="border-t border-border p-2 space-y-1">
-            <button
-              onClick={() => { useStore.getState().setAppSection('projects'); setOpen(false) }}
-              className="w-full text-left px-1 py-1 text-xs text-text-secondary hover:text-text-primary flex items-center gap-1"
-              title="Open the Projects page to switch projects"
-            >
-              <FolderOpen size={12} /> All projects
-            </button>
-            <button
-              onClick={() => { useStore.getState().setAppSection('projects'); setOpen(false) }}
-              className="w-full text-left px-1 py-1 text-xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-1"
-              title="Create a new project (= workspace)"
-            >
-              <Plus size={12} /> New project
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function stripTimeSuffix(msg: string): string {
   return msg.replace(/\s*\|\s*\d+:\d+.*$/, '').trim()
@@ -323,7 +198,7 @@ function JobPlaceholder({ job, onStop, onDismiss }: { job: GenerationJob; onStop
   )
 }
 
-export function PipelinePlaceholder() {
+function PipelinePlaceholder() {
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const pipelineId = useStore(s => s.pipelineId)
   const stopPipeline = useStore(s => s.stopPipeline)
@@ -741,3 +616,5 @@ export function MainContent() {
     </main>
   )
 }
+
+export default MainContent

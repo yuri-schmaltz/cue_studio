@@ -2947,14 +2947,13 @@ export function ImagePromptsReview({
                 </div>
 
                 {/* 2. Center: Prompt Textarea */}
-                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                  <AutoResizeTextarea
+                <div className="flex-1 min-w-0 h-24">
+                  <textarea
                     value={plan.image_prompt}
                     onChange={e => editClipPlan(i, 'image_prompt', e.target.value)}
-                    rows={3}
                     disabled={!isActive}
                     placeholder="Descreva o enquadramento e elementos visuais da cena inicial..."
-                    className="w-full h-full bg-bg-secondary border border-border rounded-lg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-60 leading-relaxed"
+                    className="w-full h-full bg-bg-secondary border border-border rounded-lg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-60 leading-relaxed overflow-y-auto"
                   />
                 </div>
 
@@ -3121,7 +3120,7 @@ export function VideoPromptsReview({
   clipPlans, plannedClips, clipImages, setClipImage, allowSceneImageUploads,
   speakerMappings, editClipPlan,
   planVideoPrompts, directorGenerate, queueCurrent, applyToClips, loading, isShortFilm,
-  isGenerating, isAutoGenerating, editingQueueEntryId,
+  isGenerating, editingQueueEntryId,
 }: {
   clipPlans: ReturnType<typeof useStore.getState>['directorClipPlans']
   plannedClips: ReturnType<typeof useStore.getState>['directorPlannedClips']
@@ -3408,18 +3407,18 @@ export function VideoPromptsReview({
           disabled={(loading && !isGenerating) || queueBusy}
           className="w-full py-2.5 rounded-lg bg-accent-green hover:bg-accent-green-hover text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
           title={isGenerating
-            ? 'Freeze these edited settings as a queued revision; the active run is unchanged'
+            ? 'Adicionar esta geração de vídeos à fila de processamento'
             : editingQueueEntryId
-              ? 'Replace the held queue entry with these edited settings'
-              : 'Render this Director project as a new revision'}
+              ? 'Salvar alterações na fila'
+              : 'Iniciar renderização dos vídeos das cenas'}
         >
           {isGenerating || editingQueueEntryId
             ? <ListVideo size={14} /> : <Play size={14} fill="white" />}
           {editingQueueEntryId
             ? 'Save Queue Changes'
             : isGenerating
-            ? (isAutoGenerating ? 'Queue Edited Variant' : 'Add Variant to Queue')
-            : 'Generate'}
+            ? 'Generate Videos (Add to Queue)'
+            : 'Generate Videos'}
         </button>
         {!isGenerating && !editingQueueEntryId && (
           <>

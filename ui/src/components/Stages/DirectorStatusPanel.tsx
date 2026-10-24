@@ -63,7 +63,7 @@ export function DirectorStatusPanel() {
 
   return (
     <footer
-      className="mt-auto shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-4 py-2.5 space-y-2 select-none"
+      className="mt-auto shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex flex-col justify-center space-y-1.5 select-none"
       data-testid="director-status-panel"
       aria-label={`Progresso do pipeline: ${displayLabel}, etapa ${currentIndex + 1} de ${totalSteps}`}
     >

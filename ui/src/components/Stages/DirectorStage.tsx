@@ -51,9 +51,9 @@ import {
 } from '../../director/types'
 import {
   DirectorChat,
-  DirectorGenerationOptions,
 } from '../Sidebar/DirectorChat'
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
+import { DirectorOutputColumn } from '../Director/DirectorOutputColumn'
 import { DirectorTourOverlay } from './DirectorTourOverlay'
 
 /**
@@ -261,17 +261,12 @@ export function DirectorStage() {
         </section>
         <aside
           className="director-stage-options"
-          aria-label="Director generation options"
+          aria-label="Director outputs & preview"
           id={panelDomId('options')}
           style={panelVisible('options') ? undefined : { display: 'none' }}
           {...panelA11y()}
         >
-          {/* DirectorGenerationOptions owns its own locked-vs-unlocked body.
-              The header (with the Style Bibles shortcut and the Basic /
-              Expert toggle) renders unconditionally so the Style Bibles
-              button stays reachable from the moment the Director opens,
-              even before the user uploads audio. */}
-          <DirectorGenerationOptions />
+          <DirectorOutputColumn />
         </aside>
       </div>
     </div>

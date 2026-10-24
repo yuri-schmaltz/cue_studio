@@ -26,7 +26,7 @@
 // re-mount of the same sub-components DirectorChat already exported.
 
 import { useStore } from '../../stores/useStore'
-import { useMemo } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import { Sparkles } from 'lucide-react'
 import {
   ImagePromptsReview,
@@ -34,6 +34,8 @@ import {
   VideoPromptsReview,
   LlmLogStage,
 } from './DirectorChat'
+import { StructureView } from './DirectorReferencePanels'
+import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import { DirectorActivityBlock } from './DirectorActivityBar'
 import { DirectorStatusPanel } from '../Stages/DirectorStatusPanel'
 
@@ -61,14 +63,22 @@ export function DirectorPlanColumn() {
 
   // planning surfaces
   const plannedClips = useStore(s => s.directorPlannedClips)
-  // Clip structure + pacing slider moved to the chat column (see
-  // DirectorChat). These selectors are kept subscribed so the plan
-  // column still re-renders when the user changes them in the chat,
-  // but the values are no longer consumed here.
-  void useStore(s => s.directorEnergyBias)
-  void useStore(s => s.directorSetEnergyBias)
-  void useStore(s => s.shortFilmSetPacingBias)
-  void useStore(s => s.directorConfirmStructure)
+  const energyBias = useStore(s => s.directorEnergyBias)
+  const setEnergyBias = useStore(s => s.directorSetEnergyBias)
+  const shortFilmSetPacingBias = useStore(s => s.shortFilmSetPacingBias)
+  const confirmStructure = useStore(s => s.directorConfirmStructure)
+  const [localBias, setLocalBias] = useState<number | null>(null)
+  const sliderRef = useRef<number | null>(null)
+
+  const totalClipDuration = useMemo(() => {
+    return plannedClips.reduce((sum, c) => sum + ((c.end - c.start) || 0), 0)
+  }, [plannedClips])
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60)
+    const sec = Math.floor(s % 60)
+    return `${m}:${sec.toString().padStart(2, '0')}`
+  }
 
   // analysis snapshot still consumed by the speaker-sample aggregation
   // further down (lyrics → speakers). Hoisted up here so the memo can
@@ -192,6 +202,37 @@ export function DirectorPlanColumn() {
        vertical real estate. */
     <div className="h-full flex flex-col min-h-0" data-testid="director-plan-column">
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 -mr-1">
+      {/* 0) Clip Structure / Timeline */}
+      {plannedClips.length > 0 && !isStoryPath && (
+        <section className="bg-bg-secondary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2 shrink-0" data-testid="director-structure-card">
+          <header className="flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
+                {isShortFilm ? 'Scene structure' : 'Clip structure'}
+              </h3>
+              <span className="text-2xs text-text-muted font-normal shrink-0">
+                ({plannedClips.length} {isShortFilm ? 'scenes' : 'clips'} · {formatTime(totalClipDuration)})
+              </span>
+            </div>
+          </header>
+          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pr-0.5">
+            <StructureView
+              plannedClips={plannedClips}
+              energyBias={energyBias}
+              localBias={localBias}
+              setLocalBias={setLocalBias}
+              sliderRef={sliderRef}
+              setEnergyBias={isShortFilm ? shortFilmSetPacingBias : setEnergyBias}
+              loading={loading}
+              confirmStructure={confirmStructure}
+              isActive={atStep('structure')}
+              isShortFilm={isShortFilm}
+            />
+          </div>
+          <DirectorTimelineEditor />
+        </section>
+      )}
+
       {/* 1) When planning with LLM is actively running:
           Directly show the Planning with LLM activity block as the single container,
           without enclosing it in another container. */}
@@ -276,10 +317,9 @@ export function DirectorPlanColumn() {
       )}
 
       {/* 6) Plan video log — second LLM pass that writes video_prompt
-          per clip. During the load we mount the DirectorActivityBlock so
-          the user sees the live phase + progress + token counter; after
-          the load completes we surface the collapsible history. */}
-      {(pastStep('plan_video') || atStep('plan_video') || atStep('review_video')) && (
+          per clip. Shown only while planning video prompts (or if actively loading)
+          so it doesn't leave an empty redundant container above the actual prompts review. */}
+      {((pastStep('plan_video') && !atStep('review_video')) || atStep('plan_video') || (atStep('review_video') && loading)) && (
         <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3">
           <h3 className="text-xs text-text-muted uppercase tracking-wider">Video prompts</h3>
           <DirectorActivityBlock />
