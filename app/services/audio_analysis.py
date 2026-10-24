@@ -17,6 +17,8 @@ import numpy as np
 from typing import Optional, List, Tuple
 from dataclasses import dataclass, field, asdict
 
+from . import torchaudio_compat  # noqa: F401 (ensure torchaudio compatibility for pyannote)
+
 logger = logging.getLogger(__name__)
 
 
