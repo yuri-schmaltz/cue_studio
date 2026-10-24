@@ -1,7 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 
-import { errorActionFor } from '../api/error-actions'
+import { errorActionFor, isChunkLoadError } from '../api/error-actions'
 import { ErrorState } from './shared/ErrorState'
 import { emitTelemetry } from '../lib/telemetry'
 
@@ -42,6 +42,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   private reset = () => {
+    if (isChunkLoadError(this.state.error)) {
+      window.location.reload()
+      return
+    }
     this.setState({ error: null })
   }
 

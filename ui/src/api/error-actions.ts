@@ -53,9 +53,27 @@ const RULES: Array<{ test: (code: string) => boolean; action: ErrorAction }> = [
   },
 ]
 
+export function isChunkLoadError(error: unknown): boolean {
+  if (!error) return false
+  const msg = error instanceof Error ? error.message : String(error)
+  return (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('error loading dynamically imported module')
+  )
+}
+
 /** Suggested action for any error; ApiError codes win, everything else
  *  defaults to a retry. */
 export function errorActionFor(error: unknown): ErrorAction {
+  if (isChunkLoadError(error)) {
+    return {
+      kind: 'retry',
+      label: 'Reload app',
+      hint: 'A new version of the app was deployed. Reloading will fetch the latest assets.',
+    }
+  }
   if (error instanceof Error && 'code' in error && typeof (error as ApiError).code === 'string') {
     const code = (error as ApiError).code
     const match = RULES.find((rule) => rule.test(code))
