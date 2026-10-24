@@ -861,81 +861,80 @@ export function DirectorChat() {
       </div>
 
       {/* Action buttons row — immediately below the field, 5 equal-width
-          buttons filling 100% horizontal width. The leftmost button
-          toggles "Auto Mode" so the user can flip it on/off from
-          the same surface where they fire the Director project; it
-          highlights in accent-blue when active and falls back to a
-          neutral border when inactive. */}
-      <div className="grid grid-cols-5 gap-2 w-full shrink-0">
-        <button
-          type="button"
-          onClick={() => setAutoMode(!autoMode)}
-          title="In Auto Mode, the Director runs planning and triggers video generation without pausing for manual approval"
-          aria-label={`Auto Mode ${autoMode ? 'on' : 'off'}`}
-          aria-pressed={autoMode}
-          className={`w-full h-9 flex items-center justify-center p-2 rounded-lg transition-colors shadow-sm border ${
-            autoMode
-              ? 'bg-accent-blue border-accent-blue text-white hover:bg-accent-blue-hover'
-              : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary hover:border-border-light'
-          }`}
-        >
-          <Sparkles size={12} />
-          <span className="text-2xs font-semibold uppercase tracking-wider">Auto</span>
-        </button>
+          buttons filling 100% horizontal width. Enclosed in a h-[54px]
+          container to align height and baseline with central and right footers. */}
+      <div className="h-[54px] min-h-[54px] flex items-center w-full shrink-0">
+        <div className="grid grid-cols-5 gap-2 w-full">
+          <button
+            type="button"
+            onClick={() => setAutoMode(!autoMode)}
+            title="In Auto Mode, the Director runs planning and triggers video generation without pausing for manual approval"
+            aria-label={`Auto Mode ${autoMode ? 'on' : 'off'}`}
+            aria-pressed={autoMode}
+            className={`w-full h-9 flex items-center justify-center p-2 rounded-lg transition-colors shadow-sm border ${
+              autoMode
+                ? 'bg-accent-blue border-accent-blue text-white hover:bg-accent-blue-hover'
+                : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary hover:border-border-light'
+            }`}
+          >
+            <Sparkles size={12} />
+            <span className="text-2xs font-semibold uppercase tracking-wider">Auto</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => void handlePromptWizard()}
-          disabled={!chatInputEnabled || wizardLoading}
-          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-          title={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
-          aria-label={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
-        >
-          {wizardLoading ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <Wand2 size={16} />
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={() => void handlePromptWizard()}
+            disabled={!chatInputEnabled || wizardLoading}
+            className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+            title={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
+            aria-label={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
+          >
+            {wizardLoading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Wand2 size={16} />
+            )}
+          </button>
 
-        <ScriptAttachButton
-          attached={attachedScript}
-          loading={scriptLoading}
-          onPick={handleScriptFile}
-          className="w-full h-9 shadow-sm"
-        />
+          <ScriptAttachButton
+            attached={attachedScript}
+            loading={scriptLoading}
+            onPick={handleScriptFile}
+            className="w-full h-9 shadow-sm"
+          />
 
-        <button
-          onClick={handleChatSubmit}
-          disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim() || (!mvGenerateSetup && step !== 'style' && !audioFile)}
-          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-          title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
-          aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
-        >
-          {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <Send size={16} />
-          )}
-        </button>
+          <button
+            onClick={handleChatSubmit}
+            disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim() || (!mvGenerateSetup && step !== 'style' && !audioFile)}
+            className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+            title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
+            aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
+          >
+            {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Send size={16} />
+            )}
+          </button>
 
-        <button
-          onClick={() => void handleQueueDraft()}
-          disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
-          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-          title={
-            mvGenerateSetup
-              ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-              : `Add this complete Director project to the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-          }
-          aria-label={directorQueueEditingEntryId ? 'Save Director queue changes' : `Add Director project to queue (${directorQueueEntriesCount} pending)`}
-        >
-          {draftQueuePending || directorQueueLoading
-            ? <Loader2 size={16} className="animate-spin" />
-            : draftQueueConfirmation
-              ? <Check size={16} />
-              : <ListVideo size={16} />}
-        </button>
+          <button
+            onClick={() => void handleQueueDraft()}
+            disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
+            className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+            title={
+              mvGenerateSetup
+                ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
+                : `Add this complete Director project to the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
+            }
+            aria-label={directorQueueEditingEntryId ? 'Save Director queue changes' : `Add Director project to queue (${directorQueueEntriesCount} pending)`}
+          >
+            {draftQueuePending || directorQueueLoading
+              ? <Loader2 size={16} className="animate-spin" />
+              : draftQueueConfirmation
+                ? <Check size={16} />
+                : <ListVideo size={16} />}
+          </button>
+        </div>
       </div>
 
       {scriptError && (
@@ -2521,34 +2520,49 @@ function DirectorGenerationOptionsRodape({
 }) {
   return (
     <div
-      className="mt-auto shrink-0 border-t border-border/30 pt-2 flex items-center justify-between gap-3 text-2xs text-text-muted/80"
+      className="mt-auto shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex flex-col justify-center gap-1.5 text-2xs text-text-muted/80 select-none"
       data-testid="director-options-rodape"
       aria-label="Selected model and VRAM usage"
     >
-      <span className="flex items-center gap-1.5 min-w-0 truncate">
-        <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/70" />
-        <span className="truncate">
-          Modelo:{' '}
-          <span className="text-text-secondary font-medium" title={modelName}>
-            {modelName}
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex items-center gap-1.5 min-w-0 truncate">
+          <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/70" />
+          <span className="truncate">
+            Modelo:{' '}
+            <span className="text-text-secondary font-medium" title={modelName}>
+              {modelName}
+            </span>
+            {architecture && (
+              <span className="ml-1 text-text-muted/70">· {architecture}</span>
+            )}
           </span>
-          {architecture && (
-            <span className="ml-1 text-text-muted/70">· {architecture}</span>
+        </span>
+        <span className="shrink-0 tabular-nums" aria-live="polite">
+          {vram ? (
+            <>
+              VRAM:{' '}
+              <span className="text-text-secondary font-medium">
+                {vram.usedGb.toFixed(1)} / {vram.totalGb.toFixed(0)} GB
+              </span>
+            </>
+          ) : (
+            <span className="text-text-muted/60">VRAM unavailable</span>
           )}
         </span>
-      </span>
-      <span className="shrink-0 tabular-nums" aria-live="polite">
-        {vram ? (
-          <>
-            VRAM:{' '}
-            <span className="text-text-secondary font-medium">
-              {vram.usedGb.toFixed(1)} / {vram.totalGb.toFixed(0)} GB
-            </span>
-          </>
-        ) : (
-          <span className="text-text-muted/60">VRAM unavailable</span>
-        )}
-      </span>
+      </div>
+      {/* VRAM / GPU indicator bar matching the height & visual weight of DirectorStatusPanel */}
+      <div className="h-1.5 w-full bg-bg-tertiary rounded-full overflow-hidden border border-border/40">
+        <div
+          className={`h-full transition-all duration-300 rounded-full ${
+            vram
+              ? (vram.usedGb / (vram.totalGb || 1)) > 0.9
+                ? 'bg-amber-500'
+                : 'bg-accent-blue/70'
+              : 'bg-border/40'
+          }`}
+          style={{ width: vram ? `${Math.min(100, Math.max(4, Math.round((vram.usedGb / (vram.totalGb || 1)) * 100)))}%` : '0%' }}
+        />
+      </div>
     </div>
   )
 }
@@ -2692,7 +2706,7 @@ export function StyleForm({
                       src={mapping.imagePreview}
                       alt={mapping.name || mapping.speakerId}
                       className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
-                      title="Reference image"
+                      title="Reference photo (synced with References > Characters)"
                     />
                     <button
                       type="button"
@@ -2706,7 +2720,7 @@ export function StyleForm({
                 ) : (
                   <label
                     className="w-[26px] h-[26px] rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-tertiary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors self-center"
-                    title="Upload reference photo for this speaker"
+                    title="Upload reference photo for this character (synced with References > Characters)"
                   >
                     <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
                     <input
@@ -2789,14 +2803,6 @@ export function ImagePromptsReview({
   // button. Without this, regenerating Clip 7 in a 24-clip plan looks
   // indistinguishable from regenerating the whole batch.
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
-  // Show all clips collapsed by default past the threshold so the
-  // column doesn't grow taller than the viewport on big music-video
-  // plans (typical 24-32 clips). The user's "Show all" click expands
-  // the list — useful for editing every prompt before generating.
-  const [showAllClips, setShowAllClips] = useState(false)
-  const visibleClipCount = showAllClips
-    ? clipPlans.length
-    : Math.min(clipPlans.length, CLIP_LIST_PREVIEW_THRESHOLD)
   // Re-run ONLY this clip via the Director pipeline endpoint. Used by
   // the per-clip ↻ Regenerate button that appears when a single
   // clip's image generation failed (e.g. transient CUDA OOM on one
@@ -2815,27 +2821,23 @@ export function ImagePromptsReview({
     }
   }
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <label className="text-xs text-text-muted uppercase tracking-wider">Start Image Prompts</label>
+    <div className="flex-1 flex flex-col min-h-0 space-y-2">
+      <div className="flex items-center justify-between shrink-0">
+        <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">Start Image Prompts</label>
         {isActive && (
           <button
             onClick={planPrompts}
             disabled={loading}
-            className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
+            className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-1"
           >
             <RotateCcw size={10} /> Regenerate
           </button>
         )}
       </div>
 
-      {/* Fixed-height list: 3 clip cards visible at once, vertical
-          scrollbar for the rest. max-h matches ~3 cards (~120px each
-          = ~360px) plus a little breathing room; overflow-y-auto keeps
-          the card stack predictable in the central column instead of
-          stretching the whole chat panel. */}
-      <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-        {clipPlans.slice(0, visibleClipCount).map((plan, i) => {
+      {/* Full-height list occupying all available vertical space */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 -mr-1">
+        {clipPlans.map((plan, i) => {
           const clip = plannedClips[i]
           const image = clipImages.find(item => item.clipIndex === i)
           // Per-clip regenerate spinner overrides the global status so
@@ -2916,26 +2918,79 @@ export function ImagePromptsReview({
                   onRegenerateClip={regenerateClip}
                 />
               )}
-              <div className="flex gap-2.5 items-start">
-                {image && (
-                  <div className="relative shrink-0 w-16 h-16 rounded overflow-hidden border border-border/80 bg-black/40">
-                    <img
-                      src={image.file ? URL.createObjectURL(image.file) : getFileUrl(image.filename)}
-                      alt={`Shot ${i + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
+              {/* 3-slot row: [Start Image Left] | [Prompt Center] | [Video Right] */}
+              <div className="flex items-stretch gap-3">
+                {/* 1. Left: Start Image Square Card */}
+                <div className="relative shrink-0 w-24 h-24 rounded-lg overflow-hidden border border-border/80 bg-black/40 flex flex-col items-center justify-center group shadow-xs">
+                  {image ? (
+                    <>
+                      <img
+                        src={image.file ? URL.createObjectURL(image.file) : getFileUrl(image.filename)}
+                        alt={`Clip ${i + 1} Start Image`}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <span className="absolute bottom-1 left-1 text-3xs font-medium bg-black/70 text-white px-1 py-0.5 rounded backdrop-blur-xs">
+                        Start
+                      </span>
+                    </>
+                  ) : status === 'generating' || clipIsRegenerating ? (
+                    <div className="flex flex-col items-center justify-center p-2 text-center space-y-1">
+                      <Loader2 size={18} className="animate-spin text-accent-blue" />
+                      <span className="text-3xs text-accent-blue font-medium leading-tight">Gerando...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-2 text-center text-text-muted/60 space-y-1">
+                      <ImageIcon size={18} />
+                      <span className="text-3xs text-text-muted leading-tight">Aguardando imagem</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Center: Prompt Textarea */}
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
                   <AutoResizeTextarea
                     value={plan.image_prompt}
                     onChange={e => editClipPlan(i, 'image_prompt', e.target.value)}
                     rows={3}
                     disabled={!isActive}
                     placeholder="Descreva o enquadramento e elementos visuais da cena inicial..."
-                    className="w-full bg-bg-secondary border border-border rounded px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-60"
+                    className="w-full h-full bg-bg-secondary border border-border rounded-lg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-60 leading-relaxed"
                   />
                 </div>
+
+                {/* 3. Right: Generated Video Card */}
+                {(() => {
+                  const rawClips = (pipelineStatus as (typeof pipelineStatus & { clips?: Array<{ video_filename?: string | null }> }))?.clips
+                  const clipState = rawClips?.[i]
+                  const rawVideo = clipState?.video_filename || pipelineStatus?.output_files?.[i]
+                  const videoFilename = typeof rawVideo === 'string' && (rawVideo.endsWith('.mp4') || rawVideo.endsWith('.webm') || rawVideo.endsWith('.mov'))
+                    ? rawVideo
+                    : null
+                  const isVideoGenerating = pipelineStatus?.status === 'running' && pipelineStatus?.progress?.current_clip === i + 1
+                  return (
+                    <div className="relative shrink-0 w-28 h-24 rounded-lg overflow-hidden border border-border/80 bg-black/40 flex flex-col items-center justify-center group shadow-xs">
+                      {videoFilename ? (
+                        <video
+                          src={getFileUrl(videoFilename)}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full h-full object-cover rounded-lg"
+                        />
+                      ) : isVideoGenerating ? (
+                        <div className="flex flex-col items-center justify-center p-2 text-center space-y-1">
+                          <Loader2 size={18} className="animate-spin text-accent-purple" />
+                          <span className="text-3xs text-accent-purple font-medium leading-tight">Renderizando...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-2 text-center text-text-muted/60 space-y-1">
+                          <Film size={18} />
+                          <span className="text-3xs text-text-muted leading-tight">Aguardando vídeo</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           )
@@ -2946,22 +3001,13 @@ export function ImagePromptsReview({
         <button
           onClick={generateStartImages}
           disabled={loading}
-          className="w-full py-2.5 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+          className="w-full py-2.5 shrink-0 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5 shadow-xs"
         >
           {/* Always available now — directorGenerateStartImages generates an
               establishing/anchor image first when no reference was provided. */}
           <ImageIcon size={13} /> Generate Start Images
         </button>
       )}
-      {/* Collapse affordance — only renders when the clip list has been
-          truncated by the CLIP_LIST_PREVIEW_THRESHOLD guard. Sits at the
-          very end of the surface so it doesn't compete with the
-          "Generate Start Images" CTA above. */}
-      <ClipListCollapser
-        total={clipPlans.length}
-        shown={visibleClipCount}
-        onShowAll={() => setShowAllClips(true)}
-      />
     </div>
   )
 }

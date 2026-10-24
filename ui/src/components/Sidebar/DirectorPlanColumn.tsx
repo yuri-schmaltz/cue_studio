@@ -195,9 +195,9 @@ export function DirectorPlanColumn() {
       {/* 1) Fixed and permanent Image and video prompts card:
           - Shows empty state before planning starts
           - Shows live activity & progress during planning
-          - Shows prompt review cards once planning completes */}
-      <section className="bg-bg-secondary rounded-lg p-4 border border-border space-y-3" data-testid="director-prompts-card">
-        <div className="flex items-center justify-between">
+          - Shows prompt review cards once planning completes, filling vertical space */}
+      <section className={`bg-bg-secondary rounded-lg p-4 border border-border flex flex-col min-h-0 ${hasPlan ? 'flex-1' : 'space-y-3'}`} data-testid="director-prompts-card">
+        <div className="flex items-center justify-between pb-2 shrink-0">
           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
             {cardTitle}
           </h3>
@@ -217,7 +217,7 @@ export function DirectorPlanColumn() {
 
         {/* State B: Prompt review cards once plan is ready */}
         {!isPlanningActive && hasPlan && usesShotImages && (
-          <div className="space-y-3">
+          <div className="flex-1 flex flex-col min-h-0 space-y-3">
             <ImagePromptsReview
               clipPlans={clipPlans}
               plannedClips={plannedClips}
@@ -230,10 +230,12 @@ export function DirectorPlanColumn() {
               isActive={atStep('review') || atStep('plan')}
               isShortFilm={isShortFilm}
             />
-            <LlmLogStage
-              stage="plan"
-              label={cardTitle}
-            />
+            <div className="shrink-0">
+              <LlmLogStage
+                stage="plan"
+                label={cardTitle}
+              />
+            </div>
           </div>
         )}
 
