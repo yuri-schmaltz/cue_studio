@@ -205,6 +205,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     ++setupRequest
     ++workspaceRequest
     try {
+      get().directorReset()
       await api.createWorkspace(name)
       await api.setActiveWorkspace(name)
       set({ browsingUploads: false, activeWorkspace: name, outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
@@ -218,6 +219,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
   },
 
   deleteWorkspace: async (name) => {
+    get().directorReset()
     const result = await api.deleteWorkspace(name)
     if (result.switched_to_default) {
       set({ browsingUploads: false, activeWorkspace: 'default', outputs: [], outputsTotal: 0, selectedOutput: 0, selectedOutputMeta: null })
@@ -233,7 +235,11 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     }
     try {
       const draft = await api.fetchDirectorDraft(name)
-      if (!draft) return
+      if (!draft) {
+        // Fresh project or project without a saved draft: clear leftover Director state
+        current.directorReset()
+        return
+      }
 
       const patch: Partial<AppState> = {}
       if (draft.directorSkill && draft.directorSkill !== current.directorSkill) {

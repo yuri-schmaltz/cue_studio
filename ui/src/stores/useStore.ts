@@ -1620,6 +1620,8 @@ export interface AppState {
   directorPlannedClips: PlannedClip[]
   directorEnergyBias: number
   directorClipPlans: ClipPlan[]
+  directorSelectedClipIndex: number
+  setDirectorSelectedClipIndex: (index: number) => void
   directorSceneDescription: string
   directorLoading: boolean
   /** Sub-status for the current loading phase (e.g. "Loading
@@ -7493,6 +7495,8 @@ export const useStore = create<AppState>((set, get, store) => ({
   directorPlannedClips: [],
   directorEnergyBias: 0,
   directorClipPlans: [],
+  directorSelectedClipIndex: 0,
+  setDirectorSelectedClipIndex: (index: number) => set({ directorSelectedClipIndex: index }),
   directorSceneDescription: '',
   // Project-scoped "things to avoid" derived once per project from the
   // scene description. Empty until directorGenerateNegativePrompt runs

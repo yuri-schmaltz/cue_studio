@@ -799,70 +799,10 @@ export function DirectorChat() {
     ? isShortFilm ? 'Adjust scene pacing above...' : 'Adjust clip structure above...'
     : 'Reviewing...'
 
-  const renderComposer = (headerTitle?: string, fillSpace?: boolean) => (
-    <div className={`gap-3 flex flex-col ${headerTitle ? 'space-y-2' : ''} ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
-      {headerTitle ? (
-        <header className="flex items-center justify-between gap-2 shrink-0">
-          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-            {headerTitle}
-          </h3>
-          <div />
-        </header>
-      ) : null}
-
-      {/* Field container */}
-      <div className={`relative w-full ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
-        {fillSpace ? (
-          <textarea
-            value={mvGenerateSetup ? songDescription : chatInput}
-            onChange={e => {
-              const v = e.target.value
-              setDraftQueueConfirmation(null)
-              if (mvGenerateSetup) { setSongDescription(v); return }
-              setChatInput(v)
-              setSceneDescription(v)
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && e.shiftKey && chatInputEnabled) {
-                e.preventDefault()
-                handleChatSubmit()
-              }
-            }}
-            placeholder={chatInputPlaceholder}
-            disabled={!chatInputEnabled}
-            aria-keyshortcuts="Shift+Enter"
-            className="w-full h-full bg-bg-tertiary border border-border rounded-lg p-3 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
-          />
-        ) : (
-          <AutoResizeTextarea
-            value={mvGenerateSetup ? songDescription : chatInput}
-            onChange={e => {
-              const v = e.target.value
-              setDraftQueueConfirmation(null)
-              if (mvGenerateSetup) { setSongDescription(v); return }
-              setChatInput(v)
-              setSceneDescription(v)
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && e.shiftKey && chatInputEnabled) {
-                e.preventDefault()
-                handleChatSubmit()
-              }
-            }}
-            placeholder={chatInputPlaceholder}
-            disabled={!chatInputEnabled}
-            rows={4}
-            minHeight={146}
-            maxHeight={146}
-            aria-keyshortcuts="Shift+Enter"
-            className="w-full h-[146px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
-          />
-        )}
-      </div>
-
-      {/* Action buttons row — immediately below the field, 5 equal-width
-          buttons filling 100% horizontal width. Enclosed in a h-[54px]
-          container to align height and baseline with central and right footers. */}
+  const renderActionButtons = () => (
+    <div className="flex flex-col gap-2 shrink-0 pt-2">
+      {/* Action buttons row — 5 equal-width buttons filling 100% horizontal width.
+          Enclosed in a h-[54px] container to align height and baseline with central and right footers. */}
       <div className="h-[54px] min-h-[54px] flex items-center w-full shrink-0">
         <div className="grid grid-cols-5 gap-2 w-full">
           <button
@@ -966,6 +906,69 @@ export function DirectorChat() {
           )}
         </div>
       )}
+    </div>
+  )
+
+  const renderComposer = (headerTitle?: string, fillSpace?: boolean) => (
+    <div className={`gap-3 flex flex-col ${headerTitle ? 'space-y-2' : ''} ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
+      {headerTitle ? (
+        <header className="flex items-center justify-between gap-2 shrink-0">
+          <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
+            {headerTitle}
+          </h3>
+          <div />
+        </header>
+      ) : null}
+
+      {/* Field container */}
+      <div className={`relative w-full ${fillSpace ? 'flex-1 min-h-0' : ''}`}>
+        {fillSpace ? (
+          <textarea
+            value={mvGenerateSetup ? songDescription : chatInput}
+            onChange={e => {
+              const v = e.target.value
+              setDraftQueueConfirmation(null)
+              if (mvGenerateSetup) { setSongDescription(v); return }
+              setChatInput(v)
+              setSceneDescription(v)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && e.shiftKey && chatInputEnabled) {
+                e.preventDefault()
+                handleChatSubmit()
+              }
+            }}
+            placeholder={chatInputPlaceholder}
+            disabled={!chatInputEnabled}
+            aria-keyshortcuts="Shift+Enter"
+            className="w-full h-full bg-bg-tertiary border border-border rounded-lg p-3 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+          />
+        ) : (
+          <AutoResizeTextarea
+            value={mvGenerateSetup ? songDescription : chatInput}
+            onChange={e => {
+              const v = e.target.value
+              setDraftQueueConfirmation(null)
+              if (mvGenerateSetup) { setSongDescription(v); return }
+              setChatInput(v)
+              setSceneDescription(v)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && e.shiftKey && chatInputEnabled) {
+                e.preventDefault()
+                handleChatSubmit()
+              }
+            }}
+            placeholder={chatInputPlaceholder}
+            disabled={!chatInputEnabled}
+            rows={4}
+            minHeight={146}
+            maxHeight={146}
+            aria-keyshortcuts="Shift+Enter"
+            className="w-full h-[146px] bg-bg-tertiary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-50 disabled:cursor-not-allowed scrollbar-visible"
+          />
+        )}
+      </div>
     </div>
   )
 
@@ -1317,8 +1320,11 @@ export function DirectorChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Bottom composer — rendered for Short Film paths. Music Video hosts the composer inside the Description (or Generate) tab */}
+      {/* Bottom composer — rendered for Short Film paths. Music Video hosts the composer inside the Description tab */}
       {isShortFilm && renderComposer()}
+
+      {/* Persistent action buttons row — fixed and always visible across all tabs of the left column */}
+      {renderActionButtons()}
     </div>
   )
 }
@@ -2753,30 +2759,6 @@ export function StyleForm({
   )
 }
 
-/* Collapsible clip list — used by ImagePromptsReview and VideoPromptsReview
-   to avoid rendering every clip card when there are dozens. Past
-   CLIP_LIST_PREVIEW_THRESHOLD (12), only the first batch is rendered
-   with a "Show all (N)" toggle so the column doesn't grow taller than
-   the viewport on big music-video plans. */
-const CLIP_LIST_PREVIEW_THRESHOLD = 12
-function ClipListCollapser({ total, shown, onShowAll }: {
-  total: number
-  shown: number
-  onShowAll: () => void
-}) {
-  if (total <= shown) return null
-  return (
-    <button
-      type="button"
-      onClick={onShowAll}
-      className="w-full text-2xs text-accent-blue hover:text-accent-blue-hover py-2 rounded border border-dashed border-border hover:border-accent-blue/50 transition-colors"
-      aria-label={`Show all ${total} clips`}
-    >
-      Show all {total} clips (currently showing {shown})
-    </button>
-  )
-}
-
 export function ImagePromptsReview({
   clipPlans, plannedClips, speakerMappings, editClipPlan, planPrompts,
   generateStartImages, loading, isActive, isShortFilm,
@@ -2798,6 +2780,8 @@ export function ImagePromptsReview({
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const rerunClipImage = useStore(s => s.rerunClipImage)
   const clearDirectorError = useStore(s => s.clearDirectorError)
+  const selectedClipIndex = useStore(s => s.directorSelectedClipIndex)
+  const setSelectedClipIndex = useStore(s => s.setDirectorSelectedClipIndex)
   // Track which clip is currently being regenerated so the spinner can
   // sit on the right card instead of next to the batch-level Regenerate
   // button. Without this, regenerating Clip 7 in a 24-clip plan looks
@@ -2822,9 +2806,8 @@ export function ImagePromptsReview({
   }
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-2">
-      <div className="flex items-center justify-between shrink-0">
-        <label className="text-xs text-text-muted uppercase tracking-wider font-semibold">Start Image Prompts</label>
-        {isActive && (
+      {isActive && (
+        <div className="flex items-center justify-end shrink-0">
           <button
             onClick={planPrompts}
             disabled={loading}
@@ -2832,8 +2815,8 @@ export function ImagePromptsReview({
           >
             <RotateCcw size={10} /> Regenerate
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Full-height list occupying all available vertical space */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 -mr-1">
@@ -2862,8 +2845,17 @@ export function ImagePromptsReview({
               || (imageGenProgress?.failed_clip_index === i ? imageGenProgress.error_message : null))
             : null
           const clipIsRegenerating = regeneratingIndex === i
+          const isSelected = selectedClipIndex === i
           return (
-            <div key={i} className="bg-bg-tertiary rounded-lg p-3 space-y-2 border border-border/80 hover:border-border transition-colors shadow-xs">
+            <div
+              key={i}
+              onClick={() => setSelectedClipIndex(i)}
+              className={`rounded-lg p-3 space-y-2 border transition-all duration-200 cursor-pointer shadow-xs ${
+                isSelected
+                  ? 'bg-accent-blue/15 border-accent-blue ring-2 ring-accent-blue/50 shadow-md shadow-accent-blue/10'
+                  : 'bg-bg-tertiary/90 border-border/80 hover:bg-accent-blue/20 hover:border-accent-blue/70 hover:shadow-md hover:shadow-accent-blue/15 hover:-translate-y-0.5'
+              }`}
+            >
               <div className="flex items-center justify-between gap-1.5 text-2xs text-text-muted">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-semibold text-text-primary px-1.5 py-0.5 rounded bg-bg-secondary border border-border text-2xs">
@@ -3148,12 +3140,11 @@ export function VideoPromptsReview({
   const rerunClipVideo = useStore(s => s.rerunClipVideo)
   const rejoinPipelineClips = useStore(s => s.rejoinPipelineClips)
   const clearDirectorError = useStore(s => s.clearDirectorError)
+  const selectedClipIndex = useStore(s => s.directorSelectedClipIndex)
+  const setSelectedClipIndex = useStore(s => s.setDirectorSelectedClipIndex)
   const [queueConfirmation, setQueueConfirmation] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
-  // Same collapse threshold as ImagePromptsReview — past 12 clips,
-  // truncate the list to keep the column manageable on big plans.
-  const [showAllClips, setShowAllClips] = useState(false)
   // Which clip is currently being regenerated. Lets the spinner sit on
   // the correct card even when several clips have failed in sequence.
   const [regeneratingIndex, setRegeneratingIndex] = useState<number | null>(null)
@@ -3188,9 +3179,6 @@ export function VideoPromptsReview({
       setIsExporting(false)
     }
   }
-  const visibleClipCount = showAllClips
-    ? clipPlans.length
-    : Math.min(clipPlans.length, CLIP_LIST_PREVIEW_THRESHOLD)
 
   useEffect(() => {
     if (!queueConfirmation) return
@@ -3217,8 +3205,8 @@ export function VideoPromptsReview({
   }
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
+    <div className="flex-1 flex flex-col min-h-0 space-y-2">
+      <div className="flex items-center justify-between shrink-0">
         <label className="text-xs text-text-muted uppercase tracking-wider">Video Prompts</label>
         <button
           onClick={planVideoPrompts}
@@ -3230,35 +3218,14 @@ export function VideoPromptsReview({
       </div>
 
       {allowSceneImageUploads && (
-        <p className="text-2xs text-text-muted leading-snug">
+        <p className="text-2xs text-text-muted leading-snug shrink-0">
           Scene images are optional. Add one to anchor a shot, or leave it blank to render from its video prompt.
         </p>
       )}
 
-      {clipImages.length > 0 && !allowSceneImageUploads && (
-        <div className="grid grid-cols-5 gap-1 mb-1">
-          {clipImages.map((img, i) => (
-            <div key={i} className="relative">
-              <img
-                src={img.file ? URL.createObjectURL(img.file) : getFileUrl(img.filename)}
-                alt={`Clip ${img.clipIndex + 1}`}
-                className="w-full aspect-square object-cover rounded border border-border"
-              />
-              <span className="absolute bottom-0 left-0 text-2xs bg-black/60 text-white px-0.5 rounded-br">
-                {img.clipIndex + 1}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* No inner scroll — chat panel handles it. AutoResizeTextarea
-          grows each prompt to its full height so long video prompts
-          don't double-scroll. The list is truncated by the
-          CLIP_LIST_PREVIEW_THRESHOLD guard; ClipListCollapser at the
-          end of the surface lets the user expand it. */}
-      <div className="space-y-2">
-        {clipPlans.slice(0, visibleClipCount).map((plan, i) => {
+      {/* Video prompts list - renders all clips */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden space-y-2 pr-1 -mr-1">
+        {clipPlans.map((plan, i) => {
           const clip = plannedClips[i]
           const clipImage = clipImages.find(image => image.clipIndex === i)
           const currentClip = pipelineStatus?.progress?.current_clip
@@ -3282,8 +3249,17 @@ export function VideoPromptsReview({
             failedClipIndex,
           })
           const clipIsRegenerating = regeneratingIndex === i
+          const isSelected = selectedClipIndex === i
           return (
-            <div key={i} className="bg-bg-tertiary rounded-lg p-3 space-y-2 border border-border/80 hover:border-border transition-colors shadow-xs">
+            <div
+              key={i}
+              onClick={() => setSelectedClipIndex(i)}
+              className={`rounded-lg p-3 space-y-2 border transition-all duration-200 cursor-pointer shadow-xs ${
+                isSelected
+                  ? 'bg-accent-blue/15 border-accent-blue ring-2 ring-accent-blue/50 shadow-md shadow-accent-blue/10'
+                  : 'bg-bg-tertiary/90 border-border/80 hover:bg-accent-blue/20 hover:border-accent-blue/70 hover:shadow-md hover:shadow-accent-blue/15 hover:-translate-y-0.5'
+              }`}
+            >
               <div className="flex items-center justify-between gap-1.5 text-2xs text-text-muted">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-semibold text-text-primary px-1.5 py-0.5 rounded bg-bg-secondary border border-border text-2xs">
@@ -3401,11 +3377,59 @@ export function VideoPromptsReview({
         })}
       </div>
 
-      <div className="space-y-2">
+      {/* Fixed bottom controls */}
+      <DirectorActionControls
+        directorGenerate={directorGenerate}
+        handleAddToQueue={handleAddToQueue}
+        handleExportFullVideo={handleExportFullVideo}
+        applyToClips={applyToClips}
+        loading={loading}
+        isGenerating={isGenerating}
+        queueBusy={queueBusy}
+        queueConfirmation={queueConfirmation}
+        pipelineId={pipelineId}
+        isExporting={isExporting}
+        exportMessage={exportMessage}
+        editingQueueEntryId={editingQueueEntryId}
+      />
+    </div>
+  )
+}
+
+export function DirectorActionControls({
+  directorGenerate,
+  handleAddToQueue,
+  handleExportFullVideo,
+  applyToClips,
+  loading,
+  isGenerating,
+  queueBusy,
+  queueConfirmation,
+  pipelineId,
+  isExporting,
+  exportMessage,
+  editingQueueEntryId,
+}: {
+  directorGenerate: () => void
+  handleAddToQueue?: () => void | Promise<void>
+  handleExportFullVideo?: () => void | Promise<void>
+  applyToClips: () => void
+  loading?: boolean
+  isGenerating?: boolean
+  queueBusy?: boolean
+  queueConfirmation?: string | null
+  pipelineId?: string | null
+  isExporting?: boolean
+  exportMessage?: string | null
+  editingQueueEntryId?: string | null
+}) {
+  return (
+    <div className="shrink-0 pt-2 pb-1 bg-bg-secondary/95 backdrop-blur border-t border-border/80 space-y-2 z-10">
+      <div className="flex items-center gap-2">
         <button
           onClick={directorGenerate}
           disabled={(loading && !isGenerating) || queueBusy}
-          className="w-full py-2.5 rounded-lg bg-accent-green hover:bg-accent-green-hover text-white text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+          className="flex-1 py-2.5 rounded-lg bg-accent-green hover:bg-accent-green-hover text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
           title={isGenerating
             ? 'Adicionar esta geração de vídeos à fila de processamento'
             : editingQueueEntryId
@@ -3414,75 +3438,76 @@ export function VideoPromptsReview({
         >
           {isGenerating || editingQueueEntryId
             ? <ListVideo size={14} /> : <Play size={14} fill="white" />}
-          {editingQueueEntryId
-            ? 'Save Queue Changes'
-            : isGenerating
-            ? 'Generate Videos (Add to Queue)'
-            : 'Generate Videos'}
+          <span className="truncate">
+            {editingQueueEntryId
+              ? 'Save Queue Changes'
+              : isGenerating
+              ? 'Generate Videos (Add to Queue)'
+              : 'Generate Videos'}
+          </span>
         </button>
-        {!isGenerating && !editingQueueEntryId && (
-          <>
-            <button
-              onClick={() => void handleAddToQueue()}
-              disabled={loading || queueBusy || Boolean(queueConfirmation)}
-              className={`w-full py-2 rounded-lg border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-70 ${
-                queueConfirmation
-                  ? 'border-green-500/30 bg-green-500/10 text-indicator-success'
-                  : 'border-accent-blue/30 bg-accent-blue/5 text-accent-blue hover:bg-accent-blue/10'
-              }`}
-              title="Hold this complete project in the persistent queue without starting it"
-            >
-              {queueBusy
-                ? <Loader2 size={12} className="animate-spin" />
-                : queueConfirmation
-                  ? <Check size={12} />
-                  : <ListVideo size={12} />}
+
+        {!isGenerating && !editingQueueEntryId && handleAddToQueue && (
+          <button
+            onClick={() => void handleAddToQueue()}
+            disabled={loading || queueBusy || Boolean(queueConfirmation)}
+            className={`flex-1 py-2.5 rounded-lg border text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-70 cursor-pointer ${
+              queueConfirmation
+                ? 'border-green-500/30 bg-green-500/10 text-indicator-success'
+                : 'border-accent-blue/30 bg-accent-blue/5 text-accent-blue hover:bg-accent-blue/10'
+            }`}
+            title="Hold this complete project in the persistent queue without starting it"
+          >
+            {queueBusy
+              ? <Loader2 size={12} className="animate-spin" />
+              : queueConfirmation
+                ? <Check size={12} />
+                : <ListVideo size={12} />}
+            <span className="truncate">
               {queueBusy ? 'Adding…' : queueConfirmation ? 'Added to Queue' : 'Add to Queue'}
-            </button>
-            {queueConfirmation && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-2xs leading-relaxed text-indicator-success"
-              >
-                {queueConfirmation}
-              </div>
-            )}
-          </>
+            </span>
+          </button>
         )}
+
         {/* Export full joined video with music audio */}
-        {pipelineId && (
+        {pipelineId && handleExportFullVideo && (
           <button
             type="button"
             onClick={() => void handleExportFullVideo()}
             disabled={isExporting || isGenerating}
-            className="w-full py-2 rounded-lg border border-accent-blue/40 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-lg border border-accent-blue/40 bg-accent-blue/10 hover:bg-accent-blue/20 text-accent-blue text-xs font-medium transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
             title="Concatenate all clips and mix the full original audio track"
           >
-            {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Film size={12} />}
-            {isExporting ? 'Exporting and mixing audio...' : 'Export Full Video (Concat + Audio)'}
+            {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Film size={13} />}
+            <span className="truncate">
+              {isExporting ? 'Exporting...' : 'Export Full Video'}
+            </span>
           </button>
         )}
-        {exportMessage && (
-          <div className="rounded-md border border-border bg-bg-secondary px-2.5 py-1.5 text-2xs text-text-secondary">
-            {exportMessage}
-          </div>
-        )}
-
-        <button
-          onClick={applyToClips}
-          className="w-full py-2 rounded-lg border border-border text-text-secondary text-xs font-medium hover:bg-bg-hover hover:text-text-primary transition-colors flex items-center justify-center gap-1.5"
-        >
-          <ChevronRight size={12} /> Edit in Studio
-        </button>
       </div>
-      {/* Same collapse affordance as ImagePromptsReview — only shows
-          when the list was truncated by CLIP_LIST_PREVIEW_THRESHOLD. */}
-      <ClipListCollapser
-        total={clipPlans.length}
-        shown={visibleClipCount}
-        onShowAll={() => setShowAllClips(true)}
-      />
+
+      {queueConfirmation && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-2xs leading-relaxed text-indicator-success"
+        >
+          {queueConfirmation}
+        </div>
+      )}
+
+      {exportMessage && (
+        <div className="rounded-md border border-border bg-bg-secondary px-2.5 py-1.5 text-2xs text-text-secondary">
+          {exportMessage}
+        </div>
+      )}
+
+      <button
+        onClick={applyToClips}
+        className="w-full py-2 rounded-lg border border-border text-text-secondary text-xs font-medium hover:bg-bg-hover hover:text-text-primary transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+      >
+        <ChevronRight size={12} /> Edit in Studio
+      </button>
     </div>
   )
 }

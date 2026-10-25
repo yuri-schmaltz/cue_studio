@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import {
   Film,
   Sparkles,
-  ExternalLink,
-  Send,
   Layers,
   Loader2,
   Maximize2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { getFileUrl } from '../../api/client'
@@ -17,22 +17,27 @@ export function DirectorOutputColumn() {
   const clipImages = useStore(s => s.directorClipImages)
   const imageGenProgress = useStore(s => s.directorImageGenProgress)
   const pipelineStatus = useStore(s => s.pipelineStatus)
-  const applyToClips = useStore(s => s.directorApplyToClips)
-  const queueCurrent = useStore(s => s.queueCurrentDirectorPipeline)
-  const setAppSection = useStore(s => s.setAppSection)
+  const editClipPlan = useStore(s => s.directorEditClipPlan)
 
-  const [selectedClipIndex, setSelectedClipIndex] = useState(0)
+  const selectedClipIndex = useStore(s => s.directorSelectedClipIndex)
+  const setSelectedClipIndex = useStore(s => s.setDirectorSelectedClipIndex)
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
 
   const totalClips = Math.max(plannedClips.length, clipPlans.length, clipImages.length)
-  const generatedCount = useMemo(() => {
-    return clipImages.length
-  }, [clipImages])
 
   const selectedClipImage = clipImages.find(item => item.clipIndex === selectedClipIndex)
   const selectedPlan = clipPlans[selectedClipIndex]
   const selectedClip = plannedClips[selectedClipIndex]
   const isSelectedGenerating = imageGenProgress?.current === selectedClipIndex
+
+  // Resolve generated video for this clip if available
+  const rawClips = (pipelineStatus as (typeof pipelineStatus & { clips?: Array<{ video_filename?: string | null }> }))?.clips
+  const clipState = rawClips?.[selectedClipIndex]
+  const rawVideo = clipState?.video_filename || pipelineStatus?.output_files?.[selectedClipIndex]
+  const selectedVideoFilename = typeof rawVideo === 'string' && (rawVideo.endsWith('.mp4') || rawVideo.endsWith('.webm') || rawVideo.endsWith('.mov'))
+    ? rawVideo
+    : null
+  const isVideoGenerating = pipelineStatus?.status === 'running' && pipelineStatus?.progress?.current_clip === selectedClipIndex + 1
 
   const getClipImageUrl = (item: typeof clipImages[number] | undefined): string | null => {
     if (!item) return null
@@ -42,15 +47,6 @@ export function DirectorOutputColumn() {
   }
 
   const selectedImageUrl = getClipImageUrl(selectedClipImage)
-
-  const pipelineActive = Boolean(
-    pipelineStatus && !['completed', 'failed', 'cancelled'].includes(pipelineStatus.status),
-  )
-
-  const handleOpenEditor = () => {
-    applyToClips()
-    setAppSection('editor')
-  }
 
   // Footer data (video model and GPU VRAM)
   const rodapeModelName = useStore(s => {
@@ -79,32 +75,67 @@ export function DirectorOutputColumn() {
             Outputs &amp; Preview
           </h2>
         </div>
-        {totalClips > 0 && (
-          <span className="text-2xs font-medium px-2 py-0.5 rounded-full bg-accent-blue/15 text-accent-blue border border-accent-blue/30">
-            {generatedCount}/{totalClips} gerados
-          </span>
-        )}
       </header>
 
       {/* Main output / preview body */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 -mr-1">
         {/* Preview Player / Canvas */}
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border flex flex-col gap-2.5">
+        <section className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-text-primary flex items-center gap-1.5">
               <Film size={13} className="text-text-muted" />
               {totalClips > 0 ? `Corte #${selectedClipIndex + 1}` : 'Monitor de Preview'}
             </span>
-            {selectedClip && (
-              <span className="text-2xs text-text-muted font-mono">
-                {selectedClip.start.toFixed(1)}s – {selectedClip.end.toFixed(1)}s ({(selectedClip.end - selectedClip.start).toFixed(1)}s)
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {totalClips > 1 && (
+                <div className="flex items-center gap-1 bg-bg-tertiary/80 rounded border border-border/60 px-1 py-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClipIndex(Math.max(0, selectedClipIndex - 1))}
+                    disabled={selectedClipIndex === 0}
+                    className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
+                    title="Cena anterior"
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                  <span className="text-2xs font-mono font-medium text-text-secondary px-1">
+                    {selectedClipIndex + 1} / {totalClips}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClipIndex(Math.min(totalClips - 1, selectedClipIndex + 1))}
+                    disabled={selectedClipIndex >= totalClips - 1}
+                    className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
+                    title="Próxima cena"
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
+              {selectedClip && (
+                <span className="text-2xs text-text-muted font-mono">
+                  {selectedClip.start.toFixed(1)}s – {selectedClip.end.toFixed(1)}s ({(selectedClip.end - selectedClip.start).toFixed(1)}s)
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Canvas area */}
           <div className="aspect-video w-full rounded-md bg-black/60 border border-border/70 overflow-hidden relative flex items-center justify-center group select-none">
-            {selectedImageUrl ? (
+            {selectedVideoFilename ? (
+              <video
+                src={getFileUrl(selectedVideoFilename)}
+                controls
+                playsInline
+                preload="metadata"
+                className="w-full h-full object-contain"
+              />
+            ) : isVideoGenerating ? (
+              <div className="flex flex-col items-center gap-2 text-accent-purple">
+                <Loader2 size={24} className="animate-spin" />
+                <span className="text-2xs font-medium">Renderizando vídeo...</span>
+              </div>
+            ) : selectedImageUrl ? (
               <>
                 <img
                   src={selectedImageUrl}
@@ -137,115 +168,50 @@ export function DirectorOutputColumn() {
               </div>
             )}
           </div>
-
-          {/* Prompt info under preview */}
-          {selectedPlan && (
-            <div className="rounded bg-bg-tertiary/60 p-2 border border-border/40 text-2xs space-y-1">
-              <span className="text-text-muted font-medium uppercase tracking-wider block">
-                Prompt do Corte
-              </span>
-              <p className="text-text-secondary line-clamp-3 leading-relaxed">
-                {selectedPlan.video_prompt || selectedPlan.image_prompt || 'Sem prompt definido'}
-              </p>
-            </div>
-          )}
         </section>
 
-        {/* Storyboard / Clips Grid */}
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border flex flex-col gap-2">
-          <div className="flex items-center justify-between pb-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-              Galeria de Cortes
+        {/* Informações detalhadas da cena selecionada */}
+        <section className="flex flex-col gap-2.5 flex-1 min-h-[140px]">
+          <div className="flex items-center justify-between pb-1 border-b border-border/40 shrink-0">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <Film size={12} className="text-accent-blue" />
+              Prompt de Vídeo {totalClips > 0 ? `(Cena #${selectedClipIndex + 1})` : ''}
             </span>
-            <span className="text-2xs text-text-muted">
-              {totalClips} {totalClips === 1 ? 'clipe' : 'clipes'}
-            </span>
+            {totalClips > 0 && (
+              <span className="text-2xs text-text-muted">
+                {selectedClipIndex + 1} de {totalClips}
+              </span>
+            )}
           </div>
 
-          {totalClips === 0 ? (
-            <div className="rounded-lg border border-dashed border-border/70 p-6 text-center space-y-2">
-              <Sparkles size={18} className="mx-auto text-accent-blue/70" />
-              <p className="text-2xs text-text-muted leading-relaxed">
-                Adicione música ou roteiro no Briefing para planejar os cortes.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-1.5 max-h-52 overflow-y-auto pr-0.5">
-              {Array.from({ length: totalClips }).map((_, idx) => {
-                const clipImage = clipImages.find(item => item.clipIndex === idx)
-                const imgUrl = getClipImageUrl(clipImage)
-                const isSelected = selectedClipIndex === idx
-                const isGeneratingCurrent = imageGenProgress?.current === idx
-
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSelectedClipIndex(idx)}
-                    className={`relative aspect-video rounded border overflow-hidden transition-all text-left group ${
-                      isSelected
-                        ? 'border-accent-blue ring-1 ring-accent-blue bg-accent-blue/10'
-                        : 'border-border bg-bg-tertiary hover:border-border-light'
-                    }`}
-                  >
-                    {imgUrl ? (
-                      <img
-                        src={imgUrl}
-                        alt={`Corte ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : isGeneratingCurrent ? (
-                      <div className="w-full h-full flex items-center justify-center bg-bg-tertiary text-accent-blue">
-                        <Loader2 size={12} className="animate-spin" />
-                      </div>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center bg-bg-tertiary/70 text-text-muted">
-                        <span className="text-2xs font-mono font-medium">#{idx + 1}</span>
-                      </div>
-                    )}
-
-                    {/* Badge de número no canto */}
-                    <span className="absolute bottom-1 left-1 px-1 py-0.2 bg-black/75 rounded text-3xs font-mono text-white">
-                      {idx + 1}
+          <div className="flex-1 min-h-0 bg-bg-tertiary/60 rounded-md p-3 border border-border/60 text-xs text-text-primary leading-relaxed flex flex-col gap-2">
+            {selectedPlan ? (
+              <div className="flex-1 flex flex-col gap-2 min-h-0">
+                <textarea
+                  value={selectedPlan.video_prompt || ''}
+                  onChange={e => editClipPlan(selectedClipIndex, 'video_prompt', e.target.value)}
+                  placeholder="Descreva o movimento de câmera e ação do vídeo..."
+                  className="w-full flex-1 min-h-[90px] bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors leading-relaxed"
+                />
+                {selectedPlan.image_prompt && (
+                  <div className="shrink-0 pt-2 border-t border-border/40">
+                    <span className="text-3xs uppercase tracking-wider font-semibold text-text-muted block mb-1">
+                      Prompt da Imagem Inicial
                     </span>
-
-                    {/* Status dot */}
-                    {imgUrl && (
-                      <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-sm" />
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Handoff Actions */}
-        <section className="bg-bg-secondary rounded-lg p-3 border border-border space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-text-muted block">
-            Ações de Saída
-          </span>
-
-          <div className="grid grid-cols-1 gap-2">
-            <button
-              type="button"
-              onClick={handleOpenEditor}
-              disabled={totalClips === 0}
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors shadow-sm"
-            >
-              <ExternalLink size={13} />
-              <span>Abrir no Editor Timeline</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => queueCurrent()}
-              disabled={totalClips === 0 || pipelineActive}
-              className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg border border-border bg-bg-tertiary hover:bg-bg-tertiary/80 hover:border-border-light disabled:opacity-50 disabled:cursor-not-allowed text-text-secondary hover:text-text-primary text-xs font-medium transition-colors"
-            >
-              <Send size={12} />
-              <span>Adicionar à Fila (Queue)</span>
-            </button>
+                    <p className="text-2xs text-text-secondary leading-relaxed bg-bg-secondary/70 p-2 rounded border border-border/50 max-h-24 overflow-y-auto">
+                      {selectedPlan.image_prompt}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : totalClips === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center py-4 space-y-1.5">
+                <Sparkles size={16} className="text-accent-blue/70" />
+                <p className="text-2xs text-text-muted">Adicione música ou roteiro no Briefing para planejar os cortes.</p>
+              </div>
+            ) : (
+              <p className="text-text-muted italic">Nenhum prompt definido para esta cena.</p>
+            )}
           </div>
         </section>
       </div>
