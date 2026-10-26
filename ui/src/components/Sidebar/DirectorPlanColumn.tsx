@@ -3,20 +3,20 @@
 // DirectorPlanColumn — middle column of the Director 3-col layout.
 //
 // Renders the "what the AI is planning for me" surfaces that used to
-// live inline in DirectorChat:
+// live inline in DirectorBriefingColumn (formerly DirectorChat):
 //   1. Structure (clip structure with pacing slider) for music-video path
 //   2. Style / scene description view (after the user submits the brief)
 //   3. Image prompts review (one card per shot, editable textareas)
 //   4. Image generation progress + the generated clip images grid
 //   5. Video prompts review (one card per shot, editable textareas)
 //
-// The chat on the left keeps the conversational surface (welcome, skill
-// picker, upload, analyze, completion badges, chat composer). The
+// The briefing column on the left keeps the input surface (welcome, skill
+// picker, upload, analyze, completion badges, composer). The
 // technical setup on the right keeps aspect ratio / resolution / models
 // / LoRAs. The plan column is where the user actually *works* on the
 // shots — the things that determine what the renderer will draw.
 //
-// Step gating mirrors what DirectorChat used to do:
+// Step gating mirrors what DirectorBriefingColumn used to do:
 //   - structure shows while step ∈ {structure, style, plan, review, ...}
 //   - style shows once the user has entered the style step
 //   - image prompts / image gen show for shot-image workflows
@@ -33,7 +33,7 @@ import {
   ImageGenView,
   LlmLogStage,
   DirectorActionControls,
-} from './DirectorChat'
+} from './DirectorBriefingColumn'
 import { DirectorActivityBlock } from './DirectorActivityBar'
 import { DirectorStatusPanel } from '../Stages/DirectorStatusPanel'
 

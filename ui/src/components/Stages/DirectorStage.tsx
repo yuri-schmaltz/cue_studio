@@ -50,8 +50,8 @@ import {
   type DirectorMobileTab,
 } from '../../director/types'
 import {
-  DirectorChat,
-} from '../Sidebar/DirectorChat'
+  DirectorBriefingColumn,
+} from '../Sidebar/DirectorBriefingColumn'
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
 import { DirectorOutputColumn } from '../Director/DirectorOutputColumn'
 import { DirectorTourOverlay } from './DirectorTourOverlay'
@@ -242,7 +242,7 @@ export function DirectorStage() {
           style={panelVisible('briefing') ? undefined : { display: 'none' }}
           {...panelA11y()}
         >
-          <DirectorChat />
+          <DirectorBriefingColumn />
         </aside>
         <section
           className="director-stage-plan"

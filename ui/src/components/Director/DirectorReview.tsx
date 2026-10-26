@@ -3,7 +3,7 @@ import { Check, X, LockKeyhole, Unlock, Loader2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
 import { CinemaWarningsPanel } from './CinemaWarningsPanel'
-import { AutoResizeTextarea } from '../Sidebar/DirectorChat'
+import { AutoResizeTextarea } from '../Sidebar/DirectorBriefingColumn'
 
 /** One card per scene; approval belongs to the displayed server revision. */
 export function DirectorReview() {

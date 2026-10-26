@@ -3,11 +3,11 @@
  *
  * Why this lives in its own file
  * ------------------------------
- * ``DirectorChat.tsx`` was originally a 3.9 kLOC monolith. The
+ * ``DirectorBriefingColumn.tsx`` (formerly DirectorChat.tsx) was originally a 3.9 kLOC monolith. The
  * character-refs / location-refs / voice-ref surface alone
  * accounted for ~580 lines of that file with no store reads
  * crossing the boundary from the orchestration logic in the rest
- * of the file. Splitting it out lets the parent ``DirectorChat``
+ * of the file. Splitting it out lets the parent ``DirectorBriefingColumn``
  * keep a tight focus on pipeline orchestration (the dozens of
  * ``useStore`` selectors for analysis / planning / generation).
  *
@@ -19,7 +19,7 @@
  *   Location ref lists (label, remove, drag-handle, drop-target).
  *
  * ``DirectorReferenceInputs`` deliberately stays in
- * ``DirectorChat.tsx`` because it composes the file-local
+ * ``DirectorBriefingColumn.tsx`` because it composes the file-local
  * ``ReferenceImageUpload`` component (which itself is bound to
  * ``AdditionalRefsSection`` via the ``imageOnly`` flag).
  */

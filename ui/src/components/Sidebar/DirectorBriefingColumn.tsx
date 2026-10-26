@@ -316,7 +316,7 @@ export function LlmLogStage({ stage, label }: { stage: string; label: string }) 
   )
 }
 
-export function DirectorChat() {
+export function DirectorBriefingColumn() {
   const step = useStore(s => s.directorStep)
   const loading = useStore(s => s.directorLoading)
   // Sub-status text ("Loading transcription model (first use downloads
@@ -3511,3 +3511,6 @@ export function DirectorActionControls({
     </div>
   )
 }
+
+/** Backwards-compatibility alias while callers transition to DirectorBriefingColumn */
+export { DirectorBriefingColumn as DirectorChat }
