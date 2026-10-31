@@ -8881,8 +8881,10 @@ def _probe_audio_duration(filepath: str) -> float | None:
         pass
     return None
 
-@api.post("/api/v1/upload-audio")
-async def upload_audio(request: Request, file: UploadFile = File(...)):
+def _upload_audio_impl(request: Request, file: UploadFile = File(...)):
+    return _upload_audio_async_entry(request, file)
+
+async def _upload_audio_async_entry(request: Request, file: UploadFile = File(...)):
     """Upload an audio file (wav, mp3, flac, ogg, m4a) OR a video file
     (mp4, mov, mkv, webm, avi, m4v) for audio extraction. Video files
     are transparently demuxed to a 16-bit PCM WAV containing only the
@@ -9069,8 +9071,10 @@ def serve_saved_character_media(character_id: str, slot: str):
     return share_delete_file_response(str(media_path))
 
 
-@api.post("/api/v1/audio/mix")
-async def mix_audio(request: Request):
+def _mix_audio_impl(request: Request):
+    return _mix_audio_async_entry(request)
+
+async def _mix_audio_async_entry(request: Request):
     """Mix multiple audio tracks into one file using ffmpeg.
 
     Body: {
@@ -9218,8 +9222,10 @@ async def mix_audio(request: Request):
     }
 
 
-@api.post("/api/v1/audio/analyze")
-async def analyze_audio(request: Request):
+def _analyze_audio_impl(request: Request):
+    return _analyze_audio_async_entry(request)
+
+async def _analyze_audio_async_entry(request: Request):
     """Analyze an audio file: beat detection, sections, optional transcription."""
     import torch  # lazy: only used to probe CUDA for VRAM release below
     from services import audio_analysis
@@ -9273,29 +9279,15 @@ async def analyze_audio(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api.get("/api/v1/audio/analyze/status")
-def audio_analyze_status():
-    """Read the current audio-analyze phase for live UI progress.
-
-    Polled by the frontend during the synchronous /audio/analyze call
-    so the user sees meaningful sub-status ("Loading transcription
-    model (first use downloads ~300MB)..." vs "Transcribing audio...")
-    instead of a single "Analyzing audio..." message for the entire
-    1-5 minute wait.
-
-    Returns {"step": "<phase>", "detail": "<human-readable message>",
-    "current": <int>, "total": <int>}. current/total are the sub-progress
-    numbers that drive the precise DirectorStatusPanel sub-bar; both are
-    0 when no numbers are available yet (the frontend renders that as
-    an indeterminate sliding bar). Both empty when no analyze is in
-    flight.
-    """
+def _audio_analyze_status_impl():
     from services.audio_analysis import get_progress
     return get_progress()
 
 
-@api.post("/api/v1/audio/suggest-clips")
-async def suggest_audio_clips(request: Request):
+def _suggest_audio_clips_impl(request: Request):
+    return _suggest_audio_clips_async_entry(request)
+
+async def _suggest_audio_clips_async_entry(request: Request):
     """Suggest optimal clip boundaries aligned to musical structure."""
     from services import audio_analysis
     body = await request.json()
@@ -9374,8 +9366,10 @@ async def director_plan_angle_prompts(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api.post("/api/v1/audio/plan-structure")
-async def plan_audio_structure(request: Request):
+def _plan_audio_structure_impl(request: Request):
+    return _plan_audio_structure_async_entry(request)
+
+async def _plan_audio_structure_async_entry(request: Request):
     """Plan variable-duration clip structure aligned to beats and sections."""
     from services import audio_analysis
     body = await request.json()
@@ -9416,6 +9410,17 @@ async def plan_audio_structure(request: Request):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+from routers.audio import build_audio_router
+api.include_router(build_audio_router(
+    upload_audio_fn=_upload_audio_impl,
+    mix_fn=_mix_audio_impl,
+    analyze_fn=_analyze_audio_impl,
+    analyze_status_fn=_audio_analyze_status_impl,
+    suggest_clips_fn=_suggest_audio_clips_impl,
+    plan_structure_fn=_plan_audio_structure_impl,
+))
 
 
 @api.post("/api/v1/director/generate-negative-prompt")
