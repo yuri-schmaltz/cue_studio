@@ -86,6 +86,9 @@ what the automated checks prove and how to run real-model acceptance.
 
 ## Updates
 
+For the verified installation, required Node version, strict hashed runtime lock,
+and remaining validation limits, see [installation verification](docs/INSTALLATION_VERIFICATION.md).
+
 The version you are running is shown next to the Cue Studio title in the UI. For standalone update commands, see [Updating](#updating).
 
 ### v2.0.1 (2026-09-04)

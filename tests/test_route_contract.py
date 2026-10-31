@@ -9,6 +9,7 @@ or dropping any endpoint (spec acceptance:
 from __future__ import annotations
 
 import sys
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -32,7 +33,7 @@ EXPECTED_ROUTES = frozenset({
     ("DELETE", "/api/v1/director/queue/{entry_id}"),
     ("DELETE", "/api/v1/editor/projects/{project_id}"),
     ("DELETE", "/api/v1/editor/projects/{project_id}"),
-    ("DELETE", "/api/v1/editor/projects/{project_id}/clips/{clip_id}"),
+    ("DELETE", "/api/v1/editor/timeline/api/v1/editor/projects/{project_id}/clips/{clip_id}"),
     ("DELETE", "/api/v1/loras/file"),
     ("DELETE", "/api/v1/models/{model_type}"),
     ("DELETE", "/api/v1/notifications/push/subscribe"),
@@ -186,11 +187,11 @@ EXPECTED_ROUTES = frozenset({
     ("POST", "/api/v1/editor/media/status"),
     ("POST", "/api/v1/editor/projects"),
     ("POST", "/api/v1/editor/projects"),
-    ("POST", "/api/v1/editor/projects/{project_id}/clips"),
-    ("POST", "/api/v1/editor/projects/{project_id}/clips/reorder"),
-    ("POST", "/api/v1/editor/projects/{project_id}/clips/{clip_id}/split"),
-    ("POST", "/api/v1/editor/projects/{project_id}/clips/{clip_id}/trim"),
-    ("POST", "/api/v1/editor/projects/{project_id}/export"),
+    ("POST", "/api/v1/editor/timeline/api/v1/editor/projects/{project_id}/clips"),
+    ("POST", "/api/v1/editor/timeline/api/v1/editor/projects/{project_id}/clips/reorder"),
+    ("POST", "/api/v1/editor/timeline/api/v1/editor/projects/{project_id}/clips/{clip_id}/split"),
+    ("POST", "/api/v1/editor/timeline/api/v1/editor/projects/{project_id}/clips/{clip_id}/trim"),
+    ("POST", "/api/v1/editor/timeline/api/v1/editor/projects/{project_id}/export"),
     ("POST", "/api/v1/extract-frames"),
     ("POST", "/api/v1/favorites/{name}"),
     ("POST", "/api/v1/force-cancel/{job_id}"),
@@ -270,19 +271,23 @@ EXPECTED_ROUTES = frozenset({
 })
 
 
-def _collect(routes) -> set[tuple[str, str]]:
+def _route_counts(routes) -> Counter:
     """Flatten APIRoute/_IncludedRouter/Route/Mount entries into (method, path)."""
-    pairs: set[tuple[str, str]] = set()
+    pairs = Counter()
     for route in routes:
         if type(route).__name__ == "_IncludedRouter":
-            pairs |= _collect(route.original_router.routes)
+            pairs.update(_route_counts(route.effective_candidates()))
             continue
         path = getattr(route, "path", None)
         if path is None:
             continue
         for method in getattr(route, "methods", None) or ():
-            pairs.add((method, path))
+            pairs[(method, path)] += 1
     return pairs
+
+
+def _collect(routes) -> set[tuple[str, str]]:
+    return set(_route_counts(routes))
 
 
 @pytest.fixture(scope="module")
@@ -297,6 +302,13 @@ def live_routes() -> set[tuple[str, str]]:
 def test_every_expected_route_still_resolves(live_routes):
     missing = sorted(EXPECTED_ROUTES - live_routes)
     assert missing == [], f"routes dropped from launch.api: {missing}"
+
+
+def test_no_duplicate_http_routes(live_routes):
+    import launch
+
+    duplicates = {pair: count for pair, count in _route_counts(launch.api.routes).items() if count > 1}
+    assert not duplicates, f"duplicate HTTP routes: {duplicates}"
 
 
 def test_queue_routes_mounted(live_routes):

@@ -1,5 +1,16 @@
 # Cue Studio Changelog
 
+## Em desenvolvimento — 30/10/2026
+
+- Corrigidos bootstrap de testes sem PyTorch, preservação de CUDA funcional, boot com configuração parcial e respostas tardias de rascunho que apagavam defaults do projeto.
+- Removidas montagem duplicada de capacidades e inicialização do launcher como efeito da importação do router de cinema; contrato HTTP agora verifica duplicatas com prefixos reais.
+- Extraídos defaults/schema do runtime, rotas de documentos/mídia do editor e biblioteca de outputs. Restauração e Director carregam sob demanda; submissão Studio usa slice síncrono que preserva o estado no clique.
+- Chunks abaixo de 220 kB com gate obrigatório; Node compatível declarado e CI atualizado para Node 22.
+- Instalados locks E0–E4 com hashes em ambientes independentes; CPU com 282 pacotes e GPU/CUDA 13 com 300. Rebuild explícito do decord preserva código/biblioteca. Benchmarks nos demais hardwares seguem pendentes.
+- Corrigida perda do último quadro no export Editor e preservação de parâmetros de janela em pedidos atuais sem versão.
+- Validação real admite keyframes finais, snapshots imutáveis de receita e medição de duração nativa; a margem de trim é gerada pelo modelo, sem completar o filme com quadros repetidos.
+- Consolidados estado atual, handoff e pendências; históricos preservados em `docs/history/`. Nova produção real em andamento, sem declaração antecipada de aprovação artística.
+
 ## Em desenvolvimento — 19/10/2026
 
 - Corrigida a ativação offline da CLI, a auditoria persistente do bloqueio HTTP e a função usada pelo Web Push.

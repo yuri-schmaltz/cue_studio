@@ -1,0 +1,99 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-10-30",
+  "base_commit": "d2bac33a9037e28516e2f90ac5abf97b89bc6db8",
+  "profile": "E3",
+  "platform": "linux-x86_64",
+  "python": "3.11.18",
+  "cuda": "13.0",
+  "torch": "2.10.0+cu130",
+  "resolver": "uv 0.13.6",
+  "requirements_count": 300,
+  "source_sha256": {
+    "app/requirements.txt": "7bab5381a077632df4d779cd5d975cc6ae2e7ec30f5f8f65c3ea3a5a2b80e86b",
+    "pyproject.toml": "43a0d365cd41264823ea9b23bf6940f4bb5f12213fe837db8242bb99ac478c33",
+    "app/locks/E3.cuda130-py311.constraints.txt": "fb7e4299319dd610e6afcdb9aed5627afb314f795cac3f0d9a6ff56702490313",
+    "app/locks/E3.cuda130-py311.txt": "342fbdc559b5ed5a9ba8337e961577a70f42b938f2e1d23a997e92c2e2d77a54",
+    "scripts/normalize_lock_hashes.py": "ef53b53c37ca22d12702d8693c56c8229fc7558770eab256ea0027c312fad151",
+    "scripts/build_decord_wheel.py": "41422813cb8ce3595ac1c366b4915306c7422c6ae7e3161c0bfdd115b9a9ca5f",
+    "app/locks/E0.cpu-only.txt": "768354c47c157edc09e91983667674f730fde78aad8fa99d3406cd1d766abbf6",
+    "app/locks/E0.source-manifest.json": "95874e30ebd89ec62ee0cf30951889a53b810d77da6d20a9ed01d61eaae1403c",
+    "app/locks/E1.4gb-3050.txt": "f64a53413284f4bf9c20cc10e73c49e89cad203073987f10c4852fb41bfb6524",
+    "app/locks/E1.source-manifest.json": "b8e4b7b3bd203488ed41d26eb0e9ba37bbed34b44c4b878ae5602c6a9648e04d",
+    "app/locks/E2.6-8gb.txt": "5f0945a7d8bbc73682c2139487f14b9600b3f01d6d3750d6973d2c18e168ff08",
+    "app/locks/E2.source-manifest.json": "e218dc0961c6abaef99f20fd7f7b8c28b5ec9f24b0b8929e9a0f74c70e4cc5a8",
+    "app/locks/E3.source-manifest.json": "58372a7a5c505314d9f039adab1f29792d765ee3482107bec92b6ded1701da04",
+    "app/locks/E4.16-24gb.txt": "5e19fcd4b87eb6cecfea47241e60e0e9d17afd9546c8e718cf49099e767a6462",
+    "app/locks/E4.source-manifest.json": "4754118a122342f199d62a5de80091bf36c38ce1bf65607ebb3119ed8ff7f5c9",
+    "app/locks/requirements.E0.in": "72541458cf0c8a006e452eef22ce1e9891daced569b2038564cc66f0908092f6",
+    "app/locks/E0.cpu-py311.constraints.txt": "edb78c416ef288bbeb3d7cf135b044778fb720b485ab2d5e0a73611c2963dff8",
+    "app/locks/installation-evidence.json": "314594acad937e70d7576eb8172cf498a338a0934120411931ffed1dd30b0b4b"
+  },
+  "decord_rebuild": {
+    "upstream_sha256": "51997f20be8958e23b7c4061ba45d0efcd86bffd5fe81c695d0befee0d442976",
+    "wheel_sha256": "514fa01b918330a9a63c8d2770be258fc07bde9b3d32b76b0fff53765f69baad",
+    "version": "0.6.0+cue1",
+    "runtime_files_identical": 37,
+    "modified": "distribution version, WHEEL tag and RECORD only"
+  },
+  "validation": {
+    "strict_hash_install": "passed (300 packages, independent environment)",
+    "runtime_imports": "passed: torch/CUDA, decord, fastapi, transformers, cv2",
+    "dependency_check": "passed; all 300 packages compatible",
+    "video_decode": "passed: 8 frames, 64x64 RGB",
+    "status": "E0-E4 installations verified on this host; target VRAM and production acceptance separate"
+  },
+  "profiles": {
+    "E0": {
+      "lock": "app/locks/E0.cpu-only.txt",
+      "manifest": "app/locks/E0.source-manifest.json",
+      "packages": 282,
+      "runtime": "CPU",
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "target_hardware_generation": "not exercised",
+      "software_http_export": "passed: 24 video frames at 24 fps + AAC; post-fix job ef62baa3"
+    },
+    "E1": {
+      "lock": "app/locks/E1.4gb-3050.txt",
+      "manifest": "app/locks/E1.source-manifest.json",
+      "packages": 300,
+      "runtime": "CUDA 13.0",
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "target_hardware_generation": "not exercised"
+    },
+    "E2": {
+      "lock": "app/locks/E2.6-8gb.txt",
+      "manifest": "app/locks/E2.source-manifest.json",
+      "packages": 300,
+      "runtime": "CUDA 13.0",
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "target_hardware_generation": "not exercised"
+    },
+    "E3": {
+      "lock": "app/locks/E3.cuda130-py311.txt",
+      "manifest": "app/locks/E3.source-manifest.json",
+      "packages": 300,
+      "runtime": "CUDA 13.0",
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "target_hardware_generation": "real generation exercised; film acceptance pending"
+    },
+    "E4": {
+      "lock": "app/locks/E4.16-24gb.txt",
+      "manifest": "app/locks/E4.source-manifest.json",
+      "packages": 300,
+      "runtime": "CUDA 13.0",
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "target_hardware_generation": "not exercised"
+    }
+  }
+}

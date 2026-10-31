@@ -1,0 +1,666 @@
+# Validação da obra de referência
+
+F0 é mídia determinística; F1 usa mídia congelada e geração controlada; F2
+exige inferência real e revisão do resultado; F3 exercita falhas e recuperação.
+Um teste técnico aprovado não equivale a aprovação artística.
+
+## Gate F2
+
+O teste antigo foi substituído porque gerava tons na etapa de voz e permitia
+fallbacks sintéticos para música e vídeo. Os antigos resultados “F2 2/2” não
+comprovam geração integral por IA.
+
+O novo teste envia pedidos ao Studio real (`POST /api/v1/generate`) e acompanha
+cada job em `/api/v1/status/{id}`. Aceita somente arquivos declarados pelo job
+concluído, contidos em seu diretório de saída. Registra ID, parâmetros, estado,
+caminho e SHA-256 em `receipts/`. Erro, cancelamento, arquivo ausente ou timeout
+não viram sucesso sintético. Timeout conserva o recibo e não cancela o job;
+inspecione a fila antes de disparar uma nova execução.
+
+1. Inicie o backend local com os modelos e referências de voz instalados.
+2. Crie um workspace exclusivo para validação. Selecione no Studio pedidos
+   funcionais para fala PT-BR, música instrumental, imagem com referências visuais, vídeo condicionado
+   por imagem e efeitos sonoros. Confirme que o modelo de voz suporta o idioma
+   e as referências escolhidas; o nome de um checkpoint não comprova suporte.
+3. Crie um JSON fora de arquivos de configuração pessoais com este formato:
+
+```json
+{
+  "base_url": "http://127.0.0.1:7860",
+  "server_output_dir": "/caminho/absoluto/do/workspace",
+  "validation_dir": "/caminho/absoluto/dos/artefatos-de-validacao",
+  "job_timeout": 3600,
+  "image_supports_references": true,
+  "character_anchor_seed": 99,
+  "speech": {"model_type": "modelo-de-voz-instalado", "workspace": "validacao-f2"},
+  "music": {"model_type": "modelo-musical-instalado", "prompt": "[Instrumental]", "workspace": "validacao-f2"},
+  "image": {"model_type": "modelo-de-imagem-instalado", "workspace": "validacao-f2"},
+  "video": {"model_type": "modelo-de-video-instalado", "workspace": "validacao-f2"},
+  "sfx": {"model_type": "modelo-de-efeitos-instalado", "workspace": "validacao-f2"}
+}
+```
+
+Os IDs acima são placeholders, não modelos fictícios utilizáveis. Acrescente
+os parâmetros reais exportados do Studio (passos, resolução, duração nativa,
+referência de voz etc.). O teste substitui prompts de fala/imagem/vídeo pelo
+briefing canônico. O modelo de imagem deve suportar `image_refs` com `video_prompt_type=KI`;
+as âncoras de personagem e ambiente são geradas e usadas em todos os planos pertinentes.
+A geração de imagem define `image_mode=1` e um único frame para exigir um arquivo de imagem. O backend e o teste precisam compartilhar o filesystem:
+`server_output_dir` é onde o backend realmente grava os arquivos desse workspace.
+A geração de vídeo deve fornecer pelo menos 120 frames por plano; a montagem
+conforma os clips para slots de 120 frames a 24 fps, sem repetir frames para
+esconder uma geração incompleta.
+
+```bash
+CUE_RUN_REAL_MODELS=1 CUE_F2_CONFIG=/caminho/f2.json \
+  app/env/bin/python -m pytest tests/test_cue_reference_film_f2_real_models.py \
+  -m real_models -k generate_and_measure -v
+```
+
+Se a API exigir autenticação, configure `CUE_F2_TOKEN` no ambiente. O token
+não é gravado nos recibos. A ausência de configuração quando a geração real
+é solicitada causa falha; a suíte comum indica esses testes como ignorados.
+
+### Identidade do personagem é medida, não presumida
+
+O design pede **três** lentes ciano no rosto do robô ("exactly three circular
+cyan camera lenses arranged as a triangle"). A revisão humana do master v3
+reprovou o filme porque o robô *sempre* tinha quatro lentes — e a causa não era
+o prompt: o `flux2_klein_9b` (4 steps, guidance 1) **ignora a contagem
+explícita** e produz 4 lentes em losango de forma determinística na maior
+parte das seeds (7, 8, 42, 101, 555, 777, 1234, 31415). Como as 12 imagens de
+plano recebem `image_refs: [anchor-character, anchor-location]`, todas herdavam
+a identidade errada.
+
+Por isso a contagem virou métrica: `app/services/reference_identity.py`
+segmenta ciano em HSV, mantém blobs circulares e conta por frame. O gate usa:
+
+- **gate duro no âncora de personagem** — se a âncora não tiver exatamente 3
+  lentes ciano, o gate falha antes de renderizar os 12 planos, com a lista de
+  seeds já medidas como corretas (99 → 555 → 42 → 8 → 1234);
+- **gate duro no S03** (close-up de luz neutra) — imagem e vídeo;
+- **evidência nos demais planos** — registrado em `technical-report.json`
+  (`lens_evidence`), sem reprovar o gate.
+
+`character_anchor_seed` no `f2-config.json` fixa a seed da âncora: **99**
+(ciano puro, geometria triangular: dois em cima, um abaixo). O prompt
+canônico **não** precisa ser reescrito; a seed é o que garante a contagem.
+
+### O S10 provou que a seed não era a causa
+
+O close-up âmbar do S10 (plano 10) mostrava **4 lentes ciano reais** em
+losango — não era artefato do detector nem falha da âncora: o HSV medido foi
+H 88–90, S 135–155, V 238–241 (ciano saturado, 4 blobs reais). Duas
+investigações fecharam a causa:
+
+- **A seed não resolve.** O prompt original do S10 com a seed 99 (a mesma da
+  âncora) produz **as mesmas 4 lentes**. O defeito acompanha a *redação*,
+  não o sorteio.
+- **A formulação do prompt resolve.** A âncora e o S03 acertam porque dizem
+  "two lenses on top and one centered below" / "two above and one centered
+  below" com a geometria canônica; o S10 dizia apenas "two above and one
+  below" sob luz âmbar. Reescrever o S10 como
+
+  > "…Exactly three cyan camera lenses arranged as a triangle: two lenses on
+  > top and one centered below, identical to the character reference. No
+  > mouth. Same head geometry as the character reference."
+
+  produz **3 lentes em triângulo canônico** (duas em cima, uma abaixo),
+  de forma **determinística** (3 execuções com seed 42 → resultado
+  byte-a-byte idêntico).
+
+A alternativa `negative_prompt` + `NAG_scale: 1.5` / `NAG_tau: 3.5` /
+`NAG_alpha: 0.5` no bloco `image` também foi provada (3 lentes), mas ela
+muda os params de **todas** as 12 imagens e obriga a re-renderizar o filme
+inteiro; por isso a reescrita do prompt do S10 foi preferida. Note que no
+`flux_main.py` o `negative_prompt` só age quando `guide_scale <= 1` **e**
+`nag_scale > 1` — com `guidance_scale: 1` do `flux2_klein_9b`, sem o NAG o
+`negative_prompt` é ignorado.
+
+Por isso o gate tem **três** portas duras: âncora de personagem, S03
+(luz neutra) e **S10** (luz âmbar), que era justamente onde o defeito
+passava.
+
+Para auditar qualquer artefato:
+
+```bash
+app/env/bin/python scripts/count_lenses.py app/outputs/<arquivo>.mp4
+```
+
+### As portas do v7 e o que elas medem
+
+O master v6 passou no gate técnico e foi reprovado na revisão humana. As
+portas que faltavam foram adicionadas, e cada uma mede o defeito que a
+revisão apontou:
+
+- **contagem de cubos por still** (`reference_cube.check_cube_count`) — o
+  still de cada plano é medido contra o número de cubos que o roteiro pede
+  (1, e 0 no S10, cujo close-up exclui o cubo). O v6 reprovava aqui: o S06
+  media 2 cubos.
+- **continuidade do cubo por clip** (`reference_cube.check_cube_continuity`) —
+  a fração de quadros com um segundo cubo não pode passar de 25 %. O S06 do
+  v6 media 97,5 % de quadros com dois cubos.
+- **estabilidade de escala dentro do plano** (`reference_robot.check_scale_stability`)
+  — a largura da cabeça medida pelo vão das três lentes não pode variar mais
+  que 1,8× entre o percentil 10 e o 90 dos quadros medidos.
+- **régua cabeça/cubo** (`reference_continuity.check_relative_scale`) — a
+  largura da cabeça dividida pela largura do cubo, medida só onde o robô
+  segura o cubo, tem de cair na banda `[1,0 ; 3,5]` e variar menos que
+  1,35× dentro do plano.
+- **consistência de escala ao longo do filme**
+  (`reference_continuity.check_scale_consistency`) — a mesma régua, comparada
+  entre os planos, não pode variar mais que 1,25×. É esta porta que mede
+  *"robô de tamanhos diferentes ao longo do vídeo"*: o v6 reprovado abre
+  1,70× (0,91 em S07 contra 1,55 em S04).
+
+A régua de escala antes media a cabeça por **união** de blobs de lente com
+uma distância absoluta de 40 px. Em close-up essa distância é pequena
+demais e a união cobria só 2 das 3 lentes, de modo que a régua media
+coisas diferentes em planos diferentes. Agora a cabeça é o vão das três
+lentes, e o grupo de lentes é o mais apertado entre as combinações de
+três. Sem essa correção a porta de consistência mediria ruído.
+
+Duas portas de **som** foram adicionadas depois, e medem os defeitos que
+o v9 carregava sem que nenhuma porta os visse — o detalhamento está na
+seção *"Os dois defeitos de áudio do v9 e as portas que os medem"*:
+
+- **continuidade do leito** (`reference_mix.check_bed_continuity`) — o
+  leito ambiente não pode cair 18 dB abaixo da própria mediana por
+  100 ms ou mais.
+- **cobertura da música** (`reference_mix.check_music_coverage`) — a
+  mediana dos últimos 3 s da música não pode cair mais de 12 dB abaixo
+  da mediana do corpo.
+
+As duas rodam sobre os **stems colocados, antes do mix**, de modo que o
+veredito descreve o som e não a mistura.
+
+### O terceiro erro crítico não virou porta, e a medição mostra por quê
+
+A revisão humana do master v6 apontou três erros críticos. Dois viraram
+portas automáticas — a cena com dois cubos e o robô de tamanhos
+diferentes ao longo do vídeo. O terceiro, *"robô flutuando"*, continua
+sem porta. A regra deste projeto é que uma porta mede um defeito: sem
+uma medida que separe o v6 do v7, não há porta.
+
+`app/services/reference_ground.py` é a tentativa de construir essa
+medida. Ela mede a altura em que o robô está acima da **própria sombra**,
+em larguras de cabeça.
+
+**Por que a sombra.** O corpo do robô é cinza-claro e compartilha a
+faixa de valor com a parede e com o chão de madeira: a regra de
+segmentação mais simples (`s < 70 e v > 150`) não encontra corpo em
+nenhum dos quadros do S04 do v7. O detalhe azul-escuro do robô é
+esparso demais para marcar. A sombra projetada no chão é o único
+marcador do plano do piso sob o robô, e é a única coisa no quadro que
+distingue "o robô está a 2 cabeças de altura do chão" de "o robô está
+colado no chão".
+
+**Por que normalizar pela cabeça.** O robô é desenhado em escalas muito
+diferentes entre planos — um close-up mostra uma cabeça maior, e é
+suposto que mostre. A normalização pela largura da cabeça deixa o
+número comparável entre planos: o que muda é a altura acima do chão,
+não o tamanho na tela.
+
+**O que a medida mostra no corpus.** No S07, o único plano em que as
+duas versões produzem medição quadro a quadro, o robô do v6 está mais
+alto em **23 dos 23 quadros** (4,51 contra 2,03 larguras de cabeça). A
+direção é exatamente a que a revisão humana apontou.
+
+Ressalva de honestidade, porque o número sozinho induz a erro: o S07 do
+**v6 está gravado como `measurable: false`** — a cobertura dele é 0,20,
+abaixo do piso de 0,30, então o artefato o marca como não mensurável
+como plano. A tabela acima traz 4,51 como valor **indicativo**, medido
+nos 24 quadros em que o v6 tem detecção e pareado com os 23 quadros em
+que o v7 também tem. O v7, com cobertura 0,68, é o único plano
+mensurável dos dois filmes. A assimetria de cobertura é a própria
+evidência de que os renders são irregulares — e é por isso que a
+métrica é evidência, não porta.
+
+**Por que isso não é uma porta.** Em 11 dos 12 planos de cada filme o
+render não projeta sombra sob o robô, e onde projeta a cobertura é
+baixa (20 % no v6, 68 % no v7). Uma porta que só existe em 1 de 12
+planos não pode decidir a aceitação de um filme; e um limiar escolhido
+sem corpus rotulado rejeitaria um filme correto, que é exatamente o
+erro que este projeto já cometeu uma vez — cada detector que já mudou
+foi recalibrado contra um corpus com rótulo do revisor.
+
+A métrica é portanto gravada como **evidência** (`ground_evidence` em
+`shot-evidence.json` e `technical-report.json`), para que a revisão
+humana tenha um número por plano em vez de uma impressão, e a revisão
+artística humana continua sendo a porta para esse defeito.
+
+**Uma armadilha que a calibração pegou.** A faixa escura logo abaixo da
+cabeça está a 0,15–0,35 largura de cabeça em *todos* os planos
+mensuráveis dos dois filmes: é a sombra do queixo da cabeça, não a
+sombra no chão. Sem o piso `MIN_STAND_IN_HEAD_WIDTHS = 1,0` a métrica lia
+o queixo como chão e devolvia 0,15 onde o valor certo era 2,03 — e a
+comparação entre o v6 e o v7 invertia o sinal.
+
+### O prompt negativo de imagem só existe com NAG ligado
+
+No `app/models/flux/flux_main.py` o `negative_prompt` é codificado apenas
+quando `nag_scale > 1` **e** `guide_scale <= 1`. Com `guidance_scale: 1` e
+sem `NAG_scale`, o `negative_prompt` é aceito pelo backend e **descartado
+em silêncio**: é o que produziu o segundo cubo e a quarta lente do master
+v6. O bloco `image` do `f2-config.json` precisa trazer `NAG_scale 1.5`,
+`NAG_tau 3.5` e `NAG_alpha 0.5`, e o teste do F2 verifica as duas condições
+antes de renderizar — um prompt negativo sem elas é uma promessa vazia.
+
+O prompt negativo faz parte da **receita do filme**, não da máquina que o
+renderiza, então ele mora com os prompts, em
+`tests/fixtures/cue_reference_film_v1/visual_prompts.json` (chave
+`negative`, com `image` e `video`), e o teste o anexa aos parâmetros.
+
+### Nada de cubo na âncora de ambiente
+
+A âncora de ambiente é passada como `image_ref` para todos os planos. Se o
+seu prompt mencionar o cubo, **todo plano herda o cubo nas mesmas
+coordenadas de tela** — foi assim que o v6 pôs um cubo vermelho em S01,
+S02, S06 e S11. O prompt de `location` descreve a mesa como
+*"a bare, completely empty tabletop"* e a âncora de ambiente é medida
+(0 blobs) antes de o filme continuar.
+
+### O prompt por plano tem de dizer o que está no quadro
+
+A âncora de ambiente descrevia a cena certa e mesmo assim o v7 pintou uma
+lâmpada acesa ao lado do cubo no S08, um plano sem pedestal e um plano
+sem mesa. A causa: os prompts por plano diziam o **estado** — *"a lâmpada
+do pedestal está OFF"*, *"a mesa está vazia"* — e nunca diziam o **que
+está no quadro**. Um prompt que só nomeia a mão, o cubo e o encaixe
+(S08) deixa o modelo inventar o resto, e foi o que aconteceu.
+
+A regra que saiu disso:
+
+- **todo plano aberto declara a presença** da mesa (à direita) e do
+  pedestal (no meio), com o encaixe quadrado e a lâmpada, e diz que são
+  as únicas peças de mobília do quadro;
+- **todo plano fechado declara o limite do quadro** e proíbe lâmpada,
+  lanterna e objeto aceso;
+- **o prompt negativo proíbe a lâmpada extra, não a lâmpada legítima**.
+  `extra lamp`, `oil lamp`, `table lamp`, `lantern` são proibições
+  válidas; `lamp` e `light bulb` sozinhos apagariam a lâmpada do pedestal
+  de S09, S11 e S12, que é o momento do filme em que ela acende.
+
+`tests/test_cue_reference_film_visual_prompts.py` guarda essa regra: sem
+ela a receita volta a descrever estados e o defeito volta junto.
+
+### Declarar presença não é o mesmo que declarar estado
+
+O v8 aplicou a regra acima e **reprovou 4 portas de medição** — o cubo
+achata no S11 (aspecto 2,17), some do S04 depois do frame 55 e some de
+metade do S11. A causa não foi a regra: foi o **texto** que a implementou.
+
+O parágrafo de mobília do v8 dizia que a mesa estava *"bare, completely
+empty top"* e que o pedestal tinha *"its empty square cube-sized
+socket"* — nos mesmos planos em que o cubo **está** em cima da mesa
+(S01, S02, S04) ou **assentado** no encaixe (S11, S12). O prompt se
+contradizia, e o modelo resolveu a contradição do lado dele: em S11 o
+cubo saiu achatado, em S04 o cubo desapareceu.
+
+Além disso, exigir que as duas peças de mobília apareçam **no mesmo
+plano** obriga a câmera a recuar e subir. O blob do cubo em S04 é
+rastreado de 2470 px (f0) a 2675 px (f55) e **depois some até f119**; a
+contagem estrita de pixels vermelhos cai de 2852 para 0. O cubo não
+está sendo perdido por limiar — ele saiu do quadro.
+
+As duas regras que saem daí:
+
+- **quem descreve a mobília descreve o que está em cima dela.** Se o cubo
+  está na mesa, a mesa não é vazia; se o cubo está no encaixe, o encaixe
+  não é vazio. Declarar a presença de uma peça não autoriza declarar o
+  vazio da superfície onde o objeto está;
+- **"presença no quadro" não é "no mesmo plano, no mesmo tamanho".**
+  Quando as duas peças não cabem no mesmo plano, uma vai para o fundo e
+  menor, e a câmera fica no distância média — sem recuo.
+
+O S11 ganha ainda uma instrução de ponto de vista: a câmera **rasante ao
+encaixe**, para que o cubo assentado seja visto de lado e leia como
+sólido, e não como uma forma chapada.
+
+`tests/test_cue_reference_film_visual_prompts.py` guarda as duas regras
+com três testes (`test_no_prompt_contradicts_itself_about_the_cube`,
+`test_s04_keeps_the_robot_and_the_cube_inside_the_frame`,
+`test_s11_sees_the_seated_cube_from_the_side`).
+
+### Uma porta de "lâmpada acesa" seria desonesta
+
+Não há porta que detecte a lâmpada acesa. A contagem de pixels âmbar é
+dominada pela madeira quente (S10: 139 643 px, S03: 76 690) e o
+contraste local dos manchões é ≈1,00 em todos os planos, o que não separa
+a lâmpada do fundo. O único sinal com alguma separação (âmbar saturado
+localmente mais claro que a vizinhança) marca 10 516 px no S08 e 6 931 px
+no S09 — e o S09 é **legitimamente** aceso. Sem uma tabela de estado
+esperado por plano, qualquer limiar absoluto reprovaria o filme certo.
+Porta não confiável é pior do que porta nenhuma: a correção foi na
+receita, e o estado da lâmpada fica como evidência por plano.
+
+
+### Memória entre lotes e repetição de job falho
+
+Duas proteções no teste do F2, ambas nacidas de uma falha real do v7:
+
+- **Devolver a VRAM entre os lotes.** O Studio mantém o modelo de um job
+  residente entre jobs de propósito, para que uma repetição do mesmo
+  modelo não recarregue o checkpoint. O modelo de vídeo **não cabe** na GPU
+  ao lado do modelo de imagem: com o Flux2 ainda residente, o primeiro
+  clip morre com `CUDA out of memory` (o job pedia 368 MiB e havia 115 MiB
+  livres). O teste chama `POST /api/v1/system/release-model` antes do lote
+  de vídeo e antes do lote de efeitos — é o mecanismo previsto pelo
+  backend para devolver a memória, e o Studio recarrega o modelo de forma
+  transparente no job seguinte.
+- **Repetir um job que falhou.** Um job falhado não deixa artefato, então o
+  recibo dele não protege nenhuma evidência: o teste remove o recibo com
+  `status: failed` ou `cancelled` antes de tentar de novo. Um recibo de job
+  **concluído** nunca é tocado, e o artefato que ele aponta também não.
+
+Um segundo fato da mesma falha: o servidor de LLM do LM Studio **volta
+sozinho** quando outro aplicativo (o Strata, que faz transcrição) pede o
+modelo de novo. Enquanto ele estiver na GPU, o primeiro job de imagem já
+falha. A VRAM precisa estar livre durante a geração.
+### Armadilhas conhecidas
+
+- **Balance do mix vs. voz PT-BR.** O `ace_step` entrega um leito ~12 dB acima
+  do TTS; mix por loudness global enterra a narração. `app/services/reference_mix.py`
+  fixa âncoras absolutas por papel (speech/music/ambient/effect) e mede a
+  margem de narração sobre o leito. Sem isso a nota `pt_br_voice` é 0.
+- **`loudnorm` recusa o modo linear e destrói o mix.** Quando o ganho
+  estático necessário para atingir a loudness alvo estouraria o teto de
+  true peak — ou quando o **LRA medido ultrapassa o LRA alvo** — o `loudnorm`
+  recusa o modo `linear=true` e cai no **modo dinâmico**. Efeitos medidos:
+  (a) a cadeia inteira passa a rodar a **192 kHz**, e um `atrim=end_sample=N`
+  passa a contar amostras de 192 kHz — um programa de 60 s sai com 15 s
+  (720 000 amostras em vez de 2 880 000); (b) a re-equalização dinâmica
+  re-levanta os trechos silenciosos e **perde 5,9–6,1 dB** de separação
+  voz/leito (medido: 10,30 dB → 7,10 dB), o que reprova a margem de narração
+  de 3 dB. O módulo usa agora um **ganho estático medido** + limitador de
+  picos, nunca `loudnorm`, e corrige o ganho a partir da medição do mix
+  renderizado.
+- **O `measure()` mede em `loudnorm`, o `ebur128` mede de outro modo.**
+  `measure()` usa `loudnorm=print_format=json` (que aplica o filtro
+  dinamicamente ao medir) e é a referência do gate; `ebur128=peak=true` é
+  o medidor independente. As duas leituras coincidem no `I`, mas o
+  `input_tp` do `loudnorm` difere do `Peak` do `ebur128` em ~0,03 dB.
+  Para auditar por fora, prefira `ebur128`; para o gate, `measure()`.
+- **`DEFAULT_NEGATIVE_PROMPT` do LTX-2 é hostil ao estilo 3D.** Ele contém
+  "3D CGI look, cartoonish rendering, unrealistic materials" e é usado por
+  padrão. Enviar um `negative_prompt` explícito **substitui** esse default
+  (verificado em `ltx2.py`: o texto enviado é usado no lugar do default). O
+  gate envia `negative_prompt` explícito no bloco `video` do `f2-config.json`,
+  com "fourth lens", "extra lens", "duplicate cube", "floating robot",
+  "changing robot size" e "distorted lamp holder".
+- **`input_video_strength`.** Valor clampado em [0,1], default 1.0, e forçado
+  a 1.0 quando o campo não é visível. Enviar `1.0` explicitamente evita que
+  uma versão futura do backend altere o condicionamento.
+- **Vídeo não herda a âncora.** O vídeo usa `image_start` + `image_prompt_type:
+  'S'`; `image_refs` só é lido quando "I" ∈ `video_prompt_type` (verificado em
+  `wgp.py`). Condicionar o vídeo na âncora exige `image_refs` com "I" no tipo
+  de prompt de vídeo ou `frames_positions`/`original_input_ref_images`.
+- **O detector de lentes tem limites.** Ele perde blobs em escala pequena
+  (plano médio: 2 de 3 detectados) e falha sob luz âmbar (S10/S04: as lentes
+  perdem saturação e o brilho da lâmpada vira falso positivo). Por isso o
+  gate duro só vale no âncora e em close-up de luz neutra.
+- **Seed fixo + poucos passos propagam drift.** Seed fixa com 4 steps
+  reproduz o mesmo artefato no mesmo ambiente, mas um backend re-renderizado
+  pode divergir — nesse caso o gate reprova, o que é o comportamento
+  desejado.
+- **`video_guide` dos SFX embute caminho absoluto.** Mudar o diretório de
+  validação invalida todos os recibos, inclusive os de áudio.
+- **Reaproveitar recibos exige comparar os params, não adivinhar.** O
+  cliente recusa com "Receipt parameters changed" quando o pedido não é
+  idêntico. Para saber o que pode ser copiado, reconstrua os params que
+  o harness vai pedir e compare com cada recibo: no v10, 30 dos 36
+  recibos eram byte a byte idênticos (12 imagens, 12 vídeos, 4 falas,
+  2 âncoras) e só a música (pedido de 75 s) e os 5 SFX (o `video_guide`
+  embute o diretório de validação) precisaram ser regerados. O custo do
+  render caiu de ~78 min para ~7 min.
+- **Janelas de vídeo.** `app/models/_settings.json` define
+  `sliding_window_size: 129` global. Com `video_length` maior que isso, o
+  gerador salva um arquivo por janela e o cliente estrito recusa
+  ("expected one generated artifact"). Use `video_length: 129` — uma janela,
+  acima dos 120 frames exigidos pelo gate.
+- **VRAM ocupada por outro processo.** O filme consome **7,1 GB** de VRAM
+  no pico (medido no job de vídeo do LTX-2). Um servidor local de LLM do
+  LM Studio com **8,65 GB** faz o **primeiro job de imagem** falhar com
+  `CUDA out of memory` (restavam 966 MiB para uma alocação de 1,16 GiB).
+  Verifique `nvidia-smi` antes de disparar jobs e encerre o LLM: o filme
+  não cabe na GPU com ele ligado.
+- **Ambiente incompleto.** `torchdiffeq` é importado por
+  `app/postprocessing/mmaudio/model/flow_matching.py` e consta em
+  `app/requirements.txt`; ambientes criados antes dessa dependência precisam
+  de `VIRTUAL_ENV=app/env uv pip install torchdiffeq==0.2.5`.
+- **Reuso de recibos.** O cliente guarda o `job_id` no recibo e reaproveita
+  artefatos concluídos quando os parâmetros são idênticos. Mudar parâmetros
+  exige um diretório de validação novo. Recibos com `status: failed` precisam
+  ser removidos manualmente antes de reexecutar.
+- **Diretório de trabalho.** `wgp.get_model_def()` lê `models/_settings.json`
+  por caminho relativo e exige CWD = `app/`.
+
+A geração conserva os arquivos reais e produz stems PCM estéreo a 48 kHz,
+com 2.880.000 amostras/canal. Fala maior que sua janela é rejeitada antes de
+qualquer corte. Os cues usam offsets em amostras; o master deve ter 1.440
+frames, 24 fps, drift A/V de no máximo um frame, −16 LUFS ± 1 LU e true peak
+≤ −1 dBTP. O master é validado antes de substituir o destino final.
+
+## Revisão artística
+
+Assista ao master produzido, ouça todas as falas e revise suas terminações.
+Crie `creative-review.json` dentro de `validation_dir`, com o SHA-256 do master
+real e as notas efetivamente atribuídas:
+
+```json
+{
+  "master_sha256": "SHA256_DO_MASTER_REVISADO",
+  "reviewer": "Nome do avaliador",
+  "reviewed_at": "Data e hora da revisão",
+  "scores": {
+    "identity": 3,
+    "continuity": 3,
+    "motion": 3,
+    "appearance": 3,
+    "pt_br_voice": 3,
+    "sound_editing": 3
+  },
+  "critical_errors": [],
+  "speech_correct_and_untruncated": true,
+  "title_correct": true
+}
+```
+
+Esse exemplo é um formato, não uma revisão realizada. Cada dimensão deve
+receber nota ≥ 3 em escala de 0 a 4. Registre qualquer erro crítico em vez de
+preencher uma lista vazia por conveniência. Uma nova versão do master invalida
+a revisão anterior pelo hash.
+
+O candidato corrente é o master **v6**
+(`app/outputs/validacao-f2-2026-10-20-v6/master.mp4`, SHA-256
+`d892bd0890e8ebd8aa24d15f973265a9c8579ac3b20b4bfa4ffd4ded1da71214`), com a
+página de revisão em `review.html` na mesma pasta. Ele passa nos 8 checks
+objetivos do `validate_master()` (−16,13 LUFS, −2,31 dBTP, 1440 frames,
+drift ≤ 1 frame) e tem 3 lentes no S10; falta apenas o julgamento humano.
+
+```bash
+CUE_RUN_REAL_MODELS=1 CUE_F2_CONFIG=/caminho/f2.json \
+  app/env/bin/python -m pytest tests/test_cue_reference_film_f2_real_models.py \
+  -m real_models -k full_acceptance -v
+```
+
+### A página de revisão também é testada
+
+A página `review.html` é a única interface do revisor humano e é ela que
+produz o `creative-review.json` que a porta final aceita ou recusa. Entre
+a página e a porta não havia nada testado: um elemento renomeado, uma
+dimensão caída da página, ou uma página construída para um master que
+depois foi re-gerado só apareceriam **depois** de o revisor ter assistido
+ao filme inteiro e preenchido o formulário.
+
+`tests/test_build_reference_review.py` amarra a página à porta por
+construção:
+
+- as chaves que o script da página escreve são comparadas com as chaves
+  que a porta realmente lê, lidas do **código-fonte da própria porta** —
+  nenhum dos dois lados pode derivar sem quebrar um teste;
+- a página oferece exatamente as seis dimensões que `ARTISTIC_DIMENSIONS`
+  exige, e não uma a mais nem uma a menos;
+- todo elemento que o script lê (`#reviewer`, `#errors`, `#speech`,
+  `#title`) existe na página;
+- o JSON que a página produz, preenchida como a porta quer, é **aceito**
+  por `validate_creative_review()`; e a página intocada, com tudo em
+  branco, é **recusada** — a página nunca aprova sozinha;
+- a página não é construída para um master cujo relatório técnico não
+  bate com o arquivo, nem para um master com check reprovado;
+- a página oferece só as falas que existem em disco;
+- a página guarda uma **cópia visível do JSON**, preenchida com o mesmo
+  texto que ela baixa, e a âncora do download é clicada já dentro do
+  documento — uma âncora solta é a maneira clássica de o download se
+  perder, e um download bloqueado pela política do navegador não pode
+  custar ao revisor dez minutos de filme.
+
+E o gate do F2 passou a checar o vínculo antes de pedir a revisão: se a
+página em disco for de outro master, a falha diz
+
+```
+the review page belongs to another master: rebuild it with
+scripts/build_reference_review.py before asking for a review
+```
+
+em vez de o revisor descobrir, depois de dez minutos de filme, que a
+revisão dele não valia.
+
+O JSON que a página produz foi verificado contra a porta real: aceito
+por `validate_creative_review()` com o sha do master v7, sem alteração
+de nenhuma linha.
+
+### Servir a revisão também é ferramenta, não comando solto
+
+Um `python3 -m http.server` manual é a forma mais rápida de perder o
+filme: a porta está ocupada, o servidor morreu, ou a pasta errada está
+sendo servida, e o revisor recebe um 404 depois de sentar diante da
+tela. `scripts/serve_reference_review.py` faz a checagem antes de abrir
+a porta:
+
+```bash
+app/env/bin/python scripts/serve_reference_review.py \
+  app/outputs/validacao-f2-2026-10-21-v7
+```
+
+Ele confere que o master existe, que o relatório técnico ainda descreve
+esse arquivo, que a página está vinculada a esse master, e que todo
+arquivo que a página oferece existe em disco. Se a página estiver
+ausente ou desatualizada, ela é **reconstruída** a partir do master
+validado antes de servir. Se a porta preferida estiver ocupada, ele
+serve em outra e avisa qual. `--check` apenas relata o estado da pasta
+sem servir nada.
+
+```
+ok: the master is technically validated
+ok: the review page is bound to this master
+review served at http://127.0.0.1:8901/review.html
+```
+
+Dois bugs reais apareceram enquanto isso era escrito e agora estão
+cobertos por teste: `SimpleHTTPRequestHandler` ignora um atributo de
+classe chamado `directory` e serve o diretório de trabalho — a página
+respondia 404 mesmo com o servidor no ar — e `free_port(0)` devolvia o
+próprio zero, de modo que o servidor subia numa porta efêmera enquanto
+o cliente tentava a porta 0.
+
+### O som do filme depende de HTTP Range
+
+Um terceiro bug só apareceu quando o revisor reclamou que o filme era
+mudo. O master v7 tem faixa de áudio AAC estéreo de 60 s (−16,17 LUFS,
+pico verdadeiro −2,24 dBTP, fala perceptível em ~6 s, 16 s, 36 s e
+50 s): o filme nunca foi silencioso. O que faltava era o servidor
+responder `Range`, porque `SimpleHTTPRequestHandler` devolve `200` com o
+arquivo inteiro. O Chrome toca o vídeo e **descarta a trilha de áudio**
+de um media servido sem suporte a range, então o revisor assistiu a um
+filme mudo e marcou `pt_br_voice: 0` e `sound_editing: 0`.
+
+O servidor agora responde `206 Partial Content` com `Accept-Ranges:
+bytes` e `Content-Range` correto para `bytes=início-fim`,
+`bytes=início-` e `bytes=-sufixo`, e `416` com
+`Content-Range: bytes */<tamanho>` para faixa insatisfazível. O teste
+`test_a_range_request_is_answered_with_partial_content` fixa esse
+contrato, porque a falha é silenciosa: sem range o vídeo abre e apenas
+o som some.
+
+## Os dois defeitos de áudio do v9 e as portas que os medem
+
+O v9 passou em todas as portas de imagem, mas o som tinha dois defeitos
+que nenhuma porta media. Ambos foram medidos, e ambos viraram porta.
+
+### Causa A — o leito ambiente repetia o silêncio do gerador
+
+O take do MMAudio (`sfx_ambient_42(5).mp4`, 5,0155 s, 44,1 kHz mono)
+**abre com 0,108549 s de silêncio quase digital**: o envelope das
+primeiras janelas de 50 ms mede −78,0, −77,1, −48,1, −37,4 dBFS antes de
+subir para o nível de regime (−15,89 dBFS). O `-stream_loop -1` do
+harness repetia o arquivo inteiro, então **aquele silêncio era repetido a
+cada ciclo** — 12 grupos de buraco no leito de 60 s, o mais longo de
+**250 ms**.
+
+A porta `check_bed_continuity` reprova um leito que caia 18 dB abaixo da
+própria mediana por 100 ms ou mais. No v9 ela reprova tanto o stem
+colocado (`ambient_continuous.wav`) quanto o nivelado
+(`leveled/09-ambient_continuous.wav`): mediana −30,40 dBFS, limiar
+−48,40 dBFS, 12 grupos, pior 250 ms.
+
+A correção não é um deslocamento fixo: `build_seamless_loop` **mede** a
+região sustentada do take (a mediana do último quarto do envelope é a
+referência; a faixa é o trecho que nunca cai mais de 6 dB abaixo dela) e
+monta o **ciclo** com *crossfade* de potência igual
+(`tail·cos(π/2·t) + head·sin(π/2·t)`). O primeiro sample do ciclo é o
+último sample da cauda, de modo que a emenda do arquivo coincide
+exatamente e a emenda do loop é contínua: a descontinuidade medida na
+emenda é 0,000061 contra p99,9 = 0,0125 do resto do sinal. A rampa de
+nível do take original fica **fora** do ciclo. Repetido sob 60 s, o leito
+resultante não abre buraco algum.
+
+### Causa B — a música morria antes do fim do filme
+
+O LM do ACE-Step escreve cerca de **86 %** dos tokens pedidos e depois
+repete `codes[-1]`: a cauda fica congelada. A fração acompanha a
+duração pedida (60 s → morte em 51,2 s; 70 s → 60,6 s; 75 s → 65,3 s).
+A porta `check_music_coverage` reprova quando a mediana dos últimos 3 s
+cai mais de 12 dB abaixo da mediana do corpo. No v9 a queda é de
+**36,7 dB**, tanto no stem colocado (`music.wav`) quanto no nivelado
+(`leveled/04-music.wav`).
+
+A correção é pedir **mais** música do que o filme precisa e aparar pela
+cabeça: `request_seconds: 75` com `duration_seconds: 60`, e o
+`atrim=end_sample` do `_normalize_audio` corta pelo começo, que é
+justamente a parte que o gerador escreveu. A música de 75 s aparada a 60 s
+dá queda de **−1,1 dB** — cauda mais alta, não mais baixa. O corte pela
+cauda foi testado e **reprova** (39,7 dB), o que confirma que o corte
+pela cabeça é o correto.
+
+### O descarte do falso "+8 dB step"
+
+Uma leitura anterior sugeria que a música do v9 caía 8 dB e depois
+subia 8 dB — um degrau. A medição do envelope de 50 ms não mostra
+degrau: o que existe é a rampa de nível do **take do MMAudio** (−78 dBFS
+até −13 dBFS) repetida a cada ciclo do leito. O degrau é do loop, não da
+música, e o ciclo seamless o elimina por construção. A hipótese foi
+descartada por medição, não por argumento.
+
+### Onde as portas rodam
+
+As duas portas rodam sobre os **stems colocados, antes do mix** — o
+veredito descreve o som, não a mistura. As falhas são coletadas por
+`_collect`, gravadas em `sound-evidence.json`, e o teste aborta **antes**
+de mixar e masterizar, para que um som reprovado não produza um master.
+`report['bed_continuity']` e `report['music_coverage']` vão para o
+`technical-report.json`.
+
+## Recuperação F3
+
+Os testes comuns cobrem encerramento abrupto de processo após commit SQLite,
+reabertura em dois processos independentes, cancelamento antes de conclusão
+tardia, replay de retake após reabrir o banco, publicação validada/atômica e
+referência removida antes do despacho. Usam CPU/FFmpeg e não comprovam retomada
+interna de difusão nem qualidade artística após falha de GPU.
+
+```bash
+app/env/bin/python -m pytest -q \
+  tests/test_recovery_process.py tests/test_cue_reference_film_f3_recovery.py \
+  tests/test_media_publication.py tests/test_director_input_recovery.py
+```

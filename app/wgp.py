@@ -33,6 +33,25 @@ from pathlib import Path
 from datetime import datetime
 import gradio as gr
 import random
+from services.runtime_frames import (
+    _WINDOW_POSITION_TOKEN_RE, resolve_window_position_token,
+    compute_sliding_window_no,
+    align_model_frame_count,
+    normalize_model_total_frame_count,
+    compute_next_sliding_window_length,
+)
+from services.runtime_custom_settings import (
+    CUSTOM_SETTINGS_MAX, CUSTOM_SETTING_TYPES,
+    get_custom_setting_key,
+    _normalize_custom_setting_type,
+    _normalize_custom_setting_name,
+    get_custom_setting_id,
+    get_model_custom_settings,
+    parse_custom_setting_typed_value,
+    get_custom_setting_value_from_dict,
+    collect_custom_settings_from_inputs,
+    clear_custom_setting_slots,
+)
 import json
 import numpy as np
 import importlib
@@ -111,9 +130,7 @@ settings_version = 2.58
 max_source_video_frames = 15000  # raised to support frame injection in long sliding-window videos (e.g. 9 windows × 20s × 25fps = 4500 frames)
 prompt_enhancer_image_caption_model, prompt_enhancer_image_caption_processor, prompt_enhancer_llm_model, prompt_enhancer_llm_tokenizer = None, None, None, None
 image_names_list = ["image_start", "image_end", "image_refs"]
-CUSTOM_SETTINGS_MAX = 6
 CUSTOM_SETTINGS_PER_ROW = 2
-CUSTOM_SETTING_TYPES = {"int", "float", "text"}
 lm_decoder_engine = ""
 enable_int8_kernels = 0
 # All media attachment keys for queue save/load
@@ -277,9 +294,6 @@ def get_state_model_type(state):
     key= "model_type" if state.get("active_form", "add") == "add" else "edit_model_type"
     return state[key]
 
-def compute_sliding_window_no(current_video_length, sliding_window_size, discard_last_frames, reuse_frames):
-    left_after_first_window = current_video_length - sliding_window_size + discard_last_frames
-    return 1 + math.ceil(left_after_first_window / (sliding_window_size - discard_last_frames - reuse_frames))
 
 
 def clean_image_list(gradio_list):
@@ -556,51 +570,10 @@ def process_prompt_and_add_tasks(state, current_gallery_tab, model_choice):
     queue= gen.get("queue", [])
     return update_queue_data(queue), gr.update(open=True) if new_prompts_count > 1 else gr.update()
 
-def get_custom_setting_key(index):
-    return f"custom_setting_{index + 1}"
 
-def _normalize_custom_setting_type(setting_type):
-    parsed_type = str(setting_type or "text").strip().lower()
-    return parsed_type if parsed_type in CUSTOM_SETTING_TYPES else "text"
 
-def _normalize_custom_setting_name(name):
-    normalized = re.sub(r"[^a-z0-9_]+", "_", str(name or "").strip().lower()).strip("_")
-    return normalized
 
-def get_custom_setting_id(setting_def, setting_index):
-    explicit_id = setting_def.get("id", None)
-    if explicit_id is not None and len(str(explicit_id).strip()) > 0:
-        normalized_id = _normalize_custom_setting_name(explicit_id)
-        if len(normalized_id) > 0:
-            return normalized_id
-    for field_name in ("name", "param"):
-        normalized_name = _normalize_custom_setting_name(setting_def.get(field_name, ""))
-        if len(normalized_name) > 0:
-            return normalized_name
-    return get_custom_setting_key(setting_index)
 
-def get_model_custom_settings(model_def):
-    if not isinstance(model_def, dict):
-        return []
-    custom_settings = model_def.get("custom_settings", [])
-    if not isinstance(custom_settings, list):
-        return []
-    normalized = []
-    used_ids = set()
-    for idx, setting in enumerate(custom_settings[:CUSTOM_SETTINGS_MAX]):
-        if not isinstance(setting, dict):
-            continue
-        one = setting.copy()
-        one["label"] = str(one.get("label", f"Custom Setting {idx + 1}"))
-        one["name"] = str(one.get("name", f"Custom Setting {idx + 1}"))
-        one["type"] = _normalize_custom_setting_type(one.get("type", "text"))
-        setting_id = get_custom_setting_id(one, idx)
-        if setting_id in used_ids:
-            setting_id = get_custom_setting_key(idx)
-        used_ids.add(setting_id)
-        one["id"] = setting_id
-        normalized.append(one)
-    return normalized
 
 
 def end_frames_always_enabled(model_def):
@@ -617,67 +590,7 @@ def injected_frames_positions_visible(video_prompt_type):
     return "F" in (video_prompt_type or "")
 
 
-_WINDOW_POSITION_TOKEN_RE = re.compile(r"^[Ww](\d+):(\d{1,3})$")
 
-def resolve_window_position_token(
-    token,
-    first_window_length,
-    sliding_window_size,
-    discard_last_frames,
-    reuse_frames,
-    source_video_frames_count,
-    source_video_overlap_frames_count,
-    total_frames,
-):
-    """Resolve a Maestro window-relative injected-frame token to an absolute frame.
-
-    Token form: "W<k>:<pct>" — window number k (1-based) and a percent
-    0..100 into that window's FRESH span (after the reused overlap prefix,
-    before the discarded tail). "W2:100" = the last kept frame window 2
-    contributes to the output; "W3:0" = window 3's first fresh frame.
-
-    Why this exists: the frontend can only approximate window boundaries
-    (seconds-space math vs the backend's quantized frame layout), and the
-    error grows with the window index. A numeric position computed for
-    "end of window 3" can drift past the real boundary into window 4's
-    fresh region (the injection then plays like the first frame of the
-    next window) or into an overlap/discard zone (it never shows at all).
-    Symbolic tokens let the backend place the frame against its OWN
-    layout, exactly. Mirrors the iterative arithmetic of the native "L"
-    branch in generate_video (first window advances by its own length,
-    later windows by sliding_window_size - discard - reuse), including
-    the final-window clamp.
-
-    Returns the absolute 0-based frame index (source video included), or
-    None when the token isn't a W-token (caller falls through to the
-    legacy numeric/L parsing). Window numbers past the final window clamp
-    to the final window.
-    """
-    match = _WINDOW_POSITION_TOKEN_RE.match(str(token).strip())
-    if match is None:
-        return None
-    target_window = max(1, int(match.group(1)))
-    pct = min(100, int(match.group(2)))
-
-    base = source_video_frames_count - source_video_overlap_frames_count
-    # First fresh frame of window 1: with a source video, the generation
-    # re-covers the source's overlap tail, so new visible content starts
-    # right after the FULL source; without one, frame 0.
-    fresh_start = source_video_frames_count
-    end = base - 1 + first_window_length
-    window_no = 1
-    is_final = end >= total_frames - 1
-    while window_no < target_window and not is_final:
-        fresh_start = end - discard_last_frames + 1
-        end = end - discard_last_frames - reuse_frames + sliding_window_size
-        window_no += 1
-        is_final = end >= total_frames - 1
-    if is_final:
-        end = min(end, total_frames - 1)
-    kept_end = end if is_final else end - discard_last_frames
-    kept_end = max(kept_end, fresh_start)
-    pos = fresh_start + int(round((kept_end - fresh_start) * pct / 100.0))
-    return max(0, min(pos, total_frames - 1))
 
 
 def input_video_strength_visible(model_def, image_prompt_type, video_prompt_type=""):
@@ -686,88 +599,9 @@ def input_video_strength_visible(model_def, image_prompt_type, video_prompt_type
     )
 
 
-def parse_custom_setting_typed_value(raw_value, setting_type):
-    if raw_value is None:
-        return None, None
-    if isinstance(raw_value, str):
-        raw_value = raw_value.strip()
-        if len(raw_value) == 0:
-            return None, None
-    setting_type = _normalize_custom_setting_type(setting_type)
-    if setting_type == "int":
-        if isinstance(raw_value, bool):
-            return None, "Expected an integer value."
-        if isinstance(raw_value, int):
-            return raw_value, None
-        if isinstance(raw_value, float):
-            if raw_value.is_integer():
-                return int(raw_value), None
-            return None, "Expected an integer value."
-        try:
-            return int(str(raw_value).strip()), None
-        except Exception:
-            try:
-                float_value = float(str(raw_value).strip())
-                if float_value.is_integer():
-                    return int(float_value), None
-            except Exception:
-                pass
-            return None, "Expected an integer value."
-    if setting_type == "float":
-        if isinstance(raw_value, bool):
-            return None, "Expected a float value."
-        try:
-            return float(raw_value), None
-        except Exception:
-            return None, "Expected a float value."
-    return str(raw_value).strip(), None
 
-def get_custom_setting_value_from_dict(custom_settings_values, setting_def, setting_index):
-    setting_id = setting_def.get("id", get_custom_setting_id(setting_def, setting_index))
-    if isinstance(custom_settings_values, dict) and setting_id in custom_settings_values:
-        return custom_settings_values.get(setting_id, None)
-    return setting_def.get("default", "")
 
-def collect_custom_settings_from_inputs(model_def, inputs, strict=False):
-    custom_settings_dict = {}
-    existing_custom_settings = inputs.get("custom_settings", None)
-    if not isinstance(existing_custom_settings, dict):
-        existing_custom_settings = {}
-    custom_settings = get_model_custom_settings(model_def)
-    for idx, setting_def in enumerate(custom_settings):
-        slot_key = get_custom_setting_key(idx)
-        setting_id = setting_def["id"]
-        raw_value = inputs.get(slot_key, None)
-        if raw_value is None and setting_id in existing_custom_settings:
-            raw_value = existing_custom_settings.get(setting_id, None)
-        parsed_value, parse_error = parse_custom_setting_typed_value(raw_value, setting_def.get("type", "text"))
-        if parse_error is not None:
-            if strict:
-                return None, f"{setting_def.get('label', slot_key)} {parse_error}"
-            if raw_value is not None:
-                raw_text = str(raw_value).strip() if isinstance(raw_value, str) else raw_value
-                if not (isinstance(raw_text, str) and len(raw_text) == 0):
-                    custom_settings_dict[setting_id] = raw_text
-            continue
-        if parsed_value is not None:
-            custom_settings_dict[setting_id] = parsed_value
-    # Endpoint-owned settings (for example Recast's prepared reference masks)
-    # do not have public UI slots.  Preserve only the model handler's explicit
-    # allowlist; unknown request keys remain discarded.
-    runtime_custom_settings = model_def.get("runtime_custom_settings", [])
-    if isinstance(runtime_custom_settings, (list, tuple, set)):
-        for setting_id in runtime_custom_settings:
-            if (
-                isinstance(setting_id, str)
-                and setting_id in existing_custom_settings
-                and existing_custom_settings[setting_id] is not None
-            ):
-                custom_settings_dict[setting_id] = existing_custom_settings[setting_id]
-    return custom_settings_dict if len(custom_settings_dict) > 0 else None, None
 
-def clear_custom_setting_slots(inputs):
-    for idx in range(CUSTOM_SETTINGS_MAX):
-        inputs.pop(get_custom_setting_key(idx), None)
 
 def validate_settings(state, model_type, single_prompt, inputs):
     def ret():
@@ -2570,8 +2404,15 @@ override_attention_modes_supported = get_supported_override_attention_modes()
 args = _parse_args()
 migrate_loras_layout()
 
-gpu_major, gpu_minor = torch.cuda.get_device_capability(args.gpu if len(args.gpu) > 0 else None)
-if  gpu_major < 8:
+_cuda_available = torch.cuda.is_available() and args.gpu != "cpu"
+gpu_major, gpu_minor = (
+    torch.cuda.get_device_capability(args.gpu if len(args.gpu) > 0 else None)
+    if _cuda_available else (0, 0)
+)
+if not _cuda_available:
+    print("[Runtime] CUDA unavailable; GPU generation requires a CUDA device.")
+    bfloat16_supported = False
+elif gpu_major < 8:
     print("Switching to FP16 models when possible as GPU architecture doesn't support optimed BF16 Kernels")
     bfloat16_supported = False
 else:
@@ -2580,7 +2421,7 @@ else:
 args.flow_reverse = True
 processing_device = args.gpu
 if len(processing_device) == 0:
-    processing_device ="cuda"
+    processing_device = "cuda" if _cuda_available else "cpu"
 # torch.backends.cuda.matmul.allow_fp16_accumulation = True
 lock_ui_attention = False
 lock_ui_transformer = False
@@ -2635,43 +2476,15 @@ for src_name, tgt_name in zip(src_move, tgt_move):
             pass
     
 
+from services.runtime_config import default_runtime_config, complete_runtime_config
+_runtime_defaults = default_runtime_config(
+    checkpoints_paths=fl.default_checkpoints_paths,
+    lora_root=DEFAULT_LORA_ROOT,
+    low_memory_profile=profile_type.LowRAM_LowVRAM,
+)
+
 if not Path(config_load_filename).is_file():
-    server_config = {
-        "attention_mode" : "auto",
-        "transformer_types": [],
-        "transformer_quantization": "int8",
-        "text_encoder_quantization" : "int8",
-        "lm_decoder_engine": "",
-        "save_path": "outputs",
-        "image_save_path": "outputs",
-        "compile" : "",
-        "metadata_type": "metadata",
-        "boost" : 1,
-        "enable_int8_kernels": 1,
-        "clear_file_list" : 5,
-        "enable_4k_resolutions": 0,
-        "max_reserved_loras": -1,
-        "vae_config": 0,
-        "profile" : profile_type.LowRAM_LowVRAM,
-        "video_profile": profile_type.LowRAM_LowVRAM,
-        "image_profile": profile_type.LowRAM_LowVRAM,
-        "audio_profile": 3.5,
-        "preload_model_policy": [],
-        "UI_theme": "default",
-        "checkpoints_paths": fl.default_checkpoints_paths,
-        "loras_root": DEFAULT_LORA_ROOT,
-        "save_queue_if_crash": 1,
-		"queue_color_scheme": "pastel",
-        "model_hierarchy_type": 1,
-        "mmaudio_mode": 0,
-        "mmaudio_persistence": 1,
-        "rife_version": "v4",
-        "prompt_enhancer_quantization": "quanto_int8",
-        "prompt_enhancer_temperature": 0.6,
-        "prompt_enhancer_top_p": 0.9,
-        "prompt_enhancer_randomize_seed": True,
-        "audio_save_path": "outputs",
-    }
+    server_config = complete_runtime_config({}, _runtime_defaults)
 
     # First-launch auto-tune: detect the user's hardware and override
     # the conservative LowRAM_LowVRAM defaults above with values that
@@ -2704,7 +2517,7 @@ if not Path(config_load_filename).is_file():
 else:
     with open(config_load_filename, "r", encoding="utf-8") as reader:
         text = reader.read()
-    server_config = json.loads(text)
+    server_config = complete_runtime_config(json.loads(text), _runtime_defaults)
 
 server_config.setdefault("prompt_enhancer_quantization", "quanto_int8")
 
@@ -2941,88 +2754,10 @@ def get_model_min_frames_and_step(model_type):
     latent_size = model_def.get("latent_size", frames_steps)
     return frames_minimum, frames_steps, latent_size 
 
-def align_model_frame_count(
-    frame_count,
-    model_def,
-    for_generation=False,
-    clamp_maximum=True,
-):
-    """Align a requested frame count to a model's native temporal grid."""
-    frame_count = int(frame_count)
-    modulus = int(model_def.get("frame_alignment_modulus", 0) or 0)
-    if modulus > 0:
-        remainder = int(model_def.get("frame_alignment_remainder", 1)) % modulus
-        minimum = int(model_def.get("frames_minimum", 1))
-        maximum = (
-            model_def.get("frames_maximum", None)
-            if clamp_maximum
-            else None
-        )
-        frame_count = max(minimum, frame_count)
-        if maximum is not None:
-            frame_count = min(int(maximum), frame_count)
-
-        delta = (frame_count - remainder) % modulus
-        mode = str(model_def.get("frame_alignment_mode", "floor")).lower()
-        if delta:
-            if mode == "ceil":
-                frame_count += modulus - delta
-            elif mode == "nearest":
-                frame_count += modulus - delta if delta >= modulus / 2 else -delta
-            else:
-                frame_count -= delta
-
-        if maximum is not None and frame_count > int(maximum):
-            frame_count -= modulus
-        if frame_count < minimum:
-            frame_count += modulus
-        return frame_count
-
-    latent_size = int(model_def.get("latent_size", model_def.get("frames_steps", 4)))
-    if for_generation:
-        return (frame_count // latent_size) * latent_size + 1
-    return (frame_count - 1) // latent_size * latent_size + 1
 
 
-def normalize_model_total_frame_count(frame_count, model_def):
-    """Normalize an output timeline without treating a window cap as total."""
-
-    frame_count = int(frame_count)
-    maximum = model_def.get("frames_maximum", None)
-    if (
-        model_def.get("sliding_window_exact_total_frames", False)
-        and maximum is not None
-        and frame_count > int(maximum)
-    ):
-        return max(int(model_def.get("frames_minimum", 1)), frame_count)
-    return align_model_frame_count(frame_count, model_def)
 
 
-def compute_next_sliding_window_length(
-    remaining_with_context,
-    sliding_window_size,
-    latent_size,
-    model_def,
-):
-    """Size a continuation pass without ever exceeding its window cap.
-
-    Models such as MiniMax H3 keep the requested joined duration exact while
-    requiring every individual pass to land on a model-native frame grid.  A
-    previous exact-duration branch aligned the *entire remaining timeline*
-    but forgot to reapply ``sliding_window_size``.  The first 1080p H3 pass
-    could therefore use the intended 124 frames while pass two silently grew
-    to 226 frames and exhausted VRAM.
-    """
-
-    if model_def.get("sliding_window_exact_total_frames", False):
-        candidate = align_model_frame_count(
-            remaining_with_context,
-            model_def,
-            for_generation=True,
-        )
-    else:
-        candidate = (remaining_with_context // latent_size) * latent_size + 1
-    return min(int(sliding_window_size), int(candidate))
     
 def get_model_fps(model_type):
     model_def = get_model_def(model_type)

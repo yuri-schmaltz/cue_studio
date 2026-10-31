@@ -1,0 +1,14 @@
+{
+  "profile": "E0",
+  "lock_sha256": "768354c47c157edc09e91983667674f730fde78aad8fa99d3406cd1d766abbf6",
+  "requirements_txt_sha256": "7bab5381a077632df4d779cd5d975cc6ae2e7ec30f5f8f65c3ea3a5a2b80e86b",
+  "pyproject_sha256": "43a0d365cd41264823ea9b23bf6940f4bb5f12213fe837db8242bb99ac478c33",
+  "commit_sha": "d2bac33a9037e28516e2f90ac5abf97b89bc6db8",
+  "pip_version": "uv 0.13.6",
+  "python_version": "3.11.18",
+  "resolved_at": "2026-10-30",
+  "notes": [
+    "Target Linux x86_64, Python 3.11.18. Strict hash installation and dependency check passed in an independent environment.",
+    "CPU PyTorch 2.10.0; no NVIDIA distributions. GPU ONNX index/distribution excluded; rembg[cpu] replaces rembg[gpu]. Backend boot and software export exercised."
+  ]
+}

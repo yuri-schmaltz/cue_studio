@@ -324,8 +324,13 @@ def check_cube_count(path: Path, expected: int = 1) -> dict:
     return result
 
 
-def lamp_bulb_blobs(image, vmin=170, smin=120, hmin=10, hmax=40, minarea=200) -> list[dict]:
-    """Return warm amber/yellow glowing bulb blobs in the frame."""
+def lamp_bulb_blobs(image, vmin=210, smin=60, hmin=20, hmax=40, minarea=200) -> list[dict]:
+    """Return compact yellow/amber *glowing* bulb regions.
+
+    Brown workshop wood occupies the orange hue range below the glow, and
+    the old mask selected entire doors/pedestals as the largest "bulb".
+    Dark, unlit glass is not measurable with this color detector.
+    """
     cv2 = _cv2()
     np = _numpy()
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -339,6 +344,10 @@ def lamp_bulb_blobs(image, vmin=170, smin=120, hmin=10, hmax=40, minarea=200) ->
         box_width = int(stats[label, cv2.CC_STAT_WIDTH])
         box_height = int(stats[label, cv2.CC_STAT_HEIGHT])
         if area < minarea or not box_width or not box_height:
+            continue
+        aspect = box_width / box_height
+        fill = area / (box_width * box_height)
+        if not 0.55 <= aspect <= 1.35 or fill < 0.45:
             continue
         bulbs.append({
             'area': area,
@@ -366,7 +375,7 @@ def bounding_box_gap(box_a: dict, box_b: dict) -> int:
     return max(x_dist, y_dist)
 
 
-def check_cube_lamp_separation(path: Path, sample: int = 10, min_gap: int = 0) -> dict:
+def check_cube_lamp_separation(path: Path, sample: int = 10, min_gap: int = 0, require_pair: bool = False) -> dict:
     """Fail loudly if the cube and the lamp bulb overlap in any sampled frame.
 
     The creative review rejected the film because the lamp and cube overlapped
@@ -398,11 +407,14 @@ def check_cube_lamp_separation(path: Path, sample: int = 10, min_gap: int = 0) -
             f"{path.name}: lamp bulb and red cube overlap in {overlapping_frames} of {paired_frames} "
             f"paired frames (min gap: {min(gaps)}px); cube and lamp must remain physically separated."
         )
+    if require_pair and not paired_frames:
+        raise ValueError(f'{path.name}: cube and glowing lamp are not measurable together; separation is unverified')
 
     return {
         'path': str(path),
         'sampled_frames': sampled_frames,
         'paired_frames': paired_frames,
         'min_gap': min(gaps) if gaps else None,
-        'verdict': 'separated' if (not gaps or min(gaps) >= min_gap) else 'overlapping',
+        'measurable': bool(paired_frames),
+        'verdict': 'separated' if gaps else 'not_measurable',
     }

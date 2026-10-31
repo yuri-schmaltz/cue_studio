@@ -109,27 +109,3 @@ def build_cinema_router() -> APIRouter:
 
 
 __all__ = ["build_cinema_router"]
-
-
-def _auto_mount() -> None:
-    """Auto-mount the router on the launch.py ``api`` singleton.
-
-    Mirrors the pattern used by ``http_plans`` — keeps the cut purely
-    additive. If launch.py hasn't been imported yet the import is a
-    no-op; operators can wire the router manually with
-    ``build_cinema_router`` when bootstrapping tests.
-    """
-
-    try:
-        from launch import api as _api
-    except ImportError:
-        return
-    try:
-        _api.include_router(build_cinema_router())
-    except Exception:  # noqa: BLE001
-        # The router may already be mounted during a hot-reload; that's
-        # fine. Anything else would surface during launch anyway.
-        pass
-
-
-_auto_mount()

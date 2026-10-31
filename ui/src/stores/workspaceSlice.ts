@@ -24,6 +24,7 @@ export type WorkspaceSlice = Pick<AppState,
 export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice> = (set, get) => {
   let setupRequest = 0
   let workspaceRequest = 0
+  let draftRequest = 0
   return ({
   workspaces: [],
   activeWorkspace: 'default',
@@ -229,15 +230,22 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
   },
 
   loadDirectorDraft: async (name: string) => {
+    const request = ++draftRequest
+    const setupVersion = setupRequest
     const current = get()
     if (current.pipelineId && current.pipelineStatus && !['completed', 'failed', 'cancelled'].includes(current.pipelineStatus.status)) {
       return
     }
     try {
       const draft = await api.fetchDirectorDraft(name)
+      // A late draft belongs to the workspace/setup that requested it.
+      // In particular an empty response must not reset a newly saved setup.
+      if (request !== draftRequest || setupVersion !== setupRequest || get().activeWorkspace !== name) return
       if (!draft) {
         // Fresh project or project without a saved draft: clear leftover Director state
-        current.directorReset()
+        get().directorReset()
+        const setup = get().activeWorkspaceSetup
+        if (setup) get().applyWorkspaceSetup(setup)
         return
       }
 

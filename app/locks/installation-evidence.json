@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-30",
+  "platform": "Linux x86_64",
+  "tested_gpu": "NVIDIA RTX 3060 12 GB",
+  "profiles": {
+    "E0": {
+      "python": "3.11.18",
+      "torch": "2.10.0+cpu",
+      "cuda": null,
+      "cuda_available": false,
+      "distribution_count": 282,
+      "distribution_versions_sha256": "e2481c1a5d1fc72fa9b67577847e8c6197c5b01946c8310bdcf3df0750014e90",
+      "dependency_check": "passed",
+      "strict_hash_sync": "passed",
+      "target_vram_benchmark": "not performed"
+    },
+    "E1": {
+      "python": "3.11.18",
+      "torch": "2.10.0+cu130",
+      "cuda": "13.0",
+      "cuda_available": true,
+      "distribution_count": 300,
+      "distribution_versions_sha256": "9ceb74e9948bc7f49f4a7c1f185892313aaa2b1cf94faf38f0edf2ab3f2c85e4",
+      "dependency_check": "passed",
+      "strict_hash_sync": "passed",
+      "target_vram_benchmark": "not performed"
+    },
+    "E2": {
+      "python": "3.11.18",
+      "torch": "2.10.0+cu130",
+      "cuda": "13.0",
+      "cuda_available": true,
+      "distribution_count": 300,
+      "distribution_versions_sha256": "9ceb74e9948bc7f49f4a7c1f185892313aaa2b1cf94faf38f0edf2ab3f2c85e4",
+      "dependency_check": "passed",
+      "strict_hash_sync": "passed",
+      "target_vram_benchmark": "not performed"
+    },
+    "E3": {
+      "python": "3.11.18",
+      "torch": "2.10.0+cu130",
+      "cuda": "13.0",
+      "cuda_available": true,
+      "distribution_count": 300,
+      "distribution_versions_sha256": "9ceb74e9948bc7f49f4a7c1f185892313aaa2b1cf94faf38f0edf2ab3f2c85e4",
+      "dependency_check": "passed",
+      "strict_hash_sync": "passed",
+      "target_vram_benchmark": "not performed"
+    },
+    "E4": {
+      "python": "3.11.18",
+      "torch": "2.10.0+cu130",
+      "cuda": "13.0",
+      "cuda_available": true,
+      "distribution_count": 300,
+      "distribution_versions_sha256": "9ceb74e9948bc7f49f4a7c1f185892313aaa2b1cf94faf38f0edf2ab3f2c85e4",
+      "dependency_check": "passed",
+      "strict_hash_sync": "passed",
+      "target_vram_benchmark": "not performed"
+    }
+  },
+  "cpu_export": {
+    "status": "passed",
+    "job_id": "ef62baa3",
+    "artifact_sha256": "2d824a2642cce2ab3af6b4a6c9ff8001c1028d67149f25292e1e8690a3ec53b2",
+    "video_frames": 24,
+    "fps": 24,
+    "audio": "AAC",
+    "source": "deterministic installation test; not F2 production"
+  },
+  "limits": "All installations were exercised on this host. E1/E2/E4 target VRAM generation benchmarks are pending. No human artistic acceptance is asserted."
+}

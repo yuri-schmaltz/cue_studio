@@ -82,6 +82,8 @@ jobs:
         # default gauntlet. opt in with `-m browser` / `-m smoke`
         # when the matching dependency is available.
         run: python -m pytest tests/ -v
+      - name: Runtime lock source integrity
+        run: python scripts/verify_runtime_locks.py
 
   smoke-import:
     # Pattern lifted from directo_studio v1.1.7 (lifted the smoke-import
@@ -160,7 +162,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: ui/package-lock.json
       - name: Install UI deps

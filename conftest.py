@@ -389,10 +389,15 @@ def _install_optional_stubs() -> None:
     try:
         import torch as _torch_probe  # noqa: WPS433
 
-        if hasattr(_torch_probe, "cuda") and not getattr(
-            _torch_probe.cuda, "_maestro_shimmed", False
+        # A missing torch is represented by our permissive shim, whose
+        # attributes are callables rather than modules. Never mutate those,
+        # or hide a working GPU from opt-in real-model tests.
+        _cuda = vars(_torch_probe).get("cuda")
+        if (
+            isinstance(_cuda, types.ModuleType)
+            and not _cuda.is_available()
+            and not vars(_cuda).get("_maestro_shimmed", False)
         ):
-            _cuda = _torch_probe.cuda
 
             def _safe_current_device(*_args, **_kwargs):  # type: ignore[no-untyped-def]
                 return 0

@@ -1543,12 +1543,15 @@ def compile_editor_render(
     if export_width != width or export_height != height:
         filters.append(
             f"[{base_label}]scale={export_width}:{export_height}:flags=lanczos,"
-            f"fps={export_fps:.8f},format=yuv420p[editor_video]"
+            f"format=yuv420p[editor_video]"
         )
     else:
         filters.append(
-            f"[{base_label}]fps={export_fps:.8f},format=yuv420p[editor_video]"
+            f"[{base_label}]format=yuv420p[editor_video]"
         )
+    # The output -r below performs the final rate conversion. A second fps
+    # filter after overlay can discard the last frame at EOF (24 -> 23 for
+    # a one-second edit), shortening picture while audio keeps its duration.
 
     audio_labels: list[str] = []
     include_audio = bool((project.get("export") or {}).get("include_audio", True))

@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from fractions import Fraction
 from pathlib import Path
 import subprocess
 import wave
@@ -46,6 +47,34 @@ def validate_pcm(path: Path, samples: int, sample_rate: int = 48000) -> None:
     with wave.open(str(path), 'rb') as audio:
         if (audio.getframerate(), audio.getnchannels(), audio.getnframes()) != (sample_rate, 2, samples):
             raise ValueError(f"{path.name}: stem must contain {samples} stereo samples at {sample_rate} Hz")
+
+
+def validate_generated_duration(path: Path, delivery_frames: int, delivery_fps: int) -> dict:
+    """Require enough native picture time before conforming an edit slot."""
+    probe = json.loads(run_media([
+        'ffprobe', '-v', 'error', '-count_frames', '-select_streams', 'v:0',
+        '-show_entries', 'stream=nb_read_frames,avg_frame_rate,r_frame_rate',
+        '-of', 'json', str(path),
+    ]).stdout)
+    try:
+        stream = probe['streams'][0]
+        frames = int(stream['nb_read_frames'])
+        rate = Fraction(stream['avg_frame_rate'])
+        nominal = Fraction(stream['r_frame_rate'])
+        if frames <= 0 or rate <= 0 or rate != nominal:
+            raise ValueError('A positive constant frame rate is required')
+        duration = Fraction(frames, 1) / rate
+        required = Fraction(delivery_frames, delivery_fps)
+    except (KeyError, IndexError, ValueError, ZeroDivisionError) as error:
+        raise ValueError(f'{path.name}: native video timing is not measurable') from error
+    if duration < required:
+        raise ValueError(
+            f'{path.name}: native video has {frames} frames at {rate} fps '
+            f'({float(duration):.3f}s), shorter than the {float(required):.3f}s edit slot; '
+            'generate more native frames, accounting for end-conditioning trim'
+        )
+    return {'native_frames': frames, 'native_fps': str(rate),
+            'native_seconds': float(duration), 'required_seconds': float(required)}
 
 
 def validate_master(path: Path, expected: dict) -> dict:

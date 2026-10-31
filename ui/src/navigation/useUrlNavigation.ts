@@ -18,7 +18,7 @@
  * replacing it.
  */
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useStore } from '../stores/useStore'
 import type { MediaFilter } from '../types'
 import { parseRoute, routeFromState, serializeRoute, sectionFromRoute, PROJECT_SECTIONS } from './types'
@@ -82,7 +82,7 @@ export function useUrlNavigation(): void {
 
   // Apply a URL to the store, then canonicalize the address bar so
   // the store→URL effect finds nothing left to write.
-  const applyFromLocation = async () => {
+  const applyFromLocation = useCallback(async () => {
     let route = parseRoute(window.location.pathname)
     if (route.kind === 'projects' && window.location.pathname === '/') {
       try {
@@ -112,7 +112,7 @@ export function useUrlNavigation(): void {
     } finally {
       applyingRef.current = false
     }
-  }
+  }, [workspaces])
 
   // URL → store: initial deep link (waits for the workspace list) and
   // browser back/forward.
@@ -122,7 +122,7 @@ export function useUrlNavigation(): void {
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+  }, [applyFromLocation])
 
   // Initial hydration: deep links reference a project, which can only
   // be validated once the workspace list has loaded. Re-runs on
@@ -136,7 +136,7 @@ export function useUrlNavigation(): void {
     }
     hydratedRef.current = true
     void applyFromLocation()
-  }, [workspaces])
+  }, [workspaces, applyFromLocation])
 
   // Store → URL.
   const prev = useRef({ section, workspace, mediaFilter })

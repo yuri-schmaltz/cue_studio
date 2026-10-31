@@ -15,6 +15,10 @@ Environment variables:
 
 import gc
 import sys
+
+# Services resolve the live server through this name, including CLI startup.
+if __name__ == "__main__":
+    sys.modules.setdefault("launch", sys.modules[__name__])
 import os
 import glob
 import json
@@ -99,21 +103,14 @@ from services.director_draft import (
     save_draft as save_director_draft_file,
 )
 from services.editor_projects import (
-    build_editor_media_preview,
     EditorProjectError,
     EditorRenderCancelled,
-    create_editor_project,
-    delete_editor_project,
     editor_export_dimensions,
-    editor_export_capabilities,
     editor_project_duration,
     inspect_editor_assets,
-    list_editor_projects,
     load_editor_project,
-    probe_media,
     render_editor_project,
     resolve_editor_asset,
-    resolve_editor_media_cache_file,
     save_editor_project,
 )
 
@@ -6336,218 +6333,25 @@ def _save_presets(presets: list[dict]):
         json.dump(presets, f, indent=2)
 
 
-@api.get("/api/v1/style-bibles")
-def list_style_bibles():
-    """List all saved Style Bibles. Each Bible carries the metadata
-    plus small rollup counts (characters / environments / loras) so
-    the UI can render a compact list without round-tripping every
-    Bible. The full Bible (with every anchor) is fetched on demand
-    via GET /api/v1/style-bibles/{id}."""
-    from services.style_bible import list_bibles
-    out = []
-    for bible in list_bibles():
-        out.append({
-            "id": bible.metadata.id,
-            "title": bible.metadata.title,
-            "description": bible.metadata.description,
-            "author": bible.metadata.author,
-            "tags": list(bible.metadata.tags),
-            "characters_count": len(bible.characters),
-            "environments_count": len(bible.environments),
-            "loras_count": len(bible.loras),
-            "global_style": bible.global_style,
-            "global_negative": bible.global_negative,
-        })
-    return {"bibles": out}
+# Style Bibles router
+from routers.style_bibles import build_style_bibles_router
+api.include_router(build_style_bibles_router())
+
+# Backwards-compat imports for tests/handlers reaching directly into launch
+from routers.style_bibles import build_style_bibles_router as _build_style_bibles_router
+_style_bibles_router = build_style_bibles_router()
+for _route in _style_bibles_router.routes:
+    if hasattr(_route, "endpoint"):
+        globals()[_route.endpoint.__name__] = _route.endpoint
 
 
-@api.get("/api/v1/style-bibles/{bible_id}")
-def get_style_bible(bible_id: str):
-    """Return the full contents of a Style Bible (metadata +
-    characters + environments + loras + global style/negative). The
-    body matches the storage shape 1:1 so the UI can edit any field
-    and PUT it back without translation."""
-    from services.style_bible import load_bible
-    try:
-        bible = load_bible(bible_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return bible.to_dict()
+from routers.presets import build_presets_router
+api.include_router(build_presets_router(_PRESETS_FILE, load_presets=_load_presets, save_presets=_save_presets))
 
-
-@api.put("/api/v1/style-bibles/{bible_id}")
-async def put_style_bible(bible_id: str, request: Request):
-    """Persist a Style Bible. The body shape must match the to_dict()
-    output of services.style_bible.StyleBible — metadata + characters
-    + environments + loras + global_style + global_negative. We
-    validate the path id matches the body's metadata.id (a Bible
-    stored as X cannot be PUT to /Y)."""
-    from services.style_bible import StyleBible, save_bible
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise HTTPException(status_code=400, detail="JSON object required")
-    if "metadata" not in body or not isinstance(body["metadata"], dict):
-        raise HTTPException(status_code=400, detail="metadata key is required")
-    if body["metadata"].get("id") != bible_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"body metadata.id ({body['metadata'].get('id')!r}) "
-            f"does not match path bible_id ({bible_id!r})",
-        )
-    try:
-        bible = StyleBible.from_dict(body)
-    except (ValueError, KeyError) as exc:
-        raise HTTPException(status_code=400, detail=f"invalid bible: {exc}") from exc
-    try:
-        path = save_bible(bible)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return {"id": bible.metadata.id, "path": str(path)}
-
-
-@api.post("/api/v1/style-bibles")
-async def create_style_bible(request: Request):
-    """Create a new Style Bible. The body must include metadata.id.
-    Returns 409 if a Bible with the same id already exists (use
-    PUT to update)."""
-    from services.style_bible import StyleBible, save_bible
-    from services.style_bible.registry import BIBLE_DEFAULT_DIR
-    body = await request.json()
-    if not isinstance(body, dict):
-        raise HTTPException(status_code=400, detail="JSON object required")
-    try:
-        bible = StyleBible.from_dict(body)
-    except (ValueError, KeyError) as exc:
-        raise HTTPException(status_code=400, detail=f"invalid bible: {exc}") from exc
-    target = BIBLE_DEFAULT_DIR / f"{bible.metadata.id}.json"
-    yaml_target = BIBLE_DEFAULT_DIR / f"{bible.metadata.id}.yaml"
-    yml_target = BIBLE_DEFAULT_DIR / f"{bible.metadata.id}.yml"
-    if target.exists() or yaml_target.exists() or yml_target.exists():
-        raise HTTPException(
-            status_code=409,
-            detail=f"Style Bible already exists: {bible.metadata.id} "
-            f"(use PUT /api/v1/style-bibles/{bible.metadata.id} to update)",
-        )
-    try:
-        path = save_bible(bible, overwrite=False)
-    except FileExistsError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    return {"id": bible.metadata.id, "path": str(path)}
-
-
-@api.delete("/api/v1/style-bibles/{bible_id}")
-def delete_style_bible(bible_id: str):
-    """Delete a Style Bible by id. Returns 404 if no such Bible.
-    Refuses to delete reserved ids (starting with underscore)."""
-    from services.style_bible import delete_bible
-    try:
-        removed = delete_bible(bible_id)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if not removed:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Style Bible not found: {bible_id}",
-        )
-    return {"deleted": bible_id}
-
-
-@api.post("/api/v1/style-bibles/{bible_id}/build")
-async def build_style_bible_prompt(bible_id: str, request: Request):
-    """Compose a prompt from a Style Bible + base prompt + character /
-    environment ids. Mirrors PromptBuilder.build() but exposed over
-    HTTP so the UI can preview the composed prompt without having
-    to import services.style_bible itself.
-
-    Request body shape:
-      {
-        "base_prompt": str = "",
-        "character_ids": list[str] = [],
-        "environment_id": str | null = null,
-        "negative_prompt": str = ""
-      }
-    """
-    from services.style_bible import (
-        PromptBuilder,
-        load_bible,
-    )
-    try:
-        bible = load_bible(bible_id)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    body = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
-    if not isinstance(body, dict):
-        raise HTTPException(status_code=400, detail="JSON object required")
-    result = PromptBuilder().build(
-        bible,
-        base_prompt=str(body.get("base_prompt", "") or ""),
-        character_ids=tuple(body.get("character_ids", []) or []),
-        environment_id=body.get("environment_id"),
-        negative_prompt=str(body.get("negative_prompt", "") or ""),
-    )
-    return {
-        "prompt": result.prompt,
-        "negative_prompt": result.negative_prompt,
-        "active_loras": [
-            {"name": l.name, "weight": l.weight, "file_path": l.file_path}
-            for l in result.active_loras
-        ],
-        "character_anchors": [
-            {"id": c.id, "name": c.name} for c in result.character_anchors
-        ],
-        "environment_anchor": (
-            {"id": result.environment_anchor.id, "name": result.environment_anchor.name}
-            if result.environment_anchor is not None else None
-        ),
-    }
-
-
-@api.get("/api/v1/presets")
-def list_presets():
-    """List all saved generation presets."""
-    return {"presets": _load_presets()}
-
-
-@api.post("/api/v1/presets")
-async def create_preset(request: Request):
-    """Save a new generation preset."""
-    body = await request.json()
-    name = body.get("name", "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="name is required")
-
-    preset = {
-        "id": uuid.uuid4().hex[:8],
-        "name": name,
-        "mode": body.get("mode", "video"),
-        "model_type": body.get("model_type", ""),
-        "prompt": body.get("prompt", ""),
-        "activated_loras": body.get("activated_loras", []),
-        "loras_multipliers": body.get("loras_multipliers", ""),
-        "lora_weights": body.get("lora_weights", {}),
-        "params": body.get("params", {}),
-        "created_at": time.time(),
-    }
-
-    presets = _load_presets()
-    presets.append(preset)
-    _save_presets(presets)
-    return preset
-
-
-@api.delete("/api/v1/presets/{preset_id}")
-def delete_preset(preset_id: str):
-    """Delete a preset by ID."""
-    presets = _load_presets()
-    new_presets = [p for p in presets if p.get("id") != preset_id]
-    if len(new_presets) == len(presets):
-        raise HTTPException(status_code=404, detail="Preset not found")
-    _save_presets(new_presets)
-    return {"deleted": preset_id}
+_presets_router = build_presets_router(_PRESETS_FILE, load_presets=_load_presets, save_presets=_save_presets)
+for _route in _presets_router.routes:
+    if hasattr(_route, "endpoint"):
+        globals()[_route.endpoint.__name__] = _route.endpoint
 
 
 def _read_app_version() -> str:
@@ -10011,7 +9815,7 @@ def director_queue_list():
 
 
 # cinema/evaluate is now mounted via services.director.http_cinema
-# (auto-mount when the module is imported below).  Removed the
+# (explicitly mounted below; importing a router has no boot side effects). Removed the
 # inline handler — see ``app/services/director/http_cinema.py``
 # for the new implementation.
 try:
@@ -10561,14 +10365,6 @@ try:
 except Exception as _ve_import_err:  # pragma: no cover — defensive
     _mcp_log.warning("[video_editor] router unavailable: %s", _ve_import_err)
 
-# CapabilityMatrix router (A34 / R04) — consultável por UI e adaptadores.
-try:
-    from routers.capabilities import build_capabilities_router
-    api.include_router(build_capabilities_router())
-    _mcp_log.info("[capabilities] router mounted at /api/v1/capabilities")
-except Exception as _cap_import_err:  # pragma: no cover — defensive
-    _mcp_log.warning("[capabilities] router unavailable: %s", _cap_import_err)
-
 # Dependency graph router (A26)
 try:
     from routers.dependencies import build_dependencies_router
@@ -11016,6 +10812,11 @@ async def _prepare_generation_submission(
     """Normalize/plan a request, then submit it or return prepared params."""
 
     body = dict(body)
+    # A live API request uses today's schema unless it explicitly declares
+    # an older version. Missing versions in saved queue files still follow
+    # WanGP's legacy migration path; that path must not discard a live
+    # request's explicit sliding-window settings.
+    body.setdefault("settings_version", wgp.settings_version)
     client_submission_id = str(
         body.pop("_client_submission_id", "") or ""
     ).strip()
@@ -28452,362 +28253,26 @@ def list_jobs():
 # API Routes: Favorites
 # ============================================================================
 
-def _favorites_path(workspace: str | None = None) -> str:
-    """Path to favorites JSON for the requested (or active) workspace."""
-    return os.path.join(_workspace_dir(workspace), ".favorites.json")
+from routers.media_library import MediaLibrary, MediaLibraryDeps, build_media_library_router
 
-
-def _load_favorites(workspace: str | None = None) -> set:
-    """Load favorites set for the requested (or active) workspace."""
-    from services.win_safe_files import favorites_lock
-    fp = _favorites_path(workspace)
-    if os.path.isfile(fp):
-        try:
-            with favorites_lock:
-                with open(fp, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-            return set(data) if isinstance(data, list) else set()
-        except Exception:
-            pass
-    return set()
-
-
-def _save_favorites(favs: set, workspace: str | None = None):
-    """Save favorites set for the requested (or active) workspace.
-
-    favorites_lock (shared with director_pipeline's delete sweep, which
-    rewrites the same file) serializes read-modify-write cycles so a
-    concurrent pipeline delete can't be clobbered by a stale write."""
-    from services.win_safe_files import favorites_lock
-    fp = _favorites_path(workspace)
-    with favorites_lock:
-        with open(fp, "w", encoding="utf-8") as f:
-            json.dump(sorted(favs), f)
-
-
-@api.get("/api/v1/favorites")
-def list_favorites():
-    """List all favorited filenames in the active workspace."""
-    return {"favorites": sorted(_load_favorites())}
-
-
-@api.post("/api/v1/favorites/{name}")
-def toggle_favorite(name: str):
-    """Toggle favorite status for a file. Returns new state."""
-    from services.win_safe_files import favorites_lock
-    # Hold across the whole read-modify-write so a concurrent pipeline
-    # delete sweep can't be clobbered by this stale set (RLock — the
-    # load/save helpers re-acquire internally).
-    with favorites_lock:
-        favs = _load_favorites()
-        if name in favs:
-            favs.discard(name)
-            is_fav = False
-        else:
-            favs.add(name)
-            is_fav = True
-        _save_favorites(favs)
-    return {"name": name, "favorite": is_fav}
-
-
-@api.get("/api/v1/outputs")
-def list_outputs(limit: int = 0, offset: int = 0, favorites_only: bool = False, multiclip_only: bool = False, search: str = "", workspace: str = ""):
-    """List generated output files (newest first) from the active workspace.
-
-    Supports pagination via limit/offset query params.
-    Returns {outputs, total} where total is the full count before pagination.
-    When limit=0 (default), returns all items (backwards compatible).
-
-    A named workspace browses that workspace without changing the active one.
-    workspace="__uploads__" lists the uploads folder instead (the gallery's
-    virtual "Uploads" view) so user-supplied media can be previewed and
-    reused. Browse-only: the server-side active workspace is untouched and
-    generations never save here. Uploads have no sidecars, so the metadata
-    passes below fall through naturally.
-    """
-    requested_workspace = str(workspace or "").strip()
-    if requested_workspace == "__uploads__":
-        out_dir = os.path.join(os.getcwd(), "uploads")
-        browsed_workspace = "__uploads__"
-    elif requested_workspace:
-        out_dir = _workspace_browse_dir(requested_workspace)
-        if out_dir is None:
-            raise HTTPException(status_code=400, detail="Invalid workspace name")
-        browsed_workspace = requested_workspace
-    else:
-        out_dir = _workspace_dir()
-        browsed_workspace = _get_active_workspace()
-    if not os.path.isdir(out_dir):
-        return {"outputs": [], "total": 0}
-
-    media_exts = {".mp4", ".webm", ".gif", ".png", ".jpg", ".jpeg", ".webp", ".wav", ".mp3"}
-    video_exts = {".mp4", ".webm", ".gif"}
-    audio_exts = {".wav", ".mp3"}
-
-    favs = set() if browsed_workspace == "__uploads__" else _load_favorites(browsed_workspace)
-
-    # Build a quick listing with mtime — avoid reading JSON for every file
-    # We only read sidecar JSON for files in the visible page
-    raw_entries = []
-    for name in os.listdir(out_dir):
-        if name.startswith(".trash_") or name.startswith("."):
-            continue
-        filepath = os.path.join(out_dir, name)
-        if not os.path.isfile(filepath):
-            continue
-        ext = os.path.splitext(name)[1].lower()
-        if ext not in media_exts:
-            continue
-        raw_entries.append((name, filepath, ext, os.path.getmtime(filepath)))
-
-    # Sort by creation time (newest first) before any filtering
-    raw_entries.sort(key=lambda e: e[3], reverse=True)
-
-    # First pass: read sidecar JSON ONCE per file and cache the bits we need
-    # downstream (clip group info, generation_mode, edit_sub_mode). Files
-    # without a sidecar simply have no entry in the cache. We previously read
-    # sidecars in two separate passes (once for clip groups, once for mode);
-    # consolidating saves disk I/O and keeps the mode/edit_sub_mode populated
-    # for ALL files — the prior code only set `mode` when a multi-clip group
-    # existed, which meant the gallery's Edits filter never had data to
-    # filter on for non-multiclip outputs.
-    sidecar_cache: dict[str, dict] = {}
-    clip_groups: dict[str, dict] = {}
-    for name, filepath, ext, mtime in raw_entries:
-        meta_path = os.path.join(out_dir, os.path.splitext(name)[0] + ".meta.json")
-        if not os.path.isfile(meta_path):
-            continue
-        try:
-            with open(meta_path, "r", encoding="utf-8") as mf:
-                meta = json.load(mf)
-        except Exception:
-            continue
-        params = meta.get("params") if isinstance(meta.get("params"), dict) else {}
-        sidecar_cache[name] = {
-            "mode": meta.get("generation_mode"),
-            "edit_sub_mode": params.get("edit_sub_mode"),
-            "multi_clip_info": params.get("multi_clip_info"),
-            # A media file can become visible while a multi-window job is
-            # still writing it, before Cue Studio publishes the authoritative
-            # sidecar.  Surface this transition so an already-mounted gallery
-            # card can replace temporary embedded generation metadata with the
-            # final source-prompt/window-plan provenance.
-            "metadata_ready": True,
-            "metadata_updated_at": os.path.getmtime(meta_path),
-        }
-        mci = sidecar_cache[name]["multi_clip_info"]
-        if mci and mci.get("group_id"):
-            gid = mci["group_id"]
-            if gid not in clip_groups:
-                clip_groups[gid] = {"total": mci.get("total", 0), "highest_index": -1, "has_final": False}
-            clip_groups[gid]["highest_index"] = max(clip_groups[gid]["highest_index"], mci.get("index", 0))
-
-    for gid, info in clip_groups.items():
-        if info["highest_index"] >= info["total"] - 1:
-            info["has_final"] = True
-
-    # Second pass: build the file list using the cached sidecar data.
-    files = []
-    for name, filepath, ext, mtime in raw_entries:
-        ftype = "video" if ext in video_exts else ("audio" if ext in audio_exts else "image")
-        cached = sidecar_cache.get(name) or {}
-        mode = cached.get("mode")
-        edit_sub_mode = cached.get("edit_sub_mode")
-        mci = cached.get("multi_clip_info")
-        is_intermediate_clip = False
-        if mci and mci.get("group_id"):
-            gid = mci["group_id"]
-            group = clip_groups.get(gid, {})
-            if group.get("has_final"):
-                is_intermediate_clip = True
-            elif mci.get("index", 0) < group.get("highest_index", 0):
-                is_intermediate_clip = True
-
-        if is_intermediate_clip:
-            continue
-        # The file may vanish between os.scandir() and here (temp files renamed
-        # mid-generation, etc.). Skip the entry rather than crashing the endpoint.
-        try:
-            size = os.path.getsize(filepath)
-        except (FileNotFoundError, OSError):
-            continue
-        files.append({
-            "name": name,
-            "type": ftype,
-            "mode": mode,
-            # Surface edit_sub_mode so the gallery's Edits filter can
-            # identify retake/inpaint/outpaint/restyle/edit_anything outputs.
-            "edit_sub_mode": edit_sub_mode,
-            "favorite": name in favs,
-            "workspace": browsed_workspace,
-            "size": size,
-            "created_at": mtime,
-            "metadata_ready": bool(cached.get("metadata_ready")),
-            "metadata_updated_at": cached.get("metadata_updated_at"),
-            "url": f"/api/v1/file/{name}",
-        })
-
-    # Special filters: return ALL matches, bypass pagination
-    if favorites_only:
-        files = [f for f in files if f["favorite"]]
-        return {"outputs": files, "total": len(files)}
-    if multiclip_only:
-        # 1. Explicit multiclip files
-        multiclips = [f for f in files if "multiclip" in f["name"].lower() and f["type"] == "video"]
-        multiclip_names = {f["name"] for f in multiclips}
-
-        # 2. Sliding window final outputs: group videos by seed+prompt, keep only the largest
-        # Filename pattern: datetime_seedNNNN_prompt_text.mp4
-        import re as _re_mc
-        seed_pattern = _re_mc.compile(r'^\d{4}-\d{2}-\d{2}-\d{2}h\d{2}m\d{2}s_(seed\d+_.+)\.(mp4|webm|mkv)$', _re_mc.IGNORECASE)
-        groups: dict[str, list[dict]] = {}
-        for f in files:
-            if f["type"] != "video" or f["name"] in multiclip_names:
-                continue
-            # Skip tmp files
-            if "_tmp." in f["name"]:
-                continue
-            m = seed_pattern.match(f["name"])
-            if m:
-                group_key = m.group(1)  # seed123_prompt text
-                groups.setdefault(group_key, []).append(f)
-
-        # From groups with multiple files (sliding window), keep only the largest
-        sw_finals = []
-        print(f"[Multiclip] Found {len(groups)} seed+prompt groups from {len(files)} total files")
-        for group_key, group_files in groups.items():
-            if len(group_files) > 1:
-                # Verify files are close in time (within 2 hours)
-                times = [f["created_at"] for f in group_files]
-                time_span = max(times) - min(times)
-                if time_span < 7200:
-                    largest = max(group_files, key=lambda f: f["size"])
-                    print(f"[Multiclip] SW group '{group_key[:60]}': {len(group_files)} files, span={time_span:.0f}s, largest={largest['name'][:60]}")
-                    sw_finals.append(largest)
-                else:
-                    print(f"[Multiclip] SW group '{group_key[:60]}': {len(group_files)} files, SKIPPED (time span {time_span:.0f}s > 7200)")
-
-        combined = multiclips + sw_finals
-        combined.sort(key=lambda f: f["created_at"], reverse=True)
-        print(f"[Multiclip] Result: {len(multiclips)} multiclips + {len(sw_finals)} sliding window finals = {len(combined)} total")
-        return {"outputs": combined, "total": len(combined)}
-    if search:
-        from services.search_index import get_search_index
-        idx = get_search_index()
-        matching_names = idx.search(search, out_dir)
-        # Combine index results with filename fallback (in case index missed
-        # a file that was created between index builds)
-        query_lower = search.lower()
-        files = [f for f in files if f["name"] in matching_names or query_lower in f["name"].lower()]
-        return {"outputs": files, "total": len(files)}
-
-    total = len(files)
-    if limit > 0:
-        files = files[offset:offset + limit]
-    return {"outputs": files, "total": total}
-
-
-@api.get("/api/v1/file/{filename:path}")
-def serve_file(filename: str, workspace: str = ""):
-    """Serve an output file. Checks active workspace first, then all workspaces.
-
-    Uses share_delete_file_response so that on Windows the file can be
-    deleted/renamed by the gallery delete button even while the browser
-    is actively streaming it (e.g. mid-video playback). Without share-
-    delete, Python's default open() locks the file for delete and the
-    user has to close the entire app to clean up.
-    """
-    from services.win_safe_files import share_delete_file_response
-    save_root = _projects_root()
-    requested_workspace = str(workspace or "").strip()
-    if requested_workspace:
-        if requested_workspace == "__uploads__":
-            requested_root = os.path.join(os.getcwd(), "uploads")
-        else:
-            requested_root = _workspace_browse_dir(requested_workspace)
-            if requested_root is None:
-                raise HTTPException(status_code=400, detail="Invalid workspace name")
-        filepath = _safe_join(requested_root, filename)
-        if filepath and os.path.isfile(filepath):
-            return share_delete_file_response(filepath)
-        raise HTTPException(status_code=404, detail="File not found")
-    # 1. Check active workspace
-    filepath = _safe_join(_workspace_dir(), filename)
-    if filepath and os.path.isfile(filepath):
-        return share_delete_file_response(filepath)
-    # 2. Check base save_path (pre-workspace files)
-    filepath = _safe_join(save_root, filename)
-    if filepath and os.path.isfile(filepath):
-        return share_delete_file_response(filepath)
-    # 3. Search all workspace subdirectories (Director pipeline may have saved
-    #    to a different workspace than the one currently active in the browser)
-    if os.path.isdir(save_root):
-        for d in os.listdir(save_root):
-            candidate = _safe_join(save_root, d, filename)
-            if candidate and os.path.isfile(candidate):
-                return share_delete_file_response(candidate)
-    # 4. Uploads folder — the gallery's virtual "Uploads" view lists these
-    #    files with the same /api/v1/file/ URLs every other gallery flow
-    #    builds (thumbnails, playback, send-to-input). Upload names are
-    #    hash-uniquified at upload time, and outputs are checked first, so
-    #    an output name can never be shadowed by an upload.
-    filepath = _safe_join(os.path.join(os.getcwd(), "uploads"), filename)
-    if filepath and os.path.isfile(filepath):
-        return share_delete_file_response(filepath)
-    raise HTTPException(status_code=404, detail="File not found")
-
-
-@api.get("/api/v1/outputs/{name}/metadata")
-def get_output_metadata(name: str):
-    """Get metadata for an output file. Tries sidecar first, then embedded."""
-    out_dir = _workspace_dir()
-    filepath = _safe_join(out_dir, name)
-    if filepath is None or not os.path.isfile(filepath):
-        raise HTTPException(status_code=404, detail="Output file not found")
-
-    # Helper: read embedded metadata from the media file
-    def _read_embedded():
-        ext = os.path.splitext(name)[1].lower()
-        try:
-            if ext in (".mp4", ".mkv"):
-                from shared.utils.video_metadata import read_metadata_from_video
-                return read_metadata_from_video(filepath)
-            elif ext in (".png", ".jpg", ".jpeg", ".webp"):
-                from shared.utils.audio_video import read_image_metadata
-                return read_image_metadata(filepath)
-            elif ext in (".wav", ".mp3"):
-                from shared.utils.audio_metadata import read_audio_metadata
-                return read_audio_metadata(filepath)
-        except Exception:
-            pass
-        return None
-
-    # Strategy 1: Read sidecar .meta.json
-    meta_path = os.path.join(out_dir, os.path.splitext(name)[0] + ".meta.json")
-    if os.path.isfile(meta_path):
-        try:
-            with open(meta_path, "r", encoding="utf-8") as f:
-                sidecar = json.load(f)
-            # Merge actual seed from embedded metadata if sidecar has seed=-1
-            params = sidecar.get("params", {})
-            if params.get("seed", -1) == -1:
-                embedded = _read_embedded()
-                if embedded and "seed" in embedded:
-                    params["seed"] = embedded["seed"]
-                else:
-                    resolved_seed = _extract_output_seed(name)
-                    if resolved_seed is not None:
-                        params["seed"] = resolved_seed
-            return {"source": "sidecar", **sidecar}
-        except Exception:
-            pass
-
-    # Strategy 2: Read embedded metadata from media file
-    embedded = _read_embedded()
-    if embedded:
-        return {"source": "embedded", "params": embedded}
-
-    return {"source": "none", "params": None}
+_media_library = MediaLibrary(MediaLibraryDeps(
+    workspace_dir=_workspace_dir,
+    workspace_browse_dir=_workspace_browse_dir,
+    active_workspace=_get_active_workspace,
+    projects_root=_projects_root,
+    safe_join=_safe_join,
+    extract_output_seed=_extract_output_seed,
+))
+api.include_router(build_media_library_router(_media_library))
+# Preserve the launcher facade for upload fallbacks and deletion sweeps.
+_favorites_path = _media_library._favorites_path
+_load_favorites = _media_library._load_favorites
+_save_favorites = _media_library._save_favorites
+list_favorites = _media_library.list_favorites
+toggle_favorite = _media_library.toggle_favorite
+list_outputs = _media_library.list_outputs
+serve_file = _media_library.serve_file
+get_output_metadata = _media_library.get_output_metadata
 
 
 @api.post("/api/v1/outputs/rejoin")
@@ -29422,184 +28887,13 @@ def _run_editor_export(job_id: str) -> bool:
         unregister_abort_state(job_id, _active_gen_states, abort_state)
 
 
-@api.get("/api/v1/editor/projects")
-def editor_projects_list(workspace: str = ""):
-    workspace = workspace or _get_active_workspace()
-    try:
-        return {
-            "projects": list_editor_projects(
-                _editor_save_root(),
-                workspace,
-            ),
-        }
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+from routers.editor_projects import build_editor_projects_router
 
-
-@api.post("/api/v1/editor/projects")
-async def editor_project_create(request: Request):
-    body = await request.json()
-    workspace = body.get("workspace") or _get_active_workspace()
-    try:
-        project = body.get("project")
-        if not isinstance(project, dict):
-            canvas = body.get("canvas") if isinstance(body.get("canvas"), dict) else {}
-            project = create_editor_project(
-                name=body.get("name") or "Untitled project",
-                workspace=workspace,
-                width=int(canvas.get("width") or 1920),
-                height=int(canvas.get("height") or 1080),
-                fps=float(canvas.get("fps") or 30),
-            )
-        return save_editor_project(_editor_save_root(), workspace, project)
-    except (EditorProjectError, TypeError, ValueError) as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-@api.get("/api/v1/editor/projects/{project_id}")
-def editor_project_get(project_id: str, workspace: str = ""):
-    workspace = workspace or _get_active_workspace()
-    try:
-        return load_editor_project(_editor_save_root(), workspace, project_id)
-    except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail="Editor project not found") from error
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-@api.put("/api/v1/editor/projects/{project_id}")
-async def editor_project_update(project_id: str, request: Request):
-    body = await request.json()
-    workspace = body.get("workspace") or _get_active_workspace()
-    project = body.get("project") if isinstance(body.get("project"), dict) else body
-    project = dict(project)
-    project["id"] = project_id
-    try:
-        return save_editor_project(_editor_save_root(), workspace, project)
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-@api.delete("/api/v1/editor/projects/{project_id}")
-def editor_project_delete(project_id: str, workspace: str = ""):
-    workspace = workspace or _get_active_workspace()
-    try:
-        deleted = delete_editor_project(_editor_save_root(), workspace, project_id)
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Editor project not found")
-    return {"deleted": project_id}
-
-
-@api.post("/api/v1/editor/media/probe")
-async def editor_media_probe(request: Request):
-    body = await request.json()
-    workspace = body.get("workspace") or _get_active_workspace()
-    asset = body.get("asset") if isinstance(body.get("asset"), dict) else body
-    try:
-        filepath = resolve_editor_asset(
-            asset,
-            save_root=_editor_save_root(),
-            workspace=workspace,
-            uploads_root=_editor_uploads_root(),
-        )
-        return {
-            **probe_media(filepath),
-            "path": filepath,
-        }
-    except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail="Editor media not found") from error
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-@api.post("/api/v1/editor/media/status")
-async def editor_media_status(request: Request):
-    body = await request.json()
-    workspace = body.get("workspace") or _get_active_workspace()
-    project = body.get("project") if isinstance(body.get("project"), dict) else body
-    try:
-        return {
-            "assets": inspect_editor_assets(
-                project,
-                save_root=_editor_save_root(),
-                workspace=workspace,
-                uploads_root=_editor_uploads_root(),
-            ),
-        }
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-@api.post("/api/v1/editor/media/preview")
-async def editor_media_preview(request: Request):
-    body = await request.json()
-    workspace = body.get("workspace") or _get_active_workspace()
-    asset = body.get("asset") if isinstance(body.get("asset"), dict) else body
-    proxy_profile = (
-        "mobile"
-        if str(body.get("proxy_profile") or "auto").strip().lower() == "mobile"
-        else "auto"
-    )
-    try:
-        preview = await asyncio.to_thread(
-            build_editor_media_preview,
-            asset,
-            save_root=_editor_save_root(),
-            workspace=workspace,
-            uploads_root=_editor_uploads_root(),
-            include_proxy=bool(body.get("include_proxy", False)),
-            proxy_profile=proxy_profile,
-        )
-        preview_id = preview["preview_id"]
-        workspace_query = f"?workspace={quote(str(workspace), safe='')}"
-        proxy_field = "proxy_mobile" if proxy_profile == "mobile" else "proxy"
-        proxy_kind = "proxy-mobile" if proxy_profile == "mobile" else "proxy"
-        return {
-            "preview_id": preview_id,
-            "thumbnail_url": (
-                f"/api/v1/editor/media/cache/{preview_id}/thumbnail{workspace_query}"
-                if preview.get("thumbnail") else None
-            ),
-            "proxy_url": (
-                f"/api/v1/editor/media/cache/{preview_id}/{proxy_kind}{workspace_query}"
-                if preview.get(proxy_field) else None
-            ),
-            "waveform": preview.get("waveform") or [],
-        }
-    except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail="Editor media not found") from error
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-
-
-@api.get("/api/v1/editor/media/cache/{preview_id}/{kind}")
-def editor_media_cache(preview_id: str, kind: str, workspace: str = ""):
-    workspace = workspace or _get_active_workspace()
-    try:
-        path = resolve_editor_media_cache_file(
-            _editor_save_root(), workspace, preview_id, kind
-        )
-    except FileNotFoundError as error:
-        raise HTTPException(status_code=404, detail="Editor preview not found") from error
-    except EditorProjectError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    media_type = "video/mp4" if kind in {"proxy", "proxy-mobile"} else "image/jpeg"
-    # Preview IDs include the source path, size, and mtime, so these artifacts
-    # are immutable. Explicit caching lets iOS reuse the standby deck's range
-    # data when the persistent playback deck reaches the edit instead of
-    # requesting the same proxy data twice over the network.
-    return FileResponse(
-        path,
-        media_type=media_type,
-        headers={"Cache-Control": "public, max-age=86400, immutable"},
-    )
-
-
-@api.get("/api/v1/editor/export/capabilities")
-def editor_export_capability_list():
-    return editor_export_capabilities()
+api.include_router(build_editor_projects_router(
+    save_root=_editor_save_root,
+    uploads_root=_editor_uploads_root,
+    active_workspace=_get_active_workspace,
+))
 
 
 @api.post("/api/v1/editor/export")

@@ -86,3 +86,22 @@ def test_check_shot_lenses_rejects_mismatch(tmp_path):
     with pytest.raises(ValueError) as error:
         check_shot_lenses(path)
     assert 'must show exactly 3 cyan lenses' in str(error.value)
+
+
+@pytest.mark.parametrize('centres', [[], [(200, 120)], _triangle()])
+def test_profile_evidence_never_claims_head_presence_or_approval(tmp_path, centres):
+    from app.services.reference_identity import check_profile_identity
+    path = tmp_path / 'profile.png'
+    cv2.imwrite(str(path), _frame(centres))
+    result = check_profile_identity(path)
+    assert result['verdict'] == 'review-required'
+    assert result['head_presence'] == 'not-measured'
+    assert 'head present throughout' in result['review_required']
+
+
+def test_profile_still_rejects_extra_visible_lenses(tmp_path):
+    from app.services.reference_identity import check_profile_identity
+    path = tmp_path / 'profile.png'
+    cv2.imwrite(str(path), _frame(_diamond()))
+    with pytest.raises(ValueError, match='extra visible lenses'):
+        check_profile_identity(path)

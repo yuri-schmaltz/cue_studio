@@ -16,18 +16,22 @@ import wave
 import pytest
 
 from app.services.reference_generation import ReferenceGenerationClient
+from app.services.reference_recipe import load_visual_recipe, video_request
+from app.services.reference_visuals import ReferenceVisuals
 from app.services.reference_acceptance import (
     file_hash, run_media, validate_creative_review, validate_master, validate_pcm,
+    validate_generated_duration,
 )
 from app.services.reference_mix import (
     MIN_SPEECH_MARGIN_DB, Stem, build_seamless_loop, check_bed_continuity,
     check_music_coverage, level_stems, mix_stems, narration_margin_db,
 )
 from app.services import reference_continuity, reference_robot
-from app.services.reference_identity import EXPECTED_LENSES, analyse, check_anchor_lenses, check_shot_lenses
+from app.services.reference_identity import EXPECTED_LENSES, analyse, check_anchor_lenses, check_shot_lenses, check_profile_identity
 from app.services.reference_cube import check_cube_continuity, check_cube_count, check_cube_lamp_separation
+from app.services.reference_camera import check_fixed_camera
 from app.services.reference_robot import check_scale_stability
-from app.services.reference_continuity import check_relative_scale, check_scale_consistency
+from app.services.reference_continuity import check_relative_scale, check_scale_consistency, check_lateral_carry_keyframes
 from app.services import reference_ground
 
 pytestmark = pytest.mark.real_models
@@ -63,7 +67,7 @@ ROBOT_SCALE_SHOTS = {'S02', 'S04', 'S06', 'S07', 'S11'}
 # size. In the other shots the cube is on the table or in the socket, at
 # another distance from the camera, and the ratio would measure the
 # camera instead of the robot.
-ROBOT_SCALE_WITH_CUBE = {'S04', 'S05', 'S06', 'S07', 'S08'}
+ROBOT_SCALE_WITH_CUBE = {'S04', 'S05', 'S07', 'S08'}
 # The shots where the ruler is measured across the film to check that the
 # robot keeps one size along the whole movie. These are the shots in
 # which the robot holds the cube and its head is measurable at the same
@@ -72,12 +76,17 @@ ROBOT_SCALE_WITH_CUBE = {'S04', 'S05', 'S06', 'S07', 'S08'}
 # shots. The creative review of the rejected v6 master rejected the film
 # for a robot of different sizes along the video, and this is the
 # measurement that catches it.
-ROBOT_SCALE_FILM_SHOTS = {'S04', 'S06', 'S07'}
-# Shots featuring the robot whose starting still must show exactly 3 circular cyan lenses:
-# S02 to S08, S10 (amber close-up), and S11.
-ROBOT_LENS_STILL_SHOTS = {'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S10', 'S11'}
+ROBOT_SCALE_FILM_SHOTS = {'S04', 'S07'}
+# S06 turns into profile: projected lens span / cube width is not a
+# comparable physical ruler through that turn. Keep its measurements as
+# evidence and require visual review of head, identity and physical scale.
+# Identity is mandatory wherever the script frames the face. A hands-only
+# detail does not contain a head: character presence is not face visibility.
+ROBOT_LENS_STILL_SHOTS = {shot['id'] for shot in SHOTS if shot['identity_view'] in {'face', 'profile'}}
+ROBOT_PROFILE_SHOTS = {shot['id'] for shot in SHOTS if shot['identity_view'] == 'profile'}
 # Shots where the lamp bulb and the red cube are both present and must remain spatially separated
 CUBE_LAMP_SEPARATION_SHOTS = {'S01', 'S02', 'S04', 'S06', 'S07', 'S08', 'S09', 'S11', 'S12'}
+LAMP_LIT_STILL_SHOTS = {'S11', 'S12'}
 
 
 @pytest.fixture(scope='module')
@@ -160,6 +169,10 @@ def _collect(failures: list[str], label: str, check, *args, **kwargs):
 def test_f2_generate_and_measure_real_jobs(config):
     output = Path(config['validation_dir']).resolve()
     output.mkdir(parents=True, exist_ok=True)
+    visual = load_visual_recipe(
+        Path(config.get('visual_recipe') or FIXTURE / 'visual_prompts.json'),
+        output / 'visual-recipe.json', required_shots=[shot['id'] for shot in SHOTS],
+    )
     client = ReferenceGenerationClient(config['base_url'], Path(config['server_output_dir']), output / 'receipts',
                                        token=os.environ.get('CUE_F2_TOKEN', ''), timeout=config.get('job_timeout', 3600))
     stems, clips = [], []
@@ -197,7 +210,7 @@ def test_f2_generate_and_measure_real_jobs(config):
     # scale of at most 1, so both are required and both are checked.
     image_params = {
         **config['image'],
-        'negative_prompt': VISUAL['negative']['image'],
+        'negative_prompt': visual['negative']['image'],
         'generation_mode': 'image',
         'image_mode': 1,
         'video_length': 1,
@@ -208,17 +221,14 @@ def test_f2_generate_and_measure_real_jobs(config):
     assert float(image_params.get('guidance_scale', 1)) <= 1, (
         'Flux2 applies the negative prompt through NAG only while guidance_scale is at '
         'most 1; a higher guidance scale disables it.')
-    video_params = {**config['video'], 'negative_prompt': VISUAL['negative']['video']}
-    anchors = {}
-    for kind in ('character', 'location'):
-        params = {**image_params, 'prompt': VISUAL['style'] + ' ' + VISUAL[kind]}
-        if kind == 'character':
-            # The character anchor is the film's identity and every shot
-            # inherits it, so it gets its own measured seed instead of the
-            # generic one: the canonical prompt alone does not pin the
-            # lens count, and a wrong anchor would repeat the defect.
-            params['seed'] = config.get('character_anchor_seed', 99)
-        anchors[kind] = _generate(client, output, 'anchor-' + kind, params, {'.png', '.jpg', '.jpeg', '.webp'})
+    video_params = {**config['video'], 'negative_prompt': visual['negative']['video']}
+    visuals = ReferenceVisuals(
+        visual, image_params,
+        lambda label, params, extensions: _generate(client, output, label, params, extensions),
+        character_seed=config.get('character_anchor_seed', 99),
+        character_shots={shot['id'] for shot in SHOTS if shot['characters']},
+    )
+    anchors = {kind: visuals.resolve('anchor-' + kind) for kind in ('character', 'location')}
     # Fail before rendering the expensive shots: an anchor with the wrong
     # lens count makes the whole film wrong.
     lens_evidence = {'anchor-character': check_anchor_lenses(anchors['character'])}
@@ -227,15 +237,9 @@ def test_f2_generate_and_measure_real_jobs(config):
     # render is the expensive part: measuring as the film is rendered
     # would throw away the shots that were never reached because an
     # earlier one failed.
-    references = {}
-    for shot in SHOTS:
-        guides = [anchors['location']]
-        if shot['characters']:
-            guides.insert(0, anchors['character'])
-        references[shot['id']] = _generate(client, output, shot['id'] + '-image', {
-            **image_params, 'prompt': VISUAL['style'] + ' ' + VISUAL['shots'][shot['id']]['image'],
-            'image_refs': [str(path) for path in guides], 'video_prompt_type': 'KI',
-        }, {'.png', '.jpg', '.jpeg', '.webp'})
+    references = {shot['id']: visuals.image(shot['id']) for shot in SHOTS}
+    end_references = {shot['id']: end for shot in SHOTS if (end := visuals.end(shot['id'])) is not None}
+    keyframe_references = {shot['id']: visuals.keyframes(shot['id']) for shot in SHOTS}
     # The measurements of the film. Every gate is evaluated before any of
     # them is reported, so one run tells the whole story of the film.
     failures: list[str] = []
@@ -252,13 +256,36 @@ def test_f2_generate_and_measure_real_jobs(config):
     for shot_id in sorted(ROBOT_LENS_STILL_SHOTS):
         _collect(failures, shot_id + '-image-lenses', check_shot_lenses,
                  references[shot_id], expected=EXPECTED_LENSES)
+    for shot_id, end in end_references.items():
+        cube_evidence[shot_id + '-end-image'] = _collect(
+            failures, shot_id + '-end-image', check_cube_count, end,
+            expected=CUBE_EXPECTED[shot_id])
+        if shot_id in ROBOT_LENS_STILL_SHOTS:
+            lens_evidence[shot_id + '-end-image'] = _collect(
+                failures, shot_id + '-end-image-lenses', check_shot_lenses,
+                end, expected=EXPECTED_LENSES)
 
     separation_evidence = {}
     for shot in SHOTS:
         if shot['id'] in CUBE_LAMP_SEPARATION_SHOTS:
             separation_evidence[shot['id'] + '-image'] = _collect(
                 failures, shot['id'] + '-image-separation', check_cube_lamp_separation,
-                references[shot['id']])
+                references[shot['id']], require_pair=shot['id'] in LAMP_LIT_STILL_SHOTS)
+    for shot_id, end in end_references.items():
+        if shot_id in CUBE_LAMP_SEPARATION_SHOTS:
+            separation_evidence[shot_id + '-end-image'] = _collect(
+                failures, shot_id + '-end-image-separation', check_cube_lamp_separation,
+                end, require_pair=shot_id in LAMP_LIT_STILL_SHOTS | {'S09'})
+    keyframe_evidence = {}
+    for shot_id, keyframes in keyframe_references.items():
+        for position, path in keyframes:
+            label = f'{shot_id}-keyframe-{position}'
+            one = {'cube': _collect(failures, label + '-cube', check_cube_count,
+                                   path, expected=CUBE_EXPECTED[shot_id])}
+            if shot_id in ROBOT_LENS_STILL_SHOTS:
+                one['lenses'] = _collect(failures, label + '-lenses', check_shot_lenses,
+                                         path, expected=EXPECTED_LENSES)
+            keyframe_evidence[label] = one
     # S03 is the neutral-light close-up, so its lens count is measurable and
     # is part of acceptance.
     s03_image = lens_evidence['S03-image']
@@ -270,13 +297,35 @@ def test_f2_generate_and_measure_real_jobs(config):
     if s10_image['distribution'].get(EXPECTED_LENSES) != s10_image['frames']:
         failures.append(
             f"S10 close-up must show exactly {EXPECTED_LENSES} lenses: {s10_image['distribution']}")
+    trajectory_evidence = {}
+    for shot_id, specification in visual['shots'].items():
+        if specification.get('lateral_motion') is not None:
+            states = [references[shot_id]] + [path for _, path in keyframe_references[shot_id]]
+            end = end_references.get(shot_id)
+            if end is not None and states[-1] != end:
+                states.append(end)
+            trajectory_evidence[shot_id] = _collect(
+                failures, shot_id + '-carry-trajectory', check_lateral_carry_keyframes,
+                states, **specification['lateral_motion'])
+    (output / 'image-evidence.json').write_text(json.dumps({
+        'lens_evidence': lens_evidence, 'cube_evidence': cube_evidence,
+        'separation_evidence': separation_evidence, 'keyframe_evidence': keyframe_evidence,
+        'trajectory_evidence': trajectory_evidence, 'failures': failures,
+    }, indent=2))
+    assert not failures, 'Image preflight rejected the recipe before video generation:\n' + '\n'.join(failures)
     # The video model does not fit in the GPU next to the image model,
     # so the memory is given back before the batch of clips starts.
     _release_models(client)
+    duration_evidence = {}
     for shot in SHOTS:
-        video = _generate(client, output, shot['id'] + '-video', {
-            **video_params, 'prompt': VISUAL['style'] + ' ' + VISUAL['shots'][shot['id']]['motion'], 'image_start': str(references[shot['id']]), 'image_prompt_type': 'S',
-        }, {'.mp4', '.mkv', '.webm'})
+        video = _generate(client, output, shot['id'] + '-video', video_request(
+            video_params, visual['negative']['video'], visual['style'],
+            visual['shots'][shot['id']]['motion'], references[shot['id']],
+            end_references.get(shot['id']), keyframe_references[shot['id']],
+        ), {'.mp4', '.mkv', '.webm'})
+        duration_evidence[shot['id']] = _collect(
+            failures, shot['id'] + '-native-duration', validate_generated_duration,
+            video, shot['duration_frames'], EXPECTED['fps'])
         clip = output / (shot['id'] + '.mp4')
         # Conform generated media to the edit's 120-frame delivery slots.
         run_media(['ffmpeg', '-y', '-v', 'error', '-i', str(video), '-an', '-vf',
@@ -284,12 +333,26 @@ def test_f2_generate_and_measure_real_jobs(config):
                    '-frames:v', str(shot['duration_frames']), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', str(clip)])
         clips.append(clip)
     scale_evidence = {}
+    camera_evidence = {}
     relative_evidence = {}
     ground_evidence = {}
     film_measurements = {}
     for shot in SHOTS:
         clip = clips[next(i for i, s in enumerate(SHOTS) if s['id'] == shot['id'])]
+        if visual['shots'][shot['id']].get('camera') == 'locked':
+            camera_evidence[shot['id']] = _collect(
+                failures, shot['id'] + '-fixed-camera', check_fixed_camera, clip)
         lens_evidence[shot['id'] + '-video'] = analyse(clip)
+        if shot['id'] in ROBOT_PROFILE_SHOTS:
+            lens_evidence[shot['id'] + '-video'] = _collect(
+                failures, shot['id'] + '-profile-identity', check_profile_identity, clip)
+        elif shot['id'] in ROBOT_LENS_STILL_SHOTS:
+            _collect(failures, shot['id'] + '-video-lenses', check_shot_lenses,
+                     clip, expected=EXPECTED_LENSES)
+        if shot['id'] in CUBE_LAMP_SEPARATION_SHOTS:
+            separation_evidence[shot['id'] + '-video'] = _collect(
+                failures, shot['id'] + '-video-separation', check_cube_lamp_separation,
+                clip, require_pair=shot['id'] in LAMP_LIT_STILL_SHOTS | {'S09'})
         # A second cube is a defect in every shot, whatever the script
         # says: the rejected master showed two cubes in almost half of the
         # frames of S06 and the human review rejected the film for it.
@@ -329,6 +392,9 @@ def test_f2_generate_and_measure_real_jobs(config):
     # deserve one. The evidence stays on disk either way, so a rejected
     # film can be measured and calibrated without rendering it again.
     (output / 'shot-evidence.json').write_text(json.dumps({
+        'duration_evidence': duration_evidence,
+        'keyframe_evidence': keyframe_evidence,
+        'camera_evidence': camera_evidence,
         'lens_evidence': lens_evidence,
         'cube_evidence': cube_evidence,
         'separation_evidence': separation_evidence,
@@ -416,8 +482,19 @@ def test_f2_generate_and_measure_real_jobs(config):
     # under neutral light (where the count is reliable) and which were only
     # recorded because amber light makes the detector unreliable.
     report['lens_evidence'] = lens_evidence
+    report['identity_views'] = {shot['id']: shot['identity_view'] for shot in SHOTS}
+    report['profile_review_required'] = {
+        shot_id: ['head present throughout', 'same character design through the turn',
+                  'constant physical scale while walking']
+        for shot_id in sorted(ROBOT_PROFILE_SHOTS)
+    }
     # The same for the cube and the size of the robot: the measurements
     # that decided the acceptance of the film, kept with the film.
+    report['visual_recipe_sha256'] = file_hash(output / 'visual-recipe.json')
+    report['duration_evidence'] = duration_evidence
+    report['keyframe_evidence'] = keyframe_evidence
+    report['camera_evidence'] = camera_evidence
+    report['trajectory_evidence'] = trajectory_evidence
     report['cube_evidence'] = cube_evidence
     report['scale_evidence'] = scale_evidence
     report['relative_evidence'] = relative_evidence

@@ -627,11 +627,15 @@ class T5EncoderModel:
         self,
         text_len,
         dtype=torch.bfloat16,
-        device=torch.cuda.current_device(),
+        device=None,
         checkpoint_path=None,
         tokenizer_path=None,
         shard_fn=None,
     ):
+        # Resolve placement when constructing the encoder, not while importing
+        # its class. CPU-only startup and inspection must not initialize CUDA.
+        if device is None:
+            device = torch.device('cuda', torch.cuda.current_device()) if torch.cuda.is_available() else torch.device('cpu')
         self.text_len = text_len
         self.dtype = dtype
         self.device = device

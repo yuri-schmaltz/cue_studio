@@ -21,7 +21,7 @@ def build_review(folder: Path) -> Path:
     if report.get('master_sha256') != digest or not all(report.get('checks', {}).values()) or not report.get('checks'):
         raise ValueError('Review requires the unchanged technically validated master')
     dimensions = [
-        ('identity', 'Identidade', 'Mesmo robô; três lentes, dois braços, duas pernas; um único cubo.'),
+        ('identity', 'Identidade', 'Mesmo robô, cabeça preservada em todos os quadros, desenho com três lentes, dois braços e duas pernas; um único cubo. Em S06, perfil natural pode ocultar lentes; conferir a identidade durante toda a caminhada.'),
         ('continuity', 'Continuidade', 'Cubo, mão direita, lâmpada e posições seguem a ação entre os planos.'),
         ('motion', 'Movimento', 'Ações legíveis, sem deformações ou saltos incompatíveis.'),
         ('appearance', 'Aparência', 'Geometria, luz e materiais consistentes entre os planos.'),

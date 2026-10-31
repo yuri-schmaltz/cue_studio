@@ -47,7 +47,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .reference_cube import cube_blobs
-from .reference_robot import head_cluster
+from .reference_robot import MAX_DRIFT, head_cluster
 
 # The robot is described as knee-high and the cube as fist-sized, so the
 # head is clearly wider than the cube. The band is therefore a sanity
@@ -234,3 +234,47 @@ def check_scale_consistency(measurements: dict[str, dict],
             f'{measured[largest]:.2f} in {largest}, a factor of {spread:.2f} '
             f'(limit {max_ratio}); the robot must keep one size in every shot.')
     return result
+
+
+def check_lateral_carry_keyframes(paths, direction='right', min_travel_fraction=0.3,
+                                  max_step_fraction=0.25, min_step_fraction=0.03):
+    """A transport cannot be static poses followed by a jump at the ending."""
+    if direction not in {'right', 'left'} or len(paths) < 3:
+        raise ValueError('A lateral carry requires a direction and at least three states')
+    limits = (min_travel_fraction, max_step_fraction, min_step_fraction)
+    if any(type(value) not in (int, float) or not 0 <= value <= 1 for value in limits):
+        raise ValueError('Lateral motion limits must be fractions in [0, 1]')
+    cv2 = _cv2()
+    states = []
+    shape = None
+    for path in paths:
+        image = cv2.imread(str(path))
+        if image is None or (shape is not None and image.shape != shape):
+            raise ValueError(f'{Path(path).name}: carry states need matching image dimensions')
+        shape = image.shape
+        head = head_cluster(image)
+        cubes = cube_blobs(image)
+        if head is None or head['lenses'] != 3 or len(cubes) != 1:
+            raise ValueError(f'{Path(path).name}: carry state needs a measurable three-lens head and one cube')
+        cube = cubes[0]
+        cx, cy = head['x'] + head['w'] / 2, head['y'] + head['h'] / 2
+        states.append({'path': str(path), 'head_x': cx, 'head_width': head['w'],
+                       'cube_x': cube['cx'], 'offset_x': (cube['cx'] - cx) / head['w'],
+                       'offset_y': (cube['cy'] - cy) / head['w']})
+    sign = 1 if direction == 'right' else -1
+    width = shape[1]
+    steps = [sign * (b['head_x'] - a['head_x']) / width for a, b in zip(states, states[1:])]
+    travel = sign * (states[-1]['head_x'] - states[0]['head_x']) / width
+    if travel < min_travel_fraction:
+        raise ValueError('Carry keyframes do not complete the lateral journey')
+    if any(step < min_step_fraction for step in steps[:-1]):
+        raise ValueError('Carry keyframes stall or reverse before the endpoint')
+    if steps[-1] < -0.01 or any(step > max_step_fraction for step in steps):
+        raise ValueError('Carry keyframes jump or reverse instead of progressing across the room')
+    if max(state['head_width'] for state in states) / min(state['head_width'] for state in states) > MAX_DRIFT:
+        raise ValueError('Carry keyframes change robot scale')
+    if any(max(state[key] for state in states) - min(state[key] for state in states) > 1
+           for key in ('offset_x', 'offset_y')):
+        raise ValueError('The cube changes its held relationship to the robot across carry states')
+    return {'verdict': 'progressing', 'direction': direction, 'travel_fraction': travel,
+            'step_fractions': steps, 'states': states}

@@ -96,7 +96,7 @@ def _import_in_subprocess(target: str) -> subprocess.CompletedProcess:
     env = dict(os.environ)
     existing = env.get("PYTHONPATH", "")
     env["PYTHONPATH"] = str(APP_DIR) + (os.pathsep + existing if existing else "")
-    code = f"import sys, importlib; m = importlib.import_module({target!r}); sys.exit(0 if m is not None else 2)"
+    code = f"import importlib; importlib.import_module({target!r}); print('__CUE_SMOKE_IMPORT_OK__')"
     return subprocess.run(
         [sys.executable, "-c", code],
         env=env,
@@ -111,20 +111,20 @@ class SmokeImportTests(unittest.TestCase):
     subprocess. Failures pinpoint the exact module."""
 
     def test_all_targets_import(self):
-        failures: list[tuple[str, str, str]] = []
+        failures: list[tuple[str, int, str, str]] = []
         for target in SMOKE_TARGETS:
             with self.subTest(target=target):
                 result = _import_in_subprocess(target)
-                if result.returncode != 0:
-                    failures.append((target, result.stdout, result.stderr))
+                if result.returncode != 0 or '__CUE_SMOKE_IMPORT_OK__' not in result.stdout:
+                    failures.append((target, result.returncode, result.stdout, result.stderr))
         if failures:
             message_lines = ["smoke-import failed for the following targets:"]
-            for target, stdout, stderr in failures:
-                message_lines.append(f"\n--- {target} (exit={result.returncode}) ---")
+            for target, returncode, stdout, stderr in failures:
+                message_lines.append(f"\n--- {target} (exit={returncode}) ---")
                 if stdout.strip():
-                    message_lines.append(f"stdout: {stdout.strip()[:500]}")
+                    message_lines.append(f"stdout: {stdout.strip()[-4000:]}")
                 if stderr.strip():
-                    message_lines.append(f"stderr: {stderr.strip()[:500]}")
+                    message_lines.append(f"stderr: {stderr.strip()[-4000:]}")
             self.fail("\n".join(message_lines))
 
 

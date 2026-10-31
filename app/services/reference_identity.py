@@ -174,3 +174,21 @@ def check_shot_lenses(path: Path, expected: int = EXPECTED_LENSES) -> dict:
             f"{Path(path).name} must show exactly {expected} cyan lenses: {distribution}"
         )
     return result
+
+
+def check_profile_identity(path: Path, expected: int = EXPECTED_LENSES) -> dict:
+    """Record a turning head without treating hidden lenses as missing anatomy.
+
+    A lens detector cannot establish head presence in a side/back view. Keep
+    that limitation explicit: this evidence never approves identity by itself.
+    The frontal anchor and stills retain their exact-count gates.
+    """
+    result = analyse(Path(path))
+    if any(count > expected for count in result['distribution']):
+        raise ValueError(f'{Path(path).name}: extra visible lenses: {result["distribution"]}')
+    result.update(
+        verdict='review-required',
+        head_presence='not-measured',
+        review_required=['head present throughout', 'same character design through the turn'],
+    )
+    return result

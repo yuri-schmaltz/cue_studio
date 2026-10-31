@@ -19,6 +19,7 @@ describe('workspaceSlice - Director draft snapshots', () => {
     vi.clearAllMocks()
     useStore.setState({
       activeWorkspace: 'proj-1',
+      activeWorkspaceSetup: null,
       pipelineId: null,
       pipelineStatus: null,
       directorSkill: 'cinematic',
@@ -35,6 +36,38 @@ describe('workspaceSlice - Director draft snapshots', () => {
 
   it('starts with empty snapshots array', () => {
     expect(useStore.getState().directorDraftSnapshots).toEqual([])
+  })
+
+  it('keeps project defaults when no saved draft exists', async () => {
+    useStore.setState({ activeWorkspaceSetup: { aspect_ratio: '9:16', resolution: '480p', music_source: 'upload' } })
+    await useStore.getState().loadDirectorDraft('proj-1')
+    expect(useStore.getState().directorAspectRatio).toBe('9:16')
+    expect(useStore.getState().directorResolution).toBe('480p')
+    expect(useStore.getState().directorMusicSource).toBe('upload')
+  })
+
+  it('ignores a draft response from the previous workspace', async () => {
+    let resolve!: (draft: api.DirectorDraft | null) => void
+    vi.mocked(api.fetchDirectorDraft).mockReturnValueOnce(new Promise(done => { resolve = done }))
+    const pending = useStore.getState().loadDirectorDraft('proj-1')
+    useStore.setState({ activeWorkspace: 'proj-2', directorSceneDescription: 'New project story' })
+    resolve(null)
+    await pending
+    expect(useStore.getState().directorSceneDescription).toBe('New project story')
+  })
+
+  it('does not reset a setup saved while an empty draft was pending', async () => {
+    let resolve!: (draft: api.DirectorDraft | null) => void
+    vi.mocked(api.fetchDirectorDraft).mockReturnValueOnce(new Promise(done => { resolve = done }))
+    const pending = useStore.getState().loadDirectorDraft('proj-1')
+    const setup = { aspect_ratio: '1:1', resolution: '480p', music_source: 'upload' } as const
+    const save = vi.spyOn(api, 'saveWorkspaceSetup').mockResolvedValueOnce(setup)
+    await useStore.getState().saveWorkspaceSetup(setup)
+    resolve(null)
+    await pending
+    expect(useStore.getState().directorAspectRatio).toBe('1:1')
+    expect(useStore.getState().directorMusicSource).toBe('upload')
+    save.mockRestore()
   })
 
   it('archives a snapshot when planned clips are added', async () => {

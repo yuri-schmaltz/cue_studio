@@ -47,6 +47,9 @@ def test_create_edit_and_reopen_project_setup():
         page.add_init_script("localStorage.setItem('cue-studio_welcome_seen_v1','1')")
         page.route('**/api/v1/**', api)
         page.goto(os.environ.get('SHELL_TEST_URL', 'http://127.0.0.1:3000'), wait_until='domcontentloaded')
+        # Boot hydrates the workspace and can replace the initial shell.
+        # Interact after that response rather than racing its DOM replacement.
+        expect(page).to_have_title(re.compile(r'existing'))
         page.get_by_role('tab', name='Projects', exact=True).click()
         page.get_by_role('button', name='New project', exact=True).click()
         page.get_by_role('textbox', name='Project name', exact=True).fill('Setup contract')
@@ -54,8 +57,13 @@ def test_create_edit_and_reopen_project_setup():
         page.get_by_role('combobox', name='Resolution', exact=True).select_option('480p')
         page.get_by_role('button', name='Create project', exact=True).click()
         expect(page.get_by_role('tab', name='Director', exact=True)).to_have_attribute('aria-selected', 'true')
+        page.wait_for_function("""async () => {
+            const {useStore} = await import(performance.getEntriesByType('resource').find(e => e.name.includes('/src/stores/useStore.ts')).name);
+            const s = useStore.getState();
+            return s.directorAspectRatio === '9:16' && s.directorResolution === '480p';
+        }""")
         state = page.evaluate("""async () => {
-            const {useStore} = await import('/src/stores/useStore.ts');
+            const {useStore} = await import(performance.getEntriesByType('resource').find(e => e.name.includes('/src/stores/useStore.ts')).name);
             const s = useStore.getState();
             return [s.activeWorkspace, s.directorAspectRatio, s.directorResolution, s.directorMusicSource];
         }""")

@@ -1,0 +1,15 @@
+{
+  "profile": "E1",
+  "lock_sha256": "f64a53413284f4bf9c20cc10e73c49e89cad203073987f10c4852fb41bfb6524",
+  "requirements_txt_sha256": "7bab5381a077632df4d779cd5d975cc6ae2e7ec30f5f8f65c3ea3a5a2b80e86b",
+  "pyproject_sha256": "43a0d365cd41264823ea9b23bf6940f4bb5f12213fe837db8242bb99ac478c33",
+  "commit_sha": "d2bac33a9037e28516e2f90ac5abf97b89bc6db8",
+  "pip_version": "uv 0.13.6",
+  "python_version": "3.11.18",
+  "resolved_at": "2026-10-30",
+  "notes": [
+    "Target Linux x86_64, Python 3.11.18. Strict hash installation and dependency check passed in an independent environment.",
+    "Current release uses torch 2.10.0+cu130 across GPU memory tiers; E1/E2/E4 historical CUDA 11.8/12.1/12.8 proposals are superseded for this lock, not validated by it.",
+    "Installation/imports validated on RTX 3060 12GB only. This does not prove generation fits the target VRAM tier."
+  ]
+}

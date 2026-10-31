@@ -1,0 +1,13 @@
+{
+  "base": "d2bac33",
+  "functions": [
+    "compute_sliding_window_no",
+    "align_model_frame_count",
+    "normalize_model_total_frame_count",
+    "compute_next_sliding_window_length",
+    "resolve_window_position_token"
+  ],
+  "ast_body_and_signatures": "identical to HEAD; moved without logic changes",
+  "new_module": "app/services/runtime_frames.py",
+  "public_facade": "wgp imports and re-exports original names"
+}

@@ -144,3 +144,35 @@ def test_check_cube_lamp_separation_fails_when_overlapping(tmp_path):
     cv2.imwrite(str(path), img)
     with pytest.raises(ValueError, match='lamp bulb and red cube overlap'):
         check_cube_lamp_separation(path, sample=1, min_gap=0)
+
+
+def test_real_wooden_workshop_is_not_a_glowing_bulb():
+    import json
+    import hashlib
+    from pathlib import Path
+    from app.services.reference_cube import lamp_bulb_blobs
+
+    fixture = Path(__file__).parent / 'fixtures' / 'reference_bulb'
+    labels = json.loads((fixture / 'labels.json').read_text())['cases']
+    for case in labels:
+        path = fixture / case['image']
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == case['source_sha256']
+        blobs = lamp_bulb_blobs(cv2.imread(str(path)))
+        assert len(blobs) == case['glowing_bulbs'], (case['image'], blobs)
+        if case['bulb_box']:
+            x, y, w, h = case['bulb_box']
+            blob = blobs[0]
+            intersection = max(0, min(x + w, blob['x'] + blob['w']) - max(x, blob['x'])) * max(0, min(y + h, blob['y'] + blob['h']) - max(y, blob['y']))
+            union = w * h + blob['w'] * blob['h'] - intersection
+            assert intersection / union >= 0.6, (case['image'], blob)
+
+
+def test_unmeasurable_separation_is_never_reported_as_separated(tmp_path):
+    from app.services.reference_cube import check_cube_lamp_separation
+    path = tmp_path / 'no-glowing-bulb.png'
+    cv2.imwrite(str(path), np.full((360, 640, 3), 160, dtype=np.uint8))
+    result = check_cube_lamp_separation(path)
+    assert result['verdict'] == 'not_measurable'
+    assert result['measurable'] is False
+    with pytest.raises(ValueError, match='separation is unverified'):
+        check_cube_lamp_separation(path, require_pair=True)
