@@ -214,10 +214,6 @@ export function NotificationSettingsPanel() {
 
   return (
     <section className="settings-panel" aria-label="Notifications settings">
-      <header className="settings-panel-header">
-        <h2><Bell size={18} aria-hidden="true" /> Notifications</h2>
-      </header>
-
       {/* Two-column layout: Browser alerts on the left (per-device),
           Host completion sound on the right (per-host computer).
           Previously these were stacked full-width; side-by-side
@@ -326,16 +322,15 @@ export function NotificationSettingsPanel() {
           >
             Test chime
           </button>
+          <button
+            type="button"
+            onClick={handleBackgroundTest}
+            disabled={testingPush || !pushState?.subscribed}
+            className="flex-1 rounded-md border border-border px-2 py-1.5 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {testingPush ? 'Sending…' : 'Test closed-app'}
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={handleBackgroundTest}
-          disabled={testingPush || !pushState?.subscribed}
-          className="w-full rounded-md border border-border px-2 py-1.5 text-2xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {testingPush ? 'Sending background push…' : 'Test closed-app notification'}
-        </button>
 
         <p className="text-2xs leading-relaxed text-text-muted">
           iPhone/iPad: use Maestro through HTTPS, remove any older Maestro Home Screen shortcut, then add it to the Home Screen again and open that installed app. Safari and Chrome tabs cannot request notification permission on iOS.

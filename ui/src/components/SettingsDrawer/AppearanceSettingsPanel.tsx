@@ -42,10 +42,6 @@ export function AppearanceSettingsPanel() {
 
   return (
     <section className="settings-panel" aria-label="Appearance settings">
-      <header className="settings-panel-header">
-        <h2><Palette size={18} aria-hidden="true" /> Appearance</h2>
-      </header>
-
       <div className="settings-columns settings-columns--equal">
         <div className="settings-group">
           <div className="settings-card">

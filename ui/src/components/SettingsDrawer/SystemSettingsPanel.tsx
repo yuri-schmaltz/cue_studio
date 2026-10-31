@@ -423,11 +423,7 @@ export function SystemSettingsPanel() {
   )
 
   return (
-    <section className="settings-panel settings-panel-constrained" aria-label="Performance settings">
-      <header className="settings-panel-header">
-        <h2><Cpu size={18} aria-hidden="true" /> Performance</h2>
-      </header>
-
+    <section className="settings-panel" aria-label="Performance settings">
       {/* Balanced 2-column layout (Option A):
           Left Column: Hardware & GPU Detection (AutoPerformanceCard) + Collapsible Advanced Tuning
           Right Column: Local LLM Configuration + FlashVSR Super-Resolution */}

@@ -222,7 +222,7 @@ export function StorageDashboardBody({
       {usage && (
         <section>
           <h3 className="text-xs font-medium text-text-primary uppercase tracking-wider mb-2">Models — largest first</h3>
-          <div className="rounded-lg border border-border overflow-hidden">
+          <div className="rounded-lg border border-border overflow-y-auto max-h-[220px]">
             {usage.models.filter(m => m.size_bytes > 0).map(m => (
               <div key={m.model_type} className="flex items-center gap-2 px-3 py-1.5 text-xs border-b border-border last:border-b-0 hover:bg-bg-hover">
                 <span className="truncate text-text-primary flex-1 min-w-0">{m.name}</span>

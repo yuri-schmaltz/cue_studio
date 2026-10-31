@@ -75,10 +75,6 @@ export function StorageSettingsPanel() {
 
   return (
     <section className="settings-panel" aria-label="Storage settings">
-      <header className="settings-panel-header">
-        <h2><FolderOpen size={18} aria-hidden="true" /> Storage</h2>
-      </header>
-
       {/* Single full-width layout for storage:
           Top: Projects root bar (path configuration)
           Bottom: Storage Manager Dashboard occupying full width so tables and metrics have ample space */}
