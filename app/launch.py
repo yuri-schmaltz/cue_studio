@@ -1428,8 +1428,7 @@ def get_primary_settings():
     return wgp.primary_settings
 
 
-@api.get("/api/v1/loras/scan-status/{scan_id}")
-def scan_status(scan_id: str):
+def _lora_scan_status_impl(scan_id: str):
     """Get the status of a LoRA scan operation."""
     with _lora_guide_scan_lock:
         state = _lora_guide_scans.get(scan_id)
@@ -1446,8 +1445,7 @@ def scan_status(scan_id: str):
     return state
 
 
-@api.get("/api/v1/loras/directories")
-def list_lora_directories():
+def _list_lora_directories_impl():
     """Return all available LoRA directories for target selection during download."""
     lora_root = wgp.server_config.get("loras_root", "loras") if hasattr(wgp, 'server_config') else "loras"
     candidates = [lora_root]
@@ -1468,8 +1466,7 @@ def list_lora_directories():
     return {"directories": dirs}
 
 
-@api.get("/api/v1/loras/preview/{filename}")
-def serve_lora_preview(filename: str):
+def _serve_lora_preview_impl(filename: str):
     """Serve a locally downloaded LoRA preview file (video or image)."""
     # Reject any traversal markers up front; only basenames are valid here.
     if filename != os.path.basename(filename) or filename.startswith("."):
@@ -1969,18 +1966,8 @@ def _build_lora_max_version_map(root: str) -> dict[str, int]:
     return result
 
 
-@api.get("/api/v1/loras/installed")
-def list_all_installed_loras():
-    """List ALL installed LoRAs across all directories with CivitAI metadata.
-
-    Walks the primary loras root PLUS each linked install's loras root
-    (issue #16: linked LoRAs never appeared in "My LoRAs" even though the
-    guide scan processed them). Same enumeration and mirror convention as
-    the scan: linked files are deduped against primary by relative key,
-    and their sidecars/guides are read from the PRIMARY MIRROR path first
-    (where the scan writes them, since linked installs stay read-only),
-    then from beside the file itself.
-    """
+def _list_all_installed_loras_impl():
+    """List ALL installed LoRAs across all directories with CivitAI metadata."""
     lora_root = wgp.server_config.get("loras_root", "loras") if hasattr(wgp, 'server_config') else "loras"
     candidates = [lora_root]
     if not os.path.isabs(lora_root):
@@ -2186,15 +2173,8 @@ def _is_def_bundled_lora(filename: str) -> bool:
     return False
 
 
-@api.delete("/api/v1/loras/file")
-def delete_lora_file(directory: str, filename: str):
-    """Delete an installed LoRA plus its sidecar, guide, and preview files.
-
-    Takes the {directory, filename} pair exactly as /loras/installed
-    reports it (directory is relative, "." for the root). Only files in
-    the primary loras root are deletable — linked installs are read-only,
-    same rule as checkpoint deletes.
-    """
+def _delete_lora_file_impl(directory: str, filename: str):
+    """Delete an installed LoRA plus its sidecar, guide, and preview files."""
     if not filename.endswith((".safetensors", ".sft")) or os.path.basename(filename) != filename:
         raise HTTPException(status_code=400, detail="Not a LoRA file.")
     lora_root = _resolve_lora_root()
@@ -2337,8 +2317,7 @@ def _minimax_h3_turbo_option(model_def: dict) -> dict | None:
     }
 
 
-@api.get("/api/v1/loras/{model_type}")
-def list_loras(model_type: str):
+def _list_loras_impl(model_type: str):
     """List available LoRA files for a model type."""
     md = wgp.get_model_def(model_type)
     if md is None:
@@ -2384,8 +2363,7 @@ def list_loras(model_type: str):
     }
 
 
-@api.get("/api/v1/loras/{model_type}/details")
-def list_loras_details(model_type: str):
+def _list_loras_details_impl(model_type: str):
     """List LoRAs with metadata from .civitai.json sidecars."""
     md = wgp.get_model_def(model_type)
     if md is None:
@@ -2578,8 +2556,11 @@ def list_loras_details(model_type: str):
     }
 
 
-@api.post("/api/v1/loras/nsfw-override")
-async def set_lora_nsfw_override(request: Request):
+def _set_lora_nsfw_override_impl(request: Request):
+    """Manually flag a LoRA as SFW or NSFW, overriding CivitAI's nsfw value."""
+    return _set_lora_nsfw_override_async_entry(request)
+
+async def _set_lora_nsfw_override_async_entry(request: Request):
     """Manually flag a LoRA as SFW or NSFW, overriding CivitAI's nsfw value.
 
     CivitAI's model-level `nsfw` boolean is "worst content across the model"
@@ -2657,8 +2638,7 @@ async def set_lora_nsfw_override(request: Request):
     }
 
 
-@api.post("/api/v1/loras/check-updates")
-def check_lora_updates(force: bool = False):
+def _check_lora_updates_impl(force: bool = False):
     """Walk all installed LoRAs, query CivitAI for the latest version of
     each one that has a sidecar `modelId`, and update the manifest with
     the results. Returns a summary the UI can display in a toast.
@@ -2846,8 +2826,7 @@ def check_lora_updates(force: bool = False):
     }
 
 
-@api.get("/api/v1/loras/update-manifest")
-def get_lora_update_manifest():
+def _get_lora_update_manifest_impl():
     """Return the cached manifest without hitting CivitAI. The frontend
     reads this on app start to populate badges immediately, and triggers
     /check-updates separately if the cache is stale."""
@@ -5617,8 +5596,10 @@ def _generate_and_save_checkpoint_guide(finetune_path: str, meta: dict, extra_so
     return guide_text
 
 
-@api.post("/api/v1/loras/generate-guide")
-async def generate_lora_guide(request: Request):
+def _generate_lora_guide_impl(request: Request):
+    return _generate_lora_guide_async_entry(request)
+
+async def _generate_lora_guide_async_entry(request: Request):
     """Generate a .guide.md for a LoRA by feeding its CivitAI metadata to the LLM."""
     body = await request.json()
     model_type = body.get("model_type", "")
@@ -5670,8 +5651,7 @@ async def generate_lora_guide(request: Request):
     return {"guide": result["guide"], "recommended_weights": result["recommended_weights"]}
 
 
-@api.get("/api/v1/loras/{model_type}/{filename}/guide")
-def get_lora_guide(model_type: str, filename: str):
+def _get_lora_guide_impl(model_type: str, filename: str):
     """Get the generated guide for a LoRA, if it exists."""
     try:
         lora_dir = wgp.get_lora_dir(model_type)
@@ -5766,8 +5746,10 @@ async def generate_checkpoint_guide(model_type: str, request: Request):
     return {"guide": guide, "source_urls": source_urls}
 
 
-@api.post("/api/v1/loras/scan-and-generate-guides")
-async def scan_and_generate_guides(request: Request):
+def _scan_and_generate_guides_impl(request: Request):
+    return _scan_and_generate_guides_async_entry(request)
+
+async def _scan_and_generate_guides_async_entry(request: Request):
     """Scan all local LoRAs, fetch CivitAI metadata by hash, and generate guides.
 
     For each LoRA without a .guide.md:
@@ -6009,6 +5991,24 @@ async def scan_and_generate_guides(request: Request):
     thread.start()
 
     return {"scan_id": scan_id, "total": len(to_process), "status": "running"}
+
+
+from routers.loras import build_loras_router
+api.include_router(build_loras_router(
+    scan_status_fn=_lora_scan_status_impl,
+    list_directories_fn=_list_lora_directories_impl,
+    preview_fn=_serve_lora_preview_impl,
+    installed_fn=_list_all_installed_loras_impl,
+    delete_file_fn=_delete_lora_file_impl,
+    list_loras_fn=_list_loras_impl,
+    list_loras_details_fn=_list_loras_details_impl,
+    nsfw_override_fn=_set_lora_nsfw_override_impl,
+    check_updates_fn=_check_lora_updates_impl,
+    update_manifest_fn=_get_lora_update_manifest_impl,
+    generate_guide_fn=_generate_lora_guide_impl,
+    get_guide_fn=_get_lora_guide_impl,
+    scan_and_generate_guides_fn=_scan_and_generate_guides_impl,
+))
 
 
 
