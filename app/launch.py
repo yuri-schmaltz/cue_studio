@@ -24599,8 +24599,10 @@ def _run_tool_revoice(job_id: str):
             unregister_abort_state(job_id, _active_gen_states, abort_state)
 
 
-@api.post("/api/v1/tools/upscale")
-async def tools_upscale(request: Request):
+def _tools_upscale_impl(request: Request):
+    return _tools_upscale_async_entry(request)
+
+async def _tools_upscale_async_entry(request: Request):
     """Upscale an existing image or clip. Poll /api/v1/status/{job_id}.
 
     Body: { media_path: str, media_type?: "image"|"video",
@@ -24635,8 +24637,10 @@ async def tools_upscale(request: Request):
     return {"job_id": job_id, "status": "queued"}
 
 
-@api.post("/api/v1/tools/film-grain")
-async def tools_film_grain(request: Request):
+def _tools_film_grain_impl(request: Request):
+    return _tools_film_grain_async_entry(request)
+
+async def _tools_film_grain_async_entry(request: Request):
     """Add film grain to an existing clip. Poll /api/v1/status/{job_id}.
 
     Body: { video_path: str, intensity: float, saturation?: float,
@@ -24700,8 +24704,10 @@ async def tools_film_grain(request: Request):
     return {"job_id": job_id, "status": "queued"}
 
 
-@api.post("/api/v1/tools/sharpen")
-async def tools_sharpen(request: Request):
+def _tools_sharpen_impl(request: Request):
+    return _tools_sharpen_async_entry(request)
+
+async def _tools_sharpen_async_entry(request: Request):
     """Add adaptive edge sharpening to an existing clip. Poll /api/v1/status/{job_id}.
 
     Body: { video_path: str, amount: float, workspace?: str }
@@ -24761,8 +24767,10 @@ async def tools_sharpen(request: Request):
     return {"job_id": job_id, "status": "queued"}
 
 
-@api.post("/api/v1/tools/revoice")
-async def tools_revoice(request: Request):
+def _tools_revoice_impl(request: Request):
+    return _tools_revoice_async_entry(request)
+
+async def _tools_revoice_async_entry(request: Request):
     """Replace the voice(s) in an existing clip via SeedVC. Returns a job_id.
 
     Body: { video_path: str, voice_ref_paths: [str, ...],
@@ -24804,6 +24812,15 @@ async def tools_revoice(request: Request):
     }
     threading.Thread(target=_run_tool_revoice, args=(job_id,), daemon=False).start()
     return {"job_id": job_id, "status": "queued"}
+
+
+from routers.tools import build_tools_router
+api.include_router(build_tools_router(
+    upscale_fn=_tools_upscale_impl,
+    film_grain_fn=_tools_film_grain_impl,
+    sharpen_fn=_tools_sharpen_impl,
+    revoice_fn=_tools_revoice_impl,
+))
 
 
 def _apply_deferred_prompt_enhancement(job: dict, raw_params: dict) -> None:
