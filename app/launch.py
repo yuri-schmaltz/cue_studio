@@ -3904,15 +3904,11 @@ def _build_manifest_entry(
     return entry
 
 
-@api.get("/api/v1/civitai/base-models")
-def civitai_base_models():
-    """Return supported model filters for the browser."""
+def _civitai_base_models_impl():
     return {"filters": CIVITAI_MODEL_FILTERS}
 
 
-@api.get("/api/v1/civitai/checkpoint-architectures")
-def civitai_checkpoint_architectures(base_model: str = ""):
-    """List only checkpoint pipelines verified for this CivitAI base label."""
+def _civitai_checkpoint_architectures_impl(base_model: str = ""):
     architectures = _list_checkpoint_architectures(base_model)
     guess = suggested_checkpoint_architecture(base_model)
     available = {entry["architecture"] for entry in architectures}
@@ -4047,8 +4043,7 @@ def _civitai_cache_put(key, payload):
         _CIVITAI_CACHE[key] = (time.time() + _CIVITAI_CACHE_TTL, payload)
 
 
-@api.get("/api/v1/civitai/search")
-def civitai_search(
+def _civitai_search_impl(
     query: str = "", sort: str = "Highest Rated", period: str = "AllTime",
     nsfw: bool = False, types: str = "LORA", baseModels: str = "",
     limit: int = 20, cursor: str = "",
@@ -4125,8 +4120,7 @@ def civitai_search(
         raise HTTPException(status_code=502, detail=f"CivitAI request failed: {e}")
 
 
-@api.get("/api/v1/civitai/model/{model_id}")
-def civitai_model_detail(model_id: int):
+def _civitai_model_detail_impl(model_id: int):
     """Fetch CivitAI model details with local architecture mapping (TTL-cached)."""
     cache_key = ("model", model_id)
     cached = _civitai_cache_get(cache_key)
@@ -4191,9 +4185,11 @@ def _is_safe_civitai_url(url: str) -> bool:
         return False
 
 
-@api.post("/api/v1/civitai/download")
-async def civitai_download(request: Request):
+def _civitai_download_impl(request: Request):
     """Start downloading a file from CivitAI."""
+    return _civitai_download_async_entry(request)
+
+async def _civitai_download_async_entry(request: Request):
     body = await request.json()
     url = body.get("download_url")
     filename = body.get("filename", "model.safetensors")
@@ -4598,8 +4594,7 @@ def _run_civitai_download(download_id: str):
             _release_download_target(download_id, reserved_target)
 
 
-@api.get("/api/v1/civitai/downloads")
-def civitai_downloads_status():
+def _civitai_downloads_status_impl():
     """List active and recent downloads."""
     with _civitai_download_lock:
         downloads = [
@@ -4607,6 +4602,20 @@ def civitai_downloads_status():
             for download_id, dl in _civitai_downloads.items()
         ]
     return {"downloads": downloads}
+
+
+from routers.civitai import build_civitai_router
+api.include_router(build_civitai_router(
+    model_filters=CIVITAI_MODEL_FILTERS,
+    list_checkpoint_architectures_fn=_list_checkpoint_architectures,
+    suggested_checkpoint_architecture_fn=suggested_checkpoint_architecture,
+    checkpoint_targets_for_base_fn=checkpoint_targets_for_base,
+    unsupported_checkpoint_reason_fn=unsupported_checkpoint_reason,
+    search_fn=_civitai_search_impl,
+    model_detail_fn=_civitai_model_detail_impl,
+    download_fn=_civitai_download_impl,
+    downloads_status_fn=_civitai_downloads_status_impl,
+))
 
 
 # ── HuggingFace / CivitAI LoRA Import ────────────────────────────────────────
