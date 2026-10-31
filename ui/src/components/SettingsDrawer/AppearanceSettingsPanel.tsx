@@ -76,6 +76,31 @@ export function AppearanceSettingsPanel() {
                     : 'Dark interface at all times.'}
               </p>
             </div>
+
+            <div className="pt-3 border-t border-border/40">
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
+                Density
+              </label>
+              <div className="flex rounded-lg border border-border overflow-hidden">
+                {(['comfortable', 'compact'] as const).map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setDensity(d)}
+                    aria-pressed={density === d}
+                    className={`flex-1 px-3 py-1.5 text-xs transition-colors ${
+                      density === d
+                        ? 'bg-accent-blue text-white'
+                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
+                    }`}
+                  >
+                    {d === 'comfortable' ? 'Confortável' : 'Compacta'}
+                  </button>
+                ))}
+              </div>
+              <p className="text-2xs text-text-muted mt-1.5">
+                Ajusta o tamanho do texto e o espaçamento dos painéis.
+              </p>
+            </div>
           </div>
         </div>
 
@@ -108,36 +133,36 @@ export function AppearanceSettingsPanel() {
                 {family.description}
               </p>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="settings-columns settings-columns--equal">
-        <div className="settings-group">
-          <div className="settings-card">
-            <div>
-              <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">
-                Density
+            {/* Live Palette Preview Card */}
+            <div className="pt-3 border-t border-border/40">
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-2 block">
+                Visual Preview
               </label>
-              <div className="flex rounded-lg border border-border overflow-hidden">
-                {(['comfortable', 'compact'] as const).map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setDensity(d)}
-                    aria-pressed={density === d}
-                    className={`flex-1 px-3 py-1.5 text-xs transition-colors ${
-                      density === d
-                        ? 'bg-accent-blue text-white'
-                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                    }`}
-                  >
-                    {d === 'comfortable' ? 'Confortável' : 'Compacta'}
-                  </button>
-                ))}
+              <div
+                className="p-3 rounded-lg border border-border flex items-center justify-between"
+                style={{ background: swatch.bg }}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-4 h-4 rounded-full"
+                    style={{ background: swatch.accent }}
+                  />
+                  <span className="text-xs font-medium" style={{ color: swatch.accent }}>
+                    {family.label} ({variant})
+                  </span>
+                </div>
+                <div
+                  className="px-2.5 py-1 text-2xs rounded font-medium border"
+                  style={{
+                    background: swatch.surface,
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                  }}
+                >
+                  Sample Component
+                </div>
               </div>
-              <p className="text-2xs text-text-muted mt-1.5">
-                Ajusta o tamanho do texto e o espaçamento dos painéis.
-              </p>
             </div>
           </div>
         </div>

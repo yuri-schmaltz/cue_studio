@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Cpu, RefreshCw, Loader2 } from 'lucide-react'
+import { Cpu, RefreshCw, Loader2, ChevronDown, Sliders } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
 import { LlmConfigurationCard, FlashVsrCardEmbedded } from './perf/LlmConfigurationCard'
@@ -271,6 +271,7 @@ export function SystemSettingsPanel() {
   // instead of a hardcoded 24 GB. AutoPerformanceCard populates this
   // on mount; if it hasn't fired yet (e.g. user opened Settings →
   // System extremely fast), we fall back to 24 GB.
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const systemDetect = useStore(s => s.systemDetect)
 
   if (systemConfigLoading && !systemConfig) {
@@ -427,37 +428,41 @@ export function SystemSettingsPanel() {
         <h2><Cpu size={18} aria-hidden="true" /> Performance</h2>
       </header>
 
-      {/* Two-row layout. The TOP row hosts the runtime knobs — every
-          control here is a setting the user adjusts to make the
-          next generation faster / quieter / higher quality:
-
-            [ LLM Configuration ]   [ FlashVSR upscaler ]
-            provider · model ·     decoder variant · sparse
-            device · remote URL    attention top-K · backend
-
-          Both rows used to live in the Integrations drawer under
-          "Services" but they're runtime knobs, not integration
-          secrets, so they moved here next to Advanced and the
-          auto-tune card.
-
-          The BOTTOM row is the original 3-column dashboard:
-          Advanced (attention mode, quantization, profile, VRAM
-          headroom) and AutoPerformanceCard (hardware readout +
-          auto-tune toggle). The Models card (enabled models +
-          linked folders) used to live in the third column here but
-          moved to Integrations to live next to the Providers card
-          and the Director v2 engine — Models is closer in spirit
-          to a content registry than to per-take runtime knobs.
-
-          Output Codecs moved to the sidebar (OutputCodecs.tsx) —
-          the sidebar groups it next to Post Processing as a
-          per-output choice.
-
-          The vertical layout stays a flex column with `flex: 1` on
-          the inner row so the constrained panel keeps the same
-          scroll behaviour — each row scrolls independently
-          rather than growing the whole panel past the viewport. */}
+      {/* Balanced 2-column layout (Option A):
+          Left Column: Hardware & GPU Detection (AutoPerformanceCard) + Collapsible Advanced Tuning
+          Right Column: Local LLM Configuration + FlashVSR Super-Resolution */}
       <div className="settings-panel-columns">
+        {/* Left Column: GPU & Performance Engine */}
+        <div className="settings-feature-column">
+          <div className="settings-group">
+            <div className="settings-card">
+              <AutoPerformanceCardEmbedded />
+              <div className="pt-3 border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  className="w-full flex items-center justify-between text-xs font-medium text-text-secondary hover:text-text-primary py-1 transition-colors"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Sliders size={14} className="text-amber-500" />
+                    Advanced Hardware & VRAM Tuning
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`transform transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                {advancedOpen && (
+                  <div className="mt-4 pt-3 border-t border-border/50">
+                    {renderAdvancedFields()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: AI Runtime & FlashVSR */}
         <div className="settings-feature-column">
           <div className="settings-group">
             <LlmConfigurationCard
@@ -467,31 +472,11 @@ export function SystemSettingsPanel() {
               llmStatus={llmStatus}
               llmModels={llmModels}
             />
-          </div>
-        </div>
-
-        {/* Right column: a single merged card holding every other
-          runtime control — FlashVSR upscaler (Model Variant / Top-K /
-          Backend), hardware readout + auto-tune switch
-          (AutoPerformanceCardEmbedded), and the advanced manual
-          tuning (attention, quant, tiling, compile, profiles,
-          VRAM headroom). Three formerly-separate cards collapsed
-          into one because they're all "how should the next
-          generation be tuned" — keeping them in a single column on
-          the right keeps both columns visible at once on a
-          1080p+ viewport. Divider lines keep each subsystem
-          visually distinct inside the single card. */}
-        <div className="settings-feature-column">
-          <div className="settings-group">
-            <div className="settings-card">
+            <div className="settings-card mt-3">
               <FlashVsrCardEmbedded
                 servicesConfig={servicesConfig!}
                 updateConfig={updateServicesConfig}
               />
-              <hr className="border-border" />
-              <AutoPerformanceCardEmbedded />
-              <hr className="border-border" />
-              {renderAdvancedFields()}
             </div>
           </div>
         </div>
