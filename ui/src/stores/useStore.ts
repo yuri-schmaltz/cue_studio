@@ -28,6 +28,7 @@ import { resolvedGenerationPlan, type ReviewPlan } from '../lib/generationPlan'
 import { createWorkspaceSlice } from './workspaceSlice'
 import { createStudioWorkflowSlice } from './studioWorkflowSlice'
 import { createLlmSlice } from './llmSlice'
+import { createDirectorQueueSlice } from './directorQueueSlice'
 import { createRecipesSlice } from './recipesSlice'
 import { createCivitAISlice } from './civitaiSlice'
 import {
@@ -2784,9 +2785,7 @@ export const useStore = create<AppState>((set, get, store) => ({
   openRetakeDialog: (filename) => set({ retakeDialogOpen: true, retakeSourceFile: filename }),
   closeRetakeDialog: () => set({ retakeDialogOpen: false, retakeSourceFile: null }),
 
-  directorQueue: null,
-  directorQueueLoading: false,
-  directorQueueEditingEntryId: null,
+  ...createDirectorQueueSlice(set, get, store),
   reconnectDirectorPipelines: async () => {
     try {
       const { pipelines } = await api.fetchPipelineList()
@@ -3061,73 +3060,6 @@ export const useStore = create<AppState>((set, get, store) => ({
         directorError: e instanceof Error ? e.message : 'Failed to open queued project',
       })
     }
-  },
-  startDirectorQueue: async () => {
-    set({ directorQueueLoading: true })
-    try {
-      const queue = await api.startDirectorQueue()
-      set({
-        directorQueue: queue,
-        directorQueueLoading: false,
-        // Starting freezes every queued snapshot. Further edits become a new
-        // revision unless the user explicitly reopens a still-held entry.
-        directorQueueEditingEntryId: null,
-      })
-    } catch (e) {
-      set({
-        directorQueueLoading: false,
-        directorError: e instanceof Error ? e.message : 'Failed to start queue',
-      })
-    }
-  },
-  pauseDirectorQueue: async () => {
-    set({ directorQueueLoading: true })
-    try {
-      const queue = await api.pauseDirectorQueue()
-      set({ directorQueue: queue, directorQueueLoading: false })
-    } catch (e) {
-      set({
-        directorQueueLoading: false,
-        directorError: e instanceof Error ? e.message : 'Failed to pause queue',
-      })
-    }
-  },
-  removeDirectorQueueEntry: async (entryId: string) => {
-    set({ directorQueueLoading: true })
-    try {
-      await api.deleteDirectorQueueEntry(entryId)
-      if (get().directorQueueEditingEntryId === entryId) {
-        set({ directorQueueEditingEntryId: null })
-      }
-      await get().loadDirectorQueue()
-    } catch (e) {
-      set({
-        directorQueueLoading: false,
-        directorError: e instanceof Error ? e.message : 'Failed to remove queued project',
-      })
-    }
-  },
-  moveDirectorQueueEntry: async (entryId: string, direction: -1 | 1) => {
-    const queue = get().directorQueue
-    if (!queue) return
-    const ids = queue.entries.map(entry => entry.id)
-    const from = ids.indexOf(entryId)
-    const to = from + direction
-    if (from < 0 || to < 0 || to >= ids.length) return
-    ;[ids[from], ids[to]] = [ids[to], ids[from]]
-    set({ directorQueueLoading: true })
-    try {
-      const updated = await api.reorderDirectorQueue(ids)
-      set({ directorQueue: updated, directorQueueLoading: false })
-    } catch (e) {
-      set({
-        directorQueueLoading: false,
-        directorError: e instanceof Error ? e.message : 'Failed to reorder Director queue',
-      })
-    }
-  },
-  queueCurrentDirectorPipeline: async () => {
-    await get().startDirectorPipeline('queue')
   },
 
   // ── Recipes (one-click Studio presets) ────────────────────────────

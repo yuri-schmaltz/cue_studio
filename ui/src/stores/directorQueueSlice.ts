@@ -48,6 +48,9 @@ export type DirectorQueueSlice = Pick<AppState,
   | 'loadDirectorQueue'
   | 'startDirectorQueue'
   | 'pauseDirectorQueue'
+  | 'removeDirectorQueueEntry'
+  | 'moveDirectorQueueEntry'
+  | 'queueCurrentDirectorPipeline'
 > & {
   addDirectorQueueEntry: (params: Record<string, unknown>) => Promise<void>
   updateDirectorQueueEntry: (
@@ -124,13 +127,56 @@ export const createDirectorQueueSlice: StateCreator<
     }
   },
 
+  removeDirectorQueueEntry: async (entryId: string) => {
+    set({ directorQueueLoading: true })
+    try {
+      await queueApi.remove(entryId)
+      if (get().directorQueueEditingEntryId === entryId) {
+        set({ directorQueueEditingEntryId: null })
+      }
+      await get().loadDirectorQueue()
+    } catch (e) {
+      set({
+        directorQueueLoading: false,
+        directorError: e instanceof Error ? e.message : 'Failed to remove queued project',
+      })
+    }
+  },
+
+  moveDirectorQueueEntry: async (entryId: string, direction: -1 | 1) => {
+    const queue = get().directorQueue
+    if (!queue) return
+    const ids = queue.entries.map(entry => entry.id)
+    const from = ids.indexOf(entryId)
+    const to = from + direction
+    if (from < 0 || to < 0 || to >= ids.length) return
+    ;[ids[from], ids[to]] = [ids[to], ids[from]]
+    set({ directorQueueLoading: true })
+    try {
+      const updated = await queueApi.reorder(ids)
+      set({ directorQueue: updated, directorQueueLoading: false })
+    } catch (e) {
+      set({
+        directorQueueLoading: false,
+        directorError: e instanceof Error ? e.message : 'Failed to reorder Director queue',
+      })
+    }
+  },
+
   startDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      await queueApi.start()
-      set({ directorQueueLoading: false })
+      const queue = await queueApi.start()
+      set({
+        directorQueue: queue,
+        directorQueueLoading: false,
+        directorQueueEditingEntryId: null,
+      })
     } catch (err) {
-      set({ directorQueueLoading: false })
+      set({
+        directorQueueLoading: false,
+        directorError: err instanceof Error ? err.message : 'Failed to start queue',
+      })
       throw err
     }
   },
@@ -138,10 +184,13 @@ export const createDirectorQueueSlice: StateCreator<
   pauseDirectorQueue: async () => {
     set({ directorQueueLoading: true })
     try {
-      await queueApi.pause()
-      set({ directorQueueLoading: false })
+      const queue = await queueApi.pause()
+      set({ directorQueue: queue, directorQueueLoading: false })
     } catch (err) {
-      set({ directorQueueLoading: false })
+      set({
+        directorQueueLoading: false,
+        directorError: err instanceof Error ? err.message : 'Failed to pause queue',
+      })
       throw err
     }
   },
@@ -155,6 +204,10 @@ export const createDirectorQueueSlice: StateCreator<
       set({ directorQueueLoading: false })
       throw err
     }
+  },
+
+  queueCurrentDirectorPipeline: async () => {
+    await get().startDirectorPipeline('queue')
   },
 
   setDirectorQueueEditingEntryId: (entryId: string | null) => {

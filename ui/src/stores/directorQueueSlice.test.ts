@@ -123,6 +123,35 @@ describe('directorQueueSlice', () => {
     expect(store.getState().directorQueue?.entries[0].id).toBe('e3')
   })
 
+  it('removes entry via removeDirectorQueueEntry and clears editing id', async () => {
+    const store = createTestStore()
+    store.setState({ directorQueueEditingEntryId: 'e1' })
+    await store.getState().removeDirectorQueueEntry('e1')
+    expect(store.getState().directorQueueEditingEntryId).toBeNull()
+    expect(apiMocks.remove).toHaveBeenCalledWith('e1')
+  })
+
+  it('moves entry directionally via moveDirectorQueueEntry', async () => {
+    const store = createTestStore()
+    store.setState({
+      directorQueue: {
+        version: 1,
+        paused: false,
+        running: false,
+        entries: [{ id: 'e1' }, { id: 'e2' }] as never,
+      },
+    })
+    apiMocks.reorder.mockResolvedValue({
+      version: 1,
+      paused: false,
+      running: false,
+      entries: [{ id: 'e2' }, { id: 'e1' }],
+    })
+    await store.getState().moveDirectorQueueEntry('e1', 1)
+    expect(apiMocks.reorder).toHaveBeenCalledWith(['e2', 'e1'])
+    expect(store.getState().directorQueue?.entries[0].id).toBe('e2')
+  })
+
   it('setDirectorQueueEditingEntryId updates the field', () => {
     const store = createTestStore()
     store.getState().setDirectorQueueEditingEntryId('e42')
