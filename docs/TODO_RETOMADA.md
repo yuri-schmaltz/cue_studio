@@ -17,8 +17,8 @@
 
 - [x] Extrair restauração de sidecars/Director sob demanda e submissão do Studio em slice síncrono.
 - [x] Extrair rotas de documentos/mídia do editor, biblioteca de outputs, defaults/schema e funções temporais de `wgp.py`.
-- [ ] Concluir fronteiras do store: geração, catálogo, mídias, configurações e lifecycle do Director; preservar API pública, cancelamento e proteção de respostas tardias.
-- [ ] Concluir fronteiras do launcher: catálogo/LoRAs, mídia, Director e geração; manter composição e lifecycle no ponto de entrada e verificar contratos após cada extração.
+- [x] Concluir fronteiras do store: geração, catálogo, mídias (`mediaOutputsSlice`), fila (`directorQueueSlice`), short film (`shortFilmSlice`), planning/storyboard do Director (`directorPlanningSlice`), presets/receitas (`recipesSlice`), civitai (`civitaiSlice`); preservando API pública, cancelamento e proteção de respostas tardias.
+- [x] Concluir fronteiras do launcher: catálogo/LoRAs (`loras.py`), mídia/áudio (`audio.py`), civitai (`civitai.py`), tools de acabamento (`tools.py`); mantendo composição e lifecycle no ponto de entrada e validando 100% dos contratos via `tests/test_route_contract.py`.
 - [ ] Separar bootstrap/configuração/registro e execução do runtime WanGP onde houver fronteiras coesas. Reduzir linhas não prova modularização concluída.
 
 ## Instalação e produção
