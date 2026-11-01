@@ -385,14 +385,17 @@ export function DurationSlider() {
         autoSourceLabel={autoSourceLabel}
         autoManualWindowCount={manualWindowPrompts ? Math.max(1, promptLineCount) : null}
       />
-      {showSlidingWindow && !isMultiClip && (
+      {/* Only surfaced when the prompts are written by hand: the
+          automatic/AI-planned variant ("N windows of Xs · AI-planned window
+          prompts") just repeated the window count and pass length that the
+          Window card already states right above it. The manual variant is
+          kept because it warns when the number of prompt lines does not
+          match the number of windows. */}
+      {showSlidingWindow && !isMultiClip && !automaticPromptPacing && (
         <div className="text-2xs text-text-muted mt-1">
-          {windowCount} windows of {formatSeconds(windowSize)} &middot;{' '}
-          {automaticPromptPacing
-            ? (isLtx ? 'AI-planned window prompts' : 'full prompt auto-paced')
-            : <span className={promptLineCount === windowCount ? '' : 'text-amber-400'}>
-                {promptLineCount}/{windowCount} prompts
-              </span>}
+          <span className={promptLineCount === windowCount ? '' : 'text-amber-400'}>
+            {promptLineCount}/{windowCount} prompts
+          </span>
         </div>
       )}
       {showOmniSequence && (
