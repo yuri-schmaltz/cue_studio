@@ -3,6 +3,8 @@ import { Cpu, RefreshCw, Loader2, ChevronDown, Sliders } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
 import { LlmConfigurationCard, FlashVsrCardEmbedded } from './perf/LlmConfigurationCard'
+import { ApiKeyField } from './perf/ApiKeyField'
+import { ModelVisibilitySection } from './models/ModelVisibilitySection'
 
 const profileLabels: Record<string, string> = {
   '1': 'Profile 1: High RAM + High VRAM',
@@ -423,55 +425,139 @@ export function SystemSettingsPanel() {
   )
 
   return (
-    <section className="settings-panel" aria-label="Performance settings">
-      {/* Balanced 2-column layout (Option A):
-          Left Column: Hardware & GPU Detection (AutoPerformanceCard) + Collapsible Advanced Tuning
-          Right Column: Local LLM Configuration + FlashVSR Super-Resolution */}
-      <div className="settings-panel-columns">
-        {/* Left Column: GPU & Performance Engine */}
-        <div className="settings-feature-column">
-          <div className="settings-group">
-            <div className="settings-card">
-              <AutoPerformanceCardEmbedded />
-              <div className="pt-3 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => setAdvancedOpen(!advancedOpen)}
-                  className="w-full flex items-center justify-between text-xs font-medium text-text-secondary hover:text-text-primary py-1 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Sliders size={14} className="text-amber-500" />
-                    Advanced Hardware & VRAM Tuning
-                  </span>
-                  <ChevronDown
-                    size={14}
-                    className={`transform transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
-                {advancedOpen && (
-                  <div className="mt-4 pt-3 border-t border-border/50">
-                    {renderAdvancedFields()}
-                  </div>
-                )}
+    <section className="settings-panel" aria-label="Hardware, AI & Performance settings">
+      {/* 3-Column Unified Layout: Hardware/GPU + AI Runtimes + Models & Cloud APIs */}
+      <div className="settings-trio-grid">
+        {/* Column 1: Hardware, GPU & Performance Engine */}
+        <div className="flex flex-col gap-3">
+          <div className="settings-card">
+            <AutoPerformanceCardEmbedded />
+            <div className="pt-2.5 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen(!advancedOpen)}
+                className="w-full flex items-center justify-between text-xs font-medium text-text-secondary hover:text-text-primary py-0.5 transition-colors"
+              >
+                <span className="flex items-center gap-1.5">
+                  <Sliders size={13} className="text-amber-500" />
+                  Advanced Hardware & Tuning
+                </span>
+                <ChevronDown
+                  size={13}
+                  className={`transform transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {advancedOpen && (
+                <div className="mt-3 pt-2.5 border-t border-border/50">
+                  {renderAdvancedFields()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* FlashVSR Upscaler */}
+          <div className="settings-card">
+            <FlashVsrCardEmbedded
+              servicesConfig={servicesConfig!}
+              updateConfig={updateServicesConfig}
+            />
+          </div>
+        </div>
+
+        {/* Column 2: Local AI & Director Storyboard Engine */}
+        <div className="flex flex-col gap-3">
+          <LlmConfigurationCard
+            servicesConfig={servicesConfig!}
+            updateConfig={updateServicesConfig}
+            loadLlmModels={loadLlmModels}
+            llmStatus={llmStatus}
+            llmModels={llmModels}
+          />
+
+          <div className="settings-card">
+            <label className="flex items-center justify-between cursor-pointer group">
+              <div className="flex-1 mr-2">
+                <div className="text-xs font-medium text-text-primary group-hover:text-accent-blue transition-colors">
+                  Director v2 Engine <span className="text-2xs text-text-muted font-normal">(default)</span>
+                </div>
+                <div className="text-2xs text-text-muted mt-0.5">
+                  Structured shot planning & render validation.
+                </div>
               </div>
+              <div
+                onClick={() => updateServicesConfig({ use_director_v2: !servicesConfig?.use_director_v2 })}
+                className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${
+                  servicesConfig?.use_director_v2 ? 'bg-accent-blue' : 'bg-bg-tertiary border border-border'
+                }`}
+              >
+                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white border border-border shadow transition-transform ${
+                  servicesConfig?.use_director_v2 ? 'translate-x-4' : 'translate-x-0.5'
+                }`} />
+              </div>
+            </label>
+
+            <div className="pt-2 border-t border-border/40">
+              <label className="text-xs text-text-muted uppercase tracking-wider mb-1 block">
+                Prompt Polish Mode
+              </label>
+              <select
+                value={servicesConfig?.director_prompt_polish || 'third_pass'}
+                onChange={e => updateServicesConfig({ director_prompt_polish: e.target.value as 'off' | 'full_guide' | 'light_guide' | 'third_pass' })}
+                className="w-full bg-bg-tertiary border border-border rounded-lg px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-blue"
+              >
+                <option value="third_pass">Third Pass (Model-aware) — recommended</option>
+                <option value="light_guide">Lightweight Guide (legacy)</option>
+                <option value="full_guide">Full Guide Inject (legacy)</option>
+                <option value="off">Off</option>
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Right Column: AI Runtime & FlashVSR */}
-        <div className="settings-feature-column">
-          <div className="settings-group">
-            <LlmConfigurationCard
-              servicesConfig={servicesConfig!}
-              updateConfig={updateServicesConfig}
-              loadLlmModels={loadLlmModels}
-              llmStatus={llmStatus}
-              llmModels={llmModels}
-            />
-            <div className="settings-card mt-3">
-              <FlashVsrCardEmbedded
-                servicesConfig={servicesConfig!}
-                updateConfig={updateServicesConfig}
+        {/* Column 3: Installed Models Catalog & Cloud API Keys */}
+        <div className="flex flex-col gap-3">
+          <ModelVisibilitySection />
+
+          <div className="settings-card">
+            <label className="text-xs text-text-muted uppercase tracking-wider mb-1 block">
+              Cloud API Keys
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              <ApiKeyField
+                label="Google AI"
+                maskedValue={servicesConfig?.google_api_key}
+                isSet={servicesConfig?.google_api_key_set}
+                onSave={val => updateServicesConfig({ google_api_key: val })}
+              />
+              <ApiKeyField
+                label="OpenAI"
+                maskedValue={servicesConfig?.openai_api_key}
+                isSet={servicesConfig?.openai_api_key_set}
+                onSave={val => updateServicesConfig({ openai_api_key: val })}
+              />
+              <ApiKeyField
+                label="Anthropic"
+                maskedValue={servicesConfig?.anthropic_api_key}
+                isSet={servicesConfig?.anthropic_api_key_set}
+                onSave={val => updateServicesConfig({ anthropic_api_key: val })}
+              />
+              <ApiKeyField
+                label="MiniMax"
+                maskedValue={servicesConfig?.minimax_api_key}
+                isSet={servicesConfig?.minimax_api_key_set}
+                onSave={val => updateServicesConfig({ minimax_api_key: val })}
+              />
+              <ApiKeyField
+                label="OpenRouter"
+                maskedValue={servicesConfig?.openrouter_api_key}
+                isSet={servicesConfig?.openrouter_api_key_set}
+                onSave={val => updateServicesConfig({ openrouter_api_key: val })}
+              />
+              <ApiKeyField
+                label="CivitAI Token"
+                maskedValue={servicesConfig?.civitai_api_key}
+                isSet={servicesConfig?.civitai_api_key_set}
+                onSave={val => updateServicesConfig({ civitai_api_key: val })}
               />
             </div>
           </div>

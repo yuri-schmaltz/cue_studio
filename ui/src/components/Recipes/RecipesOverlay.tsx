@@ -49,7 +49,7 @@ export function RecipesOverlay() {
 
   const openCivitaiKeySettings = () => {
     setMissing(null); setOpen(false)
-    setSettingsTab('integrations'); setSettingsOpen(true)
+    setSettingsTab('performance'); setSettingsOpen(true)
   }
 
   const handleImport = () => {

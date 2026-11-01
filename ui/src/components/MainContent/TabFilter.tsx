@@ -1,16 +1,29 @@
 import { useState, useRef, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, Heart, Film, Search, X } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  Film,
+  Search,
+  X,
+  LayoutGrid,
+  Image as ImageIcon,
+  Video as VideoIcon,
+  Music,
+  Scissors,
+  type LucideIcon,
+} from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import type { MediaFilter } from '../../types'
 
-const tabs: { value: MediaFilter; label: string; shortLabel: string; icon?: string }[] = [
-  { value: 'all', label: 'All', shortLabel: 'All' },
-  { value: 'images', label: 'Images', shortLabel: 'Img' },
-  { value: 'videos', label: 'Videos', shortLabel: 'Vid' },
-  { value: 'audio', label: 'Audio', shortLabel: 'Aud' },
-  { value: 'avatars', label: 'Edits', shortLabel: 'Edit' },
-  { value: 'multiclip', label: 'Multi-clip', shortLabel: 'MC', icon: 'film' },
-  { value: 'favorites', label: 'Favorites', shortLabel: '', icon: 'heart' },
+const tabs: { value: MediaFilter; label: string; shortLabel: string; icon: LucideIcon }[] = [
+  { value: 'all', label: 'All', shortLabel: 'All', icon: LayoutGrid },
+  { value: 'images', label: 'Images', shortLabel: 'Img', icon: ImageIcon },
+  { value: 'videos', label: 'Videos', shortLabel: 'Vid', icon: VideoIcon },
+  { value: 'audio', label: 'Audio', shortLabel: 'Aud', icon: Music },
+  { value: 'avatars', label: 'Edits', shortLabel: 'Edit', icon: Scissors },
+  { value: 'multiclip', label: 'Multi-clip', shortLabel: 'MC', icon: Film },
+  { value: 'favorites', label: 'Favorites', shortLabel: 'Fav', icon: Heart },
 ]
 
 export function TabFilter() {
@@ -83,26 +96,28 @@ export function TabFilter() {
     <div ref={rootRef} className="relative flex min-w-0 flex-1 items-center gap-1">
       <div className="relative w-fit min-w-0 max-w-full shrink">
         <div ref={tabsScrollRef} className="flex w-max max-w-full gap-0.5 overflow-x-auto rounded-lg border border-border bg-bg-tertiary p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {tabs.map(tab => (
-            <button
-              key={tab.value}
-              ref={mediaFilter === tab.value ? selectedTabRef : undefined}
-              onClick={() => setMediaFilter(tab.value)}
-              className={`flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-2xs font-medium transition-all xl:px-3 xl:py-1.5 xl:text-xs ${
-                mediaFilter === tab.value
-                  ? tab.value === 'favorites' ? 'bg-red-500/20 text-chip-red'
-                  : tab.value === 'multiclip' ? 'bg-purple-500/20 text-chip-purple'
-                  : 'bg-bg-active text-text-primary'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-              title={tab.label}
-            >
-              {tab.icon === 'heart' && <Heart size={11} fill={mediaFilter === 'favorites' ? 'currentColor' : 'none'} />}
-              {tab.icon === 'film' && <Film size={11} />}
-              <span className="hidden xl:inline">{tab.label}</span>
-              <span className="xl:hidden">{tab.shortLabel}</span>
-            </button>
-          ))}
+          {tabs.map(tab => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.value}
+                ref={mediaFilter === tab.value ? selectedTabRef : undefined}
+                onClick={() => setMediaFilter(tab.value)}
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-2xs font-medium transition-all xl:px-2.5 xl:py-1 xl:text-xs ${
+                  mediaFilter === tab.value
+                    ? tab.value === 'favorites' ? 'bg-red-500/20 text-chip-red'
+                    : tab.value === 'multiclip' ? 'bg-purple-500/20 text-chip-purple'
+                    : 'bg-bg-active text-text-primary'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+                title={tab.label}
+              >
+                <Icon size={12} fill={tab.value === 'favorites' && mediaFilter === 'favorites' ? 'currentColor' : 'none'} />
+                <span className="hidden xl:inline">{tab.label}</span>
+                <span className="xl:hidden">{tab.shortLabel}</span>
+              </button>
+            )
+          })}
         </div>
         {canScrollLeft && (
           <>

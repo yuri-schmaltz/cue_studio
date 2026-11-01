@@ -28,7 +28,7 @@ export function ModelDetail({ model, onBack, kind = 'lora' }: Props) {
   const setSettingsTab = useStore(s => s.setSettingsTab)
   const goToCivitaiKeySettings = useCallback(() => {
     setLoraBrowserOpen(false)
-    setSettingsTab('integrations')
+    setSettingsTab('performance')
     setSettingsOpen(true)
   }, [setLoraBrowserOpen, setSettingsTab, setSettingsOpen])
 

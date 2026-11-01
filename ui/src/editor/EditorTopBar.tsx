@@ -108,7 +108,7 @@ export function EditorTopBar() {
           <Menu size={20} />
         </button>
       )}
-      <div ref={rootRef} className={`relative min-w-0 md:ml-2 w-[220px] shrink-0`}>
+      <div ref={rootRef} className="relative min-w-0 w-[220px] shrink-0">
         <div className="flex min-w-0 items-center rounded-lg border border-border bg-bg-tertiary focus-within:border-accent-blue/60">
           <ProjectNameField
             key={project?.id || 'no-project'}

@@ -1005,7 +1005,7 @@ input[type="range"]::-webkit-slider-thumb {
    the toolbar so its content can be centered without leaving the icon
    pinned to the top of the page. */
 .section-container { width:100%; padding:16px 16px 48px; display:flex; flex-direction:column; min-height:100%; box-sizing:border-box; }
-.section-container--wide { padding: 8px 12px 16px; min-height: auto; }
+.section-container--wide { padding: 8px 16px 16px; min-height: auto; }
 .section-heading { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:32px; }
 .section-heading h1 { font-size: var(--text-4xl); line-height:1.25; font-weight:600; letter-spacing:-.035em; }
 .section-heading p:not(.section-eyebrow) { margin-top:10px; font-size: var(--text-base); line-height:1.7; color:var(--color-text-muted); }
@@ -1297,9 +1297,22 @@ input[type="range"]::-webkit-slider-thumb {
 
 .configurations-top-nav-tab[data-section="appearance"].is-active    { border-color:#0891b2; color:#38bdf8; }
 .configurations-top-nav-tab[data-section="performance"].is-active   { border-color:#c2410c; color:#fb923c; }
-.configurations-top-nav-tab[data-section="integrations"].is-active  { border-color:#9333ea; color:#c084fc; }
 .configurations-top-nav-tab[data-section="storage"].is-active       { border-color:#0d9488; color:#2dd4bf; }
 .configurations-top-nav-tab[data-section="notifications"].is-active { border-color:#d97706; color:#fbbf24; }
+
+/* 3-column balanced grid for Performance & AI Engine (Zero-scroll) */
+.settings-trio-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .settings-trio-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 .configurations-content { min-width:0; }
 

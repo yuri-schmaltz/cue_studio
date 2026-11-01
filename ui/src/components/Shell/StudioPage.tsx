@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen } from 'lucide-react'
+import { BookOpen, BookMarked } from 'lucide-react'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { MainContent } from '../MainContent/MainContent'
 import { StyleBiblesModal } from '../StyleBibles/StyleBiblesModal'
@@ -117,22 +117,34 @@ export function StudioPage() {
       {/* Sub-header mirrors the Director sub-header for visual
           consistency: a left-side context block + a right-side shortcut.
           No workflow toggle here — Studio is a single-purpose surface. */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2 bg-bg-secondary/90 backdrop-blur-sm z-10 select-none">
+      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border bg-bg-secondary/90 backdrop-blur-sm z-10 select-none">
         <div className="flex items-center gap-2 text-xs text-text-secondary">
           <span className="font-medium text-text-primary">Manual generation</span>
           <span aria-hidden="true">·</span>
           <span>Single clips, image/video editing, audio tools</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setBiblesOpen(true)}
-          className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1.5 text-text-secondary"
-          aria-label="Manage Style Bibles"
-          data-testid="studio-page-style-bibles"
-        >
-          <BookOpen size={12} className="text-accent-blue" aria-hidden="true" />
-          Style Bibles
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => useStore.getState().setRecipesOpen(true)}
+            className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1.5 text-text-secondary"
+            aria-label="Browse recipes"
+            data-testid="studio-page-recipes"
+          >
+            <BookMarked size={12} className="text-accent-blue" aria-hidden="true" />
+            Browse recipes
+          </button>
+          <button
+            type="button"
+            onClick={() => setBiblesOpen(true)}
+            className="text-xs px-2 py-1 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1.5 text-text-secondary"
+            aria-label="Manage Style Bibles"
+            data-testid="studio-page-style-bibles"
+          >
+            <BookOpen size={12} className="text-accent-blue" aria-hidden="true" />
+            Style Bibles
+          </button>
+        </div>
       </div>
 
       <StudioTabs

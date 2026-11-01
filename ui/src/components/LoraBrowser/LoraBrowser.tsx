@@ -47,7 +47,7 @@ export function LoraBrowser() {
   const [apiKeyBannerDismissed, setApiKeyBannerDismissed] = useState(false)
   const goToCivitaiKeySettings = useCallback(() => {
     setOpen(false)
-    setSettingsTab('integrations')
+    setSettingsTab('performance')
     setSettingsOpen(true)
   }, [setOpen, setSettingsTab, setSettingsOpen])
 

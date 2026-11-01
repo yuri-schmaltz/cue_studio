@@ -1106,7 +1106,7 @@ export function DirectorBriefingColumn() {
                   {((musicSource ?? 'upload') === 'upload' || Boolean(audioFile)) && (
                     <>
                       {!isStoryPath && (
-                        <section className="flex-1 min-h-[140px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
+                        <section className="shrink-0 max-h-[175px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
                           <header className="flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
@@ -1138,7 +1138,7 @@ export function DirectorBriefingColumn() {
                       )}
 
                       {/* Voices & Characters card */}
-                      <section className="flex-1 min-h-[160px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden">
+                      <section className="flex-1 min-h-[160px] -mb-2 bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden">
                         <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
                           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                             IDENTIFIED VOICES &amp; CHARACTERS
