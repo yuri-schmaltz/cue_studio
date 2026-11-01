@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Clapperboard, Copy, Film, FolderOpen, ImagePlus, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Sparkles, Trash2, X } from 'lucide-react'
+import { Check, Clapperboard, Copy, Film, FolderOpen, Image as ImageIcon, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import type { ProjectType } from '../../types/projects'
-import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspaceCoverUrl, submitGeneration, type Workspace } from '../../api/client'
+import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspaceCoverUrl, type Workspace } from '../../api/client'
 import { applyPreset, presetById, presetForType, trackOverrides } from '../../projects/presets'
 import { ProjectSetupForm, ProjectSetupSummary } from './ProjectSetupForm'
 import { SkeletonGrid } from '../shared/Skeleton'
@@ -50,10 +50,11 @@ function formatUpdated(timestamp?: number | null): string | null {
 
 const COVER_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'bmp']
 
-/** Square cover picker shown next to the project name (New dialog) or
- *  the dialog title (Edit setup). Shows the stored cover or the pending
- *  file thumbnail; the file itself only uploads on save. */
-function CoverSquareButton({ workspaceName, coverImage, pendingFile, pendingUrl, disabled, onPick, onClear, onGenerate, generating }: {
+/** Full-width cover dropzone shown at the top of the project dialogs.
+ *  Accepts a click or a drag & drop of an image file; the file itself
+ *  only uploads on save. Shows the stored cover (or the pending file
+ *  thumbnail) as a preview once one is picked. */
+function CoverDropzone({ workspaceName, coverImage, pendingFile, pendingUrl, disabled, onPick, onClear }: {
   workspaceName: string | null
   coverImage: string
   pendingFile: File | null
@@ -61,45 +62,65 @@ function CoverSquareButton({ workspaceName, coverImage, pendingFile, pendingUrl,
   disabled?: boolean
   onPick: (file: File) => void
   onClear: () => void
-  /** Optional callback that triggers an AI generation for the cover.
-   *  When provided, a second button (sparkles icon) is rendered next
-   *  to the upload affordance. While `generating` is true, the
-   *  button shows a spinner and is disabled. */
-  onGenerate?: () => void
-  generating?: boolean
 }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const src = pendingUrl || (coverImage && workspaceName ? workspaceCoverUrl(workspaceName, coverImage) : null)
   const failed = failedSrc !== null && failedSrc === src
+
   if (src && !failed) {
     return (
-      <span className="relative shrink-0" title={pendingFile ? `${pendingFile.name} · uploads on save` : 'Project cover · click × to remove'}>
-        <img src={src} alt="Project cover" className="block h-10 w-10 rounded-lg border border-border object-cover" onError={() => setFailedSrc(src)} />
-        <button type="button" onClick={onClear} disabled={disabled} aria-label="Remove cover image" className="absolute -top-1.5 -right-1.5 rounded-full border border-border bg-bg-primary p-0.5 hover:bg-bg-hover transition-colors disabled:opacity-50">
-          <X size={10} className="text-text-muted" />
-        </button>
-      </span>
-    )
-  }
-  return (
-    <span className="flex items-center gap-1.5 shrink-0">
-      <label title="Upload a cover image (.png, .jpg, .webp, .bmp)" aria-label="Upload a cover image" className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg border border-dashed transition-colors ${disabled ? 'cursor-not-allowed opacity-50' : 'border-border hover:border-accent-blue'}`}>
-        <ImagePlus size={16} className="text-text-muted" />
-        <input type="file" accept=".png,.jpg,.jpeg,.webp,.bmp" className="hidden" disabled={disabled} onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = '' }} />
-      </label>
-      {onGenerate && (
+      <div className="relative w-full overflow-hidden rounded-lg border border-border">
+        <img
+          src={src}
+          alt="Project cover"
+          className="block h-[96px] w-full object-cover"
+          onError={() => setFailedSrc(src)}
+        />
         <button
           type="button"
-          onClick={onGenerate}
-          disabled={disabled || generating}
-          aria-label="Generate cover with AI"
-          title="Generate cover with AI"
-          className={`flex h-10 w-10 items-center justify-center rounded-lg border border-dashed transition-colors ${disabled || generating ? 'cursor-not-allowed opacity-50' : 'border-border hover:border-accent-blue'}`}
+          onClick={onClear}
+          disabled={disabled}
+          aria-label="Remove cover image"
+          title="Remove cover image"
+          className="absolute top-1.5 right-1.5 rounded-full border border-border bg-bg-primary p-0.5 hover:bg-bg-hover transition-colors disabled:opacity-50"
         >
-          {generating ? <Loader2 size={16} className="animate-spin text-text-muted" /> : <Sparkles size={16} className="text-text-muted" />}
+          <X size={10} className="text-text-muted" />
         </button>
-      )}
-    </span>
+        <span className="absolute bottom-1.5 left-1.5 rounded bg-black/50 px-1.5 py-0.5 text-2xs text-white/80">
+          {pendingFile ? `${pendingFile.name} · uploads on save` : 'Project cover'}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <label
+      title="Upload a cover image (.png, .jpg, .webp, .bmp)"
+      aria-label="Upload a cover image"
+      onDragOver={e => { e.preventDefault(); if (!disabled) setDragOver(true) }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={e => {
+        e.preventDefault()
+        setDragOver(false)
+        if (disabled) return
+        const file = e.dataTransfer.files?.[0]
+        if (file) onPick(file)
+      }}
+      className={`flex h-[96px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
+        dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
+      } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
+    >
+      <ImageIcon size={26} className="text-accent-blue/60" />
+      <span className="text-xs text-text-secondary">Drop a image or click to upload</span>
+      <input
+        type="file"
+        accept=".png,.jpg,.jpeg,.webp,.bmp"
+        className="hidden"
+        disabled={disabled}
+        onChange={e => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = '' }}
+      />
+    </label>
   )
 }
 
@@ -112,7 +133,6 @@ export function ProjectsPage() {
   const deleteWorkspace = useStore(s => s.deleteWorkspace)
   const saveSetupAction = useStore(s => s.saveWorkspaceSetup)
   const navigate = useStore(s => s.setAppSection)
-  const studioModels = useStore(s => s.selectedModelPerMode)
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
@@ -133,11 +153,6 @@ export function ProjectsPage() {
   // create/saveEdit, then cleared.
   const [pendingCover, setPendingCover] = useState<File | null>(null)
   const [coverError, setCoverError] = useState('')
-  // True while the AI cover-generation job is running. Disables both
-  // cover buttons + form fields so the user can't submit a half-baked
-  // dialog. Cleared when the job either resolves into pendingCover or
-  // fails (coverError carries the message in the failure case).
-  const [generatingCover, setGeneratingCover] = useState(false)
   const pendingCoverUrl = useMemo(() => pendingCover ? URL.createObjectURL(pendingCover) : null, [pendingCover])
   useEffect(() => () => { if (pendingCoverUrl) URL.revokeObjectURL(pendingCoverUrl) }, [pendingCoverUrl])
   const handlePickCover = (file: File) => {
@@ -157,83 +172,6 @@ export function ProjectsPage() {
     setCoverError('')
     setPendingCover(null)
     setSetup(prev => (prev.cover_image ? { ...prev, cover_image: '' } : prev))
-  }
-  /** Generate the cover image with the project's image model. The
-   *  flow fires a tiny image generation (1 frame, aspect 1:1, 720p),
-   *  polls the job until it completes, downloads the result, and
-   *  pipes it through `handlePickCover` so it lands in `pendingCover`
-   *  and behaves exactly like a user-picked upload — including the
-   *  upload-on-save logic. Works for both New (creates a workspace
-   *  first) and Edit (workspace already exists). */
-  const handleGenerateCover = async () => {
-    if (generatingCover) return
-    const projectName = (editing || name).trim() || 'project'
-    const userPrompt = typeof window !== 'undefined'
-      ? window.prompt('Describe the cover you want the AI to generate:', `${projectName.replace(/[-_]/g, ' ')} — cinematic still`) || ''
-      : ''
-    if (!userPrompt.trim()) return
-    const workspaceName = editing
-    if (!workspaceName) {
-      // New-project flow: the workspace doesn't exist yet, so we
-      // can't submit a generation keyed to it. Refuse early with a
-      // friendly message instead of failing in the backend.
-      setCoverError('Create the project first — AI cover generation requires the workspace to exist.')
-      return
-    }
-    setCoverError('')
-    setGeneratingCover(true)
-    try {
-      // Pull the project's image model from setup (or fall back to
-      // studioModels or default image model). We always request a single image
-      // because the cover is a 1:1 square thumbnail.
-      const resolvedImageModel = setup.image_model || studioModels?.image || 'flux2_klein_9b'
-      const params: Record<string, unknown> = {
-        workspace: workspaceName,
-        prompt: userPrompt,
-        model_type: resolvedImageModel,
-        duration_ms: 1,
-        frame_count: 1,
-        frames: 1,
-        fps: 1,
-        resolution: '720p',
-        aspect_ratio: '1:1',
-        video_model: setup.video_model || '',
-        image_model: resolvedImageModel,
-        still_only: true,
-        mode: 'image',
-        generation_mode: 'image',
-      }
-      const { job_id } = await submitGeneration(params)
-      // Poll the job until it finishes (or errors). The backend
-      // returns outputs on success — fetch and download the first
-      // image as the cover.
-      const startedAt = Date.now()
-      const TIMEOUT_MS = 5 * 60 * 1000
-      let finalJob: { status?: string; output_path?: string; outputs?: string[]; error?: string } | null = null
-      while (Date.now() - startedAt < TIMEOUT_MS) {
-        await new Promise(r => setTimeout(r, 1500))
-        const res = await fetch(`${window.location.origin}/api/v1/jobs/${job_id}`)
-        if (!res.ok) continue
-        finalJob = await res.json()
-        if (finalJob?.status === 'completed' || finalJob?.status === 'succeeded' || finalJob?.status === 'done') break
-        if (finalJob?.status === 'failed' || finalJob?.status === 'error' || finalJob?.status === 'cancelled') break
-      }
-      const outputPath = finalJob?.outputs?.[0] || finalJob?.output_path
-      if (!outputPath) throw new Error(finalJob?.error || 'Generation completed without an image.')
-      // Download the produced image and turn it into a File so the
-      // existing upload path picks it up without modification.
-      const imgRes = await fetch(`${window.location.origin}/api/v1/outputs/file?path=${encodeURIComponent(outputPath)}`)
-      if (!imgRes.ok) throw new Error('Could not download the generated image.')
-      const blob = await imgRes.blob()
-      const ext = (blob.type.split('/')[1] || 'png').split(';')[0] || 'png'
-      const fileName = `cover-ai-${Date.now()}.${ext}`
-      const file = new File([blob], fileName, { type: blob.type || 'image/png' })
-      handlePickCover(file)
-    } catch (e) {
-      setCoverError(e instanceof Error ? e.message : 'AI cover generation failed.')
-    } finally {
-      setGeneratingCover(false)
-    }
   }
   // Cover filename the dialog started with — used to detect a removal
   // that must also delete the stored file on save.
@@ -495,27 +433,27 @@ export function ProjectsPage() {
       >
         <form onSubmit={e => { e.preventDefault(); void (creating ? create() : saveEdit()) }}>
           {!creating && editing && (
-            <div className="mb-2 flex items-center gap-2">
-              <CoverSquareButton workspaceName={editing} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
+            <div className="mb-3">
+              <CoverDropzone workspaceName={editing} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} />
             </div>
           )}
           {coverError && <p role="alert" className="mb-2 text-xs text-red-400">{coverError}</p>}
           {creating ? (
             <>
-              <div className="flex items-end gap-2">
-                <div className="flex-1 min-w-0">
-                  <TextField
-                    id="project-name"
-                    label="Project name"
-                    hideLabel
-                    required
-                    autoFocus
-                    value={name}
-                    onChange={setName}
-                    placeholder="my-new-film"
-                  />
-                </div>
-                <CoverSquareButton workspaceName={null} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} onGenerate={handleGenerateCover} generating={generatingCover} />
+              <div>
+                <TextField
+                  id="project-name"
+                  label="Project name"
+                  hideLabel
+                  required
+                  autoFocus
+                  value={name}
+                  onChange={setName}
+                  placeholder="my-new-film"
+                />
+              </div>
+              <div className="mt-3">
+                <CoverDropzone workspaceName={null} coverImage={setup.cover_image || ''} pendingFile={pendingCover} pendingUrl={pendingCoverUrl} disabled={busy !== null} onPick={handlePickCover} onClear={handleClearCover} />
               </div>
               {/* Quick path: type drives the project defaults cleanly. */}
               <div className="mt-3">
