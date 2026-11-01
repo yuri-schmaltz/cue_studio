@@ -356,11 +356,14 @@ export function PromptInput() {
     && closedWindowPlanSignature !== h3WindowPlan.signature
   )
 
-  // Keep the prompt area at the bottom when the sidebar has spare room. The
-  // textarea itself grows to its complete content height, and the sidebar's
-  // outer scroller handles prompts taller than the viewport.
+  // The prompt block flows right after the controls it affects. It used to
+  // carry `grow` + an `mt-auto` textarea wrapper, which pushed the textarea
+  // to the very bottom of the column and opened a dead gap of up to ~200px
+  // between the prompt controls and the field on tall viewports. The
+  // textarea still grows to its full content height and the sidebar's outer
+  // scroller handles prompts taller than the viewport.
   return (
-    <div className="relative grow shrink-0 flex flex-col">
+    <div className="relative shrink-0 flex flex-col">
       {/* Enhance status indicator */}
       {isEnhancing && enhanceStatus.phase !== 'idle' && (
         <div className="flex items-center gap-1.5 px-2 py-1 text-2xs text-text-muted bg-bg-tertiary/80 rounded-t-lg border border-b-0 border-border">
@@ -575,7 +578,7 @@ export function PromptInput() {
           </span>
         </div>
       )}
-      <div className="relative mt-auto">
+      <div className="relative">
         <textarea
           ref={promptTextareaRef}
           rows={1}

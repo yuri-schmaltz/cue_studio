@@ -57,9 +57,13 @@ export function StudioWorkflowSelect<T extends string>({
 
   return (
     <div ref={rootRef}>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-2xs text-text-muted uppercase tracking-wider">Workflow</span>
-        <span className="text-2xs text-text-muted">{hint}</span>
+      {/* The hint can be longer than the sidebar is wide ("Frames ·
+          References · Transform · Finish"). Without min-w-0 + truncate the
+          flex item refuses to shrink, wraps onto a second line and collides
+          with the "Workflow" label. The full text stays in the tooltip. */}
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span className="shrink-0 text-2xs text-text-muted uppercase tracking-wider">Workflow</span>
+        <span className="min-w-0 truncate text-2xs text-text-muted" title={hint}>{hint}</span>
       </div>
       <button
         type="button"

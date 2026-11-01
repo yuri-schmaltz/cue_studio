@@ -207,17 +207,27 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Bottom Bar: Advanced + LoRA Browser + Model + Generate.
+      {/* Bottom Bar: Advanced + LoRA Browser + Recipes + Model + Generate.
           Hidden in standalone tool workflows — ToolsPanel has its own Run button and
-          owns no model. */}
+          owns no model.
+
+          The model selector sits on its own row: on one row the five controls
+          packed into ~375px and the model name was truncated by 72px
+          ("LTX-2.3 Distilled 1.1 22B" showed as "LTX-2.3 Disti…"). As its own
+          row it gets the full sidebar width, and the action row keeps only
+          the icons plus the Generate group. */}
       {!isStandaloneTool && (
-      <div className="px-3 py-2.5 border-t border-border">
+      <div className="px-3 py-2.5 border-t border-border flex flex-col gap-2">
+        <div className="w-full">
+          <ModelSelector />
+        </div>
         <div className="flex items-center gap-2">
           <AdvancedSettings />
           <button
             onClick={() => useStore.getState().setRecipesOpen(true)}
             className="p-2 rounded-lg bg-bg-tertiary border border-border hover:border-border-light text-text-secondary hover:text-accent-blue transition-colors shrink-0"
             title="Recipes — one-click presets"
+            aria-label="Browse recipes"
           >
             <BookMarked size={14} />
           </button>
@@ -226,13 +236,12 @@ export function Sidebar() {
               onClick={() => openLoraBrowser(true, modelType)}
               className="p-2 rounded-lg bg-bg-tertiary border border-border hover:border-border-light text-text-secondary hover:text-accent-blue transition-colors shrink-0"
               title="Browse LoRAs on CivitAI"
+              aria-label="Browse LoRAs on CivitAI"
             >
               <Globe size={14} />
             </button>
           )}
-          <div className="flex-1 min-w-0">
-            <ModelSelector />
-          </div>
+          <div className="flex-1 min-w-0" />
           <div className="shrink-0">
             <GenerateButton />
           </div>

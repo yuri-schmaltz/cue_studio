@@ -1,5 +1,6 @@
 import { Info } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { StudioSelect } from './StudioSelect'
 import type { WindowPromptMode } from '../../types'
 
 /**
@@ -79,7 +80,7 @@ export function H3MultiWindowControls() {
         </div>
       )}
 
-      <label className="flex items-center justify-between gap-2 text-2xs text-text-muted">
+      <div className="flex items-center justify-between gap-2 text-2xs text-text-muted">
         <span className="flex items-center gap-1">
           {enabled ? 'Window prompts' : 'Prompt writing'}
           <span
@@ -91,22 +92,36 @@ export function H3MultiWindowControls() {
             <Info size={10} />
           </span>
         </span>
-        <select
+        <StudioSelect
           value={promptMode}
-          onChange={event => setPromptMode(
-            event.target.value === 'manual'
+          onChange={value => setPromptMode(
+            value === 'manual'
               ? 'manual'
-              : event.target.value === 'creative'
+              : value === 'creative'
                 ? 'creative'
                 : 'auto',
           )}
-          className="min-w-[158px] rounded border border-border bg-bg-secondary px-2 py-1 text-2xs text-text-secondary focus:outline-none focus:border-accent-blue"
-        >
-          <option value="auto">AI - Faithful</option>
-          <option value="creative">AI - Creative story + dialogue</option>
-          <option value="manual">{enabled ? 'Manual - one per line' : 'Manual'}</option>
-        </select>
-      </label>
+          ariaLabel="Prompt writing mode"
+          className="w-[168px] shrink-0"
+          options={[
+            {
+              value: 'auto',
+              label: 'AI - Faithful',
+              description: 'Expands only what you supplied, without inventing new story events or dialogue.',
+            },
+            {
+              value: 'creative',
+              label: 'AI - Creative story + dialogue',
+              description: 'Treats the prompt as a brief and writes a complete scene with beats, coverage and dialogue.',
+            },
+            {
+              value: 'manual',
+              label: enabled ? 'Manual - one per line' : 'Manual',
+              description: 'Sends the visible prompt exactly as written.',
+            },
+          ]}
+        />
+      </div>
 
       {!enabled && promptMode !== 'manual' && (
         <p className="text-2xs leading-relaxed text-text-muted">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import {
   LONG_FORM_DURATION_PRESETS,
   durationWindowPlan,
@@ -72,6 +73,9 @@ export function DurationPresetControl({
   const [customText, setCustomText] = useState<string | null>(null)
   const [selectedPreset, setSelectedPreset] = useState<PresetSelection>(null)
   const [internalPlanningMode, setInternalPlanningMode] = useState<DurationPlanningMode>('auto')
+  // The auto-planning rationale is verbose; it starts collapsed so the
+  // DURATION section stays scannable.
+  const [autoDetailsOpen, setAutoDetailsOpen] = useState(false)
   const effectivePlanningMode = enablePlanningModes
     ? (planningMode ?? internalPlanningMode)
     : 'duration'
@@ -386,15 +390,33 @@ export function DurationPresetControl({
       {effectivePlanningMode === 'auto' && (
         <div className="rounded-lg border border-accent-blue/25 bg-accent-blue/5 p-2.5 text-2xs leading-relaxed">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-medium text-text-primary">Auto recommendation</span>
-            <span className="text-accent-blue tabular-nums">
+            <button
+              type="button"
+              onClick={() => setAutoDetailsOpen(current => !current)}
+              aria-expanded={autoDetailsOpen}
+              className="flex min-w-0 items-center gap-1 text-left font-medium text-text-primary transition-colors hover:text-accent-blue"
+              title={autoDetailsOpen ? 'Hide the auto-planning details' : 'Explain how the auto plan was computed'}
+            >
+              <span className="truncate">Auto recommendation</span>
+              {autoDetailsOpen
+                ? <ChevronUp size={11} className="shrink-0" />
+                : <ChevronDown size={11} className="shrink-0" />}
+            </button>
+            <span className="shrink-0 text-accent-blue tabular-nums">
               {autoPlan.windowCount} {autoPlan.windowCount === 1 ? 'window' : 'windows'} · {formatDuration(autoPlan.requestedSeconds, true)}
             </span>
           </div>
-          <p className="mt-1 text-text-secondary">{autoPlan.reason}</p>
-          <p className="mt-1 text-2xs text-text-muted">
-            Timed media, explicit durations, manual prompt lines, and explicit screenplay dialogue are honored. Vague inferred concepts are capped at {autoPlan.inferredWindowLimit} windows; choose Time or Window for a different runtime.
-          </p>
+          {/* The rationale is ~100px of prose and it dominated the DURATION
+              section. Keep the summary line always visible and reveal the
+              reasoning only on demand. */}
+          {autoDetailsOpen && (
+            <>
+              <p className="mt-1 text-text-secondary">{autoPlan.reason}</p>
+              <p className="mt-1 text-2xs text-text-muted">
+                Timed media, explicit durations, manual prompt lines, and explicit screenplay dialogue are honored. Vague inferred concepts are capped at {autoPlan.inferredWindowLimit} windows; choose Time or Window for a different runtime.
+              </p>
+            </>
+          )}
           {modelLimitLabel && <p className="mt-1 text-2xs text-text-muted">{modelLimitLabel}</p>}
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, BookMarked } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { MainContent } from '../MainContent/MainContent'
 import { StyleBiblesModal } from '../StyleBibles/StyleBiblesModal'
@@ -139,28 +139,16 @@ export function StudioPage() {
         >
           <MainContent
             headerActions={(
-              <>
-                <button
-                  type="button"
-                  onClick={() => useStore.getState().setRecipesOpen(true)}
-                  className="text-xs px-2.5 py-1 rounded-lg border border-border bg-bg-tertiary hover:bg-bg-hover flex items-center gap-1.5 text-text-secondary hover:text-text-primary transition-colors shrink-0 shadow-xs"
-                  aria-label="Browse recipes"
-                  data-testid="studio-page-recipes"
-                >
-                  <BookMarked size={12} className="text-accent-blue" aria-hidden="true" />
-                  Browse recipes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBiblesOpen(true)}
-                  className="text-xs px-2.5 py-1 rounded-lg border border-border bg-bg-tertiary hover:bg-bg-hover flex items-center gap-1.5 text-text-secondary hover:text-text-primary transition-colors shrink-0 shadow-xs"
-                  aria-label="Manage Style Bibles"
-                  data-testid="studio-page-style-bibles"
-                >
-                  <BookOpen size={12} className="text-accent-blue" aria-hidden="true" />
-                  Style Bibles
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setBiblesOpen(true)}
+                className="text-xs px-2.5 py-1 rounded-lg border border-border bg-bg-tertiary hover:bg-bg-hover flex items-center gap-1.5 text-text-secondary hover:text-text-primary transition-colors shrink-0 shadow-xs"
+                aria-label="Manage Style Bibles"
+                data-testid="studio-page-style-bibles"
+              >
+                <BookOpen size={12} className="text-accent-blue" aria-hidden="true" />
+                Style Bibles
+              </button>
             )}
           />
         </div>

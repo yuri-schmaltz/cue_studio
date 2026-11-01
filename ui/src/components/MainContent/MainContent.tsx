@@ -458,6 +458,13 @@ export function MainContent({ headerActions }: { headerActions?: React.ReactNode
 
   const hasMore = outputs.length < outputsTotal
 
+  // The inspector only has something to show once an asset exists (or a
+  // batch is ticked for the bulk toolbar). Before that it renders the
+  // "Select an asset on the left to inspect it." placeholder — and the
+  // grid still reserved ~360px (≈48% of the results area) for it. Collapse
+  // the column in that state so the gallery gets the full width.
+  const hasInspectorContent = outputs.length > 0 || selectedNames.size > 0
+
   return (
     <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
@@ -527,7 +534,7 @@ export function MainContent({ headerActions }: { headerActions?: React.ReactNode
       )}
 
       {/* Content area: gallery (left, 2/3) + inspector (right, 1/3) */}
-      <div className="flex-1 flex flex-row gap-0 overflow-hidden relative media-gallery-layout">
+      <div className={`flex-1 flex flex-row gap-0 overflow-hidden relative media-gallery-layout${hasInspectorContent ? '' : ' media-gallery-layout--no-inspector'}`}>
         {/* Scrollable media gallery */}
         <div className="media-gallery-column min-w-0 flex-1 overflow-hidden">
           {/* Pipeline + Job placeholders at top */}
@@ -592,7 +599,7 @@ export function MainContent({ headerActions }: { headerActions?: React.ReactNode
 
         {/* Inspector / large-preview panel */}
         <div className="media-inspector-column shrink-0 overflow-hidden border-l border-border">
-          <MediaInspector />
+          {hasInspectorContent && <MediaInspector />}
         </div>
       </div>
     </main>
