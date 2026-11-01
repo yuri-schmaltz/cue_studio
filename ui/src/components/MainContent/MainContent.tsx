@@ -473,71 +473,73 @@ export function MainContent() {
           No border-b here: the filter strip is itself a bordered card whose
           bottom edge lands on the same y as the controls column's card, so
           an extra rule would (a) double the line right under the strip and
-          (b) run past the tab bar's right border to the window edge. */}
-      <div className="flex min-h-14 shrink-0 items-start gap-2 px-4 pt-4">
-        <TabFilter />
-      </div>
+          (b) run past the tab bar's right border to the window edge.
 
-      {/* Sub-toolbar: bulk selection actions */}
-      {outputs.length > 0 && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border bg-bg-secondary/60 px-4 py-2 text-xs">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSelectAll}
-              className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
-              aria-label="Select all visible items"
-            >
-              Select all
-            </button>
-            <button
-              type="button"
-              onClick={handleClearSelection}
-              disabled={selectedNames.size === 0}
-              className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="Clear selection"
-            >
-              Clear
-            </button>
-            <span className="text-2xs text-text-muted">
-              {selectedNames.size === 0
-                ? `${outputs.length} loaded`
-                : `${selectedNames.size} selected of ${outputs.length}`}
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleBulkDelete}
-              disabled={selectedNames.size === 0 || bulkBusy}
-              className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 transition-colors disabled:cursor-not-allowed ${
-                bulkConfirm
-                  ? 'border-red-500/60 bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                  : selectedNames.size > 0
-                    ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                    : 'border-border bg-bg-tertiary text-text-muted'
-              } ${bulkBusy ? 'opacity-60' : ''}`}
-              title={
-                bulkConfirm
-                  ? `Click again to permanently delete ${selectedNames.size} item${selectedNames.size === 1 ? '' : 's'}`
-                  : `Delete ${selectedNames.size} selected item${selectedNames.size === 1 ? '' : 's'}`
-              }
-              aria-label={
-                bulkConfirm
-                  ? `Confirm delete ${selectedNames.size} items`
-                  : `Delete ${selectedNames.size} selected items`
-              }
-            >
-              {bulkBusy
-                ? <Loader2 size={12} className="animate-spin" />
-                : <Trash2 size={12} />}
-              {bulkConfirm
-                ? `Confirm delete (${selectedNames.size})`
-                : `Delete selected (${selectedNames.size})`}
-            </button>
-          </div>
+          The bulk-selection actions share this line with the media-type
+          filter instead of sitting on a row of their own: they are pushed
+          to the far right (ml-auto) of the same flex line, vertically
+          centred against the filter pill by the `items-center` wrapper. */}
+      <div className="flex min-h-14 shrink-0 items-start gap-2 px-4 pt-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <TabFilter />
+          {outputs.length > 0 && (
+            <div className="ml-auto flex shrink-0 items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={handleSelectAll}
+                className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary"
+                aria-label="Select all visible items"
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                disabled={selectedNames.size === 0}
+                className="rounded-md border border-border bg-bg-tertiary px-2 py-1 text-text-secondary transition-colors hover:bg-bg-hover hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="Clear selection"
+              >
+                Clear
+              </button>
+              <span className="text-2xs text-text-muted">
+                {selectedNames.size === 0
+                  ? `${outputs.length} loaded`
+                  : `${selectedNames.size} selected of ${outputs.length}`}
+              </span>
+              <span aria-hidden="true" className="h-4 w-px bg-border" />
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={selectedNames.size === 0 || bulkBusy}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1 transition-colors disabled:cursor-not-allowed ${
+                  bulkConfirm
+                    ? 'border-red-500/60 bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                    : selectedNames.size > 0
+                      ? 'border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                      : 'border-border bg-bg-tertiary text-text-muted'
+                } ${bulkBusy ? 'opacity-60' : ''}`}
+                title={
+                  bulkConfirm
+                    ? `Click again to permanently delete ${selectedNames.size} item${selectedNames.size === 1 ? '' : 's'}`
+                    : `Delete ${selectedNames.size} selected item${selectedNames.size === 1 ? '' : 's'}`
+                }
+                aria-label={
+                  bulkConfirm
+                    ? `Confirm delete ${selectedNames.size} items`
+                    : `Delete ${selectedNames.size} selected items`
+                }
+              >
+                {bulkBusy
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <Trash2 size={12} />}
+                {bulkConfirm
+                  ? `Confirm delete (${selectedNames.size})`
+                  : `Delete selected (${selectedNames.size})`}
+              </button>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Content area: gallery (left, 2/3) + inspector (right, 1/3) */}
       <div className={`flex-1 flex flex-row gap-0 overflow-hidden relative media-gallery-layout${hasInspectorContent ? '' : ' media-gallery-layout--no-inspector'}`}>
