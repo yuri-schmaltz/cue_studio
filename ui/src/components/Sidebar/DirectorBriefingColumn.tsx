@@ -800,91 +800,93 @@ export function DirectorBriefingColumn() {
     : 'Reviewing...'
 
   const renderActionButtons = () => (
-    <div className="flex flex-col gap-2 shrink-0 pt-2">
-      {/* Action buttons row — 5 equal-width buttons filling 100% horizontal width.
-          Enclosed in a h-[54px] container to align height and baseline with central and right footers. */}
-      <div className="h-[54px] min-h-[54px] flex items-center w-full shrink-0">
-        <div className="grid grid-cols-5 gap-2 w-full">
-          <button
-            type="button"
-            onClick={() => setAutoMode(!autoMode)}
-            title="In Auto Mode, the Director runs planning and triggers video generation without pausing for manual approval"
-            aria-label={`Auto Mode ${autoMode ? 'on' : 'off'}`}
-            aria-pressed={autoMode}
-            className={`w-full h-9 flex items-center justify-center p-2 rounded-lg transition-colors shadow-sm border ${
-              autoMode
-                ? 'bg-accent-blue border-accent-blue text-white hover:bg-accent-blue-hover'
-                : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary hover:border-border-light'
-            }`}
-          >
-            <Sparkles size={12} />
-            <span className="text-2xs font-semibold uppercase tracking-wider">Auto</span>
-          </button>
+    <footer
+      className="mt-auto shrink-0 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex flex-col justify-center select-none"
+      data-testid="director-briefing-rodape"
+      aria-label="Director briefing actions"
+    >
+      {/* Action buttons row — 5 equal-width buttons filling 100% horizontal width,
+          aligned with DirectorStatusPanel and DirectorOutputColumn footers */}
+      <div className="grid grid-cols-5 gap-2 w-full">
+        <button
+          type="button"
+          onClick={() => setAutoMode(!autoMode)}
+          title="In Auto Mode, the Director runs planning and triggers video generation without pausing for manual approval"
+          aria-label={`Auto Mode ${autoMode ? 'on' : 'off'}`}
+          aria-pressed={autoMode}
+          className={`w-full h-9 flex items-center justify-center p-2 rounded-lg transition-colors shadow-sm border ${
+            autoMode
+              ? 'bg-accent-blue border-accent-blue text-white hover:bg-accent-blue-hover'
+              : 'bg-bg-tertiary border-border text-text-muted hover:text-text-primary hover:border-border-light'
+          }`}
+        >
+          <Sparkles size={12} />
+          <span className="text-2xs font-semibold uppercase tracking-wider">Auto</span>
+        </button>
 
-          <button
-            type="button"
-            onClick={() => void handlePromptWizard()}
-            disabled={!chatInputEnabled || wizardLoading}
-            className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-            title={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
-            aria-label={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
-          >
-            {wizardLoading ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Wand2 size={16} />
-            )}
-          </button>
+        <button
+          type="button"
+          onClick={() => void handlePromptWizard()}
+          disabled={!chatInputEnabled || wizardLoading}
+          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-500 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+          title={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
+          aria-label={wizardLoading ? 'Enhancing idea with the Director Assistant...' : 'Director Assistant / Prompt Wizard'}
+        >
+          {wizardLoading ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Wand2 size={16} />
+          )}
+        </button>
 
-          <ScriptAttachButton
-            attached={attachedScript}
-            loading={scriptLoading}
-            onPick={handleScriptFile}
-            className="w-full h-9 shadow-sm"
-          />
+        <ScriptAttachButton
+          attached={attachedScript}
+          loading={scriptLoading}
+          onPick={handleScriptFile}
+          className="w-full h-9 shadow-sm"
+        />
 
-          <button
-            onClick={handleChatSubmit}
-            disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim() || (!mvGenerateSetup && step !== 'style' && !audioFile)}
-            className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-            title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
-            aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
-          >
-            {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Send size={16} />
-            )}
-          </button>
+        <button
+          onClick={handleChatSubmit}
+          disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim() || (!mvGenerateSetup && step !== 'style' && !audioFile)}
+          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+          title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
+          aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
+        >
+          {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Send size={16} />
+          )}
+        </button>
 
-          <button
-            onClick={() => void handleQueueDraft()}
-            disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
-            className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-            title={
-              mvGenerateSetup
-                ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-                : `Add this complete Director project to the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-            }
-            aria-label={directorQueueEditingEntryId ? 'Save Director queue changes' : `Add Director project to queue (${directorQueueEntriesCount} pending)`}
-          >
-            {draftQueuePending || directorQueueLoading
-              ? <Loader2 size={16} className="animate-spin" />
-              : draftQueueConfirmation
-                ? <Check size={16} />
-                : <ListVideo size={16} />}
-          </button>
-        </div>
+        <button
+          onClick={() => void handleQueueDraft()}
+          disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
+          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+          title={
+            mvGenerateSetup
+              ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
+              : `Add this complete Director project to the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
+          }
+          aria-label={directorQueueEditingEntryId ? 'Save Director queue changes' : `Add Director project to queue (${directorQueueEntriesCount} pending)`}
+        >
+          {draftQueuePending || directorQueueLoading
+            ? <Loader2 size={16} className="animate-spin" />
+            : draftQueueConfirmation
+              ? <Check size={16} />
+              : <ListVideo size={16} />}
+        </button>
       </div>
 
       {scriptError && (
-        <p className="text-2xs text-red-400 shrink-0" role="alert">{scriptError}</p>
+        <p className="text-2xs text-red-400 shrink-0 mt-1" role="alert">{scriptError}</p>
       )}
       {draftQueueConfirmation && (
         <div
           role="status"
           aria-live="polite"
-          className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-2 text-2xs leading-relaxed text-indicator-success flex items-center justify-between shrink-0"
+          className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-1 text-2xs leading-relaxed text-indicator-success flex items-center justify-between shrink-0 mt-1"
         >
           <span>{draftQueueConfirmation}</span>
           {lastOriginalText !== null && (
@@ -906,7 +908,7 @@ export function DirectorBriefingColumn() {
           )}
         </div>
       )}
-    </div>
+    </footer>
   )
 
   const renderComposer = (headerTitle?: string, fillSpace?: boolean) => (
@@ -1137,8 +1139,14 @@ export function DirectorBriefingColumn() {
                         </section>
                       )}
 
-                      {/* Voices & Characters card */}
-                      <section className="flex-1 min-h-[160px] -mb-2 bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden">
+                      {/* Voices & Characters card. The negative bottom
+                          margin (-20px) pulls the card's bottom edge down
+                          over the trailing gap of the wrapping bubble
+                          (py-2 + space-y-3) so the card now ends exactly
+                          where the footer divider used to sit. The divider
+                          itself was removed from the action-button footer
+                          below — the card border is the only separator. */}
+                      <section className="flex-1 min-h-[160px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden -mb-5">
                         <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
                           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                             IDENTIFIED VOICES &amp; CHARACTERS

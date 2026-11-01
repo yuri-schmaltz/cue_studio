@@ -132,27 +132,49 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
   const updateMarker = useEditorStore(state => state.updateMarker)
   const removeMarker = useEditorStore(state => state.removeMarker)
 
+  const [viewportWidth, setViewportWidth] = useState(0)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setViewportWidth(entry.contentRect.width)
+      }
+    })
+    ro.observe(el)
+    setViewportWidth(el.clientWidth)
+    return () => ro.disconnect()
+  }, [])
+
   const zoomToFit = () => {
-    const viewportWidth = Math.max(200, (scrollRef.current?.clientWidth || 900) - TRACK_HEADER_WIDTH - 24)
-    const fitted = viewportWidth / Math.max(12, duration + 2)
+    const availableWidth = Math.max(200, (scrollRef.current?.clientWidth || viewportWidth || 900) - TRACK_HEADER_WIDTH - 24)
+    const fitted = availableWidth / Math.max(12, duration + 2)
     setPixelsPerSecond(Math.max(20, Math.min(180, fitted)))
     if (scrollRef.current) scrollRef.current.scrollLeft = 0
   }
 
   const duration = editorProjectDuration(project)
   const contentDuration = Math.max(12, duration + 4)
-  const contentWidth = Math.max(compact ? 620 : 900, contentDuration * pixelsPerSecond)
+  const availableContentWidth = Math.max(0, viewportWidth - TRACK_HEADER_WIDTH)
+  const visibleDuration = availableContentWidth > 0 ? Math.ceil(availableContentWidth / pixelsPerSecond) : 0
+  const effectiveDuration = Math.max(contentDuration, visibleDuration + 4)
+  const contentWidth = Math.max(
+    compact ? 620 : 900,
+    availableContentWidth,
+    effectiveDuration * pixelsPerSecond
+  )
   const trackHeight = compact ? 58 : TRACK_HEIGHT
   const tickStep = pixelsPerSecond >= 90 ? 1 : pixelsPerSecond >= 45 ? 2 : 5
   const ticks = useMemo(() => (
-    Array.from({ length: Math.min(1200, Math.ceil(contentDuration / tickStep) + 1) }, (_, index) => index * tickStep)
-  ), [contentDuration, tickStep])
+    Array.from({ length: Math.min(2400, Math.ceil(effectiveDuration / tickStep) + 1) }, (_, index) => index * tickStep)
+  ), [effectiveDuration, tickStep])
   const scrubPlayhead = useCallback((clientX: number) => {
     const rect = timelineContentRef.current?.getBoundingClientRect()
     if (!rect) return
     const seconds = (clientX - rect.left - TRACK_HEADER_WIDTH) / pixelsPerSecond
-    setPlayhead(Math.max(0, Math.min(contentDuration, seconds)))
-  }, [contentDuration, pixelsPerSecond, setPlayhead])
+    setPlayhead(Math.max(0, Math.min(effectiveDuration, seconds)))
+  }, [effectiveDuration, pixelsPerSecond, setPlayhead])
   const displayTracks = useMemo(() => {
     if (!project) return []
     const groupOrder: Record<EditorTrack['type'], number> = { text: 2, video: 1, audio: 0 }
@@ -591,12 +613,12 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
         onPointerUpCapture={finishTimelineTouch}
         onPointerCancelCapture={finishTimelineTouch}
       >
-        <div ref={timelineContentRef} className="relative" style={{ width: TRACK_HEADER_WIDTH + contentWidth, minHeight: 28 + project.tracks.length * trackHeight }}>
+        <div ref={timelineContentRef} className="relative min-w-full" style={{ width: TRACK_HEADER_WIDTH + contentWidth, minHeight: 28 + project.tracks.length * trackHeight }}>
           <div className="sticky top-0 z-30 flex h-7 border-b border-border bg-bg-secondary/95 backdrop-blur">
             <div className="sticky left-0 z-40 w-[132px] shrink-0 border-r border-border bg-bg-secondary px-2 py-1 text-2xs uppercase tracking-wider text-text-muted">Timeline</div>
             <div
-              className="relative h-full"
-              style={{ width: contentWidth }}
+              className="relative h-full flex-1"
+              style={{ width: contentWidth, minWidth: `calc(100% - ${TRACK_HEADER_WIDTH}px)` }}
               onPointerDown={event => setPlayhead(timeFromPointer(event))}
             >
               {ticks.map(tick => (
@@ -670,8 +692,8 @@ export function EditorTimeline({ compact = false }: { compact?: boolean }) {
                 </button>
               </div>
               <div
-                className="relative h-full bg-bg-primary/30"
-                style={{ width: contentWidth }}
+                className="relative h-full flex-1 bg-bg-primary/30"
+                style={{ width: contentWidth, minWidth: `calc(100% - ${TRACK_HEADER_WIDTH}px)` }}
                 onPointerDown={event => {
                   if (event.button !== 0) return
                   event.preventDefault()

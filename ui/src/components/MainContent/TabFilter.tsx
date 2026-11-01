@@ -26,7 +26,7 @@ const tabs: { value: MediaFilter; label: string; shortLabel: string; icon: Lucid
   { value: 'favorites', label: 'Favorites', shortLabel: 'Fav', icon: Heart },
 ]
 
-export function TabFilter() {
+export function TabFilter({ actions }: { actions?: React.ReactNode }) {
   const mediaFilter = useStore(s => s.mediaFilter)
   const setMediaFilter = useStore(s => s.setMediaFilter)
   const searchQuery = useStore(s => s.outputSearchQuery)
@@ -174,6 +174,12 @@ export function TabFilter() {
         >
           <Search size={14} />
         </button>
+      )}
+
+      {actions && (
+        <div className="ml-auto flex items-center gap-2 pl-2 shrink-0">
+          {actions}
+        </div>
       )}
     </div>
   )

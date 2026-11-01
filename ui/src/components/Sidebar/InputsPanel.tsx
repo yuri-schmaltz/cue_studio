@@ -623,11 +623,11 @@ export function InputsPanel() {
   return (
     <div>
       <label className="text-xs text-text-muted uppercase tracking-wider mb-1.5 block">Inputs</label>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 w-full">
         {/* Extend-from source video (Extend mode only) — the timeline anchor. */}
         {isExtend && (continueVideo ? (
           <div onClick={() => setSelected(selected === 'extend' ? null : 'extend')}
-            className={`relative w-[90px] h-[90px] shrink-0 rounded-xl overflow-hidden border cursor-pointer transition-colors ${selected === 'extend' ? 'border-accent-blue' : 'border-border hover:border-border-light'}`}>
+            className={`relative flex-1 min-w-[90px] h-[90px] rounded-xl overflow-hidden border cursor-pointer transition-colors ${selected === 'extend' ? 'border-accent-blue' : 'border-border hover:border-border-light'}`}>
             {continueVideoUrl && <video src={continueVideoUrl} muted className="absolute inset-0 w-full h-full object-cover" />}
             <button onClick={e => { e.stopPropagation(); clearContinueVideo(); if (selected === 'extend') setSelected(null) }}
               className="absolute top-1 right-1 z-10 rounded-full bg-black/45 text-white p-0.5 hover:bg-black/70" aria-label="Remove"><X size={12} /></button>
@@ -655,7 +655,7 @@ export function InputsPanel() {
               if (dk !== tile.key) void repositionFrameBefore(dk, tile)
             }}
             onClick={() => setSelected(selected === tile.key ? null : tile.key)}
-            className={`relative w-[90px] h-[90px] shrink-0 rounded-xl overflow-hidden border cursor-grab active:cursor-grabbing transition-colors ${
+            className={`relative flex-1 min-w-[90px] h-[90px] rounded-xl overflow-hidden border cursor-grab active:cursor-grabbing transition-colors ${
               frameDragOverKey === tile.key ? 'border-accent-blue border-2'
                 : selected === tile.key ? 'border-accent-blue' : 'border-border hover:border-border-light'
             }`}>
@@ -721,7 +721,7 @@ export function InputsPanel() {
               if (!isNaN(from) && from !== i) reorderImageRefs(from, i)
             }}
             onClick={() => setSelected(selected === `ref-${i}` ? null : `ref-${i}`)}
-            className={`relative w-[90px] h-[90px] shrink-0 rounded-xl overflow-hidden border cursor-grab active:cursor-grabbing transition-colors ${
+            className={`relative flex-1 min-w-[90px] h-[90px] rounded-xl overflow-hidden border cursor-grab active:cursor-grabbing transition-colors ${
               dragOverIndex === i ? 'border-accent-blue border-2' : selected === `ref-${i}` ? 'border-accent-blue' : 'border-border hover:border-border-light'
             }`}>
             <img src={URL.createObjectURL(file)} alt={`Ref ${i + 1}`} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
@@ -1019,7 +1019,7 @@ function AddTile({ label, icon, onClick, onDropFile, dropAccept }: {
     <button onClick={onClick}
       onDrop={onDropFile ? handleDrop : undefined}
       onDragOver={onDropFile ? (e => e.preventDefault()) : undefined}
-      className="w-[90px] h-[90px] shrink-0 rounded-xl border border-dashed border-border hover:border-accent-blue flex flex-col items-center justify-center gap-1 text-text-muted hover:text-text-primary transition-colors">
+      className="flex-1 min-w-[90px] h-[90px] rounded-xl border border-dashed border-border hover:border-accent-blue flex flex-col items-center justify-center gap-1 text-text-muted hover:text-text-primary transition-colors">
       {icon ?? <Plus size={18} />}
       <span className="text-2xs text-center px-1">{label}</span>
     </button>
@@ -1048,7 +1048,7 @@ function Tile({ role, imgSrc, icon, badge, selected, filledIcon, filledLabel, on
   return (
     <div onDrop={handleDrop} onDragOver={e => e.preventDefault()}
       onClick={() => (filled ? onSelect() : onPick?.())}
-      className={`relative w-[90px] h-[90px] shrink-0 rounded-xl overflow-hidden cursor-pointer border transition-colors ${
+      className={`relative flex-1 min-w-[90px] h-[90px] rounded-xl overflow-hidden cursor-pointer border transition-colors ${
         selected ? 'border-accent-blue' : filled ? 'border-border hover:border-border-light' : 'border-dashed border-border hover:border-border-light'
       }`}>
       {filled ? (

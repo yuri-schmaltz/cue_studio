@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState, useEffect, useMemo } from 'react'
-import { Film, Play, Square, Loader2, X, BookMarked, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Film, Play, Square, Loader2, X, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import { TabFilter } from './TabFilter'
 import { MediaGallery } from './MediaGallery'
 import { MediaInspector } from './MediaInspector'
@@ -353,8 +353,7 @@ function PipelinePlaceholder() {
     </div>
   )
 }
-export function MainContent() {
-  const standalone = useStore(s => s.appSection === 'medias')
+export function MainContent({ headerActions }: { headerActions?: React.ReactNode } = {}) {
   const outputs = useStore(s => s.filteredOutputs())
   const outputsLoading = useStore(s => s.outputsLoading)
   const jobs = useStore(s => s.jobs)
@@ -463,7 +462,7 @@ export function MainContent() {
     <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
       <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border px-4">
-        <TabFilter />
+        <TabFilter actions={headerActions} />
       </div>
 
       {/* Sub-toolbar: bulk selection actions */}
@@ -554,42 +553,25 @@ export function MainContent() {
             </div>
           )}
 
-          {/* Empty state — first-run quick start. Teaches the three steps
-              to a first generation and sets the one expectation that most
-              surprises new users: the first run of each model downloads
-              its weights (tens of GB) before anything appears. */}
+          {/* Empty state — first-run quick start. Simple, bold, vertically centered */}
           {!outputsLoading && outputs.length === 0 && jobs.length === 0 && (() => {
             const noun = generationMode === 'image' ? 'images'
               : generationMode === 'audio' ? 'audio' : 'videos'
-            const example = generationMode === 'image'
-              ? 'a neon city street at night, cinematic'
-              : generationMode === 'audio'
-              ? 'a dreamy synthwave track about the ocean'
-              : 'a golden retriever surfing a big wave, slow motion'
             return (
-              <div className="flex items-center justify-center min-h-[300px] px-6">
-                <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-                  <div className="w-16 h-16 rounded-2xl bg-bg-active flex items-center justify-center text-text-muted">
-                    <Play size={24} />
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="flex flex-col items-center gap-3 text-center max-w-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center text-accent-blue shadow-lg shadow-accent-blue/5">
+                    <Sparkles size={26} />
                   </div>
-                  <p className="text-sm text-text-secondary">Your generated {noun} will appear here.</p>
-                  <ol className="text-xs text-text-muted space-y-1.5 text-left">
-                    <li><span className="text-accent-blue font-medium">1.</span> {standalone ? 'Open Director → Studio and choose a model.' : 'Choose a model in the controls on the left.'}</li>
-                    <li><span className="text-accent-blue font-medium">2.</span> Type a prompt — e.g. <span className="text-text-secondary italic">“{example}”</span></li>
-                    <li><span className="text-accent-blue font-medium">3.</span> Hit Generate.</li>
-                  </ol>
-                  <p className="text-xs text-text-muted leading-snug">
-                    Heads up: the first time you use a model, its weights download
-                    once (often tens of GB) before generation starts — later runs
-                    are fast. Progress shows at the bottom-right.
-                  </p>
-                  {standalone && <button onClick={() => useStore.getState().closeDirectorStage()} className="shell-primary-button">Open Studio</button>}
-                  <button
-                    onClick={() => useStore.getState().setRecipesOpen(true)}
-                    className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent-blue/10 border border-accent-blue/30 rounded-lg text-accent-blue hover:bg-accent-blue/20 transition-colors"
-                  >
-                    <BookMarked size={13} /> Browse recipes
-                  </button>
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-text-primary tracking-wide">
+                      Your generated {noun} will appear here
+                    </p>
+                    <p className="text-xs text-text-muted">
+                      Type a prompt on the left and hit <span className="text-text-secondary font-medium">Generate</span> to create your first clip.
+                    </p>
+                  </div>
+
                 </div>
               </div>
             )

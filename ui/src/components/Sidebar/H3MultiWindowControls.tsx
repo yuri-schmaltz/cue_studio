@@ -61,21 +61,23 @@ export function H3MultiWindowControls() {
 
   return (
     <div className="rounded-lg border border-border bg-bg-tertiary/50 px-2.5 py-2 space-y-1.5">
-      <div className="flex items-center gap-2">
-        <span className="text-2xs text-text-secondary">
-          {enabled ? 'Long sequence · automatic' : 'Prompt writing'}
-        </span>
-        <span
-          title={isOmni
-            ? 'Duration automatically becomes a native Omni sequence when it exceeds one model/GPU-aware window. Canonical references remain available in every pass.'
-            : isLtx
-              ? 'Duration automatically becomes a rolling LTX sequence when it exceeds one window. Motion and synchronized audio continue into each new window.'
-              : 'Duration automatically becomes a First / Last sequence when it exceeds one window, carrying recent motion and synchronized audio forward.'}
-          className="text-text-muted cursor-help"
-        >
-          <Info size={11} />
-        </span>
-      </div>
+      {enabled && (
+        <div className="flex items-center gap-2">
+          <span className="text-2xs text-text-secondary">
+            Long sequence · automatic
+          </span>
+          <span
+            title={isOmni
+              ? 'Duration automatically becomes a native Omni sequence when it exceeds one model/GPU-aware window. Canonical references remain available in every pass.'
+              : isLtx
+                ? 'Duration automatically becomes a rolling LTX sequence when it exceeds one window. Motion and synchronized audio continue into each new window.'
+                : 'Duration automatically becomes a First / Last sequence when it exceeds one window, carrying recent motion and synchronized audio forward.'}
+            className="text-text-muted cursor-help"
+          >
+            <Info size={11} />
+          </span>
+        </div>
+      )}
 
       <label className="flex items-center justify-between gap-2 text-2xs text-text-muted">
         <span className="flex items-center gap-1">

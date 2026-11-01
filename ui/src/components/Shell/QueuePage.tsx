@@ -129,11 +129,6 @@ export function QueuePage() {
       && (!entry.pipeline_id || entry.pipeline_id === pipelineId)
     )),
   )
-  const totalCount = studioJobs.length
-    + pendingDirectorCount
-    + visiblePersisted.length
-    + (activePipeline && !activePipelineIsQueued ? 1 : 0)
-
   useEffect(() => {
     void loadDirectorQueue()
   }, [loadDirectorQueue])
@@ -213,53 +208,47 @@ export function QueuePage() {
   return (
     <div className="section-scroll">
       <div className="section-container">
-        <div className="section-heading queue-page-heading">
-          <div>
-            <div className="queue-page-eyebrow">
-              <ListVideo size={14} className="text-accent-blue" />
-              <span>Generation Queue</span>
-              <span className="queue-page-count">{totalCount} {totalCount === 1 ? 'item' : 'items'}</span>
-            </div>
-            <p>Studio, Director, and Editor in one place. Hold, queue, start, or cancel generation jobs from here.</p>
-          </div>
-          <div className="queue-page-actions">
-            {studioHeldCount > 0 && (
-              <button
-                type="button"
-                onClick={() => void startAllQueues()}
-                disabled={startingAll}
-                className="shell-secondary-button"
-                title="Start all held Studio jobs, then any held Director projects"
-              >
-                {startingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                Start all
-              </button>
-            )}
-            {directorQueue?.running && !directorQueue.paused ? (
-              <button
-                type="button"
-                onClick={() => void pauseDirectorQueue()}
-                disabled={directorQueueLoading}
-                className="shell-secondary-button"
-                title="Finish the active Director project, then stop dispatching"
-              >
-                <Pause size={14} /> Pause Director
-              </button>
-            ) : (
-              startableDirectorCount > 0 && (
+        {(studioHeldCount > 0 || directorQueue?.running || startableDirectorCount > 0) && (
+          <div className="section-heading queue-page-heading">
+            <div className="queue-page-actions">
+              {studioHeldCount > 0 && (
                 <button
                   type="button"
-                  onClick={() => void startDirectorQueue()}
-                  disabled={directorQueueLoading || startingAll}
+                  onClick={() => void startAllQueues()}
+                  disabled={startingAll}
                   className="shell-secondary-button"
-                  title="Resume Director dispatching"
+                  title="Start all held Studio jobs, then any held Director projects"
                 >
-                  <Play size={14} /> Start Director
+                  {startingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                  Start all
                 </button>
-              )
-            )}
+              )}
+              {directorQueue?.running && !directorQueue.paused ? (
+                <button
+                  type="button"
+                  onClick={() => void pauseDirectorQueue()}
+                  disabled={directorQueueLoading}
+                  className="shell-secondary-button"
+                  title="Finish the active Director project, then stop dispatching"
+                >
+                  <Pause size={14} /> Pause Director
+                </button>
+              ) : (
+                startableDirectorCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void startDirectorQueue()}
+                    disabled={directorQueueLoading || startingAll}
+                    className="shell-secondary-button"
+                    title="Resume Director dispatching"
+                  >
+                    <Play size={14} /> Start Director
+                  </button>
+                )
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {!activePipeline && studioJobs.length === 0 && directorEntries.length === 0 && visiblePersisted.length === 0 && (
           <div className="shell-empty">
