@@ -234,48 +234,45 @@ export function ProjectSetupForm({
         </div>
       </fieldset>
 
-      {/* Advanced options (content mode, about) */}
-      <div className="rounded-lg border border-border/60 p-2.5 space-y-3">
-        {/* NSFW toggle — moved here from the Integrations drawer so
-            users opt in to adult content generation at the moment
-            they're creating the project that will actually need it.
-            The toggle binds to the global ``servicesConfig.nsfw_mode``
-            flag, so LoRAs / model selectors / the LLM prompt start
-            honoring the new value the moment it's flipped on. */}
-        <fieldset className={sectionCls} aria-label="Content mode">
-          <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Content mode</legend>
-          <NsfwToggle disabled={disabled} />
-        </fieldset>
+      {/* Content mode — NSFW toggle, moved here from the Integrations
+          drawer so users opt in to adult content generation at the
+          moment they're creating the project that will actually need it.
+          The toggle binds to the global ``servicesConfig.nsfw_mode``
+          flag, so LoRAs / model selectors / the LLM prompt start
+          honoring the new value the moment it's flipped on. */}
+      <fieldset className={sectionCls} aria-label="Content mode">
+        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Content mode</legend>
+        <NsfwToggle disabled={disabled} />
+      </fieldset>
 
-        {/* About — optional metadata shown on the project card. */}
-        <fieldset className={sectionCls} aria-label="About this project">
-          <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">About</legend>
-          <div className="grid grid-cols-2 gap-2 items-start">
-            <label className="block min-w-0">
-              <span className="text-xs text-text-secondary block mb-1">Description</span>
-              <input
-                type="text"
-                value={safeValue.description || ''}
-                onChange={e => update({ description: e.target.value })}
-                disabled={disabled}
-                placeholder="What is this project about?"
-                className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
-              />
-            </label>
-            <label className="block min-w-0">
-              <span className="text-xs text-text-secondary block mb-1">Tags</span>
-              <input
-                type="text"
-                value={(safeValue.tags || []).join(', ')}
-                onChange={e => update({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-                disabled={disabled}
-                placeholder="film, draft, reel"
-                className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
-              />
-            </label>
-          </div>
-        </fieldset>
-      </div>
+      {/* About — optional metadata shown on the project card. */}
+      <fieldset className={sectionCls} aria-label="About this project">
+        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">About</legend>
+        <div className="grid grid-cols-2 gap-2 items-start">
+          <label className="block min-w-0">
+            <span className="text-xs text-text-secondary block mb-1">Description</span>
+            <input
+              type="text"
+              value={safeValue.description || ''}
+              onChange={e => update({ description: e.target.value })}
+              disabled={disabled}
+              placeholder="What is this project about?"
+              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+            />
+          </label>
+          <label className="block min-w-0">
+            <span className="text-xs text-text-secondary block mb-1">Tags</span>
+            <input
+              type="text"
+              value={(safeValue.tags || []).join(', ')}
+              onChange={e => update({ tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+              disabled={disabled}
+              placeholder="film, draft, reel"
+              className="w-full rounded-lg border border-border bg-bg-secondary px-2.5 py-1.5 text-xs text-text-primary disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-accent-blue"
+            />
+          </label>
+        </div>
+      </fieldset>
     </div>
   )
 }
