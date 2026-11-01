@@ -144,7 +144,6 @@ export function VideoWorkflowSelector() {
       value={activeWorkflow}
       activeOption={activeOption}
       groups={VIDEO_WORKFLOW_GROUPS}
-      hint="Frames · References · Transform · Finish"
       onChange={workflow => {
         if (workflow === 'legacy_multishot' || workflow === 'legacy_inpaint') return
         setWorkflow(workflow)

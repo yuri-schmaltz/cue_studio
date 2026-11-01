@@ -64,7 +64,6 @@ export function ImageWorkflowSelector() {
       value={workflow}
       activeOption={OPTIONS[workflow]}
       groups={IMAGE_WORKFLOW_GROUPS}
-      hint="Create · Transform · Finish"
       onChange={setWorkflow}
     />
   )

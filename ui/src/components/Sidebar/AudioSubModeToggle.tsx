@@ -57,7 +57,6 @@ export function AudioSubModeToggle() {
       value={activeMode}
       activeOption={AUDIO_OPTIONS[activeMode]}
       groups={AUDIO_WORKFLOW_GROUPS}
-      hint="Create · Process"
       onChange={selectWorkflow}
     />
   )
