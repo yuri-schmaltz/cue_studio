@@ -1234,8 +1234,11 @@ export function DirectorBriefingColumn() {
                     UploadZone usa logo abaixo das Music sub-tabs),
                     space-y-2 dentro do renderComposer. Sem pt-2.5
                     extra nem -mb-2 — eles inflavam o espaço entre as
-                    abas e o textarea em ~18px além do padrão. */}
-                <div className="flex-1 min-h-0 flex flex-col">
+                    abas e o textarea em ~18px além do padrão.
+                    O -mb-5 estende o card 20px para baixo, aligning
+                    o rodapé com o fundo do card interno da coluna
+                    central (mesmo truque do card IDENTIFIED VOICES). */}
+                <div className="flex-1 min-h-0 flex flex-col -mb-5">
                   {renderComposer(undefined, true)}
                 </div>
               </div>

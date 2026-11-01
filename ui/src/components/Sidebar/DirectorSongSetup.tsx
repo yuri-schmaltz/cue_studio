@@ -155,8 +155,10 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
   const canGenerate = (songDescription.trim() || songStyle.trim() || (!instrumental && songLyrics.trim())) && !loading
 
   return (
+    // O -mb-5 estende o card 20px para baixo, aligning o rodapé
+    // com o fundo do card interno da coluna central do Director.
     <section
-      className="flex-1 min-h-0 bg-bg-tertiary rounded-lg p-3.5 border border-border flex flex-col space-y-3 shadow-sm transition-all overflow-hidden"
+      className="flex-1 min-h-0 bg-bg-tertiary rounded-lg p-3.5 border border-border flex flex-col space-y-3 shadow-sm transition-all overflow-hidden -mb-5"
       aria-label="Song generation settings"
     >
       {/* 1. Header & Modelo */}
