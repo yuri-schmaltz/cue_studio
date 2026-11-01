@@ -216,11 +216,23 @@ export function DurationPresetControl({
         </div>
       )}
 
-      {effectivePlanningMode === 'duration' && (
-        <>
-          <div className={showSingleWindow
-            ? 'grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1.5'
-            : 'grid grid-cols-6 gap-1.5'}>
+      {/* The three planning modes share one box. They are stacked in a
+          single grid cell so switching Auto / Time / Window never
+          resizes the DURATION section, and the active variant always
+          ends up with the height of the tallest of the three (the
+          Window card). The inactive variants stay mounted — invisible
+          and inert — so their heights still count towards the cell. */}
+      <div className="grid">
+        <div
+          className={`col-start-1 row-start-1 flex flex-col ${effectivePlanningMode === 'duration' ? '' : 'invisible'}`}
+          {...(effectivePlanningMode === 'duration' ? {} : { inert: true })}
+        >
+          {/* Time — same card shell as the Window mode so both
+              options read as the same-size surface. */}
+          <div className="flex flex-1 flex-col gap-2 rounded-lg border border-border bg-bg-secondary p-2.5">
+              <div className={`flex-1 min-h-0 grid gap-1.5 auto-rows-fr ${showSingleWindow
+                ? 'grid-cols-[repeat(14,minmax(0,1fr))]'
+                : 'grid-cols-6'}`}>
             {showSingleWindow && (
               <button
                 type="button"
@@ -326,12 +338,15 @@ export function DurationPresetControl({
                   : `Single window · ${formatDuration(value, true)}`}
               {modelLimitLabel && <span className="block">{modelLimitLabel}</span>}
             </div>
+            </div>
           </div>
-        </>
-      )}
+        </div>
 
-      {effectivePlanningMode === 'windows' && (
-        <div className="space-y-2 rounded-lg border border-border bg-bg-secondary p-2.5">
+        <div
+          className={`col-start-1 row-start-1 flex flex-col ${effectivePlanningMode === 'windows' ? '' : 'invisible'}`}
+          {...(effectivePlanningMode === 'windows' ? {} : { inert: true })}
+        >
+          <div className="flex flex-1 flex-col gap-2 rounded-lg border border-border bg-bg-secondary p-2.5">
           <div className="grid grid-cols-6 gap-1.5">
             {WINDOW_COUNT_PRESETS.map(count => (
               <button
@@ -384,11 +399,14 @@ export function DurationPresetControl({
               : ` · each pass up to ${formatDuration(effectiveWindow, true)}`}
             {modelLimitLabel && <span className="block mt-0.5">{modelLimitLabel}</span>}
           </div>
+          </div>
         </div>
-      )}
 
-      {effectivePlanningMode === 'auto' && (
-        <div className="rounded-lg border border-accent-blue/25 bg-accent-blue/5 p-2.5 text-2xs leading-relaxed">
+        <div
+          className={`col-start-1 row-start-1 flex flex-col ${effectivePlanningMode === 'auto' ? '' : 'invisible'}`}
+          {...(effectivePlanningMode === 'auto' ? {} : { inert: true })}
+        >
+          <div className="flex flex-1 flex-col rounded-lg border border-accent-blue/25 bg-accent-blue/5 p-2.5 text-2xs leading-relaxed">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
@@ -418,8 +436,9 @@ export function DurationPresetControl({
             </>
           )}
           {modelLimitLabel && <p className="mt-1 text-2xs text-text-muted">{modelLimitLabel}</p>}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
