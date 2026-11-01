@@ -1,4 +1,4 @@
-import { Globe, BookMarked } from 'lucide-react'
+import { Globe, BookMarked, BookOpen } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { GenerationModeSelector } from './GenerationModeSelector'
 import { InputsPanel } from './InputsPanel'
@@ -32,7 +32,7 @@ import { VideoWorkflowSelector } from './VideoWorkflowSelector'
 import { ImageWorkflowSelector } from './ImageWorkflowSelector'
 import { ImageWorkflowControls } from './ImageWorkflowControls'
 
-export function Sidebar() {
+export function Sidebar({ onOpenStyleBibles }: { onOpenStyleBibles: () => void }) {
   const generationMode = useStore(s => s.generationMode)
   const imageMode = useStore(s => s.params.image_mode)
   const modelOptions = useStore(s => s.modelOptions)
@@ -207,31 +207,42 @@ export function Sidebar() {
         )}
       </div>
 
-      {/* Bottom Bar: Advanced + LoRA Browser + Recipes + Model + Generate.
-          Hidden in standalone tool workflows — ToolsPanel has its own Run button and
-          owns no model.
+      {/* Bottom Bar: Advanced + LoRA Browser + Recipes + Style Bibles + Model + Generate.
 
           The model selector sits on its own row: on one row the five controls
           packed into ~375px and the model name was truncated by 72px
           ("LTX-2.3 Distilled 1.1 22B" showed as "LTX-2.3 Disti…"). As its own
           row it gets the full sidebar width, and the action row keeps only
-          the icons plus the Generate group. */}
-      {!isStandaloneTool && (
+          the icons plus the Generate group.
+
+          The Style Bibles shortcut lives here (as an icon, next to Recipes and
+          the LoRA browser) instead of in the results-panel header — the
+          results header is a media surface, while every other global
+          shortcut (Advanced, Recipes, LoRA) already lives in this row.
+
+          Standalone tool workflows (upscale / film grain / revoice) hide the
+          model + Generate controls — ToolsPanel owns its own Run button and
+          no model — but the Style Bibles icon stays so the shortcut never
+          disappears from Studio. */}
       <div className="px-3 py-2.5 border-t border-border flex flex-col gap-2">
-        <div className="w-full">
-          <ModelSelector />
-        </div>
+        {!isStandaloneTool && (
+          <div className="w-full">
+            <ModelSelector />
+          </div>
+        )}
         <div className="flex items-center gap-2">
-          <AdvancedSettings />
-          <button
-            onClick={() => useStore.getState().setRecipesOpen(true)}
-            className="p-2 rounded-lg bg-bg-tertiary border border-border hover:border-border-light text-text-secondary hover:text-accent-blue transition-colors shrink-0"
-            title="Recipes — one-click presets"
-            aria-label="Browse recipes"
-          >
-            <BookMarked size={14} />
-          </button>
-          {!isOutpaint && (
+          {!isStandaloneTool && <AdvancedSettings />}
+          {!isStandaloneTool && (
+            <button
+              onClick={() => useStore.getState().setRecipesOpen(true)}
+              className="p-2 rounded-lg bg-bg-tertiary border border-border hover:border-border-light text-text-secondary hover:text-accent-blue transition-colors shrink-0"
+              title="Recipes — one-click presets"
+              aria-label="Browse recipes"
+            >
+              <BookMarked size={14} />
+            </button>
+          )}
+          {!isStandaloneTool && !isOutpaint && (
             <button
               onClick={() => openLoraBrowser(true, modelType)}
               className="p-2 rounded-lg bg-bg-tertiary border border-border hover:border-border-light text-text-secondary hover:text-accent-blue transition-colors shrink-0"
@@ -241,13 +252,23 @@ export function Sidebar() {
               <Globe size={14} />
             </button>
           )}
+          <button
+            onClick={onOpenStyleBibles}
+            className="p-2 rounded-lg bg-bg-tertiary border border-border hover:border-border-light text-text-secondary hover:text-accent-blue transition-colors shrink-0"
+            title="Style Bibles — character & environment anchors"
+            aria-label="Manage Style Bibles"
+            data-testid="studio-sidebar-style-bibles"
+          >
+            <BookOpen size={14} />
+          </button>
           <div className="flex-1 min-w-0" />
-          <div className="shrink-0">
-            <GenerateButton />
-          </div>
+          {!isStandaloneTool && (
+            <div className="shrink-0">
+              <GenerateButton />
+            </div>
+          )}
         </div>
       </div>
-      )}
     </>
   )
 

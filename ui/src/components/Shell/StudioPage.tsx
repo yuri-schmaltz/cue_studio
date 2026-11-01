@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen } from 'lucide-react'
 import { Sidebar } from '../Sidebar/Sidebar'
 import { MainContent } from '../MainContent/MainContent'
 import { StyleBiblesModal } from '../StyleBibles/StyleBiblesModal'
@@ -23,8 +22,10 @@ import { StudioTabs } from './StudioTabs'
  * and image/video editing without losing the planning context.
  *
  * Layout: original Studio (Sidebar + MainContent).
- * Style Bibles shortcut sits in the sub-header so the modal stays
- * reachable without polluting the main generation surface.
+ * The Style Bibles shortcut lives in the Sidebar's bottom action row
+ * (next to Recipes and the LoRA browser) — it is a global shortcut,
+ * not part of the results surface, so it no longer sits in the
+ * results-panel header.
  *
  * A13 — responsive results access
  * -------------------------------
@@ -127,7 +128,7 @@ export function StudioPage() {
           aria-labelledby={isCompact ? 'studio-tab-controls' : undefined}
           className={`${activeTab === 'controls' ? 'flex' : 'hidden'} md:flex h-full min-w-0 w-full md:w-auto`}
         >
-          <Sidebar />
+          <Sidebar onOpenStyleBibles={() => setBiblesOpen(true)} />
         </div>
         <div
           id="studio-results-panel"
@@ -137,20 +138,7 @@ export function StudioPage() {
           tabIndex={isCompact ? -1 : undefined}
           className={`${activeTab === 'results' ? 'flex' : 'hidden'} md:flex min-w-0 flex-1`}
         >
-          <MainContent
-            headerActions={(
-              <button
-                type="button"
-                onClick={() => setBiblesOpen(true)}
-                className="text-xs px-2.5 py-1 rounded-lg border border-border bg-bg-tertiary hover:bg-bg-hover flex items-center gap-1.5 text-text-secondary hover:text-text-primary transition-colors shrink-0 shadow-xs"
-                aria-label="Manage Style Bibles"
-                data-testid="studio-page-style-bibles"
-              >
-                <BookOpen size={12} className="text-accent-blue" aria-hidden="true" />
-                Style Bibles
-              </button>
-            )}
-          />
+          <MainContent />
         </div>
       </div>
 

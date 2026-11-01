@@ -353,7 +353,7 @@ function PipelinePlaceholder() {
     </div>
   )
 }
-export function MainContent({ headerActions }: { headerActions?: React.ReactNode } = {}) {
+export function MainContent() {
   const outputs = useStore(s => s.filteredOutputs())
   const outputsLoading = useStore(s => s.outputsLoading)
   const jobs = useStore(s => s.jobs)
@@ -469,7 +469,7 @@ export function MainContent({ headerActions }: { headerActions?: React.ReactNode
     <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
       <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border px-4">
-        <TabFilter actions={headerActions} />
+        <TabFilter />
       </div>
 
       {/* Sub-toolbar: bulk selection actions */}
