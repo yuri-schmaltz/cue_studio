@@ -13,8 +13,22 @@ import type { CharacterAnchor, EnvironmentAnchor, LoraConfig, StyleBible, StyleB
  * Bibles are global templates stored at app/settings/style_bibles/
  * — not per-project data — so the natural home for management is
  * wherever the Director is, not inside a project setup form.
+ *
+ * `initialBibleId` / `initialMode` let a caller open the manager
+ * straight into the editor of a given bible (or into a blank one)
+ * instead of the list. The Director's inline "Style Bibles" section
+ * uses that to launch the wide editor from its compact list, so the
+ * narrow column never has to host the full editor form.
  */
-export function StyleBiblesModal({ onClose }: { onClose: () => void }) {
+export function StyleBiblesModal({
+  onClose,
+  initialBibleId,
+  initialMode = 'list',
+}: {
+  onClose: () => void
+  initialBibleId?: string | null
+  initialMode?: 'list' | 'create'
+}) {
   const [bibles, setBibles] = useState<StyleBibleSummary[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +74,18 @@ export function StyleBiblesModal({ onClose }: { onClose: () => void }) {
     setEditing(_blankBible())
     setCreating(true)
   }, [])
+
+  // Launch straight into the editor when the caller asks for a
+  // specific bible (or a blank one). Cancel still returns to the
+  // list, so the manager is never a dead end.
+  useEffect(() => {
+    if (initialMode === 'create') {
+      setEditing(_blankBible())
+      setCreating(true)
+    } else if (initialBibleId) {
+      void openEditor(initialBibleId)
+    }
+  }, [initialMode, initialBibleId, openEditor])
 
   const cancelEdit = useCallback(() => {
     setEditing(null)

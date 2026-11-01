@@ -62,8 +62,8 @@ export function DirectorRightColumn() {
           id={TAB_IDS['generation-options']}
           aria-controls={PANEL_IDS['generation-options']}
           aria-selected={activeTab === 'generation-options'}
-          aria-label="Generation options — LoRAs, advanced parameters, audio speed, reference strength and negative prompt"
-          title="LoRAs, advanced parameters, audio speed, reference strength and negative prompt"
+          aria-label="Generation options — Style Bibles, LoRAs, advanced parameters, audio speed, reference strength and negative prompt"
+          title="Style Bibles, LoRAs, advanced parameters, audio speed, reference strength and negative prompt"
           onClick={() => setActiveTab('generation-options')}
           data-testid="director-right-tab-generation-options"
           className={`flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
