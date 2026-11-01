@@ -16,10 +16,15 @@ import { DirectorStage } from '../Stages/DirectorStage'
  *   │  DirectorStage: chat | plan | setup (1fr 1fr 1fr)        │
  *   └─────────────────────────────────────────────────────────┘
  *
- * The Style Bibles shortcut was moved into the Generation Options
- * column header (DirectorGenerationOptions) so the Director sub-
+ * The Style Bibles shortcut lives in the Generation Options panel of
+ * the right column (DirectorGenerationOptions) so the Director sub-
  * header doesn't compete with the planning surface. The modal
  * itself is owned locally by that component.
+ *
+ * The right column is a two-tab switcher: "Generation Options"
+ * (LoRAs, advanced params, audio speed, reference strength, negative
+ * prompt) and "Outputs & Preview" (preview monitor + per-clip video
+ * prompt). See DirectorRightColumn.
  */
 export function DirectorPage() {
   return (

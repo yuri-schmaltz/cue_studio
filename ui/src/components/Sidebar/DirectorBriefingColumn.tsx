@@ -2360,7 +2360,10 @@ function DirectorLoraAccordion() {
  *  shortcut stays reachable from the moment the Director opens.
  *  The body of the pane swaps between the locked-options preview
  *  (pre-upload) and the full option accordion (post-upload); the
- *  header is shared so neither state hides the Style Bibles button. */
+ *  header is shared so neither state hides the Style Bibles button.
+ *  The "Generation Options" title itself lives in the column tab
+ *  strip (see DirectorRightColumn), so this row only carries the
+ *  panel's own controls. */
 function DirectorGenerationOptionsHeader({
   biblesOpen,
   setBiblesOpen,
@@ -2374,22 +2377,17 @@ function DirectorGenerationOptionsHeader({
 }) {
   return (
     <header className="flex items-center justify-between gap-2 border-b border-border/50 pb-2">
-      <div className="flex items-center gap-2">
-        <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-          Generation Options
-        </h3>
-        <button
-          type="button"
-          onClick={() => setBiblesOpen(!biblesOpen)}
-          className="text-2xs px-1.5 py-0.5 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1 text-text-secondary"
-          aria-label="Manage Style Bibles"
-          aria-expanded={biblesOpen}
-          data-testid="director-generation-options-style-bibles"
-        >
-          <BookOpen size={10} className="text-accent-blue" aria-hidden="true" />
-          Style Bibles
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => setBiblesOpen(!biblesOpen)}
+        className="text-2xs px-1.5 py-0.5 rounded border border-border hover:bg-bg-tertiary flex items-center gap-1 text-text-secondary"
+        aria-label="Manage Style Bibles"
+        aria-expanded={biblesOpen}
+        data-testid="director-generation-options-style-bibles"
+      >
+        <BookOpen size={10} className="text-accent-blue" aria-hidden="true" />
+        Style Bibles
+      </button>
       {/* Toggle Basic vs Expert */}
       <div className="inline-flex p-0.5 rounded-md bg-bg-tertiary border border-border/60 text-2xs">
         <button
@@ -2461,7 +2459,7 @@ export function DirectorGenerationOptions() {
     : null
 
   return (
-    <div className="h-full flex flex-col space-y-3">
+    <div className="flex-1 min-h-0 flex flex-col space-y-3" data-testid="director-generation-options">
       <DirectorGenerationOptionsHeader
         biblesOpen={biblesOpen}
         setBiblesOpen={setBiblesOpen}
@@ -2496,9 +2494,9 @@ export function DirectorGenerationOptions() {
       ) : (
         <div className="flex-1 rounded-lg border border-dashed border-border/70 bg-bg-tertiary/40 p-3 text-2xs text-text-muted">
           <p className="leading-snug">
-            Locked — drop audio in the chat column on the left to unlock aspect
-            ratio, resolution, LoRA picking, audio speed, source strength and the
-            negative prompt.
+            Locked — drop audio in the chat column on the left to unlock LoRA
+            picking, the advanced parameters, audio speed, source strength and
+            the negative prompt.
           </p>
           <p className="mt-2 leading-snug">
             Style Bibles stay available from the header so you can prepare them

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import {
   Film,
   Sparkles,
-  Layers,
   Loader2,
   Maximize2,
   ChevronLeft,
@@ -66,16 +65,10 @@ export function DirectorOutputColumn() {
     : null
 
   return (
-    <div className="h-full flex flex-col space-y-3 min-h-0" data-testid="director-output-column">
-      {/* Header */}
-      <header className="flex items-center justify-between shrink-0 px-1 py-0.5">
-        <div className="flex items-center gap-2">
-          <Layers size={14} className="text-accent-blue" />
-          <h2 className="text-xs uppercase tracking-wider font-semibold text-text-muted">
-            Outputs &amp; Preview
-          </h2>
-        </div>
-      </header>
+    <div className="flex-1 min-h-0 flex flex-col space-y-3" data-testid="director-output-column">
+      {/* The "Outputs & Preview" title now lives in the column tab
+          strip (see DirectorRightColumn), so the panel starts
+          straight with the clip selector + preview canvas. */}
 
       {/* Main output / preview body */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 -mr-1">

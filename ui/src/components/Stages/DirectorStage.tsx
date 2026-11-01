@@ -53,7 +53,7 @@ import {
   DirectorBriefingColumn,
 } from '../Sidebar/DirectorBriefingColumn'
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
-import { DirectorOutputColumn } from '../Director/DirectorOutputColumn'
+import { DirectorRightColumn } from '../Director/DirectorRightColumn'
 import { DirectorTourOverlay } from './DirectorTourOverlay'
 
 /**
@@ -62,8 +62,11 @@ import { DirectorTourOverlay } from './DirectorTourOverlay'
  * The 3-column layout (chat / plan / setup) gives the user a single
  * surface for everything Director: creative conversation on the left,
  * per-shot artifacts (clip structure, image prompts, generated images,
- * video prompts) in the middle, and the technical choices (aspect
- * ratio, resolution, workflow, models, LoRAs) on the right.
+ * video prompts) in the middle, and the technical choices (LoRAs,
+ * advanced parameters, audio speed, reference strength, negative
+ * prompt) plus the live preview on the right. The right column is
+ * itself tabbed ("Generation Options" / "Outputs & Preview") so both
+ * surfaces stay reachable without breaking the 3-column grid.
  *
  * The skill chooser modal that used to live here was removed — the
  * `<SkillSelector/>` inside DirectorChat already offers the same
@@ -261,12 +264,19 @@ export function DirectorStage() {
         </section>
         <aside
           className="director-stage-options"
-          aria-label="Director outputs & preview"
+          aria-label="Director options and outputs"
           id={panelDomId('options')}
           style={panelVisible('options') ? undefined : { display: 'none' }}
           {...panelA11y()}
         >
-          <DirectorOutputColumn />
+          {/* The options column is a two-tab switcher: "Generation
+              Options" (LoRAs, advanced params, strength sliders,
+              negative prompt) and "Outputs & Preview" (monitor +
+              per-clip video prompt). Both surfaces used to live in this
+              column; keeping them behind tabs preserves the 3-column
+              grid while making the generation options reachable
+              again. */}
+          <DirectorRightColumn />
         </aside>
       </div>
     </div>
