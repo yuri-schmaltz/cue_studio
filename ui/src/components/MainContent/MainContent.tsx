@@ -468,7 +468,9 @@ export function MainContent() {
   return (
     <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
-      <div className="flex min-h-14 shrink-0 items-center gap-2 border-b border-border px-4">
+      {/* Top bar — pt-4 keeps the filter strip on the same top edge as the
+          generation-mode card in the controls column (same 16px inset). */}
+      <div className="flex min-h-14 shrink-0 items-start gap-2 border-b border-border px-4 pt-4">
         <TabFilter />
       </div>
 

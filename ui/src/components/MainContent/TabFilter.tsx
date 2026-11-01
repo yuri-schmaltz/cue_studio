@@ -103,7 +103,7 @@ export function TabFilter() {
                 key={tab.value}
                 ref={mediaFilter === tab.value ? selectedTabRef : undefined}
                 onClick={() => setMediaFilter(tab.value)}
-                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-2xs font-medium transition-all xl:px-2.5 xl:py-1 xl:text-xs ${
+                className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-2 text-xs font-medium transition-all xl:px-2.5 ${
                   mediaFilter === tab.value
                     ? tab.value === 'favorites' ? 'bg-red-500/20 text-chip-red'
                     : tab.value === 'multiclip' ? 'bg-purple-500/20 text-chip-purple'
@@ -112,7 +112,7 @@ export function TabFilter() {
                 }`}
                 title={tab.label}
               >
-                <Icon size={12} fill={tab.value === 'favorites' && mediaFilter === 'favorites' ? 'currentColor' : 'none'} />
+                <Icon size={14} fill={tab.value === 'favorites' && mediaFilter === 'favorites' ? 'currentColor' : 'none'} />
                 <span className="hidden xl:inline">{tab.label}</span>
                 <span className="xl:hidden">{tab.shortLabel}</span>
               </button>
