@@ -469,8 +469,12 @@ export function MainContent() {
     <main className="min-w-0 flex-1 flex flex-col h-full overflow-hidden">
       {/* Top bar */}
       {/* Top bar — pt-4 keeps the filter strip on the same top edge as the
-          generation-mode card in the controls column (same 16px inset). */}
-      <div className="flex min-h-14 shrink-0 items-start gap-2 border-b border-border px-4 pt-4">
+          generation-mode card in the controls column (same 16px inset).
+          No border-b here: the filter strip is itself a bordered card whose
+          bottom edge lands on the same y as the controls column's card, so
+          an extra rule would (a) double the line right under the strip and
+          (b) run past the tab bar's right border to the window edge. */}
+      <div className="flex min-h-14 shrink-0 items-start gap-2 px-4 pt-4">
         <TabFilter />
       </div>
 

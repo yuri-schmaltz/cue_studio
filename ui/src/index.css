@@ -956,7 +956,14 @@ input[type="range"]::-webkit-slider-thumb {
    header without a hairline divider. The .application-tabs pill
    already has its own rounded border, so removing the parent
    separator doesn't leave any unintended gap. */
-.application-header { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; min-height:52px; flex-shrink:0; padding:8px 16px; gap:0; background:var(--color-bg-secondary); z-index:30; }
+/* The header has NO bottom padding: the tabs pill's own bottom border
+   (a rounded rect inset 16px from the viewport edges) is the last
+   horizontal line of the header. With an 8px band underneath it, the
+   Studio's column divider — which starts at the top of the content
+   row — was left hanging 8px below that line with a visible gap, and
+   it never visually connected to the tab bar. The narrow breakpoints
+   below already used `padding: … 0`, so this makes desktop match. */
+.application-header { display:grid; grid-template-columns:minmax(0,1fr); align-items:center; min-height:52px; flex-shrink:0; padding:8px 16px 0; gap:0; background:var(--color-bg-secondary); z-index:30; }
 .application-brand { display:none; }
 .application-actions { justify-self:end; display:flex; align-items:center; gap:8px; }
 .application-navigation { min-width:0; width:100%; }
