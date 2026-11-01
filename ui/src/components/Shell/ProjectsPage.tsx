@@ -583,7 +583,6 @@ export function ProjectsPage() {
                   value={setup}
                   onChange={setSetup}
                   hideSkill
-                  studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }}
                 />
               </div>
             </>
@@ -606,7 +605,7 @@ export function ProjectsPage() {
                 )
               })()}
               <div>
-                <ProjectSetupForm value={setup} onChange={setSetup} compact studioModels={{ video: studioModels?.video, image: studioModels?.image, audio: studioModels?.audio }} />
+                <ProjectSetupForm value={setup} onChange={setSetup} compact />
               </div>
             </>
           )}

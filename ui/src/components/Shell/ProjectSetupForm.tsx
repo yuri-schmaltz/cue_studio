@@ -1,11 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- shared options between
    ProjectSetup form chips and the Director right-column override live here
    so the two surfaces stay in lockstep. */
-import { useEffect, useState } from 'react'
 import { Film, Music } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
-import { fetchModels, type ApiModel } from '../../api/client'
+import type { ApiModel } from '../../api/client'
 import { NsfwToggle } from '../NSFW/NsfwToggle'
 
 /** Curated models registry for clean, noise-free project selection with meaningful labels */
@@ -108,21 +107,15 @@ export interface ProjectSetupFormProps {
   compact?: boolean
   /** Hide the skill selector (e.g. when already chosen via project Type). */
   hideSkill?: boolean
-  /** Current Studio model selection per kind, used to name the
-   *  effective default in "Use last selected (LTX-2 22B)". Optional —
-   *  without it the option shows the plain label. */
-  studioModels?: { video?: string; image?: string; audio?: string }
 }
 
 /**
  * ProjectSetupForm — reusable fields editor for project-level choices.
  *
  * Used by both the New project dialog (ProjectsPage) and the per-card
- * Edit setup affordance. Each section is collapsible; defaults stay
- * open so the user sees the model pickers without having to expand
- * every group. Every change flows through `onChange` so the parent can
- * own the submit / persist logic (keep the source of truth in one
- * place — the form is a pure controlled component).
+ * Edit setup affordance. Every change flows through `onChange` so the
+ * parent can own the submit / persist logic (keep the source of truth
+ * in one place — the form is a pure controlled component).
  */
 export function ProjectSetupForm({
   value,
@@ -130,73 +123,12 @@ export function ProjectSetupForm({
   disabled = false,
   compact = false,
   hideSkill = false,
-  studioModels,
 }: ProjectSetupFormProps) {
   const safeValue: ProjectSetupDefaults = { ...DEFAULT_PROJECT_SETUP, ...value }
-  const [models, setModels] = useState<ApiModel[]>([])
   const update = (patch: Partial<ProjectSetupDefaults>) => onChange({ ...safeValue, ...patch })
-
-  useEffect(() => {
-    let cancelled = false
-    fetchModels()
-      .then(data => {
-        if (!cancelled) setModels(data.models || [])
-      })
-      .catch(() => { if (!cancelled) setModels([]) })
-    return () => { cancelled = true }
-  }, [])
 
   const supportsUltraWide = (safeValue.video_model || '').toLowerCase().startsWith('minimax_h3')
   const aspectOptions = PROJECT_SETUP_ASPECT_RATIOS.filter(opt => opt.value !== '21:9' || supportsUltraWide)
-
-  const isCuratedVideo = (m: ApiModel) => CURATED_MODELS[m.model_type]?.category === 'video'
-  const isCuratedImage = (m: ApiModel) => CURATED_MODELS[m.model_type]?.category === 'image'
-
-  const toOption = (m: ApiModel) => {
-    const curated = CURATED_MODELS[m.model_type]
-    const label = curated ? `${curated.name} · ${curated.badge}` : `${m.name || m.model_type} · ${modelSpeedTier(m)}`
-    return { value: m.model_type, label }
-  }
-
-  const lastSelectedLabel = (current?: string) =>
-    current ? `Use last selected (${shortModelLabel(current)})` : 'Use last selected'
-
-  // Curated models in stable curated order + any currently selected model that may not be in curated
-  const curatedVideoList = Object.keys(CURATED_MODELS)
-    .filter(k => CURATED_MODELS[k].category === 'video')
-    .map(k => models.find(m => m.model_type === k))
-    .filter((m): m is ApiModel => Boolean(m))
-    .map(toOption)
-
-  const curatedImageList = Object.keys(CURATED_MODELS)
-    .filter(k => CURATED_MODELS[k].category === 'image')
-    .map(k => models.find(m => m.model_type === k))
-    .filter((m): m is ApiModel => Boolean(m))
-    .map(toOption)
-
-  const curatedAudioList = Object.keys(CURATED_MODELS)
-    .filter(k => CURATED_MODELS[k].category === 'audio')
-    .map(k => models.find(m => m.model_type === k))
-    .filter((m): m is ApiModel => Boolean(m))
-    .map(toOption)
-
-  // Fallback to full list if models haven't loaded or curated returns empty
-  const rawVideo = models.filter(m => !isAudioModel(m) && !isCuratedImage(m)).map(toOption)
-  const rawImage = models.filter(m => !isAudioModel(m) && !isCuratedVideo(m)).map(toOption)
-  const rawAudio = models.filter(isAudioModel).map(toOption)
-
-  const videoOptions = [
-    { value: '', label: lastSelectedLabel(studioModels?.video) },
-    ...(curatedVideoList.length ? curatedVideoList : rawVideo),
-  ]
-  const imageOptions = [
-    { value: '', label: lastSelectedLabel(studioModels?.image) },
-    ...(curatedImageList.length ? curatedImageList : rawImage),
-  ]
-  const audioOptions = [
-    { value: '', label: lastSelectedLabel(studioModels?.audio) },
-    ...(curatedAudioList.length ? curatedAudioList : rawAudio),
-  ]
 
   const sectionCls = compact ? 'space-y-1.5' : 'space-y-2'
 
@@ -302,13 +234,7 @@ export function ProjectSetupForm({
         </div>
       </fieldset>
 
-      {/* Models — picked once at project creation so every take
-          starts from a known baseline. Video/image share the full
-          non-audio catalog; audio-only models (TTS/voice/music) get
-          their own picker bound to `music_model`, which the Director
-          (offline / first paint). */}
-
-      {/* Advanced options (content mode, models, about) */}
+      {/* Advanced options (content mode, about) */}
       <div className="rounded-lg border border-border/60 p-2.5 space-y-3">
         {/* NSFW toggle — moved here from the Integrations drawer so
             users opt in to adult content generation at the moment
@@ -319,39 +245,6 @@ export function ProjectSetupForm({
         <fieldset className={sectionCls} aria-label="Content mode">
           <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Content mode</legend>
           <NsfwToggle disabled={disabled} />
-        </fieldset>
-
-        <fieldset className={sectionCls} aria-label="Default models">
-          <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Models</legend>
-          <div className="flex gap-2">
-            <div className="flex-1 min-w-0">
-              <FormSelect
-                label="Video model"
-                value={safeValue.video_model || ''}
-                onChange={next => update({ video_model: next })}
-                options={videoOptions}
-                disabled={disabled}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <FormSelect
-                label="Image model"
-                value={safeValue.image_model || ''}
-                onChange={next => update({ image_model: next })}
-                options={imageOptions}
-                disabled={disabled}
-              />
-            </div>
-            <div className="flex-1 min-w-0">
-              <FormSelect
-                label="Audio model"
-                value={safeValue.music_model || ''}
-                onChange={next => update({ music_model: next })}
-                options={audioOptions}
-                disabled={disabled}
-              />
-            </div>
-          </div>
         </fieldset>
 
         {/* About — optional metadata shown on the project card. */}
