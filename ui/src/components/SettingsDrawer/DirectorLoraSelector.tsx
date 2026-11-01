@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Search, X, Loader2, FolderOpen, Globe, Sparkles, BookOpen } from 'lucide-react'
+import { Search, X, Loader2, FolderOpen, Globe, Sparkles, BookOpen, BookMarked } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import * as api from '../../api/client'
 import { generateLoraGuide, fetchLoraGuide, fetchLoraDetails } from '../../api/client'
@@ -63,6 +63,48 @@ function DirectorPresetPicker({ mode, modelType }: { mode: 'image' | 'video'; mo
 }
 
 /**
+ * Square icon actions that sit next to the LoRA lists: the Recipes
+ * library (one-click presets) and the CivitAI browser. Same shape as
+ * the Studio sidebar buttons (rounded-lg / border / hover accent) so
+ * the two surfaces read as one system — the Director column is
+ * narrow, so the buttons use the compact 12px glyph.
+ */
+const LORA_ACTION_BUTTON_CLASS =
+  'p-1.5 rounded-lg bg-bg-tertiary border border-border hover:border-border-light text-text-secondary hover:text-accent-blue transition-colors'
+
+export function LoraRecipesButton() {
+  const setRecipesOpen = useStore(s => s.setRecipesOpen)
+  return (
+    <button
+      type="button"
+      onClick={() => setRecipesOpen(true)}
+      className={LORA_ACTION_BUTTON_CLASS}
+      title="Recipes — one-click presets"
+      aria-label="Browse recipes"
+      data-testid="director-lora-recipes"
+    >
+      <BookMarked size={12} />
+    </button>
+  )
+}
+
+export function LoraBrowseButton({ modelType }: { modelType: string }) {
+  const openBrowser = useStore(s => s.setLoraBrowserOpen)
+  return (
+    <button
+      type="button"
+      onClick={() => openBrowser(true, modelType)}
+      className={LORA_ACTION_BUTTON_CLASS}
+      title="Browse LoRAs on CivitAI"
+      aria-label="Browse LoRAs on CivitAI"
+      data-testid="director-lora-browse"
+    >
+      <Globe size={12} />
+    </button>
+  )
+}
+
+/**
  * Standalone LoRA selector for Director mode with recommended weight zones,
  * guide indicators, CivitAI browser trigger, and auto-apply defaults.
  */
@@ -72,7 +114,6 @@ export function DirectorLoraSelector({ mode, modelType }: {
 }) {
   const savedLora = useStore(s => s.savedLoraPerMode[mode])
   const directorSetLora = useStore(s => s.directorSetLora)
-  const openBrowser = useStore(s => s.setLoraBrowserOpen)
 
   const [availableLoras, setAvailableLoras] = useState<string[]>(savedLora?.availableLoras || [])
   const [activatedLoras, setActivatedLoras] = useState<string[]>(savedLora?.activated_loras || [])
@@ -273,14 +314,9 @@ export function DirectorLoraSelector({ mode, modelType }: {
 
   if (availableLoras.length === 0) {
     return (
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div className="text-xs text-text-muted">No LoRAs found</div>
-        <button
-          onClick={() => openBrowser(true, modelType)}
-          className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5"
-        >
-          <Globe size={10} /> Browse
-        </button>
+        <LoraBrowseButton modelType={modelType} />
       </div>
     )
   }
@@ -290,19 +326,11 @@ export function DirectorLoraSelector({ mode, modelType }: {
       {/* Preset picker */}
       <DirectorPresetPicker mode={mode} modelType={modelType} />
 
-      {/* Header with Browse */}
+      {/* Header — the Recipes / Browse actions live in the accordion
+          header above, so this row only carries the sort toggle. */}
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-2xs text-text-muted uppercase tracking-wider">LoRAs</label>
-        <div className="flex items-center gap-2">
-          <LoraSortToggle sort={sortMode} onChange={setSortSticky} />
-          <button
-            onClick={() => openBrowser(true, modelType)}
-            className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-0.5 transition-colors"
-            title="Browse CivitAI"
-          >
-            <Globe size={10} /> Browse
-          </button>
-        </div>
+        <LoraSortToggle sort={sortMode} onChange={setSortSticky} />
       </div>
 
       {/* Search */}

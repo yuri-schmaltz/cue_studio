@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X, BookMarked, Trash2, Upload, Play, Loader2, AlertTriangle, Download, ExternalLink, Layers } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import type { RecipeCard, RecipeLora } from '../../api/client'
@@ -9,6 +9,10 @@ import * as api from '../../api/client'
  * user's own saved recipes as a thumbnail grid. Clicking a card applies
  * it (switches model + settings, prepopulates the prompt) and closes the
  * overlay so the user lands on a ready-to-generate Studio.
+ *
+ * The overlay is reachable from the Studio sidebar and from the
+ * Director's Generation Options column, so Escape closes it — same
+ * keyboard affordance as the other overlays in the app.
  */
 export function RecipesOverlay() {
   const open = useStore(s => s.recipesOpen)
@@ -25,6 +29,13 @@ export function RecipesOverlay() {
   const [applying, setApplying] = useState<string | null>(null)
   const [missing, setMissing] = useState<{ modelType: string; loras: RecipeLora[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, setOpen])
 
   if (!open) return null
 

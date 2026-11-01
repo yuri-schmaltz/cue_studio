@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, RotateCcw, Check, X, ChevronRight, ChevronDown, ImageIcon, Play, Pause, Send, Users, FileText, ListVideo, Sparkles, Film, Wand2 } from 'lucide-react'
-import { useStore, directorModelUsesFixedMediaStrength, resolveResolution } from '../../stores/useStore'
+import { useStore, directorModelUsesFixedMediaStrength, resolveResolution, getModelMode } from '../../stores/useStore'
 import { fetchModelOptions, getFileUrl } from '../../api/client'
-import { DirectorLoraSelector } from '../SettingsDrawer/DirectorLoraSelector'
+import { DirectorLoraSelector, LoraRecipesButton, LoraBrowseButton } from '../SettingsDrawer/DirectorLoraSelector'
 import { DirectorSongSetup } from './DirectorSongSetup'
 import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
@@ -2267,6 +2267,116 @@ function DirectorAdvancedAccordion() {
   )
 }
 
+/** Image + video model pickers for the Director. The LoRA lists
+ *  below belong to these models, so the pickers sit right above
+ *  them. They use the dedicated Director actions
+ *  (`selectDirectorImageModel` / `selectDirectorVideoModel`) so
+ *  swapping a model also invalidates the clip plans and generated
+ *  images that were derived from the previous one — the same
+ *  contract the pipeline expects.
+ *
+ *  The option list is the set of models the user enabled in
+ *  Settings → Model Visibility (plus the current pick, so the
+ *  select never silently shows a stale value). */
+function DirectorModelPicker({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (modelType: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <label
+        htmlFor={id}
+        className="text-2xs text-text-muted uppercase tracking-wider w-[68px] shrink-0"
+      >
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="flex-1 min-w-0 bg-bg-secondary border border-border rounded-lg px-2 py-1 text-2xs text-text-primary focus:outline-none focus:border-accent-blue transition-colors"
+      >
+        {options.map(option => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+/** The "Models" card of the Generation Options panel: one picker per
+ *  mode plus the LoRA accordions that belong to them. */
+function DirectorModelPickers({
+  showImage,
+  imageModel,
+  videoModel,
+}: {
+  showImage: boolean
+  imageModel: string
+  videoModel: string
+}) {
+  const models = useStore(s => s.models)
+  const enabledModels = useStore(s => s.enabledModels)
+  const nsfwMode = useStore(s => s.servicesConfig?.nsfw_mode ?? false)
+  const selectImageModel = useStore(s => s.selectDirectorImageModel)
+  const selectVideoModel = useStore(s => s.selectDirectorVideoModel)
+
+  const optionsFor = (mode: 'image' | 'video', current: string) => {
+    const list = models
+      .filter(model => getModelMode(model.model_type, model.family) === mode)
+      .filter(model => enabledModels.has(model.model_type))
+      .filter(model => !model.nsfw_only || nsfwMode)
+      .map(model => ({ value: model.model_type, label: model.name || model.model_type }))
+    // The current pick may be filtered out (model disabled / not
+    // downloaded yet) — keep it selectable so the control never
+    // reports a value the user didn't choose.
+    if (current && !list.some(option => option.value === current)) {
+      const known = models.find(model => model.model_type === current)
+      list.unshift({ value: current, label: known?.name || current })
+    }
+    return list
+  }
+
+  const imageOptions = optionsFor('image', imageModel)
+  const videoOptions = optionsFor('video', videoModel)
+
+  if (imageOptions.length === 0 && videoOptions.length === 0) return null
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-bg-tertiary/30 px-2.5 py-2 space-y-2">
+      {showImage && imageOptions.length > 0 && (
+        <DirectorModelPicker
+          id="director-image-model-select"
+          label="Image model"
+          value={imageModel}
+          options={imageOptions}
+          onChange={selectImageModel}
+        />
+      )}
+      {videoOptions.length > 0 && (
+        <DirectorModelPicker
+          id="director-video-model-select"
+          label="Video model"
+          value={videoModel}
+          options={videoOptions}
+          onChange={selectVideoModel}
+        />
+      )}
+    </div>
+  )
+}
+
 function DirectorLoraAccordion() {
   // Resolve Director's per-shoot image and video models from saved
   // per-mode selections, falling back to the same Director defaults
@@ -2312,16 +2422,28 @@ function DirectorLoraAccordion() {
 
   return (
     <div className="space-y-1">
+      {/* Model pickers — the LoRA lists below belong to these models. */}
+      <DirectorModelPickers
+        showImage={generateShotImages}
+        imageModel={imageModel}
+        videoModel={videoModel}
+      />
       {/* Image LoRAs */}
       {generateShotImages && imageModel && (
         <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setImageOpen(!imageOpen)}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
-          >
-            <span>Image LoRAs</span>
-            {imageOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          </button>
+          <div className="flex items-center gap-1.5 px-2 py-1">
+            <button
+              onClick={() => setImageOpen(!imageOpen)}
+              className="flex-1 min-w-0 flex items-center justify-between gap-1 px-1.5 py-1 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+            >
+              <span className="truncate">Image LoRAs</span>
+              {imageOpen ? <ChevronDown size={12} className="shrink-0" /> : <ChevronRight size={12} className="shrink-0" />}
+            </button>
+            {/* Recipes + CivitAI browser live in the header so they
+                stay reachable with the accordion collapsed. */}
+            <LoraRecipesButton />
+            <LoraBrowseButton modelType={imageModel} />
+          </div>
           {imageOpen && (
             <div className="px-2.5 pb-2">
               <DirectorLoraSelector mode="image" modelType={imageModel} />
@@ -2332,13 +2454,17 @@ function DirectorLoraAccordion() {
       {/* Video LoRAs */}
       {videoModel && !videoLorasDisabled && (
         <div className="border border-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setVideoOpen(!videoOpen)}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
-          >
-            <span>Video LoRAs</span>
-            {videoOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          </button>
+          <div className="flex items-center gap-1.5 px-2 py-1">
+            <button
+              onClick={() => setVideoOpen(!videoOpen)}
+              className="flex-1 min-w-0 flex items-center justify-between gap-1 px-1.5 py-1 text-xs text-text-secondary hover:bg-bg-hover transition-colors"
+            >
+              <span className="truncate">Video LoRAs</span>
+              {videoOpen ? <ChevronDown size={12} className="shrink-0" /> : <ChevronRight size={12} className="shrink-0" />}
+            </button>
+            <LoraRecipesButton />
+            <LoraBrowseButton modelType={videoModel} />
+          </div>
           {videoOpen && (
             <div className="px-2.5 pb-2">
               <DirectorLoraSelector mode="video" modelType={videoModel} />
