@@ -12,6 +12,7 @@ import { SkeletonGrid } from '../shared/Skeleton'
 import { AppDialog } from '../shared/AppDialog'
 import { Button } from '../shared/Button'
 import { TextField } from '../shared/TextField'
+import { NsfwToggle } from '../NSFW/NsfwToggle'
 
 /**
  * Projects page — one-to-one with workspaces on the backend.
@@ -548,11 +549,19 @@ export function ProjectsPage() {
             </>
           )}
           {error && <p role="alert" className="mt-3 text-sm text-red-400">{error}</p>}
-          <div className="mt-4 flex justify-end gap-2">
-            <Button variant="secondary" disabled={busy !== null} onClick={() => { setCreating(false); setEditing(null) }}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={busy !== null} disabled={!creating && !editing || (creating && !name.trim())}>
-              {creating ? 'Create project' : 'Save setup'}
-            </Button>
+          {/* Footer — the NSFW content-mode toggle rides along with the
+              action buttons, on the far left of the same row. */}
+          <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="text-2xs uppercase tracking-wider text-text-muted shrink-0">Content mode</span>
+              <NsfwToggle disabled={busy !== null} />
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="secondary" disabled={busy !== null} onClick={() => { setCreating(false); setEditing(null) }}>Cancel</Button>
+              <Button type="submit" variant="primary" loading={busy !== null} disabled={!creating && !editing || (creating && !name.trim())}>
+                {creating ? 'Create project' : 'Save setup'}
+              </Button>
+            </div>
           </div>
         </form>
       </AppDialog>

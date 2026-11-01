@@ -9,10 +9,10 @@ import { useStore } from '../../stores/useStore'
  *  Matches the set used by ServicesSettingsPanel and LoraBrowser. */
 export const NSFW_PUBLIC_PROVIDERS = new Set(['openai', 'anthropic', 'minimax', 'openrouter', 'opencode'])
 
-/** Lightweight toggle row + matching disclaimer modal. Lives in its
+/** Lightweight inline toggle row + matching disclaimer modal. Lives in its
  *  own module so it can be embedded in any surface (project setup
- *  form, a future Director gate, a dedicated NSFW admin card) while
- *  staying a single source of truth for the disclaimer text and
+ *  dialog footer, a future Director gate, a dedicated NSFW admin card)
+ *  while staying a single source of truth for the disclaimer text and
  *  public-provider lockout.
  *
  *  The toggle binds to the GLOBAL ``servicesConfig.nsfw_mode`` flag
@@ -24,7 +24,7 @@ export const NSFW_PUBLIC_PROVIDERS = new Set(['openai', 'anthropic', 'minimax', 
  *
  *  Props:
  *    - ``disabled`` (optional): disables the click + renders a
- *    cursor-not-allowed state. Used by the project setup form so
+ *    cursor-not-allowed state. Used by the project setup dialog so
  *    the Edit modal can lock every control.
  */
 export function NsfwToggle({ disabled = false }: { disabled?: boolean }) {
@@ -34,8 +34,7 @@ export function NsfwToggle({ disabled = false }: { disabled?: boolean }) {
 
   if (!servicesConfig) return null
 
-  const provider = servicesConfig.llm_provider || 'local'
-  const isPublicProvider = NSFW_PUBLIC_PROVIDERS.has(provider)
+  const isPublicProvider = NSFW_PUBLIC_PROVIDERS.has(servicesConfig.llm_provider || 'local')
   const nsfwEnabled = servicesConfig.nsfw_mode
   const hasAccepted = !!servicesConfig.nsfw_accepted_at
   const locked = isPublicProvider || disabled
@@ -70,35 +69,22 @@ export function NsfwToggle({ disabled = false }: { disabled?: boolean }) {
   return (
     <>
       <div
-        className={`flex items-center justify-between ${locked ? '' : 'cursor-pointer'} group`}
+        className={`flex items-center gap-2 ${locked ? '' : 'cursor-pointer'} group`}
         onClick={handleToggle}
       >
-        <div className="flex-1 mr-3">
-          <div className={`text-sm flex items-center gap-1.5 ${
-            locked ? 'text-text-muted' : 'text-text-primary group-hover:text-accent-blue transition-colors'
-          }`}>
-            {nsfwEnabled ? (
-              <ShieldAlert size={14} className="text-red-400 shrink-0" />
-            ) : (
-              <ShieldCheck size={14} className="text-indicator-success shrink-0" />
-            )}
-            NSFW Mode
-            {isPublicProvider && <Lock size={11} className="text-text-muted" />}
-          </div>
-          <div className="text-2xs text-text-muted mt-0.5">
-            {disabled ? (
-              <>Editing this field is locked in the current context.</>
-            ) : isPublicProvider ? (
-              <>NSFW is unavailable with public LLM providers ({provider}). Switch to a local or self-hosted model to enable.</>
-            ) : nsfwEnabled ? (
-              <>Adult content generation is enabled. LLM prompts include explicit content guidance. Use responsibly.</>
-            ) : (
-              <>Content safety guardrails active. Explicit content is blocked in all LLM outputs.</>
-            )}
-          </div>
-        </div>
+        {nsfwEnabled ? (
+          <ShieldAlert size={13} className="text-red-400 shrink-0" />
+        ) : (
+          <ShieldCheck size={13} className="text-indicator-success shrink-0" />
+        )}
+        <span className={`text-xs whitespace-nowrap ${
+          locked ? 'text-text-muted' : 'text-text-primary group-hover:text-accent-blue transition-colors'
+        }`}>
+          NSFW Mode
+        </span>
+        {isPublicProvider && <Lock size={11} className="text-text-muted shrink-0" />}
         <div
-          className={`w-9 h-5 rounded-full transition-colors relative shrink-0 ${
+          className={`ml-1 w-9 h-5 rounded-full transition-colors relative shrink-0 ${
             locked ? 'bg-bg-tertiary border border-border opacity-40 cursor-not-allowed'
               : nsfwEnabled ? 'bg-red-500' : 'bg-bg-tertiary border border-border'
           }`}

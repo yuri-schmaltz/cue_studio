@@ -5,7 +5,6 @@ import { Film, Music } from 'lucide-react'
 import type { ProjectSetupDefaults, AspectRatio, ResolutionPreset, GenerationMode } from '../../types'
 import { DEFAULT_PROJECT_SETUP } from '../../types'
 import type { ApiModel } from '../../api/client'
-import { NsfwToggle } from '../NSFW/NsfwToggle'
 
 /** Curated models registry for clean, noise-free project selection with meaningful labels */
 export interface CuratedModelInfo {
@@ -232,17 +231,6 @@ export function ProjectSetupForm({
             </span>
           </button>
         </div>
-      </fieldset>
-
-      {/* Content mode — NSFW toggle, moved here from the Integrations
-          drawer so users opt in to adult content generation at the
-          moment they're creating the project that will actually need it.
-          The toggle binds to the global ``servicesConfig.nsfw_mode``
-          flag, so LoRAs / model selectors / the LLM prompt start
-          honoring the new value the moment it's flipped on. */}
-      <fieldset className={sectionCls} aria-label="Content mode">
-        <legend className="text-2xs uppercase tracking-wider text-text-muted mb-1">Content mode</legend>
-        <NsfwToggle disabled={disabled} />
       </fieldset>
 
       {/* About — optional metadata shown on the project card. */}

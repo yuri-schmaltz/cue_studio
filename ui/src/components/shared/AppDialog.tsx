@@ -68,6 +68,11 @@ export function AppDialog({
     const dialog = dialogRef.current
     if (!dialog) return
     const handleCancel = (event: Event) => {
+      // The `cancel` event also fires — and bubbles — on <input
+      // type="file"> when the user dismisses the native file picker.
+      // That must not close the modal: only a cancel aimed at the
+      // dialog itself (Escape) means "close".
+      if (event.target !== dialog) return
       // Keep the component controlled: intercept the native Escape
       // and let the owner decide what "close" means.
       event.preventDefault()
