@@ -261,9 +261,8 @@ export function Sidebar({ onOpenStyleBibles }: { onOpenStyleBibles: () => void }
           >
             <BookOpen size={14} />
           </button>
-          <div className="flex-1 min-w-0" />
           {!isStandaloneTool && (
-            <div className="shrink-0">
+            <div className="flex-1 min-w-0">
               <GenerateButton />
             </div>
           )}

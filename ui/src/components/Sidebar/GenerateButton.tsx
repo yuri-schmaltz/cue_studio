@@ -65,8 +65,8 @@ export function GenerateButton() {
     const title = block.title
     return (
       <>
-        <div className="flex flex-col items-end gap-1">
-          <div className="grid w-[158px] shrink-0 grid-cols-[2fr_auto_1fr] overflow-hidden rounded-lg bg-amber-500/20 text-indicator-warning">
+        <div className="flex w-full flex-col items-end gap-1">
+          <div className="grid w-full grid-cols-[3fr_1fr_1fr] overflow-hidden rounded-lg bg-amber-500/20 text-indicator-warning">
             <button
               type="button"
               disabled
@@ -97,7 +97,7 @@ export function GenerateButton() {
           </div>
           {/* Inline reason: the block cause used to live only in the button's
               hover tooltip, so users had to guess what was missing. */}
-          <p className="w-[158px] text-right text-[10px] leading-tight text-amber-500/90">
+          <p className="w-full text-right text-[10px] leading-tight text-amber-500/90">
             {block.reason}
           </p>
         </div>
@@ -111,7 +111,7 @@ export function GenerateButton() {
 
   return (
     <>
-      <div className={`grid w-[158px] shrink-0 grid-cols-[2fr_auto_1fr] overflow-hidden rounded-lg font-medium text-white shadow-accent-glow transition-all ${
+      <div className={`grid w-full grid-cols-[3fr_1fr_1fr] overflow-hidden rounded-lg font-medium text-white shadow-accent-glow transition-all ${
         pending ? 'bg-bg-active text-text-muted' : 'bg-cta'
       }`}>
         <button
