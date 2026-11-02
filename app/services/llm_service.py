@@ -6252,6 +6252,7 @@ def _build_fallback_prompt(
 def plan_clip_prompts_and_images(
     clips: list,
     scene_description: str,
+    technical_prompt: str = "",
     lyrics: Optional[list] = None,
     bpm: float = 120.0,
     max_new_tokens: int = 512,
@@ -6265,6 +6266,11 @@ def plan_clip_prompts_and_images(
     - ``"image"`` — generate only starting-frame (image) descriptions.
     - ``"video"`` — generate only video-motion prompts (may use *existing_image_prompts* as context).
     - ``"both"``  — legacy mode, generates V + I in one pass.
+
+    *technical_prompt* carries the consolidated technical direction (fps,
+    material, lighting, camera technique). It describes the whole film,
+    so it is sent apart from the scene concept and applies to every
+    clip.
 
     Returns:
         ``prompt_type="image"``  → ``[{"image_prompt": str}, ...]``
@@ -6554,10 +6560,18 @@ def plan_clip_prompts_and_images(
 
         clips_text = "\n".join(clip_descriptions)
 
+        # The technical prompt is global direction, not a scene: it is
+        # stated once, ahead of the clips, and applies to all of them.
+        technical_block = (
+            f"\nTechnical Prompt (applies to every clip):\n{technical_prompt.strip()}\n"
+            if technical_prompt and technical_prompt.strip()
+            else ""
+        )
+
         # Build user prompt with context appropriate to the prompt type
         if prompt_type == "image":
             user_prompt = (
-                f"Scene Concept: {scene_description}\n\n"
+                f"Scene Concept: {scene_description}\n{technical_block}\n"
                 f"Clips:\n{clips_text}\n\n"
                 f"Design scenes based on the Scene Concept above. "
                 f"For each clip, write a detailed, self-contained image prompt "
@@ -6579,7 +6593,7 @@ def plan_clip_prompts_and_images(
                     context_lines = "\nStarting frames:\n" + "\n".join(img_context) + "\n"
 
             user_prompt = (
-                f"Scene Concept: {scene_description}\n{context_lines}\n"
+                f"Scene Concept: {scene_description}\n{technical_block}{context_lines}\n"
                 f"Clips:\n{clips_text}\n\n"
                 f"Write a flowing video prompt paragraph for each clip. "
                 f"Each prompt should describe the full scene: setting, lighting, "
@@ -6589,7 +6603,7 @@ def plan_clip_prompts_and_images(
             tokens_for_batch = max(max_new_tokens, batch_size * 200 + 1024)
         else:
             user_prompt = (
-                f"Scene Concept: {scene_description}\n\n"
+                f"Scene Concept: {scene_description}\n{technical_block}\n"
                 f"Clips:\n{clips_text}\n\n"
                 f"Direct a music video based on the Scene Concept above. "
                 f"Write detailed V and I prompts for each clip. "

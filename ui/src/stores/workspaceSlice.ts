@@ -259,6 +259,9 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       if (draft.directorSceneDescription !== undefined) {
         patch.directorSceneDescription = draft.directorSceneDescription
       }
+      if (draft.directorTechnicalPrompt !== undefined) {
+        patch.directorTechnicalPrompt = draft.directorTechnicalPrompt
+      }
       if (draft.directorAudioPath) {
         patch.directorAudioPath = draft.directorAudioPath
         const audioName = draft.directorAudioName || draft.directorAudioPath.replace(/\\/g, '/').split('/').pop() || 'Director Audio'
@@ -323,6 +326,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       directorPlannedClips: snap.plannedClips || [],
       directorClipPlans: snap.clipPlans || [],
       directorSceneDescription: snap.sceneDescription ?? s.directorSceneDescription,
+      directorTechnicalPrompt: snap.technicalPrompt ?? s.directorTechnicalPrompt,
     })
     await get().saveDirectorDraftNow()
   },
@@ -357,6 +361,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
           plannedClips: s.directorPlannedClips,
           clipPlans: s.directorClipPlans,
           sceneDescription: s.directorSceneDescription,
+          technicalPrompt: s.directorTechnicalPrompt,
         })
         while (currentSnapshots.length > 5) currentSnapshots.shift()
         set({ directorDraftSnapshots: currentSnapshots })
@@ -372,6 +377,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       directorPlannedClips: s.directorPlannedClips,
       directorClipPlans: s.directorClipPlans,
       directorSceneDescription: s.directorSceneDescription,
+      directorTechnicalPrompt: s.directorTechnicalPrompt,
       directorEnergyBias: s.directorEnergyBias,
       directorSpeakers: s.directorSpeakers,
       directorSpeakerMappings: s.directorSpeakerMappings,

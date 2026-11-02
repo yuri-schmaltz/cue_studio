@@ -338,6 +338,9 @@ export async function startDirectorPipeline(
       _director_project_id: state.directorProjectId || undefined,
       _director_parent_pipeline_id: state.directorSourcePipelineId || undefined,
       scene_description: directorSceneDescription,
+      // The consolidated technical prompt travels apart from the scene
+      // script: it describes the whole film, not any particular shot.
+      technical_prompt: state.directorTechnicalPrompt || undefined,
       audio_path: effectiveDirectorAudioPath,
       // Audio analysis already produced this reusable stem for transcription.
       // LTX-2.5 can condition mouth motion on it while Director keeps the

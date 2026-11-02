@@ -8,6 +8,7 @@ import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
 import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import { DirectorScriptReconciliationBanner } from './DirectorScriptReconciliationBanner'
+import { DirectorTechnicalPromptField } from './DirectorTechnicalPromptField'
 import {
   AdditionalRefsSection,
   StructureView,
@@ -1235,6 +1236,12 @@ export function DirectorBriefingColumn() {
                     between the script and the audio must be visible
                     while writing it, not only on the Music tab. */}
                 {!isStoryPath && <DirectorScriptReconciliationBanner />}
+                {/* The consolidated technical prompt, in its own field.
+                    It describes the whole film (fps, material, lighting,
+                    camera technique) and travels with every clip, while
+                    the scenes below stay bound to the moment of the
+                    track they describe. */}
+                {!isStoryPath && <DirectorTechnicalPromptField />}
                 {/* Composer do Description tab. flex-1 + min-h-0 deixa
                     let the block grow to fill all available vertical
                     space above the tabs; the inner textarea
@@ -1252,7 +1259,7 @@ export function DirectorBriefingColumn() {
                     o rodapé com o fundo do card interno da coluna
                     central (mesmo truque do card IDENTIFIED VOICES). */}
                 <div className="flex-1 min-h-0 flex flex-col -mb-5">
-                  {renderComposer(undefined, true)}
+                  {renderComposer(isStoryPath ? undefined : 'Cenas', true)}
                 </div>
               </div>
             )}

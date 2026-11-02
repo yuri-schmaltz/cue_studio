@@ -194,6 +194,39 @@ def _music_shot_schema(count: int, *, include_image_fields: bool) -> dict:
     }
 
 
+def _resolve_global_concept(scene_description: str, technical_prompt: str = "") -> tuple[str, dict]:
+    """Return the global concept and the parsed script for a briefing.
+
+    An explicit technical prompt wins over a technical block found inside
+    the briefing: the user wrote it in the field that means "applies to
+    the whole film", so that is what it means.
+    """
+    script = parse_scene_script(scene_description)
+    scene_script = script.to_dict()
+    if technical_prompt and technical_prompt.strip():
+        scene_script["global_technical"] = technical_prompt.strip()
+    anchored = bool(scene_script.get("anchored"))
+    if anchored:
+        global_concept = _compose_global_concept(scene_script)
+    else:
+        global_concept = _compose_unanchored_concept(scene_description, technical_prompt)
+    return global_concept, scene_script
+
+
+def _compose_unanchored_concept(scene_description: str, technical_prompt: str) -> str:
+    """Global concept for a briefing with no timecodes.
+
+    The historic behaviour is preserved — the whole briefing is the
+    concept — but an explicit technical prompt is still appended, since
+    it describes the film rather than any particular shot.
+    """
+    blocks = [
+        str(scene_description or "").strip(),
+        str(technical_prompt or "").strip(),
+    ]
+    return "\n\n".join(block for block in blocks if block)
+
+
 def _compose_global_concept(scene_script: dict) -> str:
     """Join the global blocks of a parsed briefing.
 
@@ -293,6 +326,7 @@ class MusicVideoPlanner(BasePlanner):
         reference_image_path: Optional[str] = None,
         speaker_mappings: Optional[dict] = None,
         characters: Optional[list[dict]] = None,
+        technical_prompt: str = "",
         **kwargs,
     ) -> ProductionPlan:
         """Create a ProductionPlan for a music video.
@@ -305,6 +339,10 @@ class MusicVideoPlanner(BasePlanner):
             reference_image_path: Path to reference photo (optional).
             speaker_mappings: {speaker_id: {name, role}} from UI.
             characters: List of character dicts [{name, description}].
+            technical_prompt: The consolidated technical prompt (fps,
+                material, lighting, camera technique, fade-out). It
+                describes the whole film, so it is prepended to the
+                global concept instead of being bound to any scene.
 
         A briefing may also carry a time-anchored script
         (``CENA 2: Entrada de Gary (0:11 - 0:28)``).  Those scenes are
@@ -328,13 +366,10 @@ class MusicVideoPlanner(BasePlanner):
         # Split the briefing into a time-anchored script.  A briefing with
         # no usable timecodes keeps its historic behaviour: the whole text
         # stays the global concept and no scene binds to a clip.
-        script = parse_scene_script(scene_description)
-        scene_script = script.to_dict()
-        anchored = bool(scene_script.get("anchored"))
-        global_concept = (
-            _compose_global_concept(scene_script) if anchored else scene_description
+        global_concept, scene_script = _resolve_global_concept(
+            scene_description, technical_prompt
         )
-
+        anchored = bool(scene_script.get("anchored"))
         # Normalize speaker_mappings: frontend sends list, we need dict
         if isinstance(speaker_mappings, list):
             sm_dict: dict = {}

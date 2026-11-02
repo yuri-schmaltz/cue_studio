@@ -676,6 +676,8 @@ export interface DirectorDraft {
   directorPlannedClips?: import('../types').PlannedClip[]
   directorClipPlans?: import('../types').ClipPlan[]
   directorSceneDescription?: string
+  /** The consolidated technical prompt (fps, material, lighting). */
+  directorTechnicalPrompt?: string
   directorEnergyBias?: number
   directorSpeakers?: string[]
   directorSpeakerMappings?: import('../types').SpeakerMapping[]
@@ -1360,6 +1362,8 @@ export async function rejoinPipeline(pid: string): Promise<{ filename: string }>
 export interface DirectorV2PlanRequest {
   skill_type: string
   scene_description?: string
+  /** The consolidated technical prompt (fps, material, lighting...). */
+  technical_prompt?: string
   story_description?: string
   clips?: unknown[]
   lyrics?: unknown[]
@@ -2518,6 +2522,8 @@ export async function classifySections(params: {
 export async function planClipPromptsAndImages(params: {
   clips: import('../types').PlannedClip[]
   scene_description: string
+  /** The consolidated technical prompt (fps, material, lighting...). */
+  technical_prompt?: string
   lyrics?: import('../types').LyricSegment[]
   bpm: number
   reference_image_path?: string | null

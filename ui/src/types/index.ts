@@ -1918,6 +1918,8 @@ export interface SavedPipelineState {
   pipeline_type: string
   workspace?: string
   scene_description: string
+  /** The consolidated technical prompt (fps, material, lighting). */
+  technical_prompt?: string
   reference_image_path: string | null
   generated_reference_image_filename?: string | null
   character_ref_paths?: string[]

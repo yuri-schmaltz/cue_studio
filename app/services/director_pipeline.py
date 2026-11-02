@@ -1308,6 +1308,9 @@ def _save_pipeline_state_locked(pid: str) -> bool:
         "workspace": p.get("workspace") or "default",
         "pipeline_type": params.get("pipeline_type", "music_video"),
         "scene_description": params.get("scene_description", ""),
+        # The technical prompt is stored apart from the scene script so
+        # reopening the project restores both.
+        "technical_prompt": params.get("technical_prompt", ""),
         "reference_image_path": params.get("reference_image_path"),
         # A no-reference run creates its own visual anchor inside the output
         # directory.  Keep the basename separate from the user's input path so
@@ -6471,6 +6474,10 @@ def _run_planning_v2(pid: str, params: dict, pipeline_type: str):
         planner_kwargs.update({
             "clips": planned_clips,
             "scene_description": scene_description,
+            # The consolidated technical prompt (fps, material, lighting,
+            # camera technique). It is global by nature, so it travels
+            # apart from the scene script.
+            "technical_prompt": params.get("technical_prompt", "") or "",
             "lyrics": params.get("lyrics"),
             "bpm": params.get("bpm", 120),
         })

@@ -57,6 +57,11 @@ export type DirectorPlanningSlice = {
   directorSetEnergyBias: (bias: number) => Promise<void>
   directorConfirmStructure: () => void
   directorSetSceneDescription: (prompt: string) => void
+  /** The consolidated technical prompt (fps, material, lighting, camera
+   *  technique, fade-out). It describes the whole film, so it is kept
+   *  apart from the scene script and travels with every clip. */
+  directorTechnicalPrompt: string
+  directorSetTechnicalPrompt: (prompt: string) => void
   directorScriptReconciliation: DirectorScriptReconciliation | null
   directorReconcileScript: () => Promise<void>
   /** Restrict the clip plan to the window the briefing actually covers.
@@ -133,6 +138,7 @@ export const createDirectorPlanningSlice = (
   directorSongDuration: 120,
   directorTrackGenerating: false,
   directorNegativePrompt: '',
+  directorTechnicalPrompt: '',
   directorScriptReconciliation: null,
   directorScriptWindow: null,
 
@@ -654,6 +660,12 @@ export const createDirectorPlanningSlice = (
     return { directorLocationRefs: refs, directorLocationRefPaths: paths, directorLocationRefLabels: labels }
   }),
 
+  directorSetTechnicalPrompt: (prompt) => {
+    // The technical prompt never changes scene coverage, so it needs no
+    // reconciliation — it only travels to the planner.
+    set({ directorTechnicalPrompt: prompt })
+  },
+
   directorSetSceneDescription: (prompt) => {
     set({ directorSceneDescription: prompt })
     const debounce = deps.getNegativePromptDebounce()
@@ -718,6 +730,7 @@ export const createDirectorPlanningSlice = (
   directorPlanPrompts: async () => {
     let { directorPlannedClips, directorAnalysis } = get()
     const directorSceneDescription = get().directorSceneDescription
+    const directorTechnicalPrompt = get().directorTechnicalPrompt
     if (!directorSceneDescription.trim()) return
 
     const shouldPlanStructure = (
@@ -785,6 +798,7 @@ export const createDirectorPlanningSlice = (
           skill_type: get().directorSkill || 'music_video',
           clips: directorPlannedClips,
           scene_description: directorSceneDescription,
+          technical_prompt: directorTechnicalPrompt || undefined,
           lyrics: directorAnalysis?.lyrics ?? undefined,
           bpm: directorAnalysis?.bpm ?? 120,
           reference_image_path: refImagePath ?? undefined,
@@ -825,6 +839,7 @@ export const createDirectorPlanningSlice = (
         const result = await api.planClipPromptsAndImages({
           clips: directorPlannedClips,
           scene_description: directorSceneDescription,
+          technical_prompt: directorTechnicalPrompt || undefined,
           lyrics: directorAnalysis?.lyrics ?? undefined,
           bpm: directorAnalysis?.bpm ?? 120,
           reference_image_path: refImagePath,
@@ -970,7 +985,7 @@ export const createDirectorPlanningSlice = (
   },
 
   directorPlanVideoPrompts: async () => {
-    const { directorPlannedClips, directorSceneDescription, directorAnalysis, directorClipPlans, directorReferenceImagePath } = get()
+    const { directorPlannedClips, directorSceneDescription, directorAnalysis, directorClipPlans, directorReferenceImagePath, directorTechnicalPrompt } = get()
     if (!directorPlannedClips.length || !directorClipPlans.length) return
     deps.getV2PlanController()?.abort()
     const planController = new AbortController()
@@ -999,6 +1014,7 @@ export const createDirectorPlanningSlice = (
       const result = await api.planClipPromptsAndImages({
         clips: directorPlannedClips,
         scene_description: directorSceneDescription,
+        technical_prompt: directorTechnicalPrompt || undefined,
         lyrics: directorAnalysis?.lyrics ?? undefined,
         bpm: directorAnalysis?.bpm ?? 120,
         reference_image_path: directorReferenceImagePath,
@@ -1389,6 +1405,7 @@ export const createDirectorPlanningSlice = (
       directorClipPlans: [],
       directorSceneDescription: '',
       directorNegativePrompt: '',
+      directorTechnicalPrompt: '',
       directorScriptReconciliation: null,
       directorScriptWindow: null,
       directorLoading: false,

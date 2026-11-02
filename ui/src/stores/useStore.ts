@@ -1460,6 +1460,7 @@ export interface AppState {
     plannedClips?: PlannedClip[]
     clipPlans?: ClipPlan[]
     sceneDescription?: string
+    technicalPrompt?: string
   }>
   restoreDraftSnapshot: (index: number) => Promise<void>
 
@@ -1602,6 +1603,11 @@ export interface AppState {
   directorSelectedClipIndex: number
   setDirectorSelectedClipIndex: (index: number) => void
   directorSceneDescription: string
+  /** The consolidated technical prompt (fps, material, lighting, camera
+   *  technique, fade-out). It describes the whole film, so it is kept
+   *  apart from the scene script and travels with every clip. */
+  directorTechnicalPrompt: string
+  directorSetTechnicalPrompt: (prompt: string) => void
   /** Parsed time-anchored briefing plus its coverage report against the
    *  analysed audio. Null until the reconciliation endpoint answers. */
   directorScriptReconciliation: DirectorScriptReconciliation | null
@@ -2130,6 +2136,7 @@ async function _buildDirectorRestorePatch(
     directorSkill: skill,
     shortFilmPath,
     directorSceneDescription: String(ui.directorSceneDescription || pipeline.scene_description || ''),
+    directorTechnicalPrompt: String(ui.directorTechnicalPrompt || pipeline.technical_prompt || ''),
     // Project-scoped negative prompt isn't persisted on the server-side
     // state file yet — we re-fetch it from the dedicated endpoint below
     // (see _loadDirectorNegativePrompt) so a reopened project picks up

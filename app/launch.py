@@ -9648,6 +9648,7 @@ async def director_plan_prompts_and_images(request: Request):
         clip_plans = llm_service.plan_clip_prompts_and_images(
             clips=clips,
             scene_description=scene_description,
+            technical_prompt=body.get("technical_prompt", "") or "",
             lyrics=body.get("lyrics"),
             bpm=body.get("bpm", 120.0),
             reference_image_path=ref_image_path,
@@ -10513,6 +10514,7 @@ async def director_v2_plan(request: Request):
                      "reference_image_path", "speaker_mappings", "characters",
                      "audio_path", "target_duration", "target_scenes", "narrative_mode",
                      "fps", "frames_steps", "frames_minimum",
+                     "technical_prompt",
                      "concept", "visual_style", "platform", "style", "transcript"]:
             if key in body:
                 planner_kwargs[key] = body[key]
