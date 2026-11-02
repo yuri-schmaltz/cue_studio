@@ -28,8 +28,11 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 # Scene headers: "CENA 1: Nome", "CENA 1 - Nome", "Scene 3 — Title".
+# Markdown headings and emphasis are tolerated because real briefs are
+# written as "### **CENA 1: Nome (0:00 - 0:11)**".
 _HEADER_RE = re.compile(
-    r"^[ \t]*(?P<kind>cena|scene|escena|cap[ií]tulo)[ \t]*(?P<num>\d+)"
+    r"^[ \t]*(?:#{1,6}[ \t]*)?[*_]{0,3}[ \t]*"
+    r"(?P<kind>cena|scene|escena|cap[ií]tulo)[ \t]*(?P<num>\d+)"
     r"[ \t]*(?P<sep>[:.\-–—][ \t]*)?(?P<rest>.*)$",
     re.IGNORECASE,
 )
@@ -42,8 +45,44 @@ _RANGE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A sub-beat inside a scene body: "- **0:00 - 0:05:** A mão se posiciona".
+# These are the fine-grained anchors that let a shot line up with the
+# exact second of the track it describes.
+_BEAT_RE = re.compile(
+    r"^[ \t]*(?:[-*+][ \t]*)?[*_]{0,3}[ \t]*"
+    r"(?P<start>\d{1,2}(?::\d{1,2}){0,2}(?:\.\d+)?|\d+(?:\.\d+)?)[ \t]*"
+    r"(?:-|–|—|to|a|até)[ \t]*"
+    r"(?P<end>\d{1,2}(?::\d{1,2}){0,2}(?:\.\d+)?|\d+(?:\.\d+)?)[ \t]*"
+    r"[*_]{0,3}[ \t]*[:：]?[ \t]*(?P<rest>.*)$"
+)
+
+# The per-scene shot plan: "- **Visual:** Plano macro de massinha...".
+_VISUAL_RE = re.compile(
+    r"^[ \t]*(?:[-*+][ \t]*)?[*_]{0,3}[ \t]*"
+    r"(?P<label>visual|enquadramento|shot|corte|plano)[ \t]*[*_]{0,3}[ \t]*[:：][ \t]*"
+    r"(?P<rest>.+)$",
+    re.IGNORECASE,
+)
+
 # Quoted lyric / dialogue fragments inside a scene body.
 _QUOTE_RE = re.compile(r"[\"“]([^\"”\n]{2,400})[\"”]")
+
+# Headings that introduce the consolidated technical prompt block, e.g.
+# "### **Prompt e Parâmetros Técnicos de Geração da IA:**". That block
+# describes the whole film (fps, material, lighting, fade-out) and must
+# not be mistaken for the body of the last scene.
+_TECHNICAL_KEYWORDS = (
+    "prompt",
+    "parâmetros técnicos",
+    "parametros tecnicos",
+    "parâmetros técnicos",
+    "technical",
+    "instruções técnicas",
+    "instrucoes tecnicas",
+    "configuração técnica",
+    "geracao da ia",
+    "geração da ia",
+)
 
 _STATUS_FULL_TRACK = "full_track"
 _STATUS_EXCERPT = "excerpt"
@@ -70,6 +109,35 @@ def parse_timecode(raw: str) -> Optional[float]:
 
 
 @dataclass
+class ScriptBeat:
+    """A time-anchored sub-segment inside a scene.
+
+    ``CENA 1 (0:00 - 0:11)`` may carry two beats: ``0:00 - 0:05`` and
+    ``0:05 - 0:11``. They are the granularity that lets a shot line up
+    with the exact second of the track it describes.
+    """
+
+    start: float
+    end: float
+    body: str
+    body_plain: str
+    quotes: list[str] = field(default_factory=list)
+
+    @property
+    def duration(self) -> float:
+        return max(0.0, self.end - self.start)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "start": self.start,
+            "end": self.end,
+            "body": self.body,
+            "body_plain": self.body_plain,
+            "quotes": list(self.quotes),
+        }
+
+
+@dataclass
 class ScriptScene:
     """One ``CENA N (start - end)`` block of the briefing."""
 
@@ -80,6 +148,10 @@ class ScriptScene:
     body: str
     body_plain: str
     quotes: list[str] = field(default_factory=list)
+    #: The scene's own shot plan ("Visual: Plano macro ...").
+    visual: str = ""
+    #: Fine-grained, time-anchored sub-segments.
+    beats: list[ScriptBeat] = field(default_factory=list)
 
     @property
     def anchored(self) -> bool:
@@ -100,6 +172,8 @@ class ScriptScene:
             "body": self.body,
             "body_plain": self.body_plain,
             "quotes": list(self.quotes),
+            "visual": self.visual,
+            "beats": [beat.to_dict() for beat in self.beats],
         }
 
 
@@ -109,6 +183,10 @@ class SceneScript:
 
     scenes: list[ScriptScene] = field(default_factory=list)
     global_style: str = ""
+    #: The consolidated technical prompt block (fps, material, lighting,
+    #: fade-out...). It describes the whole film, so it stays global
+    #: instead of being appended to the last scene.
+    global_technical: str = ""
 
     @property
     def anchored_scenes(self) -> list[ScriptScene]:
@@ -134,6 +212,7 @@ class SceneScript:
         return {
             "scenes": [scene.to_dict() for scene in self.scenes],
             "global_style": self.global_style,
+            "global_technical": self.global_technical,
             "span": list(span) if span else None,
             "anchored": bool(self.anchored_scenes),
         }
@@ -157,11 +236,93 @@ def _clean_title(text: str) -> str:
     title = text.strip()
     title = re.sub(r"^[\s:.\-–—]+", "", title)
     title = re.sub(r"[\s:.\-–—]+$", "", title)
+    # Markdown emphasis left over from "**CENA 1: Title (0:00 - 0:11)**".
+    title = title.strip("*_ ").strip()
     return title.strip()
+
+
+def _clean_inline(text: str) -> str:
+    """Drop the markdown emphasis markers that wrap a captured line.
+
+    ``- **Visual:** Plano macro`` captures as ``"** Plano macro"`` because
+    the closing ``**`` sits between the colon and the text.
+    """
+    out = str(text or "").strip()
+    out = re.sub(r"^[*_]{1,3}[ \t]*", "", out)
+    out = re.sub(r"[ \t]*[*_]{1,3}$", "", out)
+    return out.strip()
+
+
+def _is_technical_section(line: str) -> bool:
+    """True when *line* introduces the consolidated technical prompt block.
+
+    Only heading-shaped lines qualify, so a scene body mentioning
+    "prompt" in prose never steals the block from the scene.
+    """
+    stripped = line.strip()
+    if not stripped:
+        return False
+    heading_like = stripped.startswith("#") or (
+        stripped.startswith("*") and stripped.endswith("*")
+    )
+    if not heading_like:
+        return False
+    lowered = stripped.lower()
+    return any(keyword in lowered for keyword in _TECHNICAL_KEYWORDS)
+
+
+def _parse_scene_body(lines: list[str]) -> dict[str, Any]:
+    """Split a scene body into its shot plan, its beats and the rest.
+
+    ``- **Visual:** Plano macro ...`` becomes the scene's shot plan;
+    ``- **0:00 - 0:05:** ...`` lines become time-anchored beats; anything
+    else stays in the residual body.
+    """
+    visual = ""
+    beats: list[ScriptBeat] = []
+    residual: list[str] = []
+    residual_quotes: list[str] = []
+
+    for line in lines:
+        visual_match = _VISUAL_RE.match(line)
+        if visual_match and not visual:
+            visual = _clean_inline(visual_match.group("rest"))
+            continue
+        beat_match = _BEAT_RE.match(line)
+        if beat_match:
+            start = parse_timecode(beat_match.group("start"))
+            end = parse_timecode(beat_match.group("end"))
+            if start is not None and end is not None and end > start:
+                raw = _clean_inline(beat_match.group("rest"))
+                body_plain, quotes = _strip_quotes(raw)
+                beats.append(ScriptBeat(
+                    start=float(start),
+                    end=float(end),
+                    body=raw,
+                    body_plain=body_plain,
+                    quotes=quotes,
+                ))
+                continue
+        residual.append(line)
+
+    residual_text = "\n".join(residual).strip()
+    residual_plain, residual_quotes = _strip_quotes(residual_text)
+
+    return {
+        "visual": visual,
+        "beats": beats,
+        "residual": residual_plain,
+        "residual_quotes": residual_quotes,
+    }
 
 
 def parse_scene_script(text: str) -> SceneScript:
     """Split a Director briefing into preamble + time-anchored scenes.
+
+    The briefing is expected to look like a screenplay: a global style
+    block, then ``CENA N: Title (0:00 - 0:11)`` sections, optionally with
+    a per-scene ``Visual:`` shot plan and ``0:00 - 0:05`` sub-beats, and
+    finally a consolidated technical-prompt block.
 
     Unparseable briefings still return a usable result: the whole text
     becomes the preamble and no scene is anchored, which keeps the
@@ -173,30 +334,56 @@ def parse_scene_script(text: str) -> SceneScript:
 
     lines = source.splitlines()
     preamble: list[str] = []
+    technical: list[str] = []
     scenes: list[ScriptScene] = []
     current: Optional[dict[str, Any]] = None
+    in_technical = False
 
     def _flush() -> None:
         nonlocal current
         if current is None:
             return
-        body = "\n".join(current.pop("lines")).strip()
-        body_plain, quotes = _strip_quotes(body)
+        raw_lines = current.pop("lines")
+        parsed = _parse_scene_body(raw_lines)
+        body = "\n".join(raw_lines).strip()
+        quotes = list(parsed["residual_quotes"])
+        for beat in parsed["beats"]:
+            quotes.extend(beat.quotes)
+        start = current["start"]
+        end = current["end"]
+        beats = parsed["beats"]
+        if (start is None or end is None) and beats:
+            # A scene header without a range still gets its window from
+            # its own beats.
+            start = min(beat.start for beat in beats)
+            end = max(beat.end for beat in beats)
         scenes.append(ScriptScene(
             index=int(current["num"]),
             title=current["title"],
-            start=current["start"],
-            end=current["end"],
+            start=start,
+            end=end,
             body=body,
-            body_plain=body_plain,
+            body_plain=parsed["residual"],
             quotes=quotes,
+            visual=parsed["visual"],
+            beats=beats,
         ))
         current = None
 
     for raw_line in lines:
+        if _is_technical_section(raw_line) and not _HEADER_RE.match(raw_line):
+            # The technical block describes the whole film: flush the
+            # scene in progress and collect the rest as a global block.
+            _flush()
+            in_technical = True
+            technical.append(raw_line)
+            continue
+
         header = _HEADER_RE.match(raw_line)
         if not header:
-            if current is not None:
+            if in_technical:
+                technical.append(raw_line)
+            elif current is not None:
                 current["lines"].append(raw_line)
             else:
                 preamble.append(raw_line)
@@ -227,12 +414,17 @@ def parse_scene_script(text: str) -> SceneScript:
     _flush()
 
     global_style = "\n".join(preamble).strip()
+    global_technical = "\n".join(technical).strip()
     if not global_style and scenes and not any(scene.anchored for scene in scenes):
         # A briefing made only of unanchored scene headers still deserves a
         # readable concept; fall back to the raw titles.
         global_style = "; ".join(scene.title for scene in scenes if scene.title)
 
-    return SceneScript(scenes=scenes, global_style=global_style)
+    return SceneScript(
+        scenes=scenes,
+        global_style=global_style,
+        global_technical=global_technical,
+    )
 
 
 def _as_script_dict(script: Any) -> dict[str, Any]:
@@ -246,7 +438,13 @@ def _as_script_dict(script: Any) -> dict[str, Any]:
         return script.to_dict()
     if isinstance(script, dict):
         return script
-    return {"scenes": [], "global_style": "", "span": None, "anchored": False}
+    return {
+        "scenes": [],
+        "global_style": "",
+        "global_technical": "",
+        "span": None,
+        "anchored": False,
+    }
 
 
 def scenes_overlapping(
@@ -280,6 +478,46 @@ def scenes_overlapping(
             continue
         if scene_start < high and scene_end > low:
             matched.append(scene)
+    return matched
+
+
+def beats_overlapping(
+    scene: Any,
+    start: float,
+    end: float,
+) -> list[dict[str, Any]]:
+    """Return the sub-beats of *scene* that overlap ``[start, end]``.
+
+    Beats are the fine-grained anchors of a scripted scene. Binding a
+    clip to the beats it actually covers is what lets a shot line up
+    with the exact second of the track it describes.
+    """
+    if isinstance(scene, ScriptScene):
+        beats = [beat.to_dict() for beat in scene.beats]
+    elif isinstance(scene, dict):
+        beats = scene.get("beats") or []
+    else:
+        return []
+    try:
+        low = float(start)
+        high = float(end)
+    except (TypeError, ValueError):
+        return []
+    matched: list[dict[str, Any]] = []
+    for beat in beats:
+        if not isinstance(beat, dict):
+            continue
+        beat_start = beat.get("start")
+        beat_end = beat.get("end")
+        if beat_start is None or beat_end is None:
+            continue
+        try:
+            beat_start = float(beat_start)
+            beat_end = float(beat_end)
+        except (TypeError, ValueError):
+            continue
+        if beat_start < high and beat_end > low:
+            matched.append(beat)
     return matched
 
 

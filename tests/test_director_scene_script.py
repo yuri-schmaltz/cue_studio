@@ -19,6 +19,7 @@ if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
 
 from services.director.scene_script import (  # noqa: E402
+    beats_overlapping,
     parse_scene_script,
     reconcile_scene_script,
     scenes_overlapping,
@@ -173,6 +174,107 @@ class ReconcileSceneScriptTests(unittest.TestCase):
         report = reconcile_scene_script(script, audio_duration=None)
         self.assertAlmostEqual(report.covered_end or 0, 45.0)
         self.assertIsNone(report.audio_duration)
+
+
+SCREENPLAY = """# Roteiro Completo: "More Than Words" (04:15)
+
+- **Estilo Visual e Direção:** Animacao de massinha, set escuro, fps de stop-motion.
+
+### **CENA 1: A Introducao e o Setup (0:00 - 0:11)**
+
+- **Visual:** Plano macro (close-up extremo) de massinha. A camera foca nas cordas.
+- **0:00 - 0:05:** A mao esquerda de massinha de **Nuno** se posiciona no braco do violao.
+- **0:05 - 0:11:** A camera faz um lento *pull-back* e sobe, revelando o rosto concentrado.
+
+### **CENA 2: A Entrada de Gary (0:11 - 0:28)**
+
+- **Visual:** Plano medio-conjunto mostrando os dois de corpo inteiro.
+- **0:11 - 0:20:** A camera foca em **Gary**. Ele solta a primeira frase: *"Saying I love you"*.
+- **0:20 - 0:28:** Detalhe no rosto de **Gary**, olhos semicerrados.
+
+### **Prompt e Parametros Tecnicos de Geracao da IA:**
+
+- **Prompt para IA (Consolidado):** `"A cinematic 12-15 fps stop-motion claymation video."`
+"""
+
+
+class ScreenplayFormatTests(unittest.TestCase):
+    """The screenplay layout a user actually writes.
+
+    Markdown headings, bold markers, a per-scene "Visual:" shot plan,
+    time-anchored sub-beats and a trailing technical-prompt block.
+    """
+
+    def test_markdown_scene_headers_are_parsed(self):
+        script = parse_scene_script(SCREENPLAY)
+        self.assertTrue(script.anchored)
+        self.assertEqual(len(script.scenes), 2)
+        self.assertEqual(script.scenes[0].title, "A Introducao e o Setup")
+        self.assertAlmostEqual(script.scenes[0].start, 0.0)
+        self.assertAlmostEqual(script.scenes[0].end, 11.0)
+        self.assertEqual(script.scenes[1].title, "A Entrada de Gary")
+        self.assertAlmostEqual(script.scenes[1].start, 11.0)
+        self.assertAlmostEqual(script.scenes[1].end, 28.0)
+
+    def test_markdown_emphasis_is_stripped_from_the_title(self):
+        script = parse_scene_script(SCREENPLAY)
+        for scene in script.scenes:
+            self.assertNotIn("*", scene.title)
+
+    def test_visual_line_becomes_the_scene_shot_plan(self):
+        script = parse_scene_script(SCREENPLAY)
+        self.assertTrue(script.scenes[0].visual.startswith("Plano macro"))
+        self.assertNotIn("**", script.scenes[0].visual)
+
+    def test_sub_beats_are_parsed(self):
+        script = parse_scene_script(SCREENPLAY)
+        beats = script.scenes[0].beats
+        self.assertEqual(len(beats), 2)
+        self.assertAlmostEqual(beats[0].start, 0.0)
+        self.assertAlmostEqual(beats[0].end, 5.0)
+        self.assertAlmostEqual(beats[1].start, 5.0)
+        self.assertAlmostEqual(beats[1].end, 11.0)
+        self.assertIn("Nuno", beats[0].body_plain)
+
+    def test_beats_carry_their_own_quotes(self):
+        script = parse_scene_script(SCREENPLAY)
+        self.assertIn("Saying I love you", script.scenes[1].beats[0].quotes)
+
+    def test_technical_block_is_global_not_part_of_the_last_scene(self):
+        script = parse_scene_script(SCREENPLAY)
+        self.assertIn("Prompt e Parametros Tecnicos", script.global_technical)
+        self.assertIn("12-15 fps", script.global_technical)
+        self.assertNotIn("12-15 fps", script.scenes[-1].body)
+        self.assertNotIn("12-15 fps", script.scenes[-1].body_plain)
+
+    def test_style_block_stays_global(self):
+        script = parse_scene_script(SCREENPLAY)
+        self.assertIn("Estilo Visual", script.global_style)
+        self.assertNotIn("CENA 1", script.global_style)
+
+    def test_scene_without_a_range_takes_it_from_its_beats(self):
+        script = parse_scene_script(
+            "### **CENA 1: Sem faixa no titulo**\n"
+            "- **0:30 - 0:40:** Acoes.\n"
+        )
+        scene = script.scenes[0]
+        self.assertAlmostEqual(scene.start, 30.0)
+        self.assertAlmostEqual(scene.end, 40.0)
+        self.assertTrue(scene.anchored)
+
+    def test_beats_overlapping_selects_the_covered_range(self):
+        script = parse_scene_script(SCREENPLAY)
+        scene = script.scenes[0]
+        self.assertEqual(len(beats_overlapping(scene, 0.0, 11.0)), 2)
+        self.assertEqual(len(beats_overlapping(scene, 0.0, 5.0)), 1)
+        self.assertEqual(len(beats_overlapping(scene, 30.0, 40.0)), 0)
+
+    def test_reconciliation_covers_the_full_script(self):
+        script = parse_scene_script(SCREENPLAY)
+        report = reconcile_scene_script(script, audio_duration=255.0)
+        self.assertEqual(report.status, "excerpt")
+        self.assertAlmostEqual(report.covered_start or 0, 0.0)
+        self.assertAlmostEqual(report.covered_end or 0, 28.0)
 
 
 if __name__ == "__main__":

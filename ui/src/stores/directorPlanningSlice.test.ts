@@ -149,7 +149,7 @@ describe('directorPlanningSlice', () => {
   it('reconciles a time-anchored briefing against the analysed audio', async () => {
     state.directorAnalysis = { duration: 255 }
     const reconcileSpy = vi.spyOn(api, 'reconcileScript').mockResolvedValue({
-      script: { scenes: [], global_style: '', span: [0, 45], anchored: true },
+      script: { scenes: [], global_style: '', global_technical: '', span: [0, 45], anchored: true },
       report: {
         status: 'excerpt',
         scene_count: 3,

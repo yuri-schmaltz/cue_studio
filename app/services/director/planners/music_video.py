@@ -18,7 +18,7 @@ from ..schema import (
     SpeakerMapEntry,
 )
 from ..policies import build_character_rules_block, build_camera_style_block
-from ..scene_script import parse_scene_script, scenes_overlapping
+from ..scene_script import beats_overlapping, parse_scene_script, scenes_overlapping
 from .base import BasePlanner
 
 
@@ -194,6 +194,22 @@ def _music_shot_schema(count: int, *, include_image_fields: bool) -> dict:
     }
 
 
+def _compose_global_concept(scene_script: dict) -> str:
+    """Join the global blocks of a parsed briefing.
+
+    A screenplay keeps two global blocks: the visual style and direction
+    (before the first scene) and the consolidated technical prompt (after
+    the last one, describing fps, material, lighting, fade-out). Both
+    apply to every shot, so both are prepended to the global concept
+    instead of being buried inside one scene.
+    """
+    blocks = [
+        str(scene_script.get("global_style") or "").strip(),
+        str(scene_script.get("global_technical") or "").strip(),
+    ]
+    return "\n\n".join(block for block in blocks if block)
+
+
 def _format_timecode(seconds: Any) -> str:
     """Render a source-time offset as ``m:ss`` for the planning prompt."""
     try:
@@ -316,8 +332,7 @@ class MusicVideoPlanner(BasePlanner):
         scene_script = script.to_dict()
         anchored = bool(scene_script.get("anchored"))
         global_concept = (
-            scene_script.get("global_style") or ""
-            if anchored else scene_description
+            _compose_global_concept(scene_script) if anchored else scene_description
         )
 
         # Normalize speaker_mappings: frontend sends list, we need dict
@@ -689,6 +704,7 @@ class MusicVideoPlanner(BasePlanner):
                     for scene in overlapping:
                         title = str(scene.get("title") or "").strip()
                         body = str(scene.get("body_plain") or "").strip()
+                        visual = str(scene.get("visual") or "").strip()
                         scene_start = scene.get("start")
                         scene_end = scene.get("end")
                         window = ""
@@ -697,8 +713,24 @@ class MusicVideoPlanner(BasePlanner):
                         label = f"Scene {scene.get('index')}{window}"
                         if title:
                             label += f" '{title}'"
-                        if body:
+                        if visual:
+                            label += f": {visual}"
+                        elif body:
                             label += f": {body}"
+                        # The beats that actually fall inside this clip.
+                        # They carry the second-by-second direction the
+                        # scene header cannot express.
+                        beat_lines = []
+                        for beat in beats_overlapping(scene, start_sec, end_sec):
+                            beat_text = str(beat.get("body_plain") or "").strip()
+                            if not beat_text:
+                                continue
+                            beat_lines.append(
+                                f"[{_format_timecode(beat.get('start'))}-"
+                                f"{_format_timecode(beat.get('end'))}] {beat_text}"
+                            )
+                        if beat_lines:
+                            label += " — " + " ".join(beat_lines)
                         parts.append(label)
                     scene_hint = " Script: " + " | ".join(parts) + "."
                 else:

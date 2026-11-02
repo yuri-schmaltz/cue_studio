@@ -1523,6 +1523,15 @@ export interface PlannedClip extends SuggestedClip {
 }
 
 /** One ``CENA N (start - end)`` block parsed out of a Director briefing. */
+/** A time-anchored sub-segment inside a scene (`0:00 - 0:05`). */
+export interface DirectorScriptBeat {
+  start: number
+  end: number
+  body: string
+  body_plain: string
+  quotes: string[]
+}
+
 export interface DirectorScriptScene {
   index: number
   title: string
@@ -1531,12 +1540,18 @@ export interface DirectorScriptScene {
   body: string
   body_plain: string
   quotes: string[]
+  /** The scene's own shot plan ("Visual: Plano macro ..."). */
+  visual: string
+  /** Fine-grained, time-anchored sub-segments. */
+  beats: DirectorScriptBeat[]
 }
 
 /** The briefing split into a preamble plus its time-anchored scenes. */
 export interface DirectorScript {
   scenes: DirectorScriptScene[]
   global_style: string
+  /** Consolidated technical prompt block (fps, material, lighting...). */
+  global_technical: string
   span: [number, number] | null
   anchored: boolean
 }
