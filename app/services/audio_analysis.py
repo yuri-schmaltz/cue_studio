@@ -933,6 +933,8 @@ def plan_clip_structure(
     frames_steps: int = 4,
     frames_minimum: int = 5,
     total_duration: Optional[float] = None,
+    window_start: Optional[float] = None,
+    window_end: Optional[float] = None,
 ) -> List[dict]:
     """Plan variable-duration clips aligned to beat positions.
 
@@ -943,6 +945,13 @@ def plan_clip_structure(
 
     *energy_bias* shifts the preference: negative = longer clips,
     positive = shorter clips (adjusts MAX by ±2s per unit).
+
+    *window_start* / *window_end* restrict the plan to a slice of the
+    source timeline.  A Director briefing may describe only the first
+    45 seconds of a 4:15 track; planning the whole track would invent
+    shots for audio the user never wrote about.  Clips keep their
+    ABSOLUTE source times so the pipeline can still slice the original
+    soundtrack at the right offset.
 
     Returns a list of clip dicts with ``beat_count`` and ``duration_frames``.
     """
@@ -957,6 +966,15 @@ def plan_clip_structure(
     beat_times = sorted(b["time"] if isinstance(b, dict) else b.time for b in beats)
     sections = analysis.get("sections", [])
     song_duration = total_duration or analysis.get("duration", 180.0)
+
+    # Narrow the timeline to the requested window. The window is clamped
+    # to the analysed duration so a stale/oversized range can never plan
+    # beyond the real end of the audio.
+    window_start = max(0.0, float(window_start)) if window_start is not None else 0.0
+    window_end = float(window_end) if window_end is not None else song_duration
+    window_end = max(window_start, min(window_end, song_duration))
+    if window_end <= window_start:
+        return []
 
     if not beat_times:
         beat_times = [i * beat_duration for i in range(int(song_duration / beat_duration) + 1)]
@@ -987,7 +1005,7 @@ def plan_clip_structure(
                 label = s["label"] if isinstance(s, dict) else s.label
                 energy = s["energy"] if isinstance(s, dict) else s.energy
                 return label, energy, s_end
-        return "verse", 0.5, song_duration
+        return "verse", 0.5, window_end
 
     # Extract speaker change points from diarized lyrics
     lyrics = analysis.get("lyrics") or []
@@ -1002,9 +1020,15 @@ def plan_clip_structure(
             s_end = s["end"] if isinstance(s, dict) else s.end
             label = s["label"] if isinstance(s, dict) else s.label
             energy = s["energy"] if isinstance(s, dict) else s.energy
-            section_spans.append((s_start, min(s_end, song_duration), label, energy))
+            # Clip the section to the requested window so a briefing that
+            # only describes the first 45s never plans the other 3:30.
+            s_start = max(s_start, window_start)
+            s_end = min(s_end, window_end)
+            if s_end <= s_start:
+                continue
+            section_spans.append((s_start, s_end, label, energy))
     if not section_spans:
-        section_spans = [(0.0, song_duration, "verse", 0.5)]
+        section_spans = [(window_start, window_end, "verse", 0.5)]
 
     # ── Plan clips per section ───────────────────────────────────────
     clips: list = []

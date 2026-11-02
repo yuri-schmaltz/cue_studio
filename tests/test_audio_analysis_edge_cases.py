@@ -304,5 +304,107 @@ class ClassifySectionsWithLyricsTests(unittest.TestCase):
         self.assertEqual(out["sections"][1]["label"], "chorus")
 
 
+class PlanClipStructureWindowTests(unittest.TestCase):
+    """A Director briefing may cover only a slice of the analysed track.
+
+    ``plan_clip_structure`` accepts ``window_start``/``window_end`` so the
+    clip plan matches the part of the audio the user actually scripted.
+    Clips keep their ABSOLUTE source times, because the pipeline slices
+    the original soundtrack by absolute offsets.
+    """
+
+    def _long_analysis(self):
+        """A 4:15 track with six evenly spread sections."""
+        duration = 255.0
+        sections = []
+        labels = ["intro", "verse", "chorus", "bridge", "chorus", "outro"]
+        for i, label in enumerate(labels):
+            start = i * (duration / len(labels))
+            end = (i + 1) * (duration / len(labels))
+            sections.append({"start": start, "end": end, "label": label, "energy": 0.5})
+        return {
+            "bpm": 120.0,
+            "beats": [],
+            "sections": sections,
+            "duration": duration,
+        }
+
+    def test_full_track_is_unchanged_without_a_window(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(analysis)
+        self.assertGreater(len(clips), 1)
+        first = min(c["start"] for c in clips)
+        last = max(c["end"] for c in clips)
+        self.assertAlmostEqual(first, 0.0, places=3)
+        self.assertAlmostEqual(last, 255.0, places=3)
+
+    def test_window_restricts_the_plan_to_the_scripted_excerpt(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(
+            analysis, window_start=0.0, window_end=45.0
+        )
+        self.assertGreater(len(clips), 0)
+        self.assertLess(len(clips), 13)
+        for clip in clips:
+            self.assertGreaterEqual(clip["start"], 0.0)
+            self.assertLessEqual(clip["end"], 45.0 + 1e-6)
+        self.assertAlmostEqual(min(c["start"] for c in clips), 0.0, places=3)
+        self.assertAlmostEqual(max(c["end"] for c in clips), 45.0, places=3)
+
+    def test_window_in_the_middle_of_the_track_keeps_absolute_times(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(
+            analysis, window_start=78.0, window_end=134.0
+        )
+        self.assertGreater(len(clips), 0)
+        self.assertAlmostEqual(min(c["start"] for c in clips), 78.0, places=3)
+        self.assertAlmostEqual(max(c["end"] for c in clips), 134.0, places=3)
+
+    def test_window_beyond_the_track_is_clamped(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(
+            analysis, window_start=240.0, window_end=999.0
+        )
+        self.assertGreater(len(clips), 0)
+        for clip in clips:
+            self.assertLessEqual(clip["end"], 255.0 + 1e-6)
+
+    def test_empty_window_returns_no_clips(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(
+            analysis, window_start=45.0, window_end=45.0
+        )
+        self.assertEqual(clips, [])
+
+    def test_inverted_window_returns_no_clips(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(
+            analysis, window_start=90.0, window_end=30.0
+        )
+        self.assertEqual(clips, [])
+
+    def test_window_before_the_track_is_clamped_to_zero(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(
+            analysis, window_start=-10.0, window_end=20.0
+        )
+        self.assertGreater(len(clips), 0)
+        self.assertAlmostEqual(min(c["start"] for c in clips), 0.0, places=3)
+
+    def test_window_only_start_uses_the_rest_of_the_track(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(analysis, window_start=200.0)
+        self.assertGreater(len(clips), 0)
+        self.assertAlmostEqual(min(c["start"] for c in clips), 200.0, places=3)
+        self.assertAlmostEqual(max(c["end"] for c in clips), 255.0, places=3)
+
+    def test_window_only_end_starts_at_the_beginning(self):
+        analysis = self._long_analysis()
+        clips = audio_analysis.plan_clip_structure(analysis, window_end=45.0)
+        self.assertGreater(len(clips), 0)
+        self.assertAlmostEqual(min(c["start"] for c in clips), 0.0, places=3)
+        self.assertAlmostEqual(max(c["end"] for c in clips), 45.0, places=3)
+
+
 if __name__ == "__main__":
     unittest.main()

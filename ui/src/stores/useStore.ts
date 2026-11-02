@@ -10,7 +10,7 @@ import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
 import { canonicalDirectorSkill } from '../types'
 import type { DirectorError } from './directorError'
-import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, LlmRolesState, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineClipState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
+import type { GenerateParams, OutputFile, MediaFilter, AspectRatio, ResolutionPreset, ScailResolutionProfile, GenerationJob, ModelFamily, ModelDef, GenerationMode, StudioVideoWorkflow, StudioVideoCreateRoute, StudioVideoEffectiveCreateRoute, StudioImageWorkflow, ModelOptions, SystemConfig, SettingsTab, OutputMetadata, MultiClip, ServicesConfig, LlmStatus, LlmModelOption, LlmRolesState, AudioAnalysisResult, PlannedClip, ClipPlan, DirectorClipImage, DirectorImageGenProgress, DirectorAnalyzeProgress, SpeakerMapping, DirectorSkill, DirectorShotImageGuidance, DirectorScriptReconciliation, ShortFilmCharacter, ShortFilmPath, CivitAIModel, CivitAIDownload, PipelineClipState, SavedPipelineState, DirectorQueueState, SystemDetectResponse, SystemStats, RecastCharacterMapping, RepaintRegionMapping, H3WindowPlan, MiniMaxH3Reference, AppMode, AppSection, ProjectSetupDefaults, ProjectsRootInfo, Workspace } from '../types'
 import * as api from '../api/client'
 import { applyThemePrefs, getStoredPrefs, type FamilyId, type ThemeMode, type ThemePrefs } from '../lib/theme'
 import { applyDensity, getStoredDensity, type Density } from '../lib/density'
@@ -1602,6 +1602,12 @@ export interface AppState {
   directorSelectedClipIndex: number
   setDirectorSelectedClipIndex: (index: number) => void
   directorSceneDescription: string
+  /** Parsed time-anchored briefing plus its coverage report against the
+   *  analysed audio. Null until the reconciliation endpoint answers. */
+  directorScriptReconciliation: DirectorScriptReconciliation | null
+  /** Window (in source seconds) the clip plan is restricted to. Null
+   *  means the plan covers the whole analysed track. */
+  directorScriptWindow: { start: number; end: number } | null
   directorLoading: boolean
   /** Sub-status for the current loading phase (e.g. "Loading
    *  transcription model (first use downloads ~300MB)..."). Set by
@@ -1774,6 +1780,10 @@ export interface AppState {
   directorSetEnergyBias: (bias: number) => Promise<void>
   directorConfirmStructure: () => void
   directorSetSceneDescription: (prompt: string) => void
+  /** Reconcile a time-anchored briefing against the analysed audio. */
+  directorReconcileScript: () => Promise<void>
+  /** Restrict (or release) the clip plan to a source-time window. */
+  directorSetScriptWindow: (window: { start: number; end: number } | null) => Promise<void>
   directorSetReferenceImage: (file: File | null) => void
   directorAddCharacterRef: (file: File) => void
   directorRemoveCharacterRef: (index: number) => void

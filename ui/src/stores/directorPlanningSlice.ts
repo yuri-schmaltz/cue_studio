@@ -19,6 +19,7 @@ import type { AppState } from './useStore'
 import type {
   DirectorClipImage,
   DirectorShotImageGuidance,
+  DirectorScriptReconciliation,
   MultiClip,
   SpeakerMapping,
 } from '../types'
@@ -56,6 +57,13 @@ export type DirectorPlanningSlice = {
   directorSetEnergyBias: (bias: number) => Promise<void>
   directorConfirmStructure: () => void
   directorSetSceneDescription: (prompt: string) => void
+  directorScriptReconciliation: DirectorScriptReconciliation | null
+  directorReconcileScript: () => Promise<void>
+  /** Restrict the clip plan to the window the briefing actually covers.
+   *  When null the plan covers the whole analysed track (legacy
+   *  behaviour). */
+  directorScriptWindow: { start: number; end: number } | null
+  directorSetScriptWindow: (window: { start: number; end: number } | null) => Promise<void>
   directorSetReferenceImage: (file: File | null) => void
   directorAddCharacterRef: (file: File) => void
   directorRemoveCharacterRef: (index: number) => void
@@ -125,6 +133,8 @@ export const createDirectorPlanningSlice = (
   directorSongDuration: 120,
   directorTrackGenerating: false,
   directorNegativePrompt: '',
+  directorScriptReconciliation: null,
+  directorScriptWindow: null,
 
   setDirectorMusicSource: (s) => set({ directorMusicSource: s }),
   setDirectorMusicModel: (modelType) => set({ directorMusicModel: modelType }),
@@ -261,6 +271,12 @@ export const createDirectorPlanningSlice = (
       })
       set({ directorSpeakers: speakers, directorSpeakerMappings: speakerMappings })
 
+      // The audio duration is only known now, so reconcile any briefing
+      // the user already wrote against it.
+      if (get().directorSceneDescription.trim()) {
+        void get().directorReconcileScript()
+      }
+
       set({ directorLoadingMessage: 'Planning clip structure...' })
       const structure = await get().directorEnsureStructure()
       const isMusicVideo = get().directorSkill === 'music_video'
@@ -289,6 +305,7 @@ export const createDirectorPlanningSlice = (
     if (!state.directorAnalysis) {
       throw new Error('Analyze the audio before planning its structure.')
     }
+    const window = state.directorScriptWindow ?? undefined
     const structure = await api.planClipStructure({
       analysis: state.directorAnalysis,
       energy_bias: state.directorEnergyBias,
@@ -296,9 +313,53 @@ export const createDirectorPlanningSlice = (
       frames_steps: state.modelOptions?.frames_steps ?? 4,
       frames_minimum: state.modelOptions?.frames_minimum ?? 5,
       video_model: state.selectedModelPerMode.video || undefined,
+      ...(window ? { window_start: window.start, window_end: window.end } : {}),
     })
     set({ directorPlannedClips: structure.clips })
     return structure
+  },
+
+  directorReconcileScript: async () => {
+    const state = get()
+    const description = (state.directorSceneDescription || '').trim()
+    if (!description) {
+      set({ directorScriptReconciliation: null })
+      return
+    }
+    try {
+      const result = await api.reconcileScript({
+        scene_description: description,
+        audio_duration: state.directorAnalysis?.duration ?? undefined,
+      })
+      set({ directorScriptReconciliation: result })
+    } catch {
+      // Reconciliation is advisory: a failure must never block the user
+      // from planning. Keep the last known report in that case.
+    }
+  },
+
+  directorSetScriptWindow: async (window) => {
+    set({ directorScriptWindow: window })
+    const { directorAnalysis } = get()
+    if (!directorAnalysis) return
+    // Re-plan so the clip structure immediately matches the chosen
+    // window; otherwise the timeline would still cover the whole track.
+    set({ directorLoading: true })
+    try {
+      const structure = await api.planClipStructure({
+        analysis: directorAnalysis,
+        energy_bias: get().directorEnergyBias,
+        fps: get().modelOptions?.fps ?? 16,
+        frames_steps: get().modelOptions?.frames_steps ?? 4,
+        frames_minimum: get().modelOptions?.frames_minimum ?? 5,
+        video_model: get().selectedModelPerMode.video || undefined,
+        ...(window ? { window_start: window.start, window_end: window.end } : {}),
+      })
+      set({ directorPlannedClips: structure.clips, directorLoading: false })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to update structure'
+      set({ directorLoading: false, directorError: msg })
+    }
   },
 
   directorWriteSong: async () => {
@@ -451,6 +512,10 @@ export const createDirectorPlanningSlice = (
     if (!directorAnalysis) return
     set({ directorLoading: true, directorEnergyBias: bias })
     try {
+      // Keep the script window: re-planning the whole track after the
+      // user already chose "only the scripted excerpt" would silently
+      // undo that choice.
+      const window = get().directorScriptWindow ?? undefined
       const structure = await api.planClipStructure({
         analysis: directorAnalysis,
         energy_bias: bias,
@@ -458,6 +523,7 @@ export const createDirectorPlanningSlice = (
         frames_steps: get().modelOptions?.frames_steps ?? 4,
         frames_minimum: get().modelOptions?.frames_minimum ?? 5,
         video_model: get().selectedModelPerMode.video || undefined,
+        ...(window ? { window_start: window.start, window_end: window.end } : {}),
       })
       set({ directorPlannedClips: structure.clips, directorLoading: false })
     } catch (e: unknown) {
@@ -599,10 +665,15 @@ export const createDirectorPlanningSlice = (
       const timer = setTimeout(() => {
         deps.setNegativePromptDebounce(null)
         void get().directorGenerateNegativePrompt()
+        // Reconcile the briefing against the analysed audio on the same
+        // debounce: the user should learn that their script covers 45s of
+        // a 4:15 track before the plan spends GPU time on the rest.
+        void get().directorReconcileScript()
       }, DIRECTOR_NEGATIVE_PROMPT_DEBOUNCE_MS)
       deps.setNegativePromptDebounce(timer)
     } else {
       void get().directorSetNegativePrompt('')
+      set({ directorScriptReconciliation: null })
     }
   },
 
@@ -1318,6 +1389,8 @@ export const createDirectorPlanningSlice = (
       directorClipPlans: [],
       directorSceneDescription: '',
       directorNegativePrompt: '',
+      directorScriptReconciliation: null,
+      directorScriptWindow: null,
       directorLoading: false,
       directorError: null,
       directorReferenceImage: null,

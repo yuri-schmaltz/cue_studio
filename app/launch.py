@@ -9405,6 +9405,11 @@ async def _plan_audio_structure_async_entry(request: Request):
             frames_steps=frames_steps,
             frames_minimum=frames_minimum,
             total_duration=body.get("total_duration"),
+            # A briefing may describe only a slice of the track. When the
+            # caller passes a window, the plan covers just that range
+            # instead of inventing shots for audio nobody scripted.
+            window_start=body.get("window_start"),
+            window_end=body.get("window_end"),
         )
         return {"clips": clips}
     except Exception as e:
@@ -10269,6 +10274,13 @@ def delete_pipeline_endpoint(pid: str):
 # hooks. See services/director/http.py for the split rationale.
 from services.director.http import build_skills_router
 api.include_router(build_skills_router())
+
+# Briefing↔audio reconciliation (POST /api/v1/director/script-reconcile).
+# Reports how much of the analysed audio a time-anchored briefing
+# actually covers, so the UI can warn before planning shots the user
+# never wrote about. See services/director/http_script.py.
+from services.director.http_script import build_script_router
+api.include_router(build_script_router())
 
 # Workspaces settings (GET/PUT /api/v1/settings/projects-root).
 # Extracted from the launch.py monolith to ``services/workspaces.py``

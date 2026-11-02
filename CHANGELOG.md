@@ -2,6 +2,7 @@
 
 ## Em desenvolvimento — 30/10/2026
 
+- **Roteiro ancorado no tempo no Director.** A Description agora é interpretada como roteiro: `CENA 2: Entrada de Gary (0:11 - 0:28)` passa a produzir cenas ancoradas no tempo, em vez de virar uma única string "Scene Concept". Novo `app/services/director/scene_script.py` faz o parsing (cabeçalhos de cena, faixas `0:11 - 0:28`, trechos de letra entre aspas) e a reconciliação contra a duração real do áudio. `plan_clip_structure` aceita `window_start`/`window_end` para restringir o plano de clipes a um trecho da faixa (mantendo tempos absolutos, que o pipeline de áudio já consome). O planner de music video associa cada clipe à cena que cobre seu intervalo. Novo `POST /api/v1/director/script-reconcile` e um banner na UI avisam "seu roteiro cobre 0:45 de 4:15" e oferecem limitar o plano ao trecho roteirizado. Briefings sem timecode preservam o comportamento anterior (roteiro inteiro como conceito global).
 - Corrigidos bootstrap de testes sem PyTorch, preservação de CUDA funcional, boot com configuração parcial e respostas tardias de rascunho que apagavam defaults do projeto.
 - Removidas montagem duplicada de capacidades e inicialização do launcher como efeito da importação do router de cinema; contrato HTTP agora verifica duplicatas com prefixos reais.
 - Extraídos defaults/schema do runtime, rotas de documentos/mídia do editor e biblioteca de outputs. Restauração e Director carregam sob demanda; submissão Studio usa slice síncrono que preserva o estado no clique.

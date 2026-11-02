@@ -1,4 +1,4 @@
-import type { DirectorModelCompatibility, H3WindowPlan, LTXWindowPlan, MiniMaxH3Reference, ProductionPlan, SavedOmniCharacter, ScailResolutionProfile } from '../types'
+import type { DirectorModelCompatibility, DirectorScriptReconciliation, H3WindowPlan, LTXWindowPlan, MiniMaxH3Reference, ProductionPlan, SavedOmniCharacter, ScailResolutionProfile } from '../types'
 
 const BASE = ''  // same origin in production; Vite proxy handles /api in dev
 
@@ -2454,6 +2454,11 @@ export async function planClipStructure(params: {
   frames_steps?: number
   frames_minimum?: number
   total_duration?: number
+  /** Restrict the plan to a slice of the source timeline. A briefing that
+   *  describes 45s of a 4:15 track passes the covered window here so the
+   *  Director does not plan shots for audio nobody scripted. */
+  window_start?: number
+  window_end?: number
   /** The Director's VIDEO model — the backend resolves fps/frame params
    *  from its model def. The fps/frames_* fields above reflect the
    *  Studio-selected model (possibly a music model) and are only a
@@ -2468,6 +2473,25 @@ export async function planClipStructure(params: {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Structure planning failed' }))
     throw new Error(err.detail || 'Structure planning failed')
+  }
+  return res.json()
+}
+
+/** Reconcile a time-anchored briefing against the analysed audio.
+ *  Returns the parsed scenes plus a coverage report so the UI can warn
+ *  when the script covers only a fraction of the track. */
+export async function reconcileScript(params: {
+  scene_description: string
+  audio_duration?: number
+}): Promise<DirectorScriptReconciliation> {
+  const res = await fetch(`${BASE}/api/v1/director/script-reconcile`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Script reconciliation failed' }))
+    throw new Error(err.detail || 'Script reconciliation failed')
   }
   return res.json()
 }

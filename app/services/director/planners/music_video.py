@@ -18,6 +18,7 @@ from ..schema import (
     SpeakerMapEntry,
 )
 from ..policies import build_character_rules_block, build_camera_style_block
+from ..scene_script import parse_scene_script, scenes_overlapping
 from .base import BasePlanner
 
 
@@ -193,6 +194,18 @@ def _music_shot_schema(count: int, *, include_image_fields: bool) -> dict:
     }
 
 
+def _format_timecode(seconds: Any) -> str:
+    """Render a source-time offset as ``m:ss`` for the planning prompt."""
+    try:
+        value = float(seconds)
+    except (TypeError, ValueError):
+        return "0:00"
+    if value < 0:
+        value = 0.0
+    minutes = int(value // 60)
+    return f"{minutes}:{int(round(value - minutes * 60)):02d}"
+
+
 def _discard_unused_image_fields(shot_dicts: list[dict]) -> list[dict]:
     for shot in shot_dicts:
         if isinstance(shot, dict):
@@ -276,6 +289,12 @@ class MusicVideoPlanner(BasePlanner):
             reference_image_path: Path to reference photo (optional).
             speaker_mappings: {speaker_id: {name, role}} from UI.
             characters: List of character dicts [{name, description}].
+
+        A briefing may also carry a time-anchored script
+        (``CENA 2: Entrada de Gary (0:11 - 0:28)``).  Those scenes are
+        matched against the clip timeline so each clip is planned from
+        the scene that owns it, instead of every clip receiving the same
+        undifferentiated concept string.
         """
         has_reference = bool(reference_image_path)
         video_model = str(kwargs.get("video_model") or "")
@@ -289,6 +308,17 @@ class MusicVideoPlanner(BasePlanner):
             and shot_image_policy in {"prompt_only", "direct_references"}
         )
         performer_map = _parse_performer_map(scene_description)
+
+        # Split the briefing into a time-anchored script.  A briefing with
+        # no usable timecodes keeps its historic behaviour: the whole text
+        # stays the global concept and no scene binds to a clip.
+        script = parse_scene_script(scene_description)
+        scene_script = script.to_dict()
+        anchored = bool(scene_script.get("anchored"))
+        global_concept = (
+            scene_script.get("global_style") or ""
+            if anchored else scene_description
+        )
 
         # Normalize speaker_mappings: frontend sends list, we need dict
         if isinstance(speaker_mappings, list):
@@ -349,6 +379,7 @@ class MusicVideoPlanner(BasePlanner):
             source_audio_drives_vocals=video_model.lower().startswith(
                 ("minimax_h3", "ltx2_25")
             ),
+            scene_script=scene_script if anchored else None,
         )
 
         # Call LLM for creative planning
@@ -356,7 +387,7 @@ class MusicVideoPlanner(BasePlanner):
         shot_dicts = self._plan_with_llm(
             clips=clips,
             clip_contexts=clip_contexts,
-            scene_description=scene_description,
+            scene_description=global_concept,
             bpm=bpm,
             has_reference=has_reference,
             reference_image_path=reference_image_path,
@@ -480,7 +511,10 @@ class MusicVideoPlanner(BasePlanner):
         return ProductionPlan(
             skill_type="music_video",
             title=None,
-            global_style=scene_description,
+            # When the briefing is a time-anchored script, the scene bodies
+            # are bound per clip; repeating them here would duplicate
+            # shot-specific instructions into every global style prompt.
+            global_style=global_concept,
             total_duration_sec=total_duration,
             reference_assets=ref_assets,
             characters=char_profiles if char_profiles else None,
@@ -568,8 +602,16 @@ class MusicVideoPlanner(BasePlanner):
         speaker_mappings: Optional[dict],
         *,
         source_audio_drives_vocals: bool = False,
+        scene_script: Optional[dict] = None,
     ) -> list[str]:
-        """Build text descriptions for each clip (context for LLM)."""
+        """Build text descriptions for each clip (context for LLM).
+
+        When *scene_script* is provided, every clip also carries the
+        script scene(s) that own its time range. That is what turns a
+        flat briefing into a per-clip directive: without it, a 45-second
+        script on a 4:15 track tells the model nothing about which shot
+        belongs to which line.
+        """
         contexts = []
         for i, clip in enumerate(clips):
             section = (clip.get("label") or "verse").lower()
@@ -638,9 +680,37 @@ class MusicVideoPlanner(BasePlanner):
                 else:
                     continuity_hint = f" Dynamic cut/transition from preceding {prev_section} into {section}."
 
+            # Script binding: the scene(s) that own this clip's time range.
+            scene_hint = ""
+            if scene_script:
+                overlapping = scenes_overlapping(scene_script, start_sec, end_sec)
+                if overlapping:
+                    parts = []
+                    for scene in overlapping:
+                        title = str(scene.get("title") or "").strip()
+                        body = str(scene.get("body_plain") or "").strip()
+                        scene_start = scene.get("start")
+                        scene_end = scene.get("end")
+                        window = ""
+                        if scene_start is not None and scene_end is not None:
+                            window = f" [{_format_timecode(scene_start)}-{_format_timecode(scene_end)}]"
+                        label = f"Scene {scene.get('index')}{window}"
+                        if title:
+                            label += f" '{title}'"
+                        if body:
+                            label += f": {body}"
+                        parts.append(label)
+                    scene_hint = " Script: " + " | ".join(parts) + "."
+                else:
+                    scene_hint = (
+                        " Script: this range is outside the scripted scenes; "
+                        "keep the established look and continue the same "
+                        "visual world without inventing new story beats."
+                    )
+
             ctx = (
                 f"Clip {i + 1}: {section} [Energy: {energy_level}, Movement: {intensity}, Suggested Framing: {suggested_cam}], "
-                f"{beat_count} beats, {vocal_info}.{performer_hint}{continuity_hint}"
+                f"{beat_count} beats, {vocal_info}.{performer_hint}{continuity_hint}{scene_hint}"
             )
             contexts.append(ctx)
 

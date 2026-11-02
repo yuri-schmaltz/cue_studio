@@ -7,6 +7,7 @@ import { DirectorSongSetup } from './DirectorSongSetup'
 import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
 import { DirectorTimelineEditor } from './DirectorTimelineEditor'
+import { DirectorScriptReconciliationBanner } from './DirectorScriptReconciliationBanner'
 import {
   AdditionalRefsSection,
   StructureView,
@@ -1138,6 +1139,13 @@ export function DirectorBriefingColumn() {
                           <DirectorTimelineEditor />
                         </section>
                       )}
+
+                      {/* Reconciliation between a time-anchored briefing
+                          and the analysed audio. Rendered right below the
+                          clip structure so the user can see how much of
+                          the track the script actually covers before
+                          planning anything. */}
+                      {!isStoryPath && <DirectorScriptReconciliationBanner />}
 
                       {/* Voices & Characters card. The negative bottom
                           margin (-20px) pulls the card's bottom edge down

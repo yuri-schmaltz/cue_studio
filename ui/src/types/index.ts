@@ -1522,6 +1522,44 @@ export interface PlannedClip extends SuggestedClip {
   dominant_speaker?: string | null
 }
 
+/** One ``CENA N (start - end)`` block parsed out of a Director briefing. */
+export interface DirectorScriptScene {
+  index: number
+  title: string
+  start: number | null
+  end: number | null
+  body: string
+  body_plain: string
+  quotes: string[]
+}
+
+/** The briefing split into a preamble plus its time-anchored scenes. */
+export interface DirectorScript {
+  scenes: DirectorScriptScene[]
+  global_style: string
+  span: [number, number] | null
+  anchored: boolean
+}
+
+/** How much of the analysed audio the briefing actually covers. */
+export interface DirectorScriptReport {
+  status: 'full_track' | 'excerpt' | 'no_timecodes'
+  scene_count: number
+  anchored_scene_count: number
+  audio_duration: number | null
+  covered_start: number | null
+  covered_end: number | null
+  covered_seconds: number | null
+  coverage_ratio: number | null
+  uncovered_seconds: number | null
+  gaps: { start: number; end: number }[]
+}
+
+export interface DirectorScriptReconciliation {
+  script: DirectorScript
+  report: DirectorScriptReport
+}
+
 export interface SpeakerMapping {
   speakerId: string
   name: string

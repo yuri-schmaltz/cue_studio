@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createDirectorPlanningSlice, DIRECTOR_NEGATIVE_PROMPT_DEBOUNCE_MS } from './directorPlanningSlice'
+import * as api from '../api/client'
 
 describe('directorPlanningSlice', () => {
   let state: Record<string, any>
@@ -143,5 +144,96 @@ describe('directorPlanningSlice', () => {
     slice.directorEditClipPlan(1, 'video_prompt', 'updated prompt 2')
     expect(state.directorClipPlans[1].video_prompt).toBe('updated prompt 2')
     expect(state.directorClipPlans[0].video_prompt).toBe('prompt 1')
+  })
+
+  it('reconciles a time-anchored briefing against the analysed audio', async () => {
+    state.directorAnalysis = { duration: 255 }
+    const reconcileSpy = vi.spyOn(api, 'reconcileScript').mockResolvedValue({
+      script: { scenes: [], global_style: '', span: [0, 45], anchored: true },
+      report: {
+        status: 'excerpt',
+        scene_count: 3,
+        anchored_scene_count: 3,
+        audio_duration: 255,
+        covered_start: 0,
+        covered_end: 45,
+        covered_seconds: 45,
+        coverage_ratio: 0.1765,
+        uncovered_seconds: 210,
+        gaps: [],
+      },
+    })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    state.directorSceneDescription = 'CENA 1: A (0:00 - 0:45)\nSomething.'
+    await slice.directorReconcileScript()
+
+    expect(reconcileSpy).toHaveBeenCalledWith({
+      scene_description: 'CENA 1: A (0:00 - 0:45)\nSomething.',
+      audio_duration: 255,
+    })
+    expect(state.directorScriptReconciliation?.report.status).toBe('excerpt')
+  })
+
+  it('clears the reconciliation when the briefing is emptied', async () => {
+    const reconcileSpy = vi.spyOn(api, 'reconcileScript')
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    state.directorSceneDescription = '   '
+    await slice.directorReconcileScript()
+
+    expect(reconcileSpy).not.toHaveBeenCalled()
+    expect(state.directorScriptReconciliation).toBeNull()
+  })
+
+  it('restricts the clip plan to the scripted window', async () => {
+    state.directorAnalysis = { duration: 255 }
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({
+      clips: [{
+        start: 0,
+        end: 45,
+        section_label: 'verse',
+        beat_count: 8,
+        duration_frames: 120,
+        energy: 0.5,
+        suggested_prompt_hint: '',
+      }],
+    })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    await slice.directorSetScriptWindow({ start: 0, end: 45 })
+
+    expect(planSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ window_start: 0, window_end: 45 }),
+    )
+    expect(state.directorScriptWindow).toEqual({ start: 0, end: 45 })
+    expect(state.directorPlannedClips).toHaveLength(1)
+  })
+
+  it('releases the window and plans the whole track again', async () => {
+    state.directorAnalysis = { duration: 255 }
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({ clips: [] })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    state.directorScriptWindow = { start: 0, end: 45 }
+    await slice.directorSetScriptWindow(null)
+
+    const call = planSpy.mock.calls[0][0]
+    expect(call.window_start).toBeUndefined()
+    expect(call.window_end).toBeUndefined()
+    expect(state.directorScriptWindow).toBeNull()
+  })
+
+  it('keeps the script window when the energy bias changes', async () => {
+    state.directorAnalysis = { duration: 255 }
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({ clips: [] })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    state.directorScriptWindow = { start: 0, end: 45 }
+    await slice.directorSetEnergyBias(2)
+
+    expect(planSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ energy_bias: 2, window_start: 0, window_end: 45 }),
+    )
   })
 })
