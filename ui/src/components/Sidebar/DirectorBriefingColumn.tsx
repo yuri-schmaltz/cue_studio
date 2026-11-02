@@ -1683,7 +1683,7 @@ function DirectorAudioSourceTabs({
 
 
 
-function ReferenceImageUpload({
+export function ReferenceImageUpload({
   referenceImage, refImagePreview, setReferenceImage,
 }: {
   referenceImage: File | null
@@ -1712,13 +1712,17 @@ function ReferenceImageUpload({
     <div className="w-full shrink-0">
       {referenceImage && refImagePreview ? (
         /* Reference loaded state: fixed h-[192px] matching the empty state
-           so size and position remain perfectly unchanged when an image is loaded. */
+           so size and position remain perfectly unchanged when an image is loaded.
+           The photo is contained, not covered: a reference photo is often
+           square or portrait, and cropping it here hid the subject the
+           Director is supposed to copy. The card's own background becomes
+           the matte around the image. */
         <div className="relative h-[192px] w-full bg-bg-tertiary rounded-lg border border-border overflow-hidden shrink-0">
           <label className="cursor-pointer block w-full h-full">
             <img
               src={refImagePreview}
               alt="Reference"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
               title="Click to change photo"
             />
             <input
@@ -2307,7 +2311,7 @@ function DirectorAdvancedAccordion() {
  *  The option list is the set of models the user enabled in
  *  Settings → Model Visibility (plus the current pick, so the
  *  select never silently shows a stale value). */
-function DirectorModelPicker({
+export function DirectorModelPicker({
   id,
   label,
   value,
@@ -2324,7 +2328,7 @@ function DirectorModelPicker({
     <div className="flex items-center gap-2">
       <label
         htmlFor={id}
-        className="text-2xs text-text-muted uppercase tracking-wider w-[68px] shrink-0"
+        className="text-2xs text-text-muted uppercase tracking-wider w-[84px] shrink-0 whitespace-nowrap"
       >
         {label}
       </label>
@@ -2851,7 +2855,7 @@ export function StyleForm({
                     <img
                       src={speakerImageSrc(mapping)!}
                       alt={mapping.name || mapping.speakerId}
-                      className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
+                      className="w-7 h-7 rounded-md object-contain bg-bg-tertiary border border-accent-blue/50"
                       title="Reference photo (synced with References > Characters)"
                     />
                     <button

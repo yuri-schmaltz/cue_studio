@@ -569,7 +569,7 @@ export function DirectorPanel() {
                 <img
                   src={refImagePreview}
                   alt="Reference"
-                  className="w-20 h-20 object-cover rounded-lg border border-border"
+                  className="w-20 h-20 object-contain bg-bg-tertiary rounded-lg border border-border"
                 />
                 <button
                   onClick={() => setReferenceImage(null)}
@@ -651,7 +651,7 @@ export function DirectorPanel() {
                             <img
                               src={speakerImageSrc(mapping)!}
                               alt={mapping.name || mapping.speakerId}
-                              className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
+                              className="w-7 h-7 rounded-md object-contain bg-bg-tertiary border border-accent-blue/50"
                               title="Speaker reference photo"
                             />
                             <button
