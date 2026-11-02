@@ -1230,6 +1230,11 @@ export function DirectorBriefingColumn() {
                   activeTab={activeTab}
                   onTabChange={(t) => setActiveTab(t)}
                 />
+                {/* Coverage notice, right above the composer: this is
+                    where the script is authored, so the discrepancy
+                    between the script and the audio must be visible
+                    while writing it, not only on the Music tab. */}
+                {!isStoryPath && <DirectorScriptReconciliationBanner />}
                 {/* Composer do Description tab. flex-1 + min-h-0 deixa
                     let the block grow to fill all available vertical
                     space above the tabs; the inner textarea
