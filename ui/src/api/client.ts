@@ -678,6 +678,10 @@ export interface DirectorDraft {
   directorSceneDescription?: string
   /** The consolidated technical prompt (fps, material, lighting). */
   directorTechnicalPrompt?: string
+  /** Where the clip plan's cut points come from: `audio` or `script`. */
+  directorStructureSource?: 'audio' | 'script'
+  /** Granularity of a script-driven plan: `scene` or `beat`. */
+  directorScriptGranularity?: 'scene' | 'beat'
   directorEnergyBias?: number
   directorSpeakers?: string[]
   directorSpeakerMappings?: import('../types').SpeakerMapping[]
@@ -2463,12 +2467,24 @@ export async function planClipStructure(params: {
    *  Director does not plan shots for audio nobody scripted. */
   window_start?: number
   window_end?: number
+  /** Where the cut points come from.
+   *  - `audio` (default): the music's sections and energy decide them.
+   *  - `script`: the briefing's own timecodes decide them, so a
+   *    time-anchored script changes how many shots the videoclipe has
+   *    instead of only decorating them. */
+  structure_source?: 'audio' | 'script'
+  /** Granularity of a script-driven plan: one shot per `CENA` block
+   *  (`scene`) or one shot per sub-segment (`beat`). */
+  script_granularity?: 'scene' | 'beat'
+  /** The briefing text. Required when `structure_source` is `script`;
+   *  the backend parses its timecodes into the cut points. */
+  scene_description?: string
   /** The Director's VIDEO model — the backend resolves fps/frame params
    *  from its model def. The fps/frames_* fields above reflect the
    *  Studio-selected model (possibly a music model) and are only a
    *  fallback when this is absent. */
   video_model?: string
-}): Promise<{ clips: import('../types').PlannedClip[] }> {
+}): Promise<{ clips: import('../types').PlannedClip[]; source?: 'audio' | 'script' }> {
   const res = await fetch(`${BASE}/api/v1/audio/plan-structure`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -28,6 +28,71 @@ import { trackAnalysisProgress } from './analysisProgress'
 export const DIRECTOR_NEGATIVE_PROMPT_DEBOUNCE_MS = 1200
 export const DIRECTOR_PIPELINE_ACTIVE = new Set(['queued', 'running', 'paused'])
 
+/**
+ * Extra arguments every clip-structure request must carry.
+ *
+ * Two things travel with the plan: the window the briefing actually
+ * covers, and — when the user asked for it — the briefing itself, so
+ * the backend can turn the script's timecodes into the cut points.
+ * Every call site builds its request through this helper so changing
+ * the structure source or the window can never silently drop one of
+ * them.
+ */
+function structureSourceArgs(state: {
+  directorStructureSource: 'audio' | 'script'
+  directorScriptGranularity: 'scene' | 'beat'
+  directorSceneDescription: string
+  directorScriptWindow: { start: number; end: number } | null
+}): {
+  structure_source?: 'script'
+  script_granularity?: 'scene' | 'beat'
+  scene_description?: string
+  window_start?: number
+  window_end?: number
+} {
+  const description = (state.directorSceneDescription || '').trim()
+  const window = state.directorScriptWindow ?? undefined
+  const scriptDriven = state.directorStructureSource === 'script' && description.length > 0
+  return {
+    ...(scriptDriven
+      ? {
+        structure_source: 'script' as const,
+        script_granularity: state.directorScriptGranularity,
+        scene_description: description,
+      }
+      : {}),
+    ...(window ? { window_start: window.start, window_end: window.end } : {}),
+  }
+}
+
+/**
+ * Ask the backend for a clip structure.
+ *
+ * Every re-plan path (analysis, pacing change, window change, source
+ * change) goes through here so the plan always reflects the current
+ * window and structure source.
+ */
+async function planStructure(state: {
+  directorAnalysis: import('../types').AudioAnalysisResult | null
+  directorEnergyBias: number
+  modelOptions?: { fps?: number; frames_steps?: number; frames_minimum?: number }
+  selectedModelPerMode: { video?: string }
+  directorStructureSource: 'audio' | 'script'
+  directorScriptGranularity: 'scene' | 'beat'
+  directorSceneDescription: string
+  directorScriptWindow: { start: number; end: number } | null
+}): Promise<{ clips: import('../types').PlannedClip[]; source?: 'audio' | 'script' }> {
+  return api.planClipStructure({
+    analysis: state.directorAnalysis,
+    energy_bias: state.directorEnergyBias,
+    fps: state.modelOptions?.fps ?? 16,
+    frames_steps: state.modelOptions?.frames_steps ?? 4,
+    frames_minimum: state.modelOptions?.frames_minimum ?? 5,
+    video_model: state.selectedModelPerMode.video || undefined,
+    ...structureSourceArgs(state),
+  })
+}
+
 export type DirectorPlanningSlice = {
   directorUploadAndAnalyze: (file: File) => Promise<void>
   directorMusicSource: 'upload' | 'generate' | null
@@ -64,6 +129,20 @@ export type DirectorPlanningSlice = {
   directorSetTechnicalPrompt: (prompt: string) => void
   directorScriptReconciliation: DirectorScriptReconciliation | null
   directorReconcileScript: () => Promise<void>
+  /** Where the clip plan's cut points come from.
+   *  - `audio`: the music's sections and energy decide the cuts (the
+   *    historic behaviour).
+   *  - `script`: the briefing's own timecodes decide the cuts, so a
+   *    time-anchored script actually changes how many shots the
+   *    videoclipe has instead of only decorating them. */
+  directorStructureSource: 'audio' | 'script'
+  directorSetStructureSource: (source: 'audio' | 'script') => Promise<void>
+  /** Granularity of a script-driven plan: one shot per `CENA` block
+   *  (`scene`) or one shot per sub-segment (`beat`). Beats are the
+   *  music-video rhythm — a four-minute track scripted with twelve
+   *  scenes and twenty-five sub-segments yields twenty-five shots. */
+  directorScriptGranularity: 'scene' | 'beat'
+  directorSetScriptGranularity: (granularity: 'scene' | 'beat') => Promise<void>
   /** Restrict the clip plan to the window the briefing actually covers.
    *  When null the plan covers the whole analysed track (legacy
    *  behaviour). */
@@ -141,6 +220,8 @@ export const createDirectorPlanningSlice = (
   directorTechnicalPrompt: '',
   directorScriptReconciliation: null,
   directorScriptWindow: null,
+  directorStructureSource: 'audio',
+  directorScriptGranularity: 'beat',
 
   setDirectorMusicSource: (s) => set({ directorMusicSource: s }),
   setDirectorMusicModel: (modelType) => set({ directorMusicModel: modelType }),
@@ -311,18 +392,33 @@ export const createDirectorPlanningSlice = (
     if (!state.directorAnalysis) {
       throw new Error('Analyze the audio before planning its structure.')
     }
-    const window = state.directorScriptWindow ?? undefined
-    const structure = await api.planClipStructure({
-      analysis: state.directorAnalysis,
-      energy_bias: state.directorEnergyBias,
-      fps: state.modelOptions?.fps ?? 16,
-      frames_steps: state.modelOptions?.frames_steps ?? 4,
-      frames_minimum: state.modelOptions?.frames_minimum ?? 5,
-      video_model: state.selectedModelPerMode.video || undefined,
-      ...(window ? { window_start: window.start, window_end: window.end } : {}),
-    })
+    const structure = await planStructure(state)
     set({ directorPlannedClips: structure.clips })
     return structure
+  },
+
+  directorSetStructureSource: async (source) => {
+    if (get().directorStructureSource === source) return
+    set({ directorStructureSource: source, directorLoading: true })
+    try {
+      const structure = await planStructure(get())
+      set({ directorPlannedClips: structure.clips, directorLoading: false })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to update structure'
+      set({ directorLoading: false, directorError: msg })
+    }
+  },
+
+  directorSetScriptGranularity: async (granularity) => {
+    if (get().directorScriptGranularity === granularity) return
+    set({ directorScriptGranularity: granularity, directorLoading: true })
+    try {
+      const structure = await planStructure(get())
+      set({ directorPlannedClips: structure.clips, directorLoading: false })
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to update structure'
+      set({ directorLoading: false, directorError: msg })
+    }
   },
 
   directorReconcileScript: async () => {
@@ -352,14 +448,9 @@ export const createDirectorPlanningSlice = (
     // window; otherwise the timeline would still cover the whole track.
     set({ directorLoading: true })
     try {
-      const structure = await api.planClipStructure({
-        analysis: directorAnalysis,
-        energy_bias: get().directorEnergyBias,
-        fps: get().modelOptions?.fps ?? 16,
-        frames_steps: get().modelOptions?.frames_steps ?? 4,
-        frames_minimum: get().modelOptions?.frames_minimum ?? 5,
-        video_model: get().selectedModelPerMode.video || undefined,
-        ...(window ? { window_start: window.start, window_end: window.end } : {}),
+      const structure = await planStructure({
+        ...get(),
+        directorScriptWindow: window,
       })
       set({ directorPlannedClips: structure.clips, directorLoading: false })
     } catch (e: unknown) {
@@ -518,19 +609,10 @@ export const createDirectorPlanningSlice = (
     if (!directorAnalysis) return
     set({ directorLoading: true, directorEnergyBias: bias })
     try {
-      // Keep the script window: re-planning the whole track after the
-      // user already chose "only the scripted excerpt" would silently
-      // undo that choice.
-      const window = get().directorScriptWindow ?? undefined
-      const structure = await api.planClipStructure({
-        analysis: directorAnalysis,
-        energy_bias: bias,
-        fps: get().modelOptions?.fps ?? 16,
-        frames_steps: get().modelOptions?.frames_steps ?? 4,
-        frames_minimum: get().modelOptions?.frames_minimum ?? 5,
-        video_model: get().selectedModelPerMode.video || undefined,
-        ...(window ? { window_start: window.start, window_end: window.end } : {}),
-      })
+      // Keep the script window and the chosen structure source: re-planning
+      // the whole track after the user already chose "only the scripted
+      // excerpt" would silently undo that choice.
+      const structure = await planStructure(get())
       set({ directorPlannedClips: structure.clips, directorLoading: false })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Failed to update structure'

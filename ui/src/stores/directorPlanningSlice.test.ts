@@ -236,4 +236,82 @@ describe('directorPlanningSlice', () => {
       expect.objectContaining({ energy_bias: 2, window_start: 0, window_end: 45 }),
     )
   })
+
+  it('sends the briefing to the planner when the script drives the structure', async () => {
+    state.directorAnalysis = { duration: 255 }
+    state.directorSceneDescription = 'CENA 1: A (0:00 - 0:11)'
+    state.directorStructureSource = 'script'
+    state.directorScriptGranularity = 'beat'
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({ clips: [] })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    await slice.directorEnsureStructure()
+
+    expect(planSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        structure_source: 'script',
+        script_granularity: 'beat',
+        scene_description: 'CENA 1: A (0:00 - 0:11)',
+      }),
+    )
+  })
+
+  it('omits the briefing from the audio-driven plan', async () => {
+    state.directorAnalysis = { duration: 255 }
+    state.directorSceneDescription = 'CENA 1: A (0:00 - 0:11)'
+    state.directorStructureSource = 'audio'
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({ clips: [] })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    await slice.directorEnsureStructure()
+
+    const call = planSpy.mock.calls[0][0]
+    expect(call.structure_source).toBeUndefined()
+    expect(call.scene_description).toBeUndefined()
+  })
+
+  it('re-plans when the structure source changes', async () => {
+    state.directorAnalysis = { duration: 255 }
+    state.directorSceneDescription = 'CENA 1: A (0:00 - 0:11)'
+    state.directorStructureSource = 'audio'
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({ clips: [] })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    await slice.directorSetStructureSource('script')
+
+    expect(state.directorStructureSource).toBe('script')
+    expect(planSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ structure_source: 'script' }),
+    )
+  })
+
+  it('re-plans when the script granularity changes', async () => {
+    state.directorAnalysis = { duration: 255 }
+    state.directorSceneDescription = 'CENA 1: A (0:00 - 0:11)'
+    state.directorStructureSource = 'script'
+    state.directorScriptGranularity = 'beat'
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({ clips: [] })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    await slice.directorSetScriptGranularity('scene')
+
+    expect(state.directorScriptGranularity).toBe('scene')
+    expect(planSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ script_granularity: 'scene' }),
+    )
+  })
+
+  it('keeps the script source when the energy bias changes', async () => {
+    state.directorAnalysis = { duration: 255 }
+    state.directorSceneDescription = 'CENA 1: A (0:00 - 0:11)'
+    state.directorStructureSource = 'script'
+    const planSpy = vi.spyOn(api, 'planClipStructure').mockResolvedValue({ clips: [] })
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+
+    await slice.directorSetEnergyBias(1)
+
+    expect(planSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ structure_source: 'script' }),
+    )
+  })
 })

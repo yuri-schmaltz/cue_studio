@@ -11,6 +11,15 @@ vi.mock('../api/client', async () => {
     saveDirectorDraft: vi.fn().mockResolvedValue({}),
     deleteDirectorDraft: vi.fn().mockResolvedValue({}),
     fetchDirectorDraft: vi.fn().mockResolvedValue(null),
+    reconcileScript: vi.fn().mockResolvedValue({
+      total_units: 0,
+      timed_units: 0,
+      untimed_units: 0,
+      coverage_ratio: 0,
+      has_timecodes: false,
+      warnings: [],
+      units: [],
+    }),
   }
 })
 
@@ -152,5 +161,33 @@ describe('workspaceSlice - Director draft snapshots', () => {
     await useStore.getState().clearDirectorDraft()
     expect(useStore.getState().directorDraftSnapshots).toEqual([])
     expect(api.deleteDirectorDraft).toHaveBeenCalledWith('proj-1')
+  })
+
+  it('reconciles the restored script against the restored audio', async () => {
+    vi.mocked(api.fetchDirectorDraft).mockResolvedValueOnce({
+      directorSceneDescription: '0:00 Abertura\n0:12 Cena dois',
+      directorAnalysis: { duration: 30 } as any,
+      directorStructureSource: 'script',
+      directorScriptGranularity: 'beat',
+    } as any)
+
+    await useStore.getState().loadDirectorDraft('proj-1')
+
+    expect(api.reconcileScript).toHaveBeenCalledWith({
+      scene_description: '0:00 Abertura\n0:12 Cena dois',
+      audio_duration: 30,
+    })
+    expect(useStore.getState().directorStructureSource).toBe('script')
+    expect(useStore.getState().directorScriptGranularity).toBe('beat')
+  })
+
+  it('does not reconcile when the restored draft has no script', async () => {
+    vi.mocked(api.fetchDirectorDraft).mockResolvedValueOnce({
+      directorAnalysis: { duration: 30 } as any,
+    } as any)
+
+    await useStore.getState().loadDirectorDraft('proj-1')
+
+    expect(api.reconcileScript).not.toHaveBeenCalled()
   })
 })

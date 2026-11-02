@@ -9398,6 +9398,37 @@ async def _plan_audio_structure_async_entry(request: Request):
             pass
 
     try:
+        # A time-anchored briefing may drive the cut points instead of
+        # the audio alone. When the user asks for a script-driven plan
+        # the briefing's own timecodes decide where shots start and end;
+        # the audio only annotates them (section, energy, speaker).
+        structure_source = str(body.get("structure_source") or "audio").lower()
+        scene_description = body.get("scene_description") or ""
+        script_granularity = str(body.get("script_granularity") or "beat").lower()
+
+        if structure_source == "script" and str(scene_description).strip():
+            from services.director.scene_script import parse_scene_script
+            from services.director.script_structure import plan_script_clip_structure
+
+            script = parse_scene_script(str(scene_description))
+            if script.anchored:
+                clips = plan_script_clip_structure(
+                    script,
+                    analysis,
+                    granularity=script_granularity,
+                    energy_bias=body.get("energy_bias", 0),
+                    fps=fps,
+                    frames_steps=frames_steps,
+                    frames_minimum=frames_minimum,
+                    total_duration=body.get("total_duration"),
+                    window_start=body.get("window_start"),
+                    window_end=body.get("window_end"),
+                )
+                if clips:
+                    return {"clips": clips, "source": "script"}
+            # A script without usable timecodes falls back to the
+            # audio-driven plan rather than planning nothing.
+
         clips = audio_analysis.plan_clip_structure(
             analysis=analysis,
             energy_bias=body.get("energy_bias", 0),
@@ -9411,7 +9442,7 @@ async def _plan_audio_structure_async_entry(request: Request):
             window_start=body.get("window_start"),
             window_end=body.get("window_end"),
         )
-        return {"clips": clips}
+        return {"clips": clips, "source": "audio"}
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

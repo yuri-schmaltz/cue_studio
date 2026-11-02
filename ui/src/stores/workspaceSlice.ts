@@ -285,6 +285,12 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       if (typeof draft.directorEnergyBias === 'number') {
         patch.directorEnergyBias = draft.directorEnergyBias
       }
+      if (draft.directorStructureSource === 'audio' || draft.directorStructureSource === 'script') {
+        patch.directorStructureSource = draft.directorStructureSource
+      }
+      if (draft.directorScriptGranularity === 'scene' || draft.directorScriptGranularity === 'beat') {
+        patch.directorScriptGranularity = draft.directorScriptGranularity
+      }
       if (typeof draft.directorSeamless === 'boolean') {
         patch.directorSeamless = draft.directorSeamless
       }
@@ -311,6 +317,15 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       }
 
       set(patch)
+
+      // Reconcile the restored briefing against the restored audio so
+      // the clip-structure source control knows straight away whether
+      // the script carries timecodes. Without this a reopened project
+      // claimed the script could not place any cut, even though its
+      // briefing was full of them.
+      if (get().directorSceneDescription.trim() && get().directorAnalysis) {
+        void get().directorReconcileScript()
+      }
     } catch (e) {
       console.warn('Failed to load director draft:', e)
     }
@@ -378,6 +393,8 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       directorClipPlans: s.directorClipPlans,
       directorSceneDescription: s.directorSceneDescription,
       directorTechnicalPrompt: s.directorTechnicalPrompt,
+      directorStructureSource: s.directorStructureSource,
+      directorScriptGranularity: s.directorScriptGranularity,
       directorEnergyBias: s.directorEnergyBias,
       directorSpeakers: s.directorSpeakers,
       directorSpeakerMappings: s.directorSpeakerMappings,

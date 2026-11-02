@@ -1614,6 +1614,12 @@ export interface AppState {
   /** Window (in source seconds) the clip plan is restricted to. Null
    *  means the plan covers the whole analysed track. */
   directorScriptWindow: { start: number; end: number } | null
+  /** Where the clip plan's cut points come from: `audio` (the music's
+   *  sections and energy) or `script` (the briefing's own timecodes). */
+  directorStructureSource: 'audio' | 'script'
+  /** Granularity of a script-driven plan: one shot per `CENA` block
+   *  (`scene`) or one shot per sub-segment (`beat`). */
+  directorScriptGranularity: 'scene' | 'beat'
   directorLoading: boolean
   /** Sub-status for the current loading phase (e.g. "Loading
    *  transcription model (first use downloads ~300MB)..."). Set by
@@ -1790,6 +1796,10 @@ export interface AppState {
   directorReconcileScript: () => Promise<void>
   /** Restrict (or release) the clip plan to a source-time window. */
   directorSetScriptWindow: (window: { start: number; end: number } | null) => Promise<void>
+  /** Choose whether the audio or the briefing's timecodes place the cuts. */
+  directorSetStructureSource: (source: 'audio' | 'script') => Promise<void>
+  /** Choose what one shot means in a script-driven plan. */
+  directorSetScriptGranularity: (granularity: 'scene' | 'beat') => Promise<void>
   directorSetReferenceImage: (file: File | null) => void
   directorAddCharacterRef: (file: File) => void
   directorRemoveCharacterRef: (index: number) => void

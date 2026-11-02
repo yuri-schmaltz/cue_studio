@@ -8,6 +8,7 @@ import { DirectorH3Optimizations } from './DirectorH3Optimizations'
 import { OmniReferenceSection } from './OmniReferenceSection'
 import { DirectorTimelineEditor } from './DirectorTimelineEditor'
 import { DirectorScriptReconciliationBanner } from './DirectorScriptReconciliationBanner'
+import { DirectorStructureSourceToggle } from './DirectorStructureSourceToggle'
 import { DirectorTechnicalPromptField } from './DirectorTechnicalPromptField'
 import {
   AdditionalRefsSection,
@@ -1136,6 +1137,11 @@ export function DirectorBriefingColumn() {
                               isActive={atStep('structure')}
                               isShortFilm={isShortFilm}
                             />
+                            {/* Where the cuts come from. A music video
+                                needs far more shots than the audio's
+                                sections suggest, so a time-anchored
+                                briefing must be able to place them. */}
+                            {!isShortFilm && <DirectorStructureSourceToggle />}
                           </div>
                           <DirectorTimelineEditor />
                         </section>

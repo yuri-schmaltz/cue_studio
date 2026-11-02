@@ -106,6 +106,24 @@ _SECTION_VISUAL_STRATEGY = {
 }
 
 
+def _clip_section(clip: dict, default: str = "verse") -> str:
+    """Section label of a planned clip.
+
+    The clip planners name the musical section under two different
+    keys: ``plan_clip_structure`` emits ``section_label`` while the
+    storyboard pipeline emits ``label``.  Reading only one of them made
+    every clip look like a verse, so the per-section camera strategy
+    (wide establishing intro, dynamic chorus, fading outro) never
+    applied to a music video.
+
+    ``default`` is what an unsectioned clip reads as.  Callers that
+    describe the clip in prose rather than by musical section pass
+    their own wording.
+    """
+    value = clip.get("section_label") or clip.get("label") or default
+    return str(value).lower() or default
+
+
 _MUSIC_IMAGE_FIELDS = frozenset({
     "image_source",
     "image_prompt",
@@ -664,7 +682,7 @@ class MusicVideoPlanner(BasePlanner):
         """
         contexts = []
         for i, clip in enumerate(clips):
-            section = (clip.get("label") or "verse").lower()
+            section = _clip_section(clip)
             beat_count = clip.get("beat_count", 8)
             start_sec = clip.get("start", 0)
             end_sec = clip.get("end", start_sec + 5)
@@ -724,7 +742,7 @@ class MusicVideoPlanner(BasePlanner):
             # Camera continuity hint: note relationship with previous clip
             continuity_hint = ""
             if i > 0:
-                prev_section = (clips[i - 1].get("label") or "verse").lower()
+                prev_section = _clip_section(clips[i - 1])
                 if prev_section == section:
                     continuity_hint = " Flow from previous angle (dynamic camera continuity, complementary angle or subtle push)."
                 else:
@@ -861,13 +879,12 @@ class MusicVideoPlanner(BasePlanner):
                 call_batch=call_batch,
                 fallback_factory=lambda index, clip: {
                     "scene_goal": (
-                        f"Continue the {str(clip.get('label') or 'music')} "
+                        f"Continue the {_clip_section(clip, 'music')} "
                         f"section at global clip {index + 1}"
                     ),
                     "scene_type": (
                         "atmospheric"
-                        if str(clip.get("label") or "").lower()
-                        == "instrumental" else "performance"
+                        if _clip_section(clip) == "instrumental" else "performance"
                     ),
                     "subjects_on_screen": [],
                     "environment": "",
@@ -1120,7 +1137,7 @@ Write {len(clips)} structured shot plans. Go:"""
         shots = []
         for i, clip in enumerate(clips):
             raw = shot_dicts[i] if i < len(shot_dicts) else {}
-            section = (clip.get("label") or "verse").lower()
+            section = _clip_section(clip)
             strategy = _SECTION_VISUAL_STRATEGY.get(section, _SECTION_VISUAL_STRATEGY["verse"])
             duration = clip.get("end", 0) - clip.get("start", 0)
 
