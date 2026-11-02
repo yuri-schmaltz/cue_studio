@@ -2,6 +2,23 @@
 
 > Framework de Engenharia Reversa instalado neste projeto.
 
+## Entrega: commit e push após grandes mudanças
+
+Ao concluir uma mudança substancial neste repositório — nova feature,
+refactor, ou correção que toca vários módulos — finalize **sempre** com
+commit e push para a branch de trabalho. A entrega termina quando a
+mudança está no remoto, não quando os arquivos estão prontos na working
+tree.
+
+- Valide antes de commitar (testes, type-check, lint, build). Não commite
+  código quebrado.
+- Mensagem no estilo do repositório: título imperativo curto, linha em
+  branco, corpo explicando *o problema* e *a mudança*, e o trailer
+  `Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>`.
+- `git push origin <branch>` na branch de trabalho; não crie branch nem PR
+  sem pedido explícito.
+- Reporte o hash do commit e o resultado do push ao usuário.
+
 ## Como usar
 
 Use o fluxo adequado no chat:
