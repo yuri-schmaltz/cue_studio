@@ -266,4 +266,35 @@ describe('workspaceSlice - Director draft snapshots', () => {
     expect(mapping.imagePreview).toBeTruthy()
     expect(mapping.imagePath ?? null).toBeNull()
   })
+
+  it('does not save the draft while a production is running', async () => {
+    useStore.setState({
+      directorPlannedClips: [{ start: 0, end: 4 }] as any,
+      pipelineId: 'pipe-1',
+      pipelineStatus: { status: 'running', phase: 'generating_images' } as any,
+    })
+
+    await useStore.getState().saveDirectorDraftNow()
+
+    expect(api.saveDirectorDraft).not.toHaveBeenCalled()
+  })
+
+  it('saves the draft when the pipeline only reached the planning phase', async () => {
+    // The v2 plan registers a pipeline without a worker so a refresh can
+    // reattach. It never finishes on its own, and while it looks
+    // active the draft was never written — the planned clip prompts
+    // were lost on every reload.
+    useStore.setState({
+      directorPlannedClips: [{ start: 0, end: 4 }] as any,
+      directorClipPlans: [{ video_prompt: 'v', image_prompt: 'i' }] as any,
+      pipelineId: 'pipe-1',
+      pipelineStatus: { status: 'running', phase: 'completed' } as any,
+    })
+
+    await useStore.getState().saveDirectorDraftNow()
+
+    expect(api.saveDirectorDraft).toHaveBeenCalledTimes(1)
+    const saved = vi.mocked(api.saveDirectorDraft).mock.calls[0][1] as any
+    expect(saved.directorClipPlans).toHaveLength(1)
+  })
 })

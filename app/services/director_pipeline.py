@@ -2364,6 +2364,53 @@ def _director_reference_label(params: dict, kind: str, index: int) -> str:
     return f"{noun} {index + 1}"
 
 
+def _director_characters_from_speakers(speaker_mappings) -> list[dict]:
+    """Turn speaker mappings into character profiles.
+
+    A music video has no explicit ``characters`` list: its people are
+    the identified voices, each with a name and a vocal role. The
+    planner already derives character profiles from those mappings, so
+    the prompt-polish layer must see the same list — otherwise it has
+    an empty name map and may replace the performer's name with a
+    generic "the man" or drop it as a hallucinated proper noun.
+
+    Accepts either shape the frontend sends: a list of
+    ``{speakerId, name, role}`` dicts or a mapping of
+    ``speaker_id -> {name, role}``.
+    """
+    profiles: list[dict] = []
+    seen: set[str] = set()
+
+    def _add(speaker_id: str, name: str, role: str) -> None:
+        clean_name = str(name or "").strip()
+        if not clean_name or clean_name.lower() in seen:
+            return
+        seen.add(clean_name.lower())
+        profiles.append({
+            "id": str(speaker_id or f"speaker_{len(profiles)}"),
+            "name": clean_name,
+            "display_name": clean_name,
+            "description": f"the {clean_name}",
+            "physical_description": f"the {clean_name}",
+            "voice_description": str(role or "").strip(),
+        })
+
+    if isinstance(speaker_mappings, dict):
+        for speaker_id, info in speaker_mappings.items():
+            info = info if isinstance(info, dict) else {}
+            _add(speaker_id, info.get("name", ""), info.get("role", ""))
+    elif isinstance(speaker_mappings, (list, tuple)):
+        for entry in speaker_mappings:
+            if not isinstance(entry, dict):
+                continue
+            _add(
+                entry.get("speakerId") or entry.get("speaker_id") or "",
+                entry.get("name", ""),
+                entry.get("role", ""),
+            )
+    return profiles
+
+
 def _director_h3_reference_manifest(
     params: dict,
     clip_image_path: str | None,
@@ -4922,6 +4969,38 @@ def get_pipeline(pid: str) -> Optional[dict]:
         return dict(p) if p else None
 
 
+def finalize_registered_pipeline(pid: str) -> bool:
+    """Close a pipeline registered in ``register_only`` mode.
+
+    The v2 plan endpoint registers a pipeline so a browser refresh can
+    reattach to the planning run, but it starts no worker: nothing else
+    ever moves the pipeline past ``running``. The frontend keeps
+    polling it and — because it looks active — refuses to save the
+    workspace draft, so the planned clip prompts never reach disk.
+
+    Marking it completed after the plan returns closes that window.
+    Best-effort: a pipeline that is already terminal, or that no longer
+    exists, is left alone.
+    """
+    with _pipeline_lock:
+        pipeline = _pipelines.get(pid)
+        if not pipeline:
+            return False
+        status = str(pipeline.get("status") or "").lower()
+        if status in {"completed", "failed", "cancelled", "crashed"}:
+            return False
+        pipeline.update(
+            status="completed",
+            phase="completed",
+            progress={
+                "current": 3, "total": 3, "message": "Planning complete",
+                "step": 0, "total_steps": 0,
+            },
+        )
+    _save_pipeline_state(pid)
+    return True
+
+
 def get_pipeline_status(pid: str, out_dir: str) -> Optional[dict]:
     """Return live status or a terminal disk snapshot after a UI reconnect.
 
@@ -5758,6 +5837,15 @@ def _run_pipeline(pid: str, resume: bool = False):
                 # in test 03). characters comes from params.characters,
                 # the same list passed to the planner.
                 characters = params.get("characters", []) or []
+                # A music video has no `characters` list — its people are
+                # described by the speaker mappings, which the planner
+                # already turns into character profiles. Without them the
+                # polish layer sees an empty name map and can replace the
+                # performer's name with a generic "the man".
+                if not characters:
+                    characters = _director_characters_from_speakers(
+                        params.get("speaker_mappings") or []
+                    )
                 if polish_video_prompts or polish_image_prompts:
                     clip_plans = polish_prompts_third_pass(
                         clip_plans, video_model, image_model, nsfw,

@@ -10449,6 +10449,22 @@ except Exception:  # noqa: BLE001
 
 # ── Director V2 Planning ─────────────────────────────────────────────────
 
+# Request-body fields the v2 planner receives. The reference images and
+# their labels must be listed here: the planner attaches the photos to
+# the LLM prompt and labels them per index. When they were missing, a
+# character's photo stayed in the browser and never reached the model.
+_V2_PLANNER_BODY_KEYS = (
+    "clips", "scene_description", "story_description", "lyrics", "bpm",
+    "reference_image_path", "speaker_mappings", "characters",
+    "audio_path", "target_duration", "target_scenes", "narrative_mode",
+    "fps", "frames_steps", "frames_minimum",
+    "technical_prompt",
+    "character_ref_paths", "character_ref_labels",
+    "location_ref_paths", "location_ref_labels",
+    "concept", "visual_style", "platform", "style", "transcript",
+)
+
+
 @api.post("/api/v1/director/v2/plan")
 async def director_v2_plan(request: Request):
     """Plan using the new Director v2 architecture (planners + renderers + validators).
@@ -10541,12 +10557,7 @@ async def director_v2_plan(request: Request):
 
         # Build planner kwargs from request body
         planner_kwargs = {}
-        for key in ["clips", "scene_description", "story_description", "lyrics", "bpm",
-                     "reference_image_path", "speaker_mappings", "characters",
-                     "audio_path", "target_duration", "target_scenes", "narrative_mode",
-                     "fps", "frames_steps", "frames_minimum",
-                     "technical_prompt",
-                     "concept", "visual_style", "platform", "style", "transcript"]:
+        for key in _V2_PLANNER_BODY_KEYS:
             if key in body:
                 planner_kwargs[key] = body[key]
 
@@ -10596,6 +10607,18 @@ async def director_v2_plan(request: Request):
             # non-human descriptors (e.g. Lumi → the white unicorn) instead
             # of falling back to generic "the woman" / "the man".
             polish_chars = planner_kwargs.get("characters", []) or []
+            # A music video has no explicit `characters` list — its people
+            # are the identified voices. The planner already derives
+            # character profiles from the speaker mappings; polish must
+            # see the same list or it runs with an empty name map and can
+            # replace the performer's name with a generic "the man".
+            if not polish_chars:
+                from services.director_pipeline import (
+                    _director_characters_from_speakers,
+                )
+                polish_chars = _director_characters_from_speakers(
+                    planner_kwargs.get("speaker_mappings") or []
+                )
             clip_plans = await asyncio.get_event_loop().run_in_executor(
                 None, lambda: polish_prompts_third_pass(
                     clip_plans, video_model, image_model, nsfw,
@@ -10603,6 +10626,17 @@ async def director_v2_plan(request: Request):
                     characters=polish_chars,
                 )
             )
+
+        # The registered pipeline was created without a worker, so nothing
+        # else would ever move it past "running". The frontend treats an
+        # active pipeline as "do not save the draft", which would keep
+        # the planned clip prompts from ever reaching disk.
+        if pipeline_id:
+            try:
+                from services.director_pipeline import finalize_registered_pipeline
+                finalize_registered_pipeline(pipeline_id)
+            except Exception as e:  # noqa: BLE001 — diagnostic only
+                print(f"[Director] Failed to finalize registered pipeline: {e}")
 
         return {
             "clip_plans": clip_plans,

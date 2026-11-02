@@ -354,7 +354,19 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     const s = get()
     const workspace = s.activeWorkspace
     if (!workspace || workspace === '__uploads__') return
-    if (s.pipelineId && s.pipelineStatus && !['completed', 'failed', 'cancelled'].includes(s.pipelineStatus.status)) {
+    // While a production is running, the pipeline owns the scene state
+    // and the draft must not be written underneath it. A pipeline that
+    // is only registered (the v2 plan registers one so a refresh can
+    // reattach) has no worker and never finishes on its own, so it must
+    // not block the draft forever.
+    const pipelineStatus = s.pipelineStatus?.status
+    const pipelineIsActive = Boolean(
+      s.pipelineId
+      && pipelineStatus
+      && !['completed', 'failed', 'cancelled'].includes(pipelineStatus)
+      && s.pipelineStatus?.phase !== 'completed',
+    )
+    if (pipelineIsActive) {
       return
     }
     const hasContent = Boolean(
