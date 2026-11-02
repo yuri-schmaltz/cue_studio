@@ -64,6 +64,16 @@ _VISUAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# A consolidated technical prompt pasted without a heading: a standalone
+# long quoted paragraph at the end of the brief. Screenplays often end
+# that way, and without this the block would stay glued to the last
+# scene and apply to a single clip.
+#
+# The 200-character floor keeps a quoted lyric from being mistaken for
+# the technical block; the explicit technical-prompt field remains the
+# unambiguous way to say it.
+_TRAILING_QUOTED_RE = re.compile(r'^[ \t]*["“].{200,}["”][ \t]*$', re.DOTALL)
+
 # Quoted lyric / dialogue fragments inside a scene body.
 _QUOTE_RE = re.compile(r"[\"“]([^\"”\n]{2,400})[\"”]")
 
@@ -397,7 +407,10 @@ def parse_scene_script(text: str) -> SceneScript:
         if range_match:
             start = parse_timecode(range_match.group("start"))
             end = parse_timecode(range_match.group("end"))
-            if start is None or end is None:
+            # A range that ends before it starts, or that has no length,
+            # describes no moment of the track. Keeping it would make the
+            # covered span inverted and break every clip binding.
+            if start is None or end is None or end <= start:
                 start = end = None
             else:
                 title_text = rest[:range_match.start()] + rest[range_match.end():]
@@ -415,6 +428,18 @@ def parse_scene_script(text: str) -> SceneScript:
 
     global_style = "\n".join(preamble).strip()
     global_technical = "\n".join(technical).strip()
+
+    # A brief that ends with the consolidated technical prompt but no
+    # heading leaves that block glued to the last scene, where it would
+    # apply to a single clip instead of the whole film. The signature is
+    # a standalone long quoted paragraph.
+    if scenes and not global_technical:
+        last = scenes[-1]
+        paragraphs = [p.strip() for p in last.body_plain.split("\n\n") if p.strip()]
+        if paragraphs and _TRAILING_QUOTED_RE.match(paragraphs[-1]):
+            last.body_plain = "\n\n".join(paragraphs[:-1]).strip()
+            global_technical = paragraphs[-1]
+
     if not global_style and scenes and not any(scene.anchored for scene in scenes):
         # A briefing made only of unanchored scene headers still deserves a
         # readable concept; fall back to the raw titles.
@@ -586,6 +611,10 @@ def reconcile_scene_script(
     try:
         duration = float(audio_duration) if audio_duration else None
     except (TypeError, ValueError):
+        duration = None
+    if duration is not None and duration <= 0:
+        # A non-positive length describes no track: treat it as unknown
+        # rather than reporting a negative coverage.
         duration = None
 
     scenes = script.get("scenes") or []

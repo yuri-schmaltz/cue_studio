@@ -120,6 +120,7 @@ export function DirectorStage() {
   const directorPlannedClips = useStore(s => s.directorPlannedClips)
   const directorClipPlans = useStore(s => s.directorClipPlans)
   const directorSceneDescription = useStore(s => s.directorSceneDescription)
+  const directorTechnicalPrompt = useStore(s => s.directorTechnicalPrompt)
   const directorSongDescription = useStore(s => s.directorSongDescription)
 
   // Ensure draft is loaded when DirectorStage mounts for active workspace
@@ -138,6 +139,7 @@ export function DirectorStage() {
       && (!directorClipPlans || directorClipPlans.length === 0)
       && !directorSceneDescription?.trim()
       && !directorSongDescription?.trim()
+      && !directorTechnicalPrompt?.trim()
     ) {
       return
     }
@@ -151,6 +153,7 @@ export function DirectorStage() {
     directorPlannedClips,
     directorClipPlans,
     directorSceneDescription,
+    directorTechnicalPrompt,
     directorSongDescription,
     directorStep,
     saveDirectorDraftNow,
