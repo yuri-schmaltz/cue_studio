@@ -1746,6 +1746,12 @@ export interface AppState {
    *  skills mid-pipeline. */
   resetDirectorSkillOnly: () => void
   directorSetSpeakerMapping: (speakerId: string, name: string, role: SpeakerMapping['role'], image?: File | null, imagePreview?: string | null) => void
+  /** Attach a reference photo to a speaker.
+   *
+   *  The file is uploaded right away so the mapping keeps a server
+   *  path. A `blob:` preview alone would die with the page and the
+   *  restored project would show a broken image. */
+  directorSetSpeakerImage: (speakerId: string, file: File) => Promise<void>
   directorInsertSpeakerMention: (speakerId: string) => void
   directorUploadAndAnalyze: (file: File) => Promise<void>
   // Music Video: generate-the-track source + song setup
@@ -5231,10 +5237,40 @@ export const useStore = create<AppState>((set, get, store) => ({
               role,
               ...(image !== undefined ? { image } : {}),
               ...(imagePreview !== undefined ? { imagePreview } : {}),
+              // Dropping the photo drops its server path too, otherwise
+              // the mapping would keep pointing at a removed image.
+              ...(image === null ? { imagePath: null } : {}),
             }
           : m
       ),
     }))
+  },
+
+  directorSetSpeakerImage: async (speakerId, file) => {
+    // Show the picked photo immediately, then swap in the server path
+    // once the upload lands.
+    const preview = URL.createObjectURL(file)
+    set(s => ({
+      directorSpeakerMappings: s.directorSpeakerMappings.map(m =>
+        m.speakerId === speakerId
+          ? { ...m, image: file, imagePreview: preview, imagePath: null }
+          : m
+      ),
+    }))
+    try {
+      const uploaded = await api.uploadImage(file)
+      set(s => ({
+        directorSpeakerMappings: s.directorSpeakerMappings.map(m =>
+          m.speakerId === speakerId
+            ? { ...m, image: file, imagePreview: preview, imagePath: uploaded.path }
+            : m
+        ),
+      }))
+    } catch (e) {
+      // The photo stays visible for this session but is not persisted:
+      // a preview without a server path cannot outlive the page.
+      console.warn(`[Director] Failed to upload speaker reference image for ${speakerId}:`, e)
+    }
   },
 
   directorInsertSpeakerMention: (speakerId) => {

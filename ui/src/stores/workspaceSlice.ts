@@ -1,6 +1,7 @@
 import { projectAdvancedDefaults } from './projectAdvancedDefaults'
 import type { StateCreator } from 'zustand'
 import * as api from '../api/client'
+import { sanitizeSpeakerMapping, serializeSpeakerMapping } from '../lib/speakerImage'
 import type {
   AppSection,
   AspectRatio,
@@ -280,7 +281,10 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
         patch.directorSpeakers = draft.directorSpeakers
       }
       if (Array.isArray(draft.directorSpeakerMappings)) {
-        patch.directorSpeakerMappings = draft.directorSpeakerMappings
+        // A restored mapping must not carry a dead `blob:` preview or
+        // the `{}` that JSON leaves behind for a File: both render as a
+        // broken image and neither can be re-uploaded.
+        patch.directorSpeakerMappings = draft.directorSpeakerMappings.map(sanitizeSpeakerMapping)
       }
       if (typeof draft.directorEnergyBias === 'number') {
         patch.directorEnergyBias = draft.directorEnergyBias
@@ -397,7 +401,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       directorScriptGranularity: s.directorScriptGranularity,
       directorEnergyBias: s.directorEnergyBias,
       directorSpeakers: s.directorSpeakers,
-      directorSpeakerMappings: s.directorSpeakerMappings,
+      directorSpeakerMappings: s.directorSpeakerMappings.map(serializeSpeakerMapping),
       directorSeamless: s.directorSeamless,
       directorAutoMode: s.directorAutoMode,
       directorShotImageGuidance: s.directorShotImageGuidance,

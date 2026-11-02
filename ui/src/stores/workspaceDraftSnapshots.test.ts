@@ -20,6 +20,11 @@ vi.mock('../api/client', async () => {
       warnings: [],
       units: [],
     }),
+    uploadImage: vi.fn().mockResolvedValue({
+      filename: 'a1b2c3d4.png',
+      path: '/app/uploads/a1b2c3d4.png',
+      url: '/api/v1/uploads/a1b2c3d4.png',
+    }),
   }
 })
 
@@ -189,5 +194,76 @@ describe('workspaceSlice - Director draft snapshots', () => {
     await useStore.getState().loadDirectorDraft('proj-1')
 
     expect(api.reconcileScript).not.toHaveBeenCalled()
+  })
+
+  it('keeps a speaker photo alive across a reload', async () => {
+    useStore.setState({
+      directorSceneDescription: 'Um videoclipe',
+      directorSpeakerMappings: [{
+        speakerId: 'SPEAKER_00',
+        name: 'gary',
+        role: 'singing',
+        imagePath: '/app/uploads/a1b2c3d4.png',
+      }],
+    })
+
+    await useStore.getState().saveDirectorDraftNow()
+
+    const saved = vi.mocked(api.saveDirectorDraft).mock.calls[0][1] as any
+    expect(saved.directorSpeakerMappings[0].imagePath).toBe('/app/uploads/a1b2c3d4.png')
+
+    // The restored draft comes back with the photo, not a dead blob.
+    vi.mocked(api.fetchDirectorDraft).mockResolvedValueOnce(saved)
+    useStore.setState({ directorSpeakerMappings: [] })
+    await useStore.getState().loadDirectorDraft('proj-1')
+
+    const mapping = useStore.getState().directorSpeakerMappings[0]
+    expect(mapping.imagePath).toBe('/app/uploads/a1b2c3d4.png')
+    expect(mapping.imagePreview ?? null).toBeNull()
+  })
+
+  it('never writes a blob preview or a File into the draft', async () => {
+    useStore.setState({
+      directorSceneDescription: 'Um videoclipe',
+      directorSpeakerMappings: [{
+        speakerId: 'SPEAKER_00',
+        name: 'gary',
+        role: 'singing',
+        image: new File(['x'], 'gary.png', { type: 'image/png' }),
+        imagePreview: 'blob:http://127.0.0.1:7860/dead',
+      }],
+    })
+
+    await useStore.getState().saveDirectorDraftNow()
+
+    const saved = vi.mocked(api.saveDirectorDraft).mock.calls[0][1] as any
+    const mapping = saved.directorSpeakerMappings[0]
+    expect(mapping.image).toBeUndefined()
+    expect(mapping.imagePreview).toBeUndefined()
+  })
+
+  it('uploads a picked speaker photo and keeps its server path', async () => {
+    useStore.setState({
+      directorSpeakerMappings: [{ speakerId: 'SPEAKER_00', name: 'gary', role: 'singing' }],
+    })
+
+    await useStore.getState().directorSetSpeakerImage('SPEAKER_00', new File(['x'], 'gary.png', { type: 'image/png' }))
+
+    expect(api.uploadImage).toHaveBeenCalledTimes(1)
+    const mapping = useStore.getState().directorSpeakerMappings[0]
+    expect(mapping.imagePath).toBe('/app/uploads/a1b2c3d4.png')
+  })
+
+  it('keeps the photo visible when its upload fails', async () => {
+    vi.mocked(api.uploadImage).mockRejectedValueOnce(new Error('offline'))
+    useStore.setState({
+      directorSpeakerMappings: [{ speakerId: 'SPEAKER_00', name: 'gary', role: 'singing' }],
+    })
+
+    await useStore.getState().directorSetSpeakerImage('SPEAKER_00', new File(['x'], 'gary.png', { type: 'image/png' }))
+
+    const mapping = useStore.getState().directorSpeakerMappings[0]
+    expect(mapping.imagePreview).toBeTruthy()
+    expect(mapping.imagePath ?? null).toBeNull()
   })
 })

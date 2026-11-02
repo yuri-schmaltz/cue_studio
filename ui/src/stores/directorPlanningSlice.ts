@@ -15,6 +15,7 @@
 
 import type { StateCreator } from 'zustand'
 import * as api from '../api/client'
+import { speakerImagePath } from '../lib/speakerImage'
 import type { AppState } from './useStore'
 import type {
   DirectorClipImage,
@@ -797,6 +798,14 @@ export const createDirectorPlanningSlice = (
     }
     const speakerImagePaths: Record<string, string> = {}
     for (const m of s.directorSpeakerMappings) {
+      // The photo is uploaded as soon as it is picked, so its server
+      // path is already known. Reusing it means the reference survives
+      // a reload (where the File is gone) and avoids a second upload.
+      const known = speakerImagePath(m)
+      if (known) {
+        speakerImagePaths[m.speakerId] = known
+        continue
+      }
       if (m.image) {
         try {
           const uploaded = await api.uploadImage(m.image)

@@ -3,6 +3,7 @@ import { DirectorTimelineIconButton } from './DirectorTimelineEditor'
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { Upload, Loader2, Music, Zap, RotateCcw, X, ChevronRight, ImageIcon, Play } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
+import { speakerImageSrc } from '../../lib/speakerImage'
 import { DirectorActivityBadge } from './DirectorActivityBar'
 import { DirectorErrorBanner } from './DirectorErrorBanner'
 const AUDIO_ACCEPT = '.wav,.mp3,.flac,.ogg,.m4a'
@@ -124,6 +125,7 @@ export function DirectorPanel() {
   const speakers = useStore(s => s.directorSpeakers)
   const speakerMappings = useStore(s => s.directorSpeakerMappings)
   const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
+  const setSpeakerImage = useStore(s => s.directorSetSpeakerImage)
   const insertSpeakerMention = useStore(s => s.directorInsertSpeakerMention)
   const autoMode = useStore(s => s.directorAutoMode)
   const setAutoMode = useStore(s => s.setDirectorAutoMode)
@@ -644,10 +646,10 @@ export function DirectorPanel() {
                         </select>
 
                         {/* Speaker reference image */}
-                        {mapping.imagePreview ? (
+                        {speakerImageSrc(mapping) ? (
                           <div className="relative group/avatar shrink-0">
                             <img
-                              src={mapping.imagePreview}
+                              src={speakerImageSrc(mapping)!}
                               alt={mapping.name || mapping.speakerId}
                               className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
                               title="Speaker reference photo"
@@ -673,10 +675,7 @@ export function DirectorPanel() {
                               className="hidden"
                               onChange={e => {
                                 const f = e.target.files?.[0]
-                                if (f) {
-                                  const preview = URL.createObjectURL(f)
-                                  setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, f, preview)
-                                }
+                                if (f) void setSpeakerImage(mapping.speakerId, f)
                               }}
                             />
                           </label>

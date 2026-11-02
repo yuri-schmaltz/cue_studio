@@ -394,7 +394,11 @@ export async function startDirectorPipeline(
       llm_provider: state.servicesConfig?.llm_provider || 'local',
       lyrics: directorAnalysis?.lyrics || '',
       bpm: directorAnalysis?.bpm,
-      speaker_mappings: directorSpeakerMappings,
+      speaker_mappings: directorSpeakerMappings.map(m => ({
+        speakerId: m.speakerId,
+        name: m.name,
+        role: m.role,
+      })),
       characters: shortFilmCharacters,
       target_duration: shortFilmTargetDuration,
       narrative_mode: shortFilmNarrative,

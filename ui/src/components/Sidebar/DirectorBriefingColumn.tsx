@@ -30,6 +30,7 @@ import { DurationPresetControl } from './DurationPresetControl'
 import { LONG_FORM_MAX_SECONDS, formatDuration } from '../../lib/durationPlanning'
 import type { DirectorShotImageGuidance, ModelOptions, ShortFilmCharacter, ShortFilmPath } from '../../types'
 import { readDirectorScript, llmEnhancePrompt } from '../../api/client'
+import { speakerImageSrc } from '../../lib/speakerImage'
 import { StyleBiblesSection } from '../StyleBibles/StyleBiblesSection'
 
 // AUDIO_ACCEPT lists both audio formats AND video formats. When a video
@@ -411,6 +412,7 @@ export function DirectorBriefingColumn() {
   // card, so we now read them normally and pass them to StyleForm.
   const speakerMappings = useStore(s => s.directorSpeakerMappings)
   const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
+  const setSpeakerImage = useStore(s => s.directorSetSpeakerImage)
   const insertSpeakerMention = useStore(s => s.directorInsertSpeakerMention)
   const autoMode = useStore(s => s.directorAutoMode)
   const setAutoMode = useStore(s => s.setDirectorAutoMode)
@@ -1178,6 +1180,7 @@ export function DirectorBriefingColumn() {
                             speakerMappings={speakerMappings}
                             speakerSamples={speakerSamples}
                             setSpeakerMapping={setSpeakerMapping}
+                            setSpeakerImage={setSpeakerImage}
                             insertSpeakerMention={insertSpeakerMention}
                             isActive={atStep('style')}
                             isShortFilm={isShortFilm}
@@ -2781,12 +2784,13 @@ function DirectorNegativePromptField() {
 
 
 export function StyleForm({
-  speakers, speakerMappings, speakerSamples, setSpeakerMapping, insertSpeakerMention, isShortFilm, isStoryPath,
+  speakers, speakerMappings, speakerSamples, setSpeakerMapping, setSpeakerImage, insertSpeakerMention, isShortFilm, isStoryPath,
 }: {
   speakers: string[]
   speakerMappings: ReturnType<typeof useStore.getState>['directorSpeakerMappings']
   speakerSamples: Record<string, string[]>
   setSpeakerMapping: (speakerId: string, name: string, role: 'rapping' | 'singing' | 'speaking' | '', image?: File | null, imagePreview?: string | null) => void
+  setSpeakerImage: (speakerId: string, file: File) => Promise<void>
   insertSpeakerMention: (speakerId: string) => void
   isActive?: boolean
   isShortFilm?: boolean
@@ -2842,10 +2846,10 @@ export function StyleForm({
                 </select>
 
                 {/* Speaker Avatar Reference */}
-                {mapping.imagePreview ? (
+                {speakerImageSrc(mapping) ? (
                   <div className="relative group/avatar shrink-0">
                     <img
-                      src={mapping.imagePreview}
+                      src={speakerImageSrc(mapping)!}
                       alt={mapping.name || mapping.speakerId}
                       className="w-7 h-7 rounded-md object-cover border border-accent-blue/50"
                       title="Reference photo (synced with References > Characters)"
@@ -2871,10 +2875,7 @@ export function StyleForm({
                       className="hidden"
                       onChange={e => {
                         const f = e.target.files?.[0]
-                        if (f) {
-                          const preview = URL.createObjectURL(f)
-                          setSpeakerMapping(mapping.speakerId, mapping.name, mapping.role, f, preview)
-                        }
+                        if (f) void setSpeakerImage(mapping.speakerId, f)
                       }}
                     />
                   </label>

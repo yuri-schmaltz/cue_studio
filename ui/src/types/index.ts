@@ -1581,6 +1581,12 @@ export interface SpeakerMapping {
   role: 'rapping' | 'singing' | 'speaking' | ''
   image?: File | null
   imagePreview?: string | null
+  /** Server path of the uploaded reference photo.
+   *
+   *  `imagePreview` is a `blob:` URL scoped to the document that
+   *  created it, so it dies with the page. The path is what the
+   *  draft keeps, and what lets the picture come back on reload. */
+  imagePath?: string | null
 }
 
 export interface ClipPlan {

@@ -122,6 +122,7 @@ export function DirectorStage() {
   const directorSceneDescription = useStore(s => s.directorSceneDescription)
   const directorTechnicalPrompt = useStore(s => s.directorTechnicalPrompt)
   const directorSongDescription = useStore(s => s.directorSongDescription)
+  const directorSpeakerMappings = useStore(s => s.directorSpeakerMappings)
 
   // Ensure draft is loaded when DirectorStage mounts for active workspace
   useEffect(() => {
@@ -137,6 +138,7 @@ export function DirectorStage() {
       && !directorAnalysis
       && (!directorPlannedClips || directorPlannedClips.length === 0)
       && (!directorClipPlans || directorClipPlans.length === 0)
+      && (!directorSpeakerMappings || directorSpeakerMappings.length === 0)
       && !directorSceneDescription?.trim()
       && !directorSongDescription?.trim()
       && !directorTechnicalPrompt?.trim()
@@ -152,6 +154,7 @@ export function DirectorStage() {
     directorAnalysis,
     directorPlannedClips,
     directorClipPlans,
+    directorSpeakerMappings,
     directorSceneDescription,
     directorTechnicalPrompt,
     directorSongDescription,

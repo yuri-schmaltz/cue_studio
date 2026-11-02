@@ -684,7 +684,11 @@ export interface DirectorDraft {
   directorScriptGranularity?: 'scene' | 'beat'
   directorEnergyBias?: number
   directorSpeakers?: string[]
-  directorSpeakerMappings?: import('../types').SpeakerMapping[]
+  /** Speaker mappings as persisted.
+   *
+   *  The `File` and the transient `blob:` preview cannot survive JSON,
+   *  so the draft keeps the server path of the uploaded photo instead. */
+  directorSpeakerMappings?: Array<Partial<import('../types').SpeakerMapping> & { imagePath?: string | null }>
   directorSeamless?: boolean
   directorAutoMode?: boolean
   directorShotImageGuidance?: import('../types').DirectorShotImageGuidance

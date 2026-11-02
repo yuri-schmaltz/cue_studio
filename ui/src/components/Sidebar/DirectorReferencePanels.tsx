@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import type { SpeakerMapping } from '../../types'
+import { speakerImageSrc } from '../../lib/speakerImage'
 import { SectionBadge, EnergyDot } from './DirectorChatBadges'
 
 // Constants and helpers lifted from ``DirectorChat.tsx`` so the
@@ -154,10 +155,10 @@ export function SpeakerRefCard({
       }`}
     >
       <div className="relative aspect-square bg-bg-tertiary rounded border border-border overflow-hidden flex items-center justify-center">
-        {mapping.imagePreview ? (
+        {speakerImageSrc(mapping) ? (
           <>
             <img
-              src={mapping.imagePreview}
+              src={speakerImageSrc(mapping)!}
               alt={mapping.name || mapping.speakerId}
               className="absolute inset-0 w-full h-full object-contain pointer-events-none"
             />
@@ -293,6 +294,7 @@ function RefAddCard({
 export function AdditionalRefsSection() {
   const speakerMappings = useStore(s => s.directorSpeakerMappings)
   const setSpeakerMapping = useStore(s => s.directorSetSpeakerMapping)
+  const setSpeakerImage = useStore(s => s.directorSetSpeakerImage)
   const charRefs = useStore(s => s.directorCharacterRefs)
   const charLabels = useStore(s => s.directorCharacterRefLabels)
   const locRefs = useStore(s => s.directorLocationRefs)
@@ -422,8 +424,7 @@ export function AdditionalRefsSection() {
                 mapping={m}
                 onRemoveImage={() => setSpeakerMapping(m.speakerId, m.name, m.role, null, null)}
                 onImageChange={file => {
-                  const preview = URL.createObjectURL(file)
-                  setSpeakerMapping(m.speakerId, m.name, m.role, file, preview)
+                  void setSpeakerImage(m.speakerId, file)
                 }}
                 onNameChange={name => {
                   setSpeakerMapping(m.speakerId, name, m.role, m.image, m.imagePreview)
