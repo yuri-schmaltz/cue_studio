@@ -2,6 +2,7 @@
 import type { StoreApi } from 'zustand'
 import type { AppState, StudioModelDependencies } from './useStore'
 import * as api from '../api/client'
+import { speakerImagePath } from '../lib/speakerImage'
 
 type Dependencies = Pick<StudioModelDependencies, 'resolveResolution'> & {
   directorModelUsesFixedMediaStrength: (modelType: string, architecture?: string) => boolean
@@ -262,6 +263,16 @@ export async function startDirectorPipeline(
     if (charPaths.length > state.directorCharacterRefPaths.length) {
       set({ directorCharacterRefPaths: charPaths })
     }
+    // The speaker photo is a character reference too. It was uploaded
+    // when it was picked, so its server path is already known and the
+    // reference survives a reload (where the File is gone).
+    const charLabels = [...state.directorCharacterRefLabels]
+    for (const m of state.directorSpeakerMappings) {
+      const p = speakerImagePath(m)
+      if (!p || charPaths.includes(p)) continue
+      charPaths.push(p)
+      charLabels.push(m.name.trim() || m.speakerId)
+    }
     // Upload location refs that haven't been uploaded yet
     const locPaths = [...state.directorLocationRefPaths]
     for (let i = locPaths.length; i < state.directorLocationRefs.length; i++) {
@@ -354,7 +365,7 @@ export async function startDirectorPipeline(
         minimax_h3_reference_detail: state.directorH3ReferenceDetail,
       } : {}),
       character_ref_paths: charPaths.length > 0 ? charPaths : undefined,
-      character_ref_labels: state.directorCharacterRefLabels.length > 0 ? state.directorCharacterRefLabels : undefined,
+      character_ref_labels: charLabels.length > 0 ? charLabels : undefined,
       location_ref_paths: locPaths.length > 0 ? locPaths : undefined,
       location_ref_labels: state.directorLocationRefLabels.length > 0 ? state.directorLocationRefLabels : undefined,
       planned_clips: directorPlannedClips,

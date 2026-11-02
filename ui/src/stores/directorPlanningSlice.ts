@@ -857,12 +857,14 @@ export const createDirectorPlanningSlice = (
       const mergedCharPaths = [...charPaths]
       const mergedCharLabels = [...charLabels]
       for (const m of get().directorSpeakerMappings) {
-        if (m.image && speakerImagePaths[m.speakerId]) {
-          const p = speakerImagePaths[m.speakerId]
-          if (!mergedCharPaths.includes(p)) {
-            mergedCharPaths.push(p)
-            mergedCharLabels.push(m.name.trim() || m.speakerId)
-          }
+        // The speaker photo reaches the pipeline as a character
+        // reference. It must be keyed on the server path alone: the
+        // in-memory `File` is gone after a reload, so requiring it here
+        // silently dropped every reference restored from a draft.
+        const p = speakerImagePaths[m.speakerId]
+        if (p && !mergedCharPaths.includes(p)) {
+          mergedCharPaths.push(p)
+          mergedCharLabels.push(m.name.trim() || m.speakerId)
         }
       }
       const extraRefs = {
