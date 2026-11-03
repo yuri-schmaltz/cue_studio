@@ -261,7 +261,7 @@ export function DirectorStage() {
         >
           <div className="flex-1 min-h-0 min-w-0 flex flex-col">
             {pipelineStatus?.status === 'paused' ? (
-              <section aria-label="Production review and progress">
+              <section aria-label="Production review and progress" className="flex-1 min-h-0 flex flex-col">
                 <DirectorReview />
               </section>
             ) : <DirectorPlanColumn />}

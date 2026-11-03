@@ -52,7 +52,14 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
     } finally { setBusy(false) }
   }
   return (
-    <section className="rounded-xl border border-accent-blue/40 bg-bg-secondary p-4 space-y-4">
+    /* The stage column has `overflow:hidden`, so a review with 25 scenes
+       used to grow past the column and simply get clipped — there was no
+       way to reach scene 20. The card itself becomes the scroll area
+       (same pattern the scenes column uses) and the approval actions
+       stay pinned below it, because they are needed while reading the
+       last scene too. */
+    <div className="h-full min-h-0 flex flex-col gap-2" data-testid="director-review">
+    <section className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border border-accent-blue/40 bg-bg-secondary p-4 space-y-4 pr-1 -mr-1">
       <div>
         <h2 className="text-base font-semibold">{finalReview ? 'Approve final render request' : imageReview ? 'Approve storyboard' : 'Review scene plan'}</h2>
         <p className="text-xs text-text-muted mt-1">{finalReview ? 'The renderer has prepared the final prompts, reference bindings and settings. This saved request will be used for generation.' : imageReview
@@ -141,15 +148,16 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
         ))}
       </div>
       {finalReview && <details className="text-xs"><summary>Prepared render settings and effective prompts</summary><pre className="whitespace-pre-wrap break-all max-h-96 overflow-auto p-2">{JSON.stringify(status.review_render_params, null, 2)}</pre></details>}
-      {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
-      <div className="flex flex-wrap gap-3 items-center text-xs">
-        <span>{approved.length}/{plans.length} scenes approved{rejectedCount > 0 && ` · ${rejectedCount} rejected`}</span>
-        <button disabled={busy} className="underline" onClick={() => setApproved(plans.map((_, i) => i).filter(i => !(i in rejected)))}>Approve all scenes</button>
-        <button disabled={busy || !plans.length || rejectedCount > 0 || approved.length !== plans.length} onClick={() => void submit()}
-          className="ml-auto rounded-lg bg-accent-blue text-white px-4 py-2 disabled:opacity-40 flex gap-2 items-center">
-          {busy && <Loader2 className="animate-spin" size={14} />} {finalReview ? 'Generate approved video' : imageReview ? 'Prepare final render plan' : 'Continue with approved plan'}
-        </button>
-      </div>
     </section>
+    <footer className="shrink-0 flex flex-wrap gap-3 items-center text-xs px-1">
+      <span>{approved.length}/{plans.length} scenes approved{rejectedCount > 0 && ` · ${rejectedCount} rejected`}</span>
+      <button disabled={busy} className="underline" onClick={() => setApproved(plans.map((_, i) => i).filter(i => !(i in rejected)))}>Approve all scenes</button>
+      <button disabled={busy || !plans.length || rejectedCount > 0 || approved.length !== plans.length} onClick={() => void submit()}
+        className="ml-auto rounded-lg bg-accent-blue text-white px-4 py-2 disabled:opacity-40 flex gap-2 items-center">
+        {busy && <Loader2 className="animate-spin" size={14} />} {finalReview ? 'Generate approved video' : imageReview ? 'Prepare final render plan' : 'Continue with approved plan'}
+      </button>
+      {error && <p role="alert" className="w-full text-red-400 text-sm">{error}</p>}
+    </footer>
+    </div>
   )
 }
