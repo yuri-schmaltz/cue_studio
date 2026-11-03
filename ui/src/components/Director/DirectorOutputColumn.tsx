@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { getFileUrl } from '../../api/client'
+import { DirectorStatusFooter } from './DirectorStatusFooter'
 
 export function DirectorOutputColumn() {
   const plannedClips = useStore(s => s.directorPlannedClips)
@@ -46,23 +47,6 @@ export function DirectorOutputColumn() {
   }
 
   const selectedImageUrl = getClipImageUrl(selectedClipImage)
-
-  // Footer data (video model and GPU VRAM)
-  const rodapeModelName = useStore(s => {
-    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
-    const def = s.models.find(item => item.model_type === selected)
-    return def?.name || selected
-  })
-  const rodapeArchitecture = useStore(s => {
-    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
-    return s.models.find(item => item.model_type === selected)?.architecture
-  })
-  const rodapeVramUsedGb = useStore(s => (s.systemStats?.gpu.available ? s.systemStats?.gpu.vram_used_gb : null))
-  const rodapeVramTotalGb = useStore(s => s.systemStats?.gpu.vram_total_gb ?? 0)
-  const rodapeGpuAvailable = useStore(s => s.systemStats?.gpu.available ?? false)
-  const rodapeVram = rodapeGpuAvailable && rodapeVramUsedGb != null
-    ? { usedGb: rodapeVramUsedGb, totalGb: rodapeVramTotalGb }
-    : null
 
   return (
     <div className="flex-1 min-h-0 flex flex-col space-y-3" data-testid="director-output-column">
@@ -207,27 +191,9 @@ export function DirectorOutputColumn() {
         </section>
       </div>
 
-      {/* Footer com Status da GPU / VRAM e Modelo */}
-      <div
-        className="mt-auto shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex flex-col justify-center gap-1.5 text-2xs text-text-muted/80 select-none"
-        data-testid="director-output-rodape"
-        aria-label="Selected model and VRAM usage"
-      >
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 min-w-0 truncate">
-            <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/70" />
-            <span className="truncate">
-              {rodapeModelName}
-              {rodapeArchitecture && (
-                <span className="text-text-muted/50 ml-1">· {rodapeArchitecture}</span>
-              )}
-            </span>
-          </span>
-          <span className="shrink-0 font-mono text-3xs text-text-muted/70">
-            {rodapeVram ? `${rodapeVram.usedGb.toFixed(1)} / ${rodapeVram.totalGb.toFixed(0)} GB` : 'VRAM unavailable'}
-          </span>
-        </div>
-      </div>
+      {/* Hardware strip — the single place the model and the VRAM are
+          shown (the Generation Options panel used to repeat it). */}
+      <DirectorStatusFooter testId="director-output-rodape" />
 
       {/* Fullscreen modal */}
       {fullscreenImage && (

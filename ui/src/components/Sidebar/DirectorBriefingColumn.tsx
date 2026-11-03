@@ -22,6 +22,8 @@ import {
   SystemBubble,
 } from './DirectorChatBadges'
 import { DirectorErrorBanner } from './DirectorErrorBanner'
+import { DirectorStatusFooter } from '../Director/DirectorStatusFooter'
+import { TabStrip } from '../shared/TabStrip'
 import { DIRECTOR_LABELS } from '../../director/types'
 import { deriveImageSceneStatus, deriveVideoSceneStatus } from '../../director/sceneStatus'
 
@@ -805,8 +807,13 @@ export function DirectorBriefingColumn() {
     : 'Reviewing...'
 
   const renderActionButtons = () => (
+    /* Every column of the stage ends in a 54px action strip so the
+       three of them line up. The transient messages (queue
+       confirmation, script error) therefore float *above* the strip
+       instead of pushing it taller — otherwise one column would end
+       lower than its neighbours. */
     <footer
-      className="mt-auto shrink-0 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex flex-col justify-center select-none"
+      className="mt-auto shrink-0 relative bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex flex-col justify-center select-none"
       data-testid="director-briefing-rodape"
       aria-label="Director briefing actions"
     >
@@ -857,8 +864,7 @@ export function DirectorBriefingColumn() {
           className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
           title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
           aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
-        >
-          {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
+        >          {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
             <Loader2 size={16} className="animate-spin" />
           ) : (
             <Send size={16} />
@@ -868,7 +874,7 @@ export function DirectorBriefingColumn() {
         <button
           onClick={() => void handleQueueDraft()}
           disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
-          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue/85 text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+          className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-bg-tertiary border border-border text-text-muted hover:text-text-primary hover:border-border-light transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
           title={
             mvGenerateSetup
               ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
@@ -885,13 +891,16 @@ export function DirectorBriefingColumn() {
       </div>
 
       {scriptError && (
-        <p className="text-2xs text-red-400 shrink-0 mt-1" role="alert">{scriptError}</p>
+        <p
+          className="absolute bottom-full left-3 right-3 mb-1 rounded-md border border-red-500/30 bg-bg-primary px-2.5 py-1 text-2xs text-red-400"
+          role="alert"
+        >{scriptError}</p>
       )}
       {draftQueueConfirmation && (
         <div
           role="status"
           aria-live="polite"
-          className="rounded-md border border-green-500/20 bg-green-500/5 px-2.5 py-1 text-2xs leading-relaxed text-indicator-success flex items-center justify-between shrink-0 mt-1"
+          className="absolute bottom-full left-3 right-3 mb-1 rounded-md border border-green-500/20 bg-bg-primary/95 px-2.5 py-1 text-2xs leading-relaxed text-indicator-success flex items-center justify-between"
         >
           <span>{draftQueueConfirmation}</span>
           {lastOriginalText !== null && (
@@ -1633,63 +1642,27 @@ function DirectorAudioSourceTabs({
   activeTab: DirectorSidebarTab
   onTabChange: (tab: DirectorSidebarTab) => void
 }) {
+  /* Built on the shared TabStrip: the same primitive the application
+     navigation and the Studio use, so the keyboard behaviour and the
+     aria wiring are identical everywhere. Each tab keeps its own
+     accent (amber / teal / accent-blue) through `data-section`. */
+  const tabs: { id: DirectorSidebarTab; label: string; icon: typeof Music; title: string; ariaLabel: string }[] = [
+    { id: 'music', label: 'Music', icon: Music, title: 'Upload a song file or generate one with AI', ariaLabel: 'Music — upload or generate a track' },
+    { id: 'references', label: 'References', icon: ImageIcon, title: 'Open the visual anchors panel (reference photo + character / location / voice refs)', ariaLabel: 'References panel' },
+    { id: 'description', label: 'Description', icon: FileText, title: 'Scene description, prompt wizard, and identified voices/characters', ariaLabel: 'Scene and character description' },
+  ]
   return (
-    <div role="tablist" aria-label="Director sidebar tabs" className="grid grid-cols-3 gap-1.5">
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'music'}
-        aria-label="Music — upload or generate a track"
-        title="Upload a song file or generate one with AI"
-        onClick={() => onTabChange('music')}
-        data-testid="director-tab-music"
-        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          activeTab === 'music'
-            ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
-            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
-        }`}
-      >
-        <Music size={13} className={activeTab === 'music' ? 'text-white' : 'text-text-muted'} />
-        <span className="truncate">Music</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'references'}
-        aria-label="References panel"
-        title="Open the visual anchors panel (reference photo + character / location / voice refs)"
-        onClick={() => onTabChange('references')}
-        data-testid="director-tab-references"
-        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          activeTab === 'references'
-            ? 'border-teal-600 bg-teal-600 text-white shadow-sm'
-            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
-        }`}
-      >
-        <ImageIcon size={13} className={activeTab === 'references' ? 'text-white' : 'text-text-muted'} />
-        <span className="truncate">References</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'description'}
-        aria-label="Scene and character description"
-        title="Scene description, prompt wizard, and identified voices/characters"
-        onClick={() => onTabChange('description')}
-        data-testid="director-tab-description"
-        className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg border text-xs font-medium transition-colors ${
-          activeTab === 'description'
-            ? 'border-accent-blue bg-accent-blue text-white shadow-sm'
-            : 'border-border bg-bg-tertiary text-text-secondary hover:text-text-primary hover:border-border-light'
-        }`}
-      >
-        <FileText size={13} className={activeTab === 'description' ? 'text-white' : 'text-text-muted'} />
-        <span className="truncate">Description</span>
-      </button>
-    </div>
+    <TabStrip
+      variant="segmented"
+      ariaLabel="Director sidebar tabs"
+      items={tabs}
+      value={activeTab}
+      onChange={onTabChange}
+      dataSectionKey={item => item.id}
+      itemTestId={item => `director-tab-${item.id}`}
+    />
   )
 }
-
 
 
 export function ReferenceImageUpload({
@@ -2592,7 +2565,7 @@ function OptionsViewModeToggle({
  *  the header out keeps the Style Bibles button accessible in both
  *  states without forcing the parent (DirectorStage) to thread state
  *  through two siblings. */
-export function DirectorGenerationOptions() {
+export function DirectorGenerationOptions({ embedded = false }: { embedded?: boolean }) {
   const [optionsViewMode, setOptionsViewMode] = useState<'basic' | 'expert'>('basic')
   const audioFile = useStore(s => s.directorAudioFile)
   const fixedMediaStrength = useStore(s => {
@@ -2600,27 +2573,6 @@ export function DirectorGenerationOptions() {
     const model = s.models.find(item => item.model_type === selected)
     return directorModelUsesFixedMediaStrength(selected, model?.architecture)
   })
-  // Footer selectors — kept as primitives so Zustand's default ===
-  // equality check works (otherwise returning a fresh object each call
-  // would trigger an infinite re-render). Each selector picks one
-  // scalar, so the column re-renders only when the model changes or
-  // the GPU stats poll updates one of these values.
-  const rodapeModelName = useStore(s => {
-    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
-    const def = s.models.find(item => item.model_type === selected)
-    return def?.name || selected
-  })
-  const rodapeArchitecture = useStore(s => {
-    const selected = s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1'
-    return s.models.find(item => item.model_type === selected)?.architecture
-  })
-  const rodapeVramUsedGb = useStore(s => s.systemStats?.gpu.available ? s.systemStats?.gpu.vram_used_gb : null)
-  const rodapeVramTotalGb = useStore(s => s.systemStats?.gpu.vram_total_gb ?? 0)
-  const rodapeGpuAvailable = useStore(s => s.systemStats?.gpu.available ?? false)
-  const rodapeVram = rodapeGpuAvailable && rodapeVramUsedGb != null
-    ? { usedGb: rodapeVramUsedGb, totalGb: rodapeVramTotalGb }
-    : null
-
   return (
     <div className="flex-1 min-h-0 flex flex-col space-y-3" data-testid="director-generation-options">
       {/* Body: locked preview before upload, full controls after. */}
@@ -2651,8 +2603,12 @@ export function DirectorGenerationOptions() {
           {optionsViewMode === 'expert' ? (
             <DirectorAdvancedAccordion />
           ) : (
-            <div className="rounded-lg border border-border/40 bg-bg-tertiary/40 p-2 text-2xs text-text-muted text-center">
-              Basic mode active: attention and latency parameters use the model's best automatic recommendations.
+            /* A paragraph where a control would be wastes the space
+               and gives the user nothing to act on — the toggle above
+               already says the mode. The Basic/Expert switch is the
+               only thing that needs to be on screen. */
+            <div className="rounded-lg border border-border/40 bg-bg-tertiary/40 px-3 py-2 text-2xs text-text-muted text-center">
+              Advanced parameters run on the model&apos;s recommended values.
             </div>
           )}
 
@@ -2671,87 +2627,24 @@ export function DirectorGenerationOptions() {
           <StyleBiblesSection />
           <div className="rounded-lg border border-dashed border-border/70 bg-bg-tertiary/40 p-3 text-2xs text-text-muted">
             <p className="leading-snug">
-              Locked — drop audio in the chat column on the left to unlock LoRA
-              picking, the advanced parameters, audio speed, source strength and
-              the negative prompt.
+              Locked until an audio file is uploaded — LoRAs, advanced parameters,
+              audio speed, source strength and the negative prompt unlock with it.
             </p>
           </div>
         </div>
       )}
-      <DirectorGenerationOptionsRodape
-        modelName={rodapeModelName}
-        architecture={rodapeArchitecture}
-        vram={rodapeVram}
-      />
+      {/* The hardware strip is rendered once, at the bottom of the
+          column (DirectorStatusFooter). Rendering it here too meant
+          the same model and VRAM numbers appeared twice. */}
+      {!embedded && <DirectorStatusFooter testId="director-options-rodape" />}
     </div>
   )
 }
 
-/** Footer of the Generation Options column — thin strip that extends
- *  to the bottom of the column showing the selected video model
- *  (resolved to the friendly name from `ModelDef`) and the current/total
- *  VRAM usage when the GPU is available. `mt-auto` pushes the footer to
- *  the bottom of the flex column regardless of the size of the body
- *  (collapsed or expanded accordion). The hairline-thin top border
- *  separates the footer from the content without competing with the
- *  card's border. */
-function DirectorGenerationOptionsRodape({
-  modelName,
-  architecture,
-  vram,
-}: {
-  modelName: string
-  architecture?: string
-  vram: { usedGb: number; totalGb: number } | null
-}) {
-  return (
-    <div
-      className="mt-auto shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex flex-col justify-center gap-1.5 text-2xs text-text-muted/80 select-none"
-      data-testid="director-options-rodape"
-      aria-label="Selected model and VRAM usage"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5 min-w-0 truncate">
-          <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent-blue/70" />
-          <span className="truncate">
-            Modelo:{' '}
-            <span className="text-text-secondary font-medium" title={modelName}>
-              {modelName}
-            </span>
-            {architecture && (
-              <span className="ml-1 text-text-muted/70">· {architecture}</span>
-            )}
-          </span>
-        </span>
-        <span className="shrink-0 tabular-nums" aria-live="polite">
-          {vram ? (
-            <>
-              VRAM:{' '}
-              <span className="text-text-secondary font-medium">
-                {vram.usedGb.toFixed(1)} / {vram.totalGb.toFixed(0)} GB
-              </span>
-            </>
-          ) : (
-            <span className="text-text-muted/60">VRAM unavailable</span>
-          )}
-        </span>
-      </div>
-      {/* VRAM / GPU indicator bar matching the height & visual weight of DirectorStatusBar */}
-      <div className="h-1.5 w-full bg-bg-tertiary rounded-full overflow-hidden border border-border/40">
-        <div
-          className={`h-full transition-all duration-300 rounded-full ${
-            vram
-              ? (vram.usedGb / (vram.totalGb || 1)) > 0.9
-                ? 'bg-amber-500'
-                : 'bg-accent-blue/70'
-              : 'bg-border/40'
-          }`}
-          style={{ width: vram ? `${Math.min(100, Math.max(4, Math.round((vram.usedGb / (vram.totalGb || 1)) * 100)))}%` : '0%' }}
-        />
-      </div>
-    </div>
-  )
-}
+/* The Generation Options panel no longer carries its own hardware
+   strip: the model and the VRAM are shown once, at the bottom of the
+   right column, by <DirectorStatusFooter/>. Keeping a second copy
+   meant the same two numbers appeared in two places at once. */
 
 /** Editable project-scoped "things to avoid" textarea. Auto-populated
  *  by directorGenerateNegativePrompt when the scene description is

@@ -4,15 +4,15 @@
 // at ≤767px so the generation results are reachable without the
 // desktop 2-column split (which hides MainContent below `md`).
 //
-// Accessibility: role="tablist"/"tab" with aria-selected, roving
-// tabindex and ArrowLeft/ArrowRight/Home/End keyboard navigation —
-// the same pattern used by the Director stage tabs. A "new result"
-// dot renders on the Results tab while a concluded generation hasn't
-// been visited yet.
+// Built on the shared `TabStrip` so the Studio, the Director and the
+// application navigation all behave the same way (roving tabindex,
+// Arrow/Home/End navigation, aria wiring). A "new result" dot renders
+// on the Results tab while a concluded generation hasn't been visited
+// yet.
 
-import type { KeyboardEvent } from 'react'
 import type { StudioLayoutProps } from '../../studio/types'
 import { STUDIO_LABELS } from '../../studio/types'
+import { TabStrip } from '../shared/TabStrip'
 
 type StudioTabsProps = Pick<StudioLayoutProps, 'activeTab' | 'onTabChange'> & {
   /** Rendered as a dot on the Results tab while a new output is
@@ -21,50 +21,23 @@ type StudioTabsProps = Pick<StudioLayoutProps, 'activeTab' | 'onTabChange'> & {
 }
 
 const TABS: readonly StudioLayoutProps['activeTab'][] = ['controls', 'results']
-const tabDomId = (tab: StudioLayoutProps['activeTab']) => `studio-tab-${tab}`
 
 export function StudioTabs({ activeTab, onTabChange, hasPendingResult = false }: StudioTabsProps) {
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const index = TABS.indexOf(activeTab)
-    let nextIndex: number | null = null
-    if (event.key === 'ArrowRight') nextIndex = (index + 1) % TABS.length
-    else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + TABS.length) % TABS.length
-    else if (event.key === 'Home') nextIndex = 0
-    else if (event.key === 'End') nextIndex = TABS.length - 1
-    if (nextIndex === null) return
-    event.preventDefault()
-    const nextTab = TABS[nextIndex]
-    onTabChange(nextTab)
-    document.getElementById(tabDomId(nextTab))?.focus()
-  }
-
   return (
-    <div
-      role="tablist"
-      aria-label="Studio panels"
-      className="flex shrink-0 items-center gap-1.5 border-b border-border bg-bg-secondary px-3 py-1.5 md:hidden"
-      data-testid="studio-tabs"
-      onKeyDown={handleKeyDown}
-    >
-      {TABS.map((tab) => (
-        <button
-          key={tab}
-          type="button"
-          role="tab"
-          id={tabDomId(tab)}
-          aria-controls={`studio-${tab}-panel`}
-          aria-selected={activeTab === tab}
-          tabIndex={activeTab === tab ? 0 : -1}
-          onClick={() => onTabChange(tab)}
-          data-testid={`studio-tab-${tab}`}
-          className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue focus-visible:ring-offset-1 focus-visible:ring-offset-bg-primary ${
-            activeTab === tab
-              ? 'border-accent-blue bg-accent-blue/15 text-accent-blue'
-              : 'border-border bg-bg-tertiary text-text-secondary hover:border-border-light hover:text-text-primary'
-          }`}
-        >
-          {STUDIO_LABELS.tabs[tab]}
-          {tab === 'results' && hasPendingResult && (
+    <TabStrip
+      variant="segmented"
+      testId="studio-tabs"
+      ariaLabel="Studio panels"
+      idPrefix="studio-tab"
+      controlsId={item => `studio-${item.id}-panel`}
+      className="shrink-0 border-b border-border bg-bg-secondary px-3 py-1.5 md:hidden"
+      items={TABS.map(tab => ({ id: tab, label: STUDIO_LABELS.tabs[tab] }))}
+      value={activeTab}
+      onChange={onTabChange}
+      itemTestId={item => `studio-tab-${item.id}`}
+      renderTrailing={item => (
+        item.id === 'results' && hasPendingResult
+          ? (
             <>
               <span
                 data-testid="studio-tabs-pending"
@@ -73,9 +46,9 @@ export function StudioTabs({ activeTab, onTabChange, hasPendingResult = false }:
               />
               <span className="sr-only">— new result</span>
             </>
-          )}
-        </button>
-      ))}
-    </div>
+          )
+          : null
+      )}
+    />
   )
 }

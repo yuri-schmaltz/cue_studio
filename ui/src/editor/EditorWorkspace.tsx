@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useIsMobile } from '../lib/useIsMobile'
 import { useStore } from '../stores/useStore'
 import { EditorLeftPanel } from './EditorLeftPanel'
+import { EditorMediaBin } from './EditorMediaBin'
+import { EditorInspector } from './EditorInspector'
 import { EditorPreview } from './EditorPreview'
 import { EditorTimeline } from './EditorTimeline'
 import { EditorTopBar } from './EditorTopBar'
@@ -137,7 +139,7 @@ export function EditorWorkspace() {
 
       {isMobile ? (
         <>
-          <EditorLeftPanel mobile />
+          <EditorLeftPanel />
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="min-h-[220px] flex-[0.9]">
               <EditorPreview />
@@ -148,12 +150,21 @@ export function EditorWorkspace() {
           </div>
         </>
       ) : (
+        /* Desktop: three columns — media bin, canvas, inspector.
+           The inspector used to live *inside* the left panel, behind a
+           Media | Adjust tab switch, and the store flipped that tab
+           to "inspector" every time the user selected a clip. The
+           media bin therefore vanished exactly when the user started
+           editing, and any drag from the bin lost its source. The
+           two surfaces now sit side by side and nothing has to be
+           hidden. */
         <div className="flex min-h-0 flex-1">
-          <EditorLeftPanel />
+          <EditorMediaBin />
           <div className="flex min-w-0 flex-1 flex-col">
             <EditorPreview />
             <EditorTimeline />
           </div>
+          <EditorInspector />
         </div>
       )}
 

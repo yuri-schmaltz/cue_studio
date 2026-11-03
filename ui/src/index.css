@@ -967,6 +967,50 @@ input[type="range"]::-webkit-slider-thumb {
 .application-brand { display:none; }
 .application-actions { justify-self:end; display:flex; align-items:center; gap:8px; }
 .application-navigation { min-width:0; width:100%; }
+/* ------------------------------------------------------------------
+ * TabStrip — the single tab primitive (ui/src/components/shared/
+ * TabStrip.tsx). Three skins over one behaviour: "section" is the
+ * application navigation (solid accent per section), "pill" is a
+ * sub-navigation strip, "segmented" is a two-way switch.
+ * ------------------------------------------------------------------ */
+.tab-strip { display:flex; align-items:stretch; min-width:0; }
+.tab-strip__tab { display:flex; align-items:center; justify-content:center; gap:8px; min-width:0; color:var(--color-text-muted); font-size:var(--text-sm); font-weight:500; transition:background .15s,color .15s; white-space:nowrap; }
+.tab-strip__tab > span { overflow:hidden; text-overflow:ellipsis; }
+.tab-strip__tab.is-disabled { opacity:.55; cursor:not-allowed; }
+.tab-strip__tab.is-disabled:hover { background:transparent; color:var(--color-text-muted); }
+.tab-strip__label-short { display:none; }
+/* Badge shared by every variant. */
+.tab-strip__badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; margin-left:6px; border-radius:9px; background:var(--color-accent-blue); color:#fff; font-size:var(--text-2xs); font-weight:600; line-height:1; }
+
+/* variant: section — the application navigation. Each section keeps
+   its own solid accent so the eye knows which page is open. */
+.tab-strip--section { gap:4px; padding:5px; width:100%; border:1px solid var(--color-border); border-radius:12px; background:color-mix(in srgb,var(--color-bg-primary) 60%,transparent); }
+.tab-strip__tab--section { flex:1 1 0; min-height:36px; padding:0 16px; border-radius:8px; }
+.tab-strip__tab--section:hover { color:var(--color-text-primary); background:var(--color-bg-hover); }
+.tab-strip__tab--section.is-active { color:var(--color-text-primary); background:var(--color-bg-secondary); box-shadow:inset 0 0 0 1px var(--color-border-light),0 1px 2px rgba(0,0,0,.18); }
+
+/* variant: pill — sub-navigation (Director briefing, Studio). */
+.tab-strip--pill { gap:4px; padding:4px; width:100%; border:1px solid var(--color-border); border-radius:10px; background:color-mix(in srgb,var(--color-bg-primary) 60%,transparent); }
+.tab-strip__tab--pill { flex:1 1 0; min-height:30px; padding:0 10px; border-radius:7px; font-size:var(--text-xs); gap:6px; }
+.tab-strip__tab--pill:hover { color:var(--color-text-primary); background:var(--color-bg-hover); }
+.tab-strip__tab--pill.is-active { color:#fff; background:var(--color-accent-blue); }
+
+/* variant: segmented — a two-way switch inside a panel. */
+.tab-strip--segmented { gap:4px; width:100%; }
+.tab-strip__tab--segmented { flex:1 1 0; min-height:32px; padding:0 8px; border:1px solid var(--color-border); border-radius:8px; background:var(--color-bg-tertiary); font-size:var(--text-xs); }
+.tab-strip__tab--segmented:hover { color:var(--color-text-primary); border-color:var(--color-border-light); }
+.tab-strip__tab--segmented.is-active { color:#fff; background:var(--color-accent-blue); border-color:var(--color-accent-blue); }
+/* The Director's briefing tabs keep their own accents so the eye can
+   tell at a glance which surface is open. */
+.tab-strip__tab--segmented[data-section="music"].is-active        { background:#b45309; border-color:#b45309; color:#fff; }
+.tab-strip__tab--segmented[data-section="references"].is-active { background:#0f766e; border-color:#0f766e; color:#fff; }
+.tab-strip__tab--segmented[data-section="description"].is-active { background:var(--color-accent-blue); border-color:var(--color-accent-blue); color:#fff; }
+
+@media(max-width:640px) {
+  .tab-strip__label { display:none; }
+  .tab-strip__label-short { display:inline; }
+}
+
 /* The Director status bar wears the same shell as the tab strip above
    it: one rounded, bordered surface that groups the whole row. Before
    this it was a bare strip glued to the bottom edge of the stage, and
@@ -992,12 +1036,12 @@ input[type="range"]::-webkit-slider-thumb {
    its own tint so the eye knows which page is open at a glance. The
    text color is forced to white so all backgrounds (including dark
    ones) keep readable contrast. */
-.application-tab[data-section="projects"].is-active      { background:#0e7490; color:#fff; }
-.application-tab[data-section="director"].is-active      { background:#7c3aed; color:#fff; }
-.application-tab[data-section="editor"].is-active       { background:#be185d; color:#fff; }
-.application-tab[data-section="medias"].is-active       { background:#15803d; color:#fff; }
-.application-tab[data-section="queue"].is-active        { background:#1d4ed8; color:#fff; }
-.application-tab[data-section="configurations"].is-active { background:#475569; color:#fff; }
+.tab-strip__tab--section[data-section="projects"].is-active      { background:#0e7490; color:#fff; }
+.tab-strip__tab--section[data-section="director"].is-active      { background:#7c3aed; color:#fff; }
+.tab-strip__tab--section[data-section="editor"].is-active       { background:#be185d; color:#fff; }
+.tab-strip__tab--section[data-section="medias"].is-active       { background:#15803d; color:#fff; }
+.tab-strip__tab--section[data-section="queue"].is-active        { background:#1d4ed8; color:#fff; }
+.tab-strip__tab--section[data-section="configurations"].is-active { background:#475569; color:#fff; }
 .application-tab.is-locked { color:var(--color-text-muted); opacity:.55; cursor:not-allowed; }
 .application-tab.is-locked:hover { background:transparent; color:var(--color-text-muted); }
 .application-tab-lock { margin-left:2px; opacity:.7; }

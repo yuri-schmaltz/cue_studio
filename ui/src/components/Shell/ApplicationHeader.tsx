@@ -3,6 +3,7 @@ import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVi
 import { useStore } from '../../stores/useStore'
 import { useActiveProject } from '../../navigation/useUrlNavigation'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
+import { TabStrip } from '../shared/TabStrip'
 import type { AppSection } from '../../types'
 
 const sections: ReadonlyArray<{
@@ -74,38 +75,29 @@ export function ApplicationHeader() {
   return (
     <header className="application-header" data-testid="application-header">
       <nav className="application-navigation" aria-label="Main navigation">
-        <div role="tablist" aria-label="Application sections" className="application-tabs">
-          {sections.map(({ id, label, icon: Icon, showCount }, index) => {
-            const locked = projectGated.has(id) && !hasProject
-            const count = showCount ? queueCount : 0
-            return (
-              <button key={id} id={`tab-${id}`} type="button" role="tab"
-                aria-selected={active === id} aria-controls={`panel-${id}`} tabIndex={active === id ? 0 : -1}
-                aria-disabled={locked || undefined}
-                aria-label={showCount ? `${label}, ${count} ${count === 1 ? 'item' : 'items'}` : label}
-                title={locked ? 'Create or open a project first' : undefined}
-                data-section={id}
-                className={`application-tab ${active === id ? 'is-active' : ''} ${locked ? 'is-locked' : ''}`}
-                onClick={() => select(id)}
-                onKeyDown={event => {
-                  const next = event.key === 'ArrowRight' ? (index + 1) % sections.length
-                    : event.key === 'ArrowLeft' ? (index + sections.length - 1) % sections.length
-                      : event.key === 'Home' ? 0 : event.key === 'End' ? sections.length - 1 : -1
-                  if (next < 0) return
-                  event.preventDefault()
-                  select(sections[next].id)
-                  document.getElementById(`tab-${sections[next].id}`)?.focus()
-                }}>
-                <Icon size={16} aria-hidden="true" />
-                <span>{label}</span>
-                {showCount && count > 0 && (
-                  <span className="application-tab-count" aria-hidden="true">{count > 99 ? '99+' : count}</span>
-                )}
-                {locked && <Lock size={11} aria-hidden="true" className="application-tab-lock" />}
-              </button>
-            )
-          })}
-        </div>
+        <TabStrip
+          variant="section"
+          ariaLabel="Application sections"
+          idPrefix="tab"
+          controlsId={item => `panel-${item.id}`}
+          items={sections.map(({ id, label, icon, showCount }) => ({
+            id,
+            label,
+            icon,
+            badge: showCount ? queueCount : null,
+            ariaLabel: showCount ? `${label}, ${queueCount} ${queueCount === 1 ? 'item' : 'items'}` : undefined,
+            disabled: projectGated.has(id) && !hasProject,
+            title: projectGated.has(id) && !hasProject ? 'Create or open a project first' : undefined,
+          }))}
+          value={active}
+          onChange={select}
+          dataSectionKey={item => item.id}
+          renderTrailing={item => (
+            projectGated.has(item.id as AppSection) && !hasProject
+              ? <Lock size={11} aria-hidden="true" className="application-tab-lock" />
+              : null
+          )}
+        />
       </nav>
     </header>
   )

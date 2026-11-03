@@ -353,7 +353,7 @@ export function DirectorPlanColumn() {
           buried at the bottom of the prompt list: generating the start
           images. */}
       <footer
-        className="shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 py-2 flex items-center select-none"
+        className="shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[54px] min-h-[54px] flex items-center select-none"
         data-testid="director-plan-rodape"
         aria-label="Generate start images"
       >
