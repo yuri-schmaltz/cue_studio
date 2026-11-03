@@ -811,7 +811,7 @@ export function DirectorBriefingColumn() {
       aria-label="Director briefing actions"
     >
       {/* Action buttons row — 5 equal-width buttons filling 100% horizontal width,
-          aligned with DirectorStatusPanel and DirectorOutputColumn footers */}
+          aligned with DirectorStatusBar and DirectorOutputColumn footers */}
       <div className="grid grid-cols-5 gap-2 w-full">
         <button
           type="button"
@@ -2736,7 +2736,7 @@ function DirectorGenerationOptionsRodape({
           )}
         </span>
       </div>
-      {/* VRAM / GPU indicator bar matching the height & visual weight of DirectorStatusPanel */}
+      {/* VRAM / GPU indicator bar matching the height & visual weight of DirectorStatusBar */}
       <div className="h-1.5 w-full bg-bg-tertiary rounded-full overflow-hidden border border-border/40">
         <div
           className={`h-full transition-all duration-300 rounded-full ${
@@ -2932,17 +2932,13 @@ export function StyleForm({
 }
 
 export function ImagePromptsReview({
-  clipPlans, plannedClips, speakerMappings, editClipPlan, planPrompts,
-  generateStartImages, loading, isActive, isShortFilm,
+  clipPlans, plannedClips, speakerMappings, editClipPlan,
+  isActive, isShortFilm,
 }: {
   clipPlans: ReturnType<typeof useStore.getState>['directorClipPlans']
   plannedClips: ReturnType<typeof useStore.getState>['directorPlannedClips']
   speakerMappings: ReturnType<typeof useStore.getState>['directorSpeakerMappings']
   editClipPlan: (index: number, field: 'video_prompt' | 'image_prompt', value: string) => void
-  planPrompts: () => Promise<void>
-  planVideoPrompts: () => Promise<void>
-  generateStartImages: () => Promise<void>
-  loading: boolean
   isActive: boolean
   isShortFilm?: boolean
 }) {
@@ -2978,18 +2974,6 @@ export function ImagePromptsReview({
   }
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-2">
-      {isActive && (
-        <div className="flex items-center justify-end shrink-0">
-          <button
-            onClick={planPrompts}
-            disabled={loading}
-            className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-1"
-          >
-            <RotateCcw size={10} /> Regenerate
-          </button>
-        </div>
-      )}
-
       {/* Full-height list occupying all available vertical space */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 -mr-1">
         {clipPlans.map((plan, i) => {
@@ -3159,18 +3143,6 @@ export function ImagePromptsReview({
           )
         })}
       </div>
-
-      {isActive && (
-        <button
-          onClick={generateStartImages}
-          disabled={loading}
-          className="w-full py-2.5 shrink-0 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5 shadow-xs"
-        >
-          {/* Always available now — directorGenerateStartImages generates an
-              establishing/anchor image first when no reference was provided. */}
-          <ImageIcon size={13} /> Generate Start Images
-        </button>
-      )}
     </div>
   )
 }

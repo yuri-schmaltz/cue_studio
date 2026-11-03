@@ -27,7 +27,7 @@
 
 import { useStore } from '../../stores/useStore'
 import { useMemo, useState, useEffect } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, RotateCcw, ImageIcon } from 'lucide-react'
 import {
   ImagePromptsReview,
   ImageGenView,
@@ -35,7 +35,6 @@ import {
   DirectorActionControls,
 } from './DirectorBriefingColumn'
 import { DirectorActivityBlock } from './DirectorActivityBar'
-import { DirectorStatusPanel } from '../Stages/DirectorStatusPanel'
 
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
 type DirectorStep = typeof STEP_ORDER[number]
@@ -243,15 +242,29 @@ export function DirectorPlanColumn() {
       {!isPlanningActive && (
         <section className={`flex flex-col min-h-0 ${hasPlan ? 'flex-1' : 'flex-1'}`} data-testid="director-prompts-card">
           {hasPlan && (
-            <div className="flex items-center justify-between pb-2 shrink-0">
+            <div className="flex items-center justify-between pb-2 shrink-0 gap-2">
               <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                 {cardTitle}
               </h3>
-              {clipPlans.length > 0 && (
-                <span className="text-2xs text-text-muted px-2 py-0.5 rounded bg-bg-tertiary border border-border">
-                  {clipPlans.length} {clipPlans.length === 1 ? 'cena' : 'cenas'}
-                </span>
-              )}
+              {/* The Regenerate action sits immediately to the left of the
+                  scene counter — it re-runs the LLM pass that produced
+                  those scenes, so it belongs next to the count of them. */}
+              <div className="flex items-center gap-2 shrink-0">
+                {(atStep('review') || atStep('plan')) && (
+                  <button
+                    onClick={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
+                    disabled={loading}
+                    className="text-2xs text-accent-blue hover:text-accent-blue-hover flex items-center gap-1"
+                  >
+                    <RotateCcw size={10} /> Regenerate
+                  </button>
+                )}
+                {clipPlans.length > 0 && (
+                  <span className="text-2xs text-text-muted px-2 py-0.5 rounded bg-bg-tertiary border border-border">
+                    {clipPlans.length} {clipPlans.length === 1 ? 'cena' : 'cenas'}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
@@ -263,10 +276,6 @@ export function DirectorPlanColumn() {
                 plannedClips={plannedClips}
                 speakerMappings={speakerMappings}
                 editClipPlan={editPlanWithHistory}
-                planPrompts={isStoryPath ? shortFilmPlanFromStory : isShortFilm ? shortFilmPlanPrompts : planPrompts}
-                planVideoPrompts={isShortFilm ? shortFilmPlanVideoPrompts : planVideoPrompts}
-                generateStartImages={generateStartImages}
-                loading={loading}
                 isActive={atStep('review') || atStep('plan')}
                 isShortFilm={isShortFilm}
               />
@@ -339,7 +348,27 @@ export function DirectorPlanColumn() {
         />
       )}
       </div>
-      <DirectorStatusPanel />
+      {/* Footer — the pipeline tracker moved to its own bar under the
+          three columns, so this slot is free for the action that was
+          buried at the bottom of the prompt list: generating the start
+          images. */}
+      <footer
+        className="shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 py-2 flex items-center select-none"
+        data-testid="director-plan-rodape"
+        aria-label="Generate start images"
+      >
+        {(atStep('review') || atStep('plan')) && hasPlan && usesShotImages && (
+          <button
+            onClick={generateStartImages}
+            disabled={loading}
+            className="w-full py-2 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+          >
+            {/* Always available now — directorGenerateStartImages generates an
+                establishing/anchor image first when no reference was provided. */}
+            <ImageIcon size={13} /> Generate Start Images
+          </button>
+        )}
+      </footer>
     </div>
   )
 }

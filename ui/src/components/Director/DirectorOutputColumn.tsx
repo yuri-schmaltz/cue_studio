@@ -79,38 +79,6 @@ export function DirectorOutputColumn() {
               <Film size={13} className="text-text-muted" />
               {totalClips > 0 ? `Corte #${selectedClipIndex + 1}` : 'Monitor de Preview'}
             </span>
-            <div className="flex items-center gap-2">
-              {totalClips > 1 && (
-                <div className="flex items-center gap-1 bg-bg-tertiary/80 rounded border border-border/60 px-1 py-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedClipIndex(Math.max(0, selectedClipIndex - 1))}
-                    disabled={selectedClipIndex === 0}
-                    className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
-                    title="Cena anterior"
-                  >
-                    <ChevronLeft size={13} />
-                  </button>
-                  <span className="text-2xs font-mono font-medium text-text-secondary px-1">
-                    {selectedClipIndex + 1} / {totalClips}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedClipIndex(Math.min(totalClips - 1, selectedClipIndex + 1))}
-                    disabled={selectedClipIndex >= totalClips - 1}
-                    className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
-                    title="Próxima cena"
-                  >
-                    <ChevronRight size={13} />
-                  </button>
-                </div>
-              )}
-              {selectedClip && (
-                <span className="text-2xs text-text-muted font-mono">
-                  {selectedClip.start.toFixed(1)}s – {selectedClip.end.toFixed(1)}s ({(selectedClip.end - selectedClip.start).toFixed(1)}s)
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Canvas area */}
@@ -165,16 +133,46 @@ export function DirectorOutputColumn() {
 
         {/* Informações detalhadas da cena selecionada */}
         <section className="flex flex-col gap-2.5 flex-1 min-h-[140px]">
-          <div className="flex items-center justify-between pb-1 border-b border-border/40 shrink-0">
-            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+          <div className="flex items-center justify-between gap-3 pb-1 border-b border-border/40 shrink-0">
+            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5 shrink-0">
               <Film size={12} className="text-accent-blue" />
               Prompt de Vídeo {totalClips > 0 ? `(Cena #${selectedClipIndex + 1})` : ''}
             </span>
-            {totalClips > 0 && (
-              <span className="text-2xs text-text-muted">
-                {selectedClipIndex + 1} de {totalClips}
-              </span>
-            )}
+            {/* The clip navigator and the time range live here, next to
+                the prompt they belong to: switching clips while reading
+                the prompt is the whole point of this panel. */}
+            <div className="flex items-center gap-2 min-w-0">
+              {totalClips > 1 && (
+                <div className="flex items-center gap-1 bg-bg-tertiary/80 rounded border border-border/60 px-1 py-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClipIndex(Math.max(0, selectedClipIndex - 1))}
+                    disabled={selectedClipIndex === 0}
+                    className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
+                    title="Cena anterior"
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                  <span className="text-2xs font-mono font-medium text-text-secondary px-1">
+                    {selectedClipIndex + 1} / {totalClips}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedClipIndex(Math.min(totalClips - 1, selectedClipIndex + 1))}
+                    disabled={selectedClipIndex >= totalClips - 1}
+                    className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
+                    title="Próxima cena"
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
+              {selectedClip && (
+                <span className="text-2xs text-text-muted font-mono truncate">
+                  {selectedClip.start.toFixed(1)}s – {selectedClip.end.toFixed(1)}s ({(selectedClip.end - selectedClip.start).toFixed(1)}s)
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 min-h-0 bg-bg-tertiary/60 rounded-md p-3 border border-border/60 text-xs text-text-primary leading-relaxed flex flex-col gap-2">

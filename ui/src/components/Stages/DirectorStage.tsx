@@ -55,6 +55,7 @@ import {
 import { DirectorPlanColumn } from '../Sidebar/DirectorPlanColumn'
 import { DirectorRightColumn } from '../Director/DirectorRightColumn'
 import { DirectorTourOverlay } from './DirectorTourOverlay'
+import { DirectorStatusBar } from './DirectorStatusBar'
 
 /**
  * Mounts the Director planning UI as a Stage inside the Workspace.
@@ -83,13 +84,11 @@ import { DirectorTourOverlay } from './DirectorTourOverlay'
  */
 
 // ---------------------------------------------------------------------------
-// DirectorStatusPanel — moved to a separate file
-// (./DirectorStatusPanel.tsx) so the App shell can mount it inside the
-// bottom HardwareStatusBar alongside GPU/VRAM/CPU/RAM/No model. The
-// status strip is now a single inline row (step pills + counter +
-// cancel) instead of a stacked card with a two-tone progress bar — the
-// progress information lives entirely in the per-step pill colours and
-// the X/Y counter, which keeps the bottom bar compact.
+// DirectorStatusBar — the pipeline tracker lives in its own bar under the
+// three columns (./DirectorStatusBar.tsx). It used to be a footer inside
+// the middle column, which meant the progress was invisible while the
+// brief or the options panel was open. The steps describe the run as a
+// whole, so they belong to the whole stage.
 // ---------------------------------------------------------------------------
 
 
@@ -285,6 +284,7 @@ export function DirectorStage() {
           <DirectorRightColumn />
         </aside>
       </div>
+      <DirectorStatusBar />
     </div>
   )
 }
