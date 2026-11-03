@@ -45,7 +45,7 @@ export function DirectorStructureSourceToggle() {
         className="text-2xs text-text-muted leading-relaxed shrink-0"
         data-testid="director-structure-source-unavailable"
       >
-        Os cortes seguem o áudio. Para o roteiro definir os cortes, adicione
+        The cuts follow the audio. To let the script decide the cuts, add
         timecodes às cenas (ex.: <span className="text-text-secondary">CENA 1: Abertura (0:00 - 0:11)</span>).
       </p>
     )
@@ -68,7 +68,7 @@ export function DirectorStructureSourceToggle() {
               ? 'bg-accent-blue text-white'
               : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
           }`}
-          title="Os cortes seguem as seções e a energia da música"
+          title="The cuts follow the sections and the energy of the music"
           data-testid="director-structure-source-audio"
         >
           <Music4 size={10} />

@@ -78,7 +78,7 @@ export function DirectorOutputColumn() {
             ) : isVideoGenerating ? (
               <div className="flex flex-col items-center gap-2 text-accent-purple">
                 <Loader2 size={24} className="animate-spin" />
-                <span className="text-2xs font-medium">Renderizando vídeo...</span>
+                <span className="text-2xs font-medium">Rendering video…</span>
               </div>
             ) : selectedImageUrl ? (
               <>
@@ -107,7 +107,7 @@ export function DirectorOutputColumn() {
                 <div className="space-y-0.5">
                   <p className="text-xs font-medium text-text-secondary">Nenhum preview para este corte</p>
                   <p className="text-2xs max-w-xs text-text-muted/80">
-                    O storyboard ou os frames gerados para este clipe aparecerão aqui.
+                    The storyboard or the frames generated for this clip will appear here.
                   </p>
                 </div>
               </div>
@@ -120,7 +120,7 @@ export function DirectorOutputColumn() {
           <div className="flex items-center justify-between gap-3 pb-1 border-b border-border/40 shrink-0">
             <span className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5 shrink-0">
               <Film size={12} className="text-accent-blue" />
-              Prompt de Vídeo {totalClips > 0 ? `(Cena #${selectedClipIndex + 1})` : ''}
+              Video Prompt {totalClips > 0 ? `(Clip #${selectedClipIndex + 1})` : ''}
             </span>
             {/* The clip navigator and the time range live here, next to
                 the prompt they belong to: switching clips while reading
@@ -133,7 +133,7 @@ export function DirectorOutputColumn() {
                     onClick={() => setSelectedClipIndex(Math.max(0, selectedClipIndex - 1))}
                     disabled={selectedClipIndex === 0}
                     className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
-                    title="Cena anterior"
+                    title="Previous clip"
                   >
                     <ChevronLeft size={13} />
                   </button>
@@ -145,7 +145,7 @@ export function DirectorOutputColumn() {
                     onClick={() => setSelectedClipIndex(Math.min(totalClips - 1, selectedClipIndex + 1))}
                     disabled={selectedClipIndex >= totalClips - 1}
                     className="p-1 rounded text-text-muted hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed hover:bg-bg-secondary"
-                    title="Próxima cena"
+                    title="Next clip"
                   >
                     <ChevronRight size={13} />
                   </button>
@@ -165,7 +165,7 @@ export function DirectorOutputColumn() {
                 <textarea
                   value={selectedPlan.video_prompt || ''}
                   onChange={e => editClipPlan(selectedClipIndex, 'video_prompt', e.target.value)}
-                  placeholder="Descreva o movimento de câmera e ação do vídeo..."
+                  placeholder="Describe the camera movement and the action in the video…"
                   className="w-full flex-1 min-h-[90px] bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors leading-relaxed"
                 />
                 {selectedPlan.image_prompt && (
@@ -182,7 +182,7 @@ export function DirectorOutputColumn() {
             ) : totalClips === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center py-4 space-y-1.5">
                 <Sparkles size={16} className="text-accent-blue/70" />
-                <p className="text-2xs text-text-muted">Adicione música ou roteiro no Briefing para planejar os cortes.</p>
+                <p className="text-2xs text-text-muted">Add music or a script in the Briefing column to plan the cuts.</p>
               </div>
             ) : (
               <p className="text-text-muted italic">Nenhum prompt definido para esta cena.</p>

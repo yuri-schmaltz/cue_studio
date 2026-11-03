@@ -718,6 +718,24 @@ export function DirectorBriefingColumn() {
 
   const chatInputEnabled = (step === 'style' || mvGenerateSetup || activeTab === 'description') && !loading
 
+  /* D-10: the same footer sits under three different tabs and its
+     primary button acts on something different in each one. The
+     button now says which one, and the tab that cannot use it says
+     why instead of leaving a greyed-out icon with no explanation. */
+  const sendTarget = mvGenerateSetup
+    ? 'the song'
+    : activeTab === 'description'
+      ? 'the scene description'
+      : 'this Director project'
+  const sendAction = mvGenerateSetup
+    ? 'Generate the song and start this Director project'
+    : activeTab === 'description'
+      ? 'Send the scene description to the Director'
+      : 'Start this Director project now'
+  const sendBlockedReason = !chatInputEnabled && !mvGenerateSetup && activeTab !== 'description'
+    ? 'Describe the scene in the Story tab first — the Director needs it before it can plan.'
+    : null
+
   const handleQueueDraft = useCallback(async () => {
     const description = (mvGenerateSetup ? songDescription : chatInput).trim()
     if (!description || !chatInputEnabled || draftQueuePending || directorQueueLoading) return
@@ -862,8 +880,8 @@ export function DirectorBriefingColumn() {
           onClick={handleChatSubmit}
           disabled={!chatInputEnabled || draftQueuePending || !(mvGenerateSetup ? songDescription : chatInput).trim() || (!mvGenerateSetup && step !== 'style' && !audioFile)}
           className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-accent-blue text-white hover:bg-accent-blue-hover transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-          title={`${mvGenerateSetup ? 'Generate the song and start this Director project' : 'Start this Director project now'} (Shift+Enter · Cmd/Ctrl+Enter)`}
-          aria-label={mvGenerateSetup ? 'Generate song and start Director project' : 'Start Director project now'}
+          title={`${sendAction} (Shift+Enter · Cmd/Ctrl+Enter)`}
+          aria-label={sendAction}
         >          {loading && (step === 'style' || isMusicVideo) && !draftQueuePending ? (
             <Loader2 size={16} className="animate-spin" />
           ) : (
@@ -875,11 +893,7 @@ export function DirectorBriefingColumn() {
           onClick={() => void handleQueueDraft()}
           disabled={!chatInputEnabled || draftQueuePending || directorQueueLoading || !(mvGenerateSetup ? songDescription : chatInput).trim()}
           className="w-full h-9 flex items-center justify-center p-2 rounded-lg bg-bg-tertiary border border-border text-text-muted hover:text-text-primary hover:border-border-light transition-colors disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-          title={
-            mvGenerateSetup
-              ? `Generate the song, then hold the complete Director project in the paused queue (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-              : `Add this complete Director project to the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`
-          }
+          title={`Hold ${sendTarget} in the paused queue without starting it (${directorQueueEntriesCount} pending) (Cmd/Ctrl+S)`}
           aria-label={directorQueueEditingEntryId ? 'Save Director queue changes' : `Add Director project to queue (${directorQueueEntriesCount} pending)`}
         >
           {draftQueuePending || directorQueueLoading
@@ -1211,7 +1225,7 @@ export function DirectorBriefingColumn() {
                 </div>
               )}
 
-              {/* 3. REFERENCES TAB */}
+              {/* 3. VISUALS TAB */}
               {!isShortFilm && activeTab === 'references' && (
                 <div className="flex-1 min-h-0 flex flex-col space-y-3">
                   <div className="shrink-0">
@@ -1226,6 +1240,13 @@ export function DirectorBriefingColumn() {
                   <div className="flex-1 min-h-0 flex flex-col">
                     <AdditionalRefsSection />
                   </div>
+                  {/* The footer's primary button is disabled on this tab
+                      and used to look broken. It now says why. */}
+                  {sendBlockedReason && (
+                    <p className="shrink-0 rounded-md border border-border/50 bg-bg-tertiary/40 px-2.5 py-1.5 text-2xs text-text-muted">
+                      {sendBlockedReason}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -1580,7 +1601,7 @@ function UploadZone({
               type="button"
               onClick={togglePlay}
               className="flex items-center justify-center w-8 h-8 rounded-full bg-accent-blue hover:bg-accent-blue-hover text-white shrink-0 shadow transition-colors"
-              title={isPlaying ? 'Pausar áudio' : 'Ouvir áudio'}
+              title={isPlaying ? 'Pause audio' : 'Listen to the audio'}
             >
               {isPlaying ? <Pause size={14} className="fill-current" /> : <Play size={14} className="fill-current ml-0.5" />}
             </button>
@@ -1646,10 +1667,16 @@ function DirectorAudioSourceTabs({
      navigation and the Studio use, so the keyboard behaviour and the
      aria wiring are identical everywhere. Each tab keeps its own
      accent (amber / teal / accent-blue) through `data-section`. */
+  /* The tab names say what the user hands over, not what the panel
+     happens to be called internally: "References" never told anyone
+     that it was the visual anchors (photo, characters, locations),
+     and "Description" hid that the identified voices live there too.
+     They also no longer mirror the pipeline's ten steps — the
+     progress bar already carries that. */
   const tabs: { id: DirectorSidebarTab; label: string; icon: typeof Music; title: string; ariaLabel: string }[] = [
     { id: 'music', label: 'Music', icon: Music, title: 'Upload a song file or generate one with AI', ariaLabel: 'Music — upload or generate a track' },
-    { id: 'references', label: 'References', icon: ImageIcon, title: 'Open the visual anchors panel (reference photo + character / location / voice refs)', ariaLabel: 'References panel' },
-    { id: 'description', label: 'Description', icon: FileText, title: 'Scene description, prompt wizard, and identified voices/characters', ariaLabel: 'Scene and character description' },
+    { id: 'references', label: 'Visuals', icon: ImageIcon, title: 'Reference photo, characters, locations and voice references', ariaLabel: 'Visuals — reference photo, characters, locations and voice references' },
+    { id: 'description', label: 'Story', icon: FileText, title: 'Scene description, script and the voices found in the track', ariaLabel: 'Story — scene description, script and identified voices' },
   ]
   return (
     <TabStrip
@@ -2982,7 +3009,7 @@ export function ImagePromptsReview({
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-center text-text-muted/60 space-y-1">
                       <ImageIcon size={18} />
-                      <span className="text-3xs text-text-muted leading-tight">Aguardando imagem</span>
+                      <span className="text-3xs text-text-muted leading-tight">Awaiting image</span>
                     </div>
                   )}
                 </div>
@@ -3025,7 +3052,7 @@ export function ImagePromptsReview({
                       ) : (
                         <div className="flex flex-col items-center justify-center p-2 text-center text-text-muted/60 space-y-1">
                           <Film size={18} />
-                          <span className="text-3xs text-text-muted leading-tight">Aguardando vídeo</span>
+                          <span className="text-3xs text-text-muted leading-tight">Awaiting video</span>
                         </div>
                       )}
                     </div>
@@ -3468,10 +3495,10 @@ export function DirectorActionControls({
           disabled={(loading && !isGenerating) || queueBusy}
           className="flex-1 py-2.5 rounded-lg bg-accent-green hover:bg-accent-green-hover text-white text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
           title={isGenerating
-            ? 'Adicionar esta geração de vídeos à fila de processamento'
+            ? 'Add this video generation to the processing queue'
             : editingQueueEntryId
-              ? 'Salvar alterações na fila'
-              : 'Iniciar renderização dos vídeos das cenas'}
+              ? 'Save the queue changes'
+              : 'Start rendering the scene videos'}
         >
           {isGenerating || editingQueueEntryId
             ? <ListVideo size={14} /> : <Play size={14} fill="white" />}

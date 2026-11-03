@@ -215,7 +215,7 @@ export function DirectorPlanColumn() {
   // Has planning started or completed?
   const hasPlan = clipPlans.length > 0 || pastStep('plan') || atStep('review') || pastStep('review')
   const isPlanningActive = loading && atStep('plan')
-  const cardTitle = isShortFilm ? 'Scene planning' : 'Scenes'
+  const cardTitle = isShortFilm ? 'Scenes' : 'Clips'
 
   return (
     /* Wrapper padding: p-4 (16px) matches the inner padding of the
@@ -261,7 +261,7 @@ export function DirectorPlanColumn() {
                 )}
                 {clipPlans.length > 0 && (
                   <span className="text-2xs text-text-muted px-2 py-0.5 rounded bg-bg-tertiary border border-border">
-                    {clipPlans.length} {clipPlans.length === 1 ? 'cena' : 'cenas'}
+                    {clipPlans.length} {clipPlans.length === 1 ? (isShortFilm ? 'scene' : 'clip') : (isShortFilm ? 'scenes' : 'clips')}
                   </span>
                 )}
               </div>
@@ -297,7 +297,7 @@ export function DirectorPlanColumn() {
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-text-primary">Nenhum prompt gerado ainda</p>
                 <p className="text-2xs text-text-muted max-w-sm leading-relaxed">
-                  Configure a música, referências visuais e a descrição da cena na coluna ao lado. Os roteiros visuais e prompts detalhados de cada corte serão organizados aqui.
+                  Set the music, the visual references and the scene description in the column next to this one. The shot scripts and the detailed prompts for every cut are organised here.
                 </p>
               </div>
             </div>

@@ -45,8 +45,8 @@ describe('DirectorReview scrolling', () => {
 
   it('renders one card per scene', () => {
     render(<DirectorReview />)
-    expect(screen.getByText('Scene 1')).toBeInTheDocument()
-    expect(screen.getByText(`Scene ${SCENES}`)).toBeInTheDocument()
+    expect(screen.getByText('Clip 1')).toBeInTheDocument()
+    expect(screen.getByText(`Clip ${SCENES}`)).toBeInTheDocument()
   })
 
   it('puts the scene cards inside a scrollable container', () => {
@@ -54,19 +54,19 @@ describe('DirectorReview scrolling', () => {
     const scroller = container.querySelector('.overflow-y-auto')
     expect(scroller).not.toBeNull()
     // The last scene must be reachable by scrolling, not clipped.
-    expect(scroller!.contains(screen.getByText(`Scene ${SCENES}`))).toBe(true)
+    expect(scroller!.contains(screen.getByText(`Clip ${SCENES}`))).toBe(true)
   })
 
   it('keeps the approval actions outside the scroll area', () => {
     const { container } = render(<DirectorReview />)
     const scroller = container.querySelector('.overflow-y-auto')
-    const approveAll = screen.getByRole('button', { name: /Approve all scenes/i })
+    const approveAll = screen.getByRole('button', { name: /Approve all clips/i })
     expect(scroller!.contains(approveAll)).toBe(false)
     expect(approveAll.closest('[data-testid="director-review"]')).not.toBeNull()
   })
 
   it('keeps the counter visible while the scenes scroll', () => {
     render(<DirectorReview />)
-    expect(screen.getByText(`0/${SCENES} scenes approved`)).toBeInTheDocument()
+    expect(screen.getByText(`0/${SCENES} clips approved`)).toBeInTheDocument()
   })
 })

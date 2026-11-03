@@ -231,9 +231,9 @@ function TimelineDialog({ close }: { close: () => void }) {
               <Wand2 size={16} />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-text-primary">Divisão e sincronia das cenas</h2>
+              <h2 className="text-sm font-semibold text-text-primary">Scene split and sync</h2>
               <p className="text-2xs text-text-muted">
-                Ajuste os pontos de corte e duração de cada cena sincronizados com a música
+                Adjust the cut points and the length of every scene against the music
               </p>
             </div>
           </div>
@@ -257,7 +257,7 @@ function TimelineDialog({ close }: { close: () => void }) {
         {/* Interactive Top Timeline Strip */}
         <div className="px-5 pt-3 pb-2 border-b border-border/40 bg-bg-primary/50 shrink-0">
           <div className="flex items-center justify-between mb-1.5 text-2xs text-text-muted font-medium">
-            <span>Linha do tempo (proporção visual das cenas)</span>
+            <span>Timeline (visual proportion of the scenes)</span>
             <span>{slots.length} cenas detectadas</span>
           </div>
           <div className="relative flex gap-1 h-9 rounded-xl p-1 bg-bg-secondary border border-border overflow-hidden">
@@ -303,7 +303,7 @@ function TimelineDialog({ close }: { close: () => void }) {
                 Subdividir em lote:
               </span>
               <div className="flex items-center gap-1 bg-bg-tertiary border border-border rounded-lg px-2 py-0.5">
-                <span className="text-text-muted">Máx:</span>
+                <span className="text-text-muted">Max:</span>
                 <input
                   type="number"
                   min="1"
@@ -334,7 +334,7 @@ function TimelineDialog({ close }: { close: () => void }) {
                 className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-bg-tertiary border border-border hover:text-text-primary text-text-muted transition-colors"
               >
                 <Undo2 size={11} />
-                <span>Desfazer última alteração</span>
+                <span>Undo last change</span>
               </button>
             )}
           </div>
@@ -368,7 +368,7 @@ function TimelineDialog({ close }: { close: () => void }) {
         {/* Footer */}
         <footer className="px-5 py-3.5 border-t border-border/60 bg-bg-tertiary/40 flex items-center justify-between shrink-0">
           <p className="text-2xs text-text-muted max-w-[480px]">
-            As alterações recalculam o tempo das cenas sem refazer o áudio. As imagens e prompts serão ajustados para os novos limites.
+            The changes recalculate the scene timings without redoing the audio. The images and prompts are adjusted to the new boundaries.
           </p>
           <div className="flex items-center gap-2.5">
             <button
@@ -385,7 +385,7 @@ function TimelineDialog({ close }: { close: () => void }) {
               onClick={() => void save()}
               className="px-4 py-1.5 rounded-lg bg-accent-blue text-white text-xs font-medium hover:bg-accent-blue-hover transition-colors disabled:opacity-40 shadow-xs flex items-center gap-1.5"
             >
-              {saving ? 'Salvando...' : 'Aplicar divisão de cenas'}
+              {saving ? 'Saving…' : 'Apply scene split'}
             </button>
           </div>
         </footer>
@@ -471,7 +471,7 @@ function TimingRow({
                   ? 'border-accent-blue bg-accent-blue text-white animate-pulse'
                   : 'border-border hover:border-border-light bg-bg-secondary text-text-secondary hover:text-text-primary'
               }`}
-              title={isPlaying ? 'Pausar áudio' : 'Ouvir trecho da cena'}
+              title={isPlaying ? 'Pause audio' : 'Listen to this scene'}
             >
               {isPlaying ? <Square size={10} className="fill-white" /> : <Play size={10} className="fill-current" />}
               <span>{isPlaying ? 'Parar' : 'Ouvir'}</span>
@@ -495,7 +495,7 @@ function TimingRow({
               type="button"
               onClick={() => edit({ kind: 'merge', index })}
               className="h-7 px-2 rounded-lg border border-border hover:border-border-light bg-bg-secondary hover:bg-bg-hover text-text-muted hover:text-text-primary text-2xs transition-colors flex items-center gap-1"
-              title="Mesclar com a próxima cena"
+              title="Merge with the next scene"
             >
               <Merge size={11} />
               <span>Mesclar</span>
@@ -519,7 +519,7 @@ function TimingRow({
       {showAdjust && (
         <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap items-center gap-4 text-2xs bg-bg-secondary/40 rounded-lg p-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-text-muted font-medium">Ponto exato de divisão:</span>
+            <span className="text-text-muted font-medium">Exact split point:</span>
             <input
               aria-label={`Ponto de corte da cena ${index + 1}`}
               type="number"

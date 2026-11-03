@@ -140,9 +140,9 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
       if (rounded > maximumDuration) {
         const maxStr = formatTimecode(maximumDuration).slice(3)
         const modelLabel = selectedModel?.name || effectiveModel
-        setDurationWarning(`O limite máximo para o modelo ${modelLabel} é de ${maxStr} (${Math.floor(maximumDuration / 60)} min). Duração ajustada para o teto suportado.`)
+        setDurationWarning(`The maximum length for ${modelLabel} is ${maxStr} (${Math.floor(maximumDuration / 60)} min). The duration was clamped to the supported limit.`)
       } else if (rounded < 5) {
-        setDurationWarning('A duração mínima permitida é de 5 segundos.')
+        setDurationWarning('The minimum allowed duration is 5 seconds.')
       }
       const bounded = Math.min(maximumDuration, Math.max(5, rounded))
       setDuration(bounded)
@@ -232,7 +232,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
           </div>
         ) : (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-300 flex items-center justify-between gap-2">
-            <span>Modelos ACE-Step / MiniMax não habilitados</span>
+            <span>ACE-Step / MiniMax models are not enabled</span>
             <button
               type="button"
               onClick={() => {
@@ -267,7 +267,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
       <div className="space-y-1.5 shrink-0">
         <label className="text-xs text-text-muted uppercase tracking-wider font-semibold flex items-center gap-1">
           <Sparkles size={12} className="text-violet-400" />
-          <span>Gênero &amp; Estilo Musical</span>
+          <span>Genre &amp; Musical Style</span>
         </label>
         <input
           type="text"
@@ -299,7 +299,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
         <textarea
           value={songDescription}
           onChange={e => setSongDescription(e.target.value)}
-          placeholder="Descreva a atmosfera da música, instrumentos em destaque, ritmo e a progressão sonora do vídeo..."
+          placeholder="Describe the mood of the track, the instruments in the foreground, the rhythm and how the sound evolves through the video…"
           className="w-full flex-1 min-h-[70px] bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-violet-500 transition-colors"
         />
       </div>
@@ -322,7 +322,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
             <textarea
               value={songLyrics}
               onChange={e => setSongLyrics(e.target.value)}
-              placeholder="Cole os versos ou estrutura lírica [Verse], [Chorus]..."
+              placeholder="Paste the lyrics or the lyrical structure [Verse], [Chorus]…"
               className="w-full flex-1 min-h-[90px] bg-bg-secondary border border-border rounded-lg p-2.5 text-xs text-text-primary font-mono placeholder:text-text-muted resize-none focus:outline-none focus:border-violet-500 transition-colors"
             />
           )}
@@ -338,7 +338,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
               type="button"
               onClick={togglePlayback}
               className="flex items-center justify-center w-7 h-7 rounded-full bg-violet-600 hover:bg-violet-500 text-white shrink-0 shadow transition-colors"
-              title={isPlaying ? 'Pausar reprodução' : 'Ouvir faixa'}
+              title={isPlaying ? 'Pause playback' : 'Listen to the track'}
             >
               {isPlaying ? <Pause size={13} className="fill-current" /> : <Play size={13} className="fill-current ml-0.5" />}
             </button>
@@ -346,7 +346,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
               <div className="flex items-center justify-between text-2xs text-violet-300 font-medium mb-1">
                 <span className="truncate flex items-center gap-1.5">
                   <Volume2 size={12} className="text-violet-400 shrink-0" />
-                  <span>Trilha Gerada ({audioFile?.name || audioPath?.replace(/\\/g, '/').split('/').pop() || 'áudio'})</span>
+                  <span>Generated Track ({audioFile?.name || audioPath?.replace(/\\/g, '/').split('/').pop() || 'audio'})</span>
                 </span>
                 <span className="font-mono text-text-muted shrink-0 ml-1">
                   {formatTimecode(Math.round(audioCurrentTime)).slice(3)} / {formatTimecode(Math.round(audioTotalDuration || duration)).slice(3)}
@@ -405,7 +405,7 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
         {loading && (
           <div className="rounded-lg bg-violet-950/40 border border-violet-500/30 p-2 text-2xs text-violet-300 flex items-center gap-2 animate-pulse">
             <Loader2 size={12} className="animate-spin shrink-0 text-violet-400" />
-            <span className="truncate">{loadingMessage || activityLabel || 'Sintetizando áudio com IA…'}</span>
+            <span className="truncate">{loadingMessage || activityLabel || 'Synthesising audio with AI…'}</span>
           </div>
         )}
       </div>

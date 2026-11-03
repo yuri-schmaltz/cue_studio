@@ -19,7 +19,7 @@ function formatTimecode(sec: number): string {
  * the user never wrote about. Here the user sees exactly how much of the
  * audio the script covers and chooses the scope of the plan:
  *
- * - "Só o trecho do roteiro" restricts the clip plan to the covered
+ * - "Only the scripted part" restricts the clip plan to the covered
  *   window, so the resulting video is the audioclipe they asked for.
  * - "Faixa inteira" keeps the historic behaviour of covering everything.
  */
@@ -51,7 +51,7 @@ export function DirectorScriptReconciliationBanner() {
     <section
       className="shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 flex flex-col gap-2"
       data-testid="director-script-reconciliation"
-      aria-label="Roteiro × áudio"
+      aria-label="Script × audio"
     >
       <header className="flex items-start gap-2">
         <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
@@ -66,7 +66,7 @@ export function DirectorScriptReconciliationBanner() {
               ? ` (${report.scene_count} no total, ${report.scene_count - report.anchored_scene_count} sem timecode)`
               : ''}
             {' · '}
-            {formatTimecode(uncovered)} do áudio não foram roteirizados.
+            {formatTimecode(uncovered)} of the audio were not scripted.
           </p>
         </div>
       </header>
@@ -85,14 +85,14 @@ export function DirectorScriptReconciliationBanner() {
           data-testid="director-script-window-only"
         >
           {isWindowed ? <Check size={11} /> : <Scissors size={11} />}
-          Só o trecho do roteiro
+          Only the scripted part
         </button>
         <button
           type="button"
           disabled={loading || !isWindowed}
           onClick={() => void setScriptWindow(null)}
           className="px-2 py-1 rounded bg-bg-tertiary border border-border text-text-secondary hover:text-text-primary text-2xs font-medium transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Planeja a faixa inteira, usando o roteiro apenas como referência de estilo"
+          title="Plans the whole track, using the script only as a style reference"
           data-testid="director-script-window-full"
         >
           Faixa inteira

@@ -90,7 +90,7 @@ describe('DirectorScriptReconciliationBanner', () => {
       '3 cenas',
     )
     expect(screen.getByTestId('director-script-reconciliation')).toHaveTextContent(
-      '3:30 do áudio não foram roteirizados',
+      '3:30 of the audio were not scripted',
     )
   })
 
@@ -104,7 +104,7 @@ describe('DirectorScriptReconciliationBanner', () => {
     render(<DirectorScriptReconciliationBanner />)
 
     expect(screen.getByTestId('director-script-window-only')).toHaveTextContent(
-      'Só o trecho do roteiro',
+      'Only the scripted part',
     )
     expect(screen.getByTestId('director-script-window-full')).toHaveTextContent(
       'Faixa inteira',

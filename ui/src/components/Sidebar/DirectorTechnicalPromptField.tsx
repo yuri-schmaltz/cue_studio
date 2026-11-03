@@ -37,20 +37,20 @@ export function DirectorTechnicalPromptField() {
       <header className="flex items-center gap-1.5 px-3 py-2">
         <Wand2 size={13} className="text-text-muted shrink-0" />
         <span className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
-          Prompt técnico
+          Technical prompt
         </span>
         {!hasContent && (
           <span className="text-2xs text-text-muted font-normal truncate ml-1 normal-case tracking-normal">
-            fps, material, iluminação — vale para todas as cenas
+            fps, material, lighting — applies to every scene
           </span>
         )}
       </header>
 
       <div className="px-3 pb-3 flex flex-col gap-2">
         <p className="text-2xs text-text-muted leading-relaxed">
-          A direção técnica do filme inteiro: taxa de quadros, material, iluminação,
-          técnica de câmera, personagens e o fade final. Este bloco é aplicado a
-          todos os clipes, enquanto as cenas ficam vinculadas ao trecho da música
+          The technical direction of the whole film: frame rate, material, lighting,
+          camera technique, characters and the final fade. This block applies to
+          every clip, while the scenes stay tied to their stretch of the track
           que descrevem.
         </p>
         <textarea
@@ -58,7 +58,7 @@ export function DirectorTechnicalPromptField() {
           onChange={e => setValue(e.target.value)}
           placeholder={'A cinematic 12-15 fps stop-motion claymation video, hand-crafted plasticine aesthetic with visible fingerprints, warm studio lighting with dramatic chiaroscuro, natural camera shake, cinematic fade-out to black at the end.'}
           rows={4}
-          aria-label="Prompt técnico"
+          aria-label="Technical prompt"
           data-testid="director-technical-prompt-input"
           className="w-full h-[120px] shrink-0 bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent-blue transition-colors scrollbar-visible"
         />

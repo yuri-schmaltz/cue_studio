@@ -61,7 +61,7 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
     <div className="h-full min-h-0 flex flex-col gap-2" data-testid="director-review">
     <section className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden rounded-xl border border-accent-blue/40 bg-bg-secondary p-4 space-y-4 pr-1 -mr-1">
       <div>
-        <h2 className="text-base font-semibold">{finalReview ? 'Approve final render request' : imageReview ? 'Approve storyboard' : 'Review scene plan'}</h2>
+        <h2 className="text-base font-semibold">{finalReview ? 'Approve final render request' : imageReview ? 'Approve storyboard' : 'Review clip plan'}</h2>
         <p className="text-xs text-text-muted mt-1">{finalReview ? 'The renderer has prepared the final prompts, reference bindings and settings. This saved request will be used for generation.' : imageReview
           ? 'Check the images and final video prompts. Approve every scene before rendering video.'
           : 'Edit the prompts, lock the fields you want to preserve, and approve each scene before generating images.'}</p>
@@ -70,10 +70,10 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
         {plans.map((plan, index) => (
           <article key={index} className={`rounded-lg border p-3 space-y-3 ${index in rejected ? 'border-red-400' : approved.includes(index) ? 'border-green-500' : 'border-border'}`}>
             <div className="flex justify-between text-sm font-medium">
-              <span>Scene {index + 1}</span>
+              <span>Clip {index + 1}</span>
               {status.planned_clips?.[index] && <span className="text-text-muted text-xs">{status.planned_clips[index].start.toFixed(1)}–{status.planned_clips[index].end.toFixed(1)}s</span>}
             </div>
-            {status.clip_images?.[index] && <img className="w-full aspect-video object-contain rounded bg-black" src={api.getFileUrl(status.clip_images[index])} alt={`Scene ${index + 1} storyboard`} />}
+            {status.clip_images?.[index] && <img className="w-full aspect-video object-contain rounded bg-black" src={api.getFileUrl(status.clip_images[index])} alt={`Clip ${index + 1} storyboard`} />}
             {imageReview && <button disabled={busy} className="text-xs text-accent-blue underline" onClick={async () => {
               setBusy(true)
               setError('')
@@ -88,7 +88,7 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
               <label key={field} className="block space-y-1 text-xs">
                 <span className="flex items-center justify-between">
                   {field === 'image_prompt' ? 'Image prompt' : 'Video prompt'}
-                  <button type="button" disabled={busy} aria-label={`${locks[index]?.includes(field) ? 'Unlock' : 'Lock'} scene ${index + 1} ${field}`}
+                  <button type="button" disabled={busy} aria-label={`${locks[index]?.includes(field) ? 'Unlock' : 'Lock'} clip ${index + 1} ${field}`}
                     onClick={() => setLocks(current => ({ ...current, [index]: current[index]?.includes(field) ? current[index].filter(f => f !== field) : [...(current[index] || []), field] }))}>
                     {locks[index]?.includes(field) ? <LockKeyhole size={13} /> : <Unlock size={13} />}
                   </button>
@@ -118,7 +118,7 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
               internally.
             */}
             <CinemaWarningsPanel
-              label={`Scene ${index + 1}`}
+              label={`Clip ${index + 1}`}
               fields={{ scene_goal: plan.video_prompt ?? '' }}
             />
             <div className="flex flex-wrap items-center gap-4">
@@ -127,14 +127,14 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
                 setRejected(current => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index)))
                 setApproved(current => current.includes(index) ? current.filter(i => i !== index) : [...current, index])
               }}>
-              <Check size={14} /> {approved.includes(index) ? 'Approved — click to reopen' : 'Approve scene'}
+              <Check size={14} /> {approved.includes(index) ? 'Approved — click to reopen' : 'Approve clip'}
             </button>
             <button type="button" disabled={busy} aria-pressed={index in rejected}
               className="flex items-center gap-2 text-xs text-red-400"
               onClick={() => {
                 setApproved(current => current.filter(i => i !== index))
                 setRejected(current => ({ ...current, [index]: current[index] || '' }))
-              }}><X size={14} /> {index in rejected ? 'Scene rejected' : 'Reject scene'}</button>
+              }}><X size={14} /> {index in rejected ? 'Clip rejected' : 'Reject clip'}</button>
             </div>
             {index in rejected && <div className="space-y-2 text-xs text-red-400" role="status">
               <p>This scene needs changes. Edit its prompt or generate another image, then approve it individually. Rejection notes are saved in this browser for this revision.</p>
@@ -150,8 +150,8 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
       {finalReview && <details className="text-xs"><summary>Prepared render settings and effective prompts</summary><pre className="whitespace-pre-wrap break-all max-h-96 overflow-auto p-2">{JSON.stringify(status.review_render_params, null, 2)}</pre></details>}
     </section>
     <footer className="shrink-0 flex flex-wrap gap-3 items-center text-xs px-1">
-      <span>{approved.length}/{plans.length} scenes approved{rejectedCount > 0 && ` · ${rejectedCount} rejected`}</span>
-      <button disabled={busy} className="underline" onClick={() => setApproved(plans.map((_, i) => i).filter(i => !(i in rejected)))}>Approve all scenes</button>
+      <span>{approved.length}/{plans.length} clips approved{rejectedCount > 0 && ` · ${rejectedCount} rejected`}</span>
+      <button disabled={busy} className="underline" onClick={() => setApproved(plans.map((_, i) => i).filter(i => !(i in rejected)))}>Approve all clips</button>
       <button disabled={busy || !plans.length || rejectedCount > 0 || approved.length !== plans.length} onClick={() => void submit()}
         className="ml-auto rounded-lg bg-accent-blue text-white px-4 py-2 disabled:opacity-40 flex gap-2 items-center">
         {busy && <Loader2 className="animate-spin" size={14} />} {finalReview ? 'Generate approved video' : imageReview ? 'Prepare final render plan' : 'Continue with approved plan'}

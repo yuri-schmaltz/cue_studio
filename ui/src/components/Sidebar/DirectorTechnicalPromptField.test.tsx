@@ -30,9 +30,9 @@ describe('DirectorTechnicalPromptField', () => {
 
   it('explains what the field is for', () => {
     render(<DirectorTechnicalPromptField />)
-    expect(screen.getByTestId('director-technical-prompt')).toHaveTextContent('Prompt técnico')
+    expect(screen.getByTestId('director-technical-prompt')).toHaveTextContent('Technical prompt')
     expect(screen.getByTestId('director-technical-prompt')).toHaveTextContent(
-      'fps, material, iluminação',
+      'fps, material, lighting',
     )
   })
 
