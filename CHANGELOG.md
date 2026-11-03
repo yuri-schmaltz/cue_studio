@@ -2,6 +2,8 @@
 
 ## Em desenvolvimento — 30/10/2026
 
+- **A barra de status do Director virou um card.** Ela era uma tira crua colada na borda inferior do stage (`border-top` + fundo translúcido), e lia como sobras das colunas. Agora usa a mesma casca da faixa de abas da aplicação — mesma borda, mesmo raio de 12px, mesmo fundo — para que a barra e a navegação do topo se leiam como peças do mesmo sistema.
+
 - **A revisão das cenas voltou a ter barra de rolagem.** O card "Review scene plan" não tinha área rolável própria e a coluna do stage corta o que passa da altura dela (`overflow:hidden`): com 25 cenas o card crescia para fora e as cenas do fim ficavam inalcançáveis — sem scrollbar para chegar lá. Agora o card é a área rolável (o mesmo padrão da coluna de cenas) e as ações de aprovação — "Approve all scenes" e o botão de continuar — ficam fixas no rodapé, porque são necessárias enquanto se lê a última cena também.
 
 - **O pipeline ganhou uma barra de status própria.** Os dez passos viviam num rodapé *dentro* da coluna central, então o progresso só aparecia enquanto aquela coluna estava na tela — lendo o briefing à esquerda ou as opções técnicas à direita, não havia ideia de onde a execução tinha chegado. Como os passos descrevem a execução inteira, e não uma coluna, agora ficam numa barra dedicada sob as três colunas, visível de qualquer painel. O painel antigo foi removido e a barra cabota em uma linha de 38px: estado do pipeline à esquerda, tracker segmentado no meio, etapa atual e contador `X/10` à direita (antes eram duas linhas empilhadas de 54px).

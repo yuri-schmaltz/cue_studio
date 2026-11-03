@@ -12,10 +12,14 @@
  * run, not one column — so they now live in their own bar under the
  * three columns, visible from every panel.
  *
- * Layout: one compact row.
+ * Layout: one compact row inside a card.
  *   left  — pipeline state (idle / busy) and the live message
  *   mid   — the segmented step tracker (one segment per step)
  *   right — the current step name and the X/Y counter
+ *
+ * The card shell mirrors the application tab strip above it, so the
+ * bar reads as a peer of the top navigation instead of a bare strip
+ * glued to the bottom edge of the stage.
  *
  * The bar replaces the old per-column footer, which in turn made room
  * for the "Generate Start Images" action that now sits at the bottom
@@ -63,7 +67,7 @@ export function DirectorStatusBar() {
 
   return (
     <footer
-      className="shrink-0 border-t border-border/40 bg-bg-secondary/70 backdrop-blur-sm px-3 h-[38px] min-h-[38px] flex items-center gap-3 select-none"
+      className="shrink-0 director-status-card select-none"
       data-testid="director-status-bar"
       aria-label={`Progresso do pipeline: ${displayLabel}, etapa ${currentIndex + 1} de ${totalSteps}`}
     >

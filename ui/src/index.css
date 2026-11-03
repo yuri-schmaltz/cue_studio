@@ -967,6 +967,17 @@ input[type="range"]::-webkit-slider-thumb {
 .application-brand { display:none; }
 .application-actions { justify-self:end; display:flex; align-items:center; gap:8px; }
 .application-navigation { min-width:0; width:100%; }
+/* The Director status bar wears the same shell as the tab strip above
+   it: one rounded, bordered surface that groups the whole row. Before
+   this it was a bare strip glued to the bottom edge of the stage, and
+   it read as a leftover of the columns rather than as its own
+   element. */
+.director-status-card {
+  display:flex; align-items:center; gap:12px; width:100%;
+  padding:6px 12px; min-height:44px;
+  border:1px solid var(--color-border); border-radius:12px;
+  background:color-mix(in srgb,var(--color-bg-primary) 60%,transparent);
+}
 .application-header-project { display:none; }
 .application-header-project-name { display:none; }
 /* The tabs row stretches edge-to-edge inside the header. flex:1 1 0 on
