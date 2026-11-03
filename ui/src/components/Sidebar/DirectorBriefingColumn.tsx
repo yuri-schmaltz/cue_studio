@@ -1113,7 +1113,16 @@ export function DirectorBriefingColumn() {
                   {((musicSource ?? 'upload') === 'upload' || Boolean(audioFile)) && (
                     <>
                       {!isStoryPath && (
-                        <section className="shrink-0 max-h-[175px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
+                        /* 175px → 233px (a third taller). The card is
+                           given a definite height — not just a larger
+                           max-h — because the section is shrink-0, so
+                           a max alone would never make it grow: the
+                           clip strip would keep its natural 32px and
+                           the extra room would stay empty. The strip
+                           itself now stretches to fill it. */
+                        <section className={`shrink-0 bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2 ${
+                          plannedClips.length > 0 ? 'h-[233px]' : 'max-h-[233px]'
+                        }`}>
                           <header className="flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
@@ -1126,7 +1135,7 @@ export function DirectorBriefingColumn() {
                               )}
                             </div>
                           </header>
-                          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pr-0.5">
+                          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto pr-0.5 justify-between">
                             <StructureView
                               plannedClips={plannedClips}
                               energyBias={energyBias}
@@ -1166,7 +1175,7 @@ export function DirectorBriefingColumn() {
                       <section className="flex-1 min-h-[160px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden -mb-5">
                         <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
                           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
-                            IDENTIFIED VOICES &amp; CHARACTERS
+                            Who we found in the track
                           </h3>
                           {speakers.length > 0 && (
                             <span className="text-2xs text-text-muted font-normal">
@@ -2386,8 +2395,16 @@ function DirectorModelPickers({
 
   if (imageOptions.length === 0 && videoOptions.length === 0) return null
 
+  // The frame rate is NOT user-selectable here: the backend reads it
+  // from the model definition (see director_pipeline.py — "Get FPS
+  // from model definition (reliable)"), so a value sent from the
+  // browser is ignored. Showing the effective rate answers "which
+  // fps will this render use?" without faking an input the app
+  // cannot honour.
+  const videoFps = models.find(model => model.model_type === videoModel)?.fps
+
   return (
-    <div className="rounded-lg border border-border/60 bg-bg-tertiary/30 px-2.5 py-2 space-y-2">
+    <div className="px-2.5 py-2 space-y-2">
       {showImage && imageOptions.length > 0 && (
         <DirectorModelPicker
           id="director-image-model-select"
@@ -2398,13 +2415,21 @@ function DirectorModelPickers({
         />
       )}
       {videoOptions.length > 0 && (
-        <DirectorModelPicker
-          id="director-video-model-select"
-          label="Video model"
-          value={videoModel}
-          options={videoOptions}
-          onChange={selectVideoModel}
-        />
+        <>
+          <DirectorModelPicker
+            id="director-video-model-select"
+            label="Video model"
+            value={videoModel}
+            options={videoOptions}
+            onChange={selectVideoModel}
+          />
+          {videoFps ? (
+            <p className="text-2xs text-text-muted/70 leading-snug pl-[92px] -mt-1">
+              {videoFps} fps — defined by the model. The technical prompt can
+              describe a different look, but the render keeps this rate.
+            </p>
+          ) : null}
+        </>
       )}
     </div>
   )
@@ -2454,7 +2479,7 @@ function DirectorLoraAccordion() {
   const [videoOpen, setVideoOpen] = useState(false)
 
   return (
-    <div className="space-y-1">
+    <div className="rounded-lg border border-border/60 bg-bg-tertiary/30 overflow-hidden divide-y divide-border/40">
       {/* Model pickers — the LoRA lists below belong to these models. */}
       <DirectorModelPickers
         showImage={generateShotImages}
@@ -2463,7 +2488,7 @@ function DirectorLoraAccordion() {
       />
       {/* Image LoRAs */}
       {generateShotImages && imageModel && (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div>
           <div className="flex items-center gap-1.5 px-2 py-1">
             <button
               onClick={() => setImageOpen(!imageOpen)}
@@ -2486,7 +2511,7 @@ function DirectorLoraAccordion() {
       )}
       {/* Video LoRAs */}
       {videoModel && !videoLorasDisabled && (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div>
           <div className="flex items-center gap-1.5 px-2 py-1">
             <button
               onClick={() => setVideoOpen(!videoOpen)}
@@ -2506,10 +2531,16 @@ function DirectorLoraAccordion() {
         </div>
       )}
       {videoModel && videoLorasDisabled && (
-        <p className="rounded-lg border border-amber-500/25 bg-amber-500/8 px-2.5 py-2 text-2xs leading-relaxed text-text-muted">
+        <p className="px-2.5 py-2 text-2xs leading-relaxed text-text-muted">
           Video LoRAs are disabled because this model already contains its Turbo and Mystic adapters.
         </p>
       )}
+      {/* The negative prompt closes the card: it is the last thing
+          the user configures before generating, so it reads as the
+          bottom of the same block rather than a floating panel. */}
+      <div className="px-2.5 py-2 space-y-1.5">
+        <DirectorNegativePromptField />
+      </div>
     </div>
   )
 }
@@ -2631,7 +2662,6 @@ export function DirectorGenerationOptions() {
             </div>
           )}
           <ReferenceImageStrengthSlider />
-          <DirectorNegativePromptField />
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1 space-y-3">
@@ -2751,7 +2781,7 @@ function DirectorNegativePromptField() {
     finally { setBusy(false) }
   }
   return (
-    <div className="pt-2 border-t border-border/50 space-y-1.5">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
         <label className="text-2xs text-text-muted uppercase tracking-wider font-semibold">
           Negative prompt
@@ -2779,9 +2809,6 @@ function DirectorNegativePromptField() {
         placeholder="Comma-separated list of things the model should avoid — appended to the model's default negatives"
         className="w-full bg-bg-tertiary border border-border rounded px-2 py-1.5 text-2xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors resize-none scrollbar-visible"
       />
-      <p className="text-2xs text-text-muted leading-snug">
-        Saved per project and applied to every clip generation. Edit any term to refine what this Director project avoids.
-      </p>
     </div>
   )
 }
@@ -2821,7 +2848,11 @@ export function StyleForm({
       {!isStoryPath && speakers.length >= 1 && (
         <div className="space-y-2">
           {speakerMappings.map((mapping) => (
-            <div key={mapping.speakerId} className="bg-bg-secondary border border-border/50 rounded-lg p-2 space-y-1">
+            /* The card is twice as tall as it needs to be for the
+               row alone: the reference photo and the lyric excerpts
+               are the parts the author actually reads, and they were
+               squeezed into a 28px thumbnail next to the name field. */
+            <div key={mapping.speakerId} className="bg-bg-secondary border border-border/50 rounded-lg p-3 space-y-2 min-h-[156px] flex flex-col">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -2855,7 +2886,7 @@ export function StyleForm({
                     <img
                       src={speakerImageSrc(mapping)!}
                       alt={mapping.name || mapping.speakerId}
-                      className="w-7 h-7 rounded-md object-contain bg-bg-tertiary border border-accent-blue/50"
+                      className="w-12 h-12 rounded-md object-contain bg-bg-tertiary border border-accent-blue/50"
                       title="Reference photo (synced with References > Characters)"
                     />
                     <button
@@ -2869,10 +2900,10 @@ export function StyleForm({
                   </div>
                 ) : (
                   <label
-                    className="w-[26px] h-[26px] rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-tertiary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors self-center"
+                    className="w-12 h-12 rounded-md border border-dashed border-border hover:border-accent-blue bg-bg-tertiary hover:bg-accent-blue/10 flex items-center justify-center cursor-pointer shrink-0 transition-colors self-center"
                     title="Upload reference photo for this character (synced with References > Characters)"
                   >
-                    <ImageIcon size={12} className="text-text-muted hover:text-accent-blue" />
+                    <ImageIcon size={16} className="text-text-muted hover:text-accent-blue" />
                     <input
                       type="file"
                       accept={IMAGE_ACCEPT}
@@ -2886,7 +2917,7 @@ export function StyleForm({
                 )}
               </div>
               {speakerSamples[mapping.speakerId] && (
-                <div className="text-2xs text-text-muted pl-1 italic">
+                <div className="text-2xs text-text-muted pl-1 italic flex-1 min-h-0 overflow-y-auto scrollbar-visible">
                   {speakerSamples[mapping.speakerId].map((line, li) => (
                     <div key={li} className="truncate">&ldquo;{line}&rdquo;</div>
                   ))}

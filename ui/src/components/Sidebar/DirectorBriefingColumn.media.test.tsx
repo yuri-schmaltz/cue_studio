@@ -21,8 +21,8 @@ import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import { DirectorModelPicker, ReferenceImageUpload, StyleForm } from './DirectorBriefingColumn'
-import { SpeakerRefCard } from './DirectorReferencePanels'
+import { DirectorModelPicker, ReferenceImageUpload, StyleForm, DirectorGenerationOptions } from './DirectorBriefingColumn'
+import { SpeakerRefCard, StructureView } from './DirectorReferencePanels'
 import { useStore } from '../../stores/useStore'
 
 describe('DirectorModelPicker', () => {
@@ -204,5 +204,93 @@ describe('speaker reference photos', () => {
     const img = screen.getByAltText('Gary') as HTMLImageElement
     expect(img.className).toContain('object-contain')
     expect(img.className).not.toContain('object-cover')
+  })
+
+  it('gives the voice card twice the height of the plain row', () => {
+    render(
+      <StyleForm
+        speakers={['SPEAKER_01']}
+        speakerMappings={[mapping]}
+        speakerSamples={{ SPEAKER_01: ['a line from the track'] }}
+        setSpeakerMapping={() => {}}
+        setSpeakerImage={async () => {}}
+        insertSpeakerMention={() => {}}
+      />,
+    )
+    const card = screen.getByText('SPEAKER_01').closest('.bg-bg-secondary')
+    // The card must reserve room for the photo + the lyric excerpts
+    // instead of collapsing to a single 78px row.
+    expect(card?.className).toContain('min-h-[156px]')
+  })
+})
+
+describe('Generation Options — models, LoRAs and negative prompt', () => {
+  beforeEach(() => {
+    useStore.setState({
+      directorAudioFile: new File(['x'], 'track.mp3', { type: 'audio/mpeg' }),
+      models: [
+        { model_type: 'flux2_klein_9b', name: 'Flux 2 Klein 9B', family: 'flux2' },
+        { model_type: 'ltx2_22B_distilled_1_1', name: 'LTX 2 22B', family: 'ltx2', fps: 25 },
+      ],
+      enabledModels: new Set(['flux2_klein_9b', 'ltx2_22B_distilled_1_1']),
+      selectedModelPerMode: { image: 'flux2_klein_9b', video: 'ltx2_22B_distilled_1_1' },
+    } as never)
+  })
+
+  it('merges the model pickers, the LoRA lists and the negative prompt into one card', () => {
+    render(<DirectorGenerationOptions />)
+    const card = screen.getByText('Negative prompt').closest('.rounded-lg.border')
+    expect(card).toBeTruthy()
+    // All four blocks live in the same bordered card.
+    expect(card?.textContent).toContain('Image model')
+    expect(card?.textContent).toContain('Video model')
+    expect(card?.textContent).toContain('Image LoRAs')
+    expect(card?.textContent).toContain('Video LoRAs')
+    expect(card?.textContent).toContain('Negative prompt')
+  })
+
+  it('drops the explanatory paragraph under the negative prompt', () => {
+    render(<DirectorGenerationOptions />)
+    expect(screen.queryByText(/Saved per project and applied to every clip generation/)).toBeNull()
+  })
+
+  it('states the effective frame rate, since it is defined by the model', () => {
+    render(<DirectorGenerationOptions />)
+    expect(screen.getByText(/25 fps/)).toBeTruthy()
+  })
+})
+
+describe('clip structure breakdown', () => {
+  const plannedClips = [
+    { start: 0, end: 8, beat_count: 8, section_label: 'intro' },
+    { start: 8, end: 24, beat_count: 16, section_label: 'verse' },
+  ]
+
+  const renderStructure = () => render(
+    <StructureView
+      plannedClips={plannedClips as never}
+      energyBias={0}
+      localBias={null}
+      setLocalBias={() => {}}
+      sliderRef={{ current: null }}
+      setEnergyBias={async () => {}}
+      loading={false}
+      confirmStructure={() => {}}
+      isActive={false}
+    />,
+  )
+
+  it('breaks the track down by section so the taller card carries information', () => {
+    renderStructure()
+    expect(screen.getByText('intro')).toBeTruthy()
+    expect(screen.getByText('verse')).toBeTruthy()
+    expect(screen.getAllByText(/1 clipes/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/0:16\.0/)).toBeTruthy()
+  })
+
+  it('keeps the proportional clip strip at its readable height', () => {
+    const { container } = renderStructure()
+    const strip = container.querySelector('.h-12')
+    expect(strip).toBeTruthy()
   })
 })

@@ -24,7 +24,7 @@
  * ``AdditionalRefsSection`` via the ``imageOnly`` flag).
  */
 
-import { useCallback, useState, useRef, useEffect } from 'react'
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react'
 import {
   X,
   MapPin,
@@ -63,6 +63,14 @@ const sectionBarColors: Record<string, string> = {
   bridge: 'bg-yellow-500',
   outro: 'bg-gray-500',
   instrumental: 'bg-cyan-500',
+}
+
+/** mm:ss.d — durations of a section are shorter than the whole track,
+ * so a tenth of a second keeps the breakdown readable. */
+function formatSectionTime(s: number): string {
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${sec.toFixed(1).padStart(4, '0')}`
 }
 
 export function DraggableRefRow({ file, label, index, onRemove, onLabelChange, onReorder, placeholder }: {
@@ -641,6 +649,23 @@ export function StructureView({
   const [playingClipIndex, setPlayingClipIndex] = useState<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  // How the track was divided: one row per music section with the
+  // number of clips and the time it takes.
+  const sectionBreakdown = useMemo(() => {
+    const map = new Map<string, { label: string; count: number; duration: number }>()
+    for (const clip of plannedClips) {
+      const label = clip.section_label || 'other'
+      const current = map.get(label) ?? { label, count: 0, duration: 0 }
+      current.count += 1
+      current.duration += clip.end - clip.start
+      map.set(label, current)
+    }
+    return Array.from(map.values()).map(s => ({
+      ...s,
+      color: sectionBarColors[s.label] || 'bg-gray-500',
+    }))
+  }, [plannedClips])
+
   useEffect(() => {
     return () => {
       if (audioRef.current) {
@@ -730,9 +755,10 @@ export function StructureView({
   }
 
   return (
-    <div className="flex flex-col gap-2 min-h-0 pt-0.5">
-      {/* Clip Bars */}
-      <div className="flex gap-0.5 h-8 rounded-lg overflow-hidden w-full shrink-0 bg-bg-secondary p-1">
+    <div className="flex flex-col gap-2 min-h-0 pt-0.5 flex-1">
+      {/* Clip Bars — the proportional strip stays as the timeline: each
+          block's width is its share of the track. */}
+      <div className="flex gap-0.5 h-12 rounded-lg overflow-hidden w-full shrink-0 bg-bg-secondary p-1">
         {plannedClips.map((clip, i) => {
           const clipDur = clip.end - clip.start
           const totalDur = plannedClips.reduce((s, c) => s + (c.end - c.start), 0)
@@ -775,6 +801,24 @@ export function StructureView({
           )
         })}
       </div>
+
+      {/* Section breakdown — the taller card is used to spell out how the
+          track was divided, instead of leaving the extra room empty. */}
+      {sectionBreakdown.length > 0 && (
+        <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {sectionBreakdown.map(s => (
+              <div key={s.label} className="flex items-center gap-1.5 min-w-0">
+                <span className={`w-2 h-2 rounded-sm shrink-0 ${s.color}`} />
+                <span className="text-2xs text-text-secondary truncate" title={s.label}>{s.label}</span>
+                <span className="text-2xs text-text-muted ml-auto shrink-0 tabular-nums">
+                  {s.count} {isShortFilm ? 'cenas' : 'clipes'} · {formatSectionTime(s.duration)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isActive && (
         <div className="flex items-center justify-between gap-2.5 pt-1.5 text-2xs shrink-0 border-t border-border/40 mt-0.5">
