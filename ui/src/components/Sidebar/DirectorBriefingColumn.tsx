@@ -1143,9 +1143,13 @@ export function DirectorBriefingColumn() {
                            clip strip would keep its natural 32px and
                            the extra room would stay empty. The strip
                            itself now stretches to fill it. */
-                        <section className={`shrink-0 bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2 ${
-                          plannedClips.length > 0 ? 'h-[233px]' : 'max-h-[233px]'
-                        }`}>
+                        /* A definite height in both states: with a
+                           max-height the card jumped from ~80px to
+                           233px the moment the plan arrived, shoving
+                           the card below it down the column. The empty
+                           state now draws itself inside the same
+                           233px. */
+                        <section className="shrink-0 h-[233px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden gap-2">
                           <header className="flex items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold truncate">
@@ -1188,14 +1192,15 @@ export function DirectorBriefingColumn() {
                           planning anything. */}
                       {!isStoryPath && <DirectorScriptReconciliationBanner />}
 
-                      {/* Voices & Characters card. The negative bottom
-                          margin (-20px) pulls the card's bottom edge down
-                          over the trailing gap of the wrapping bubble
-                          (py-2 + space-y-3) so the card now ends exactly
-                          where the footer divider used to sit. The divider
-                          itself was removed from the action-button footer
-                          below — the card border is the only separator. */}
-                      <section className="flex-1 min-h-[160px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden -mb-5">
+                      {/* Voices & Characters card. It used to carry a
+                          -20px bottom margin that pulled its edge over
+                          the trailing gap of the wrapping bubble, so that
+                          it ended exactly where a footer divider used to
+                          sit. The divider is gone, and the margin only
+                          pushed the card out of its bubble — the card now
+                          ends inside it, with the bubble's own 8px
+                          breathing room. */}
+                      <section className="flex-1 min-h-[160px] bg-bg-tertiary rounded-lg p-3 border border-border flex flex-col overflow-hidden">
                         <header className="flex items-center justify-between gap-2 shrink-0 mb-1.5">
                           <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold">
                             Who we found in the track
@@ -1306,8 +1311,8 @@ export function DirectorBriefingColumn() {
                     O -mb-5 estende o card 20px para baixo, aligning
                     o rodapé com o fundo do card interno da coluna
                     central (mesmo truque do card IDENTIFIED VOICES). */}
-                <div className="flex-1 min-h-0 flex flex-col -mb-5">
-                  {renderComposer(isStoryPath ? undefined : 'Cenas', true)}
+                <div className="flex-1 min-h-0 flex flex-col">
+                  {renderComposer(isStoryPath ? undefined : 'Scenes', true)}
                 </div>
               </div>
             )}
@@ -3293,7 +3298,6 @@ export function VideoPromptsReview({
           const clip = plannedClips[i]
           const clipImage = clipImages.find(image => image.clipIndex === i)
           const currentClip = pipelineStatus?.progress?.current_clip
-          const totalClips = pipelineStatus?.progress?.total_clips
           const videoError = pipelineStatus?.error || null
           const failedClipIndex = pipelineStatus?.status === 'failed' && currentClip
             ? currentClip - 1
@@ -3330,7 +3334,10 @@ export function VideoPromptsReview({
                     {isShortFilm ? 'Shot' : 'Clip'} {i + 1}
                   </span>
                   <ShotStatus status={status} />
-                  {totalClips && <span className="tabular-nums font-mono text-text-muted">{i + 1}/{totalClips}</span>}
+                  {/* The positional counter is omitted here: the row
+                      already names the unit ("Clip 3") and the total
+                      lives in the CLIP STRUCTURE header badge, so a third
+                      "3/25" repetition only added noise (audit D-11). */}
                   {clip && (
                     <>
                       <span className="tabular-nums font-mono text-text-secondary">{formatTime(clip.start)}–{formatTime(clip.end)}</span>

@@ -21,8 +21,11 @@ const tabs: { value: MediaFilter; label: string; shortLabel: string; icon: Lucid
   { value: 'images', label: 'Images', shortLabel: 'Img', icon: ImageIcon },
   { value: 'videos', label: 'Videos', shortLabel: 'Vid', icon: VideoIcon },
   { value: 'audio', label: 'Audio', shortLabel: 'Aud', icon: Music },
-  { value: 'avatars', label: 'Edits', shortLabel: 'Edit', icon: Scissors },
-  { value: 'multiclip', label: 'Multi-clip', shortLabel: 'MC', icon: Film },
+  // The `avatars` filter matches avatar outputs *and* any output tagged
+  // with an edit sub-mode (recast/repaint/outpaint/...), so the label says
+  // both — "Edits" alone left the avatar half unexplained (audit M-01).
+  { value: 'avatars', label: 'Avatars & Edits', shortLabel: 'Avatar', icon: Scissors },
+  { value: 'multiclip', label: 'Multi-clip', shortLabel: 'Multi', icon: Film },
   { value: 'favorites', label: 'Favorites', shortLabel: 'Fav', icon: Heart },
 ]
 

@@ -69,7 +69,7 @@ export function DirectorStatusBar() {
     <footer
       className="shrink-0 director-status-card select-none"
       data-testid="director-status-bar"
-      aria-label={`Progresso do pipeline: ${displayLabel}, etapa ${currentIndex + 1} de ${totalSteps}`}
+      aria-label={`Pipeline progress: ${displayLabel}, step ${currentIndex + 1} of ${totalSteps}`}
     >
       {/* Left: pipeline state */}
       <div className="flex items-center gap-2 min-w-0 shrink-0">
@@ -99,7 +99,7 @@ export function DirectorStatusBar() {
         aria-valuenow={currentIndex + 1}
         aria-valuemin={1}
         aria-valuemax={totalSteps}
-        aria-label={`Etapa ${currentIndex + 1} de ${totalSteps}: ${displayLabel}`}
+        aria-label={`Step ${currentIndex + 1} of ${totalSteps}: ${displayLabel}`}
       >
         {STATUS_STEPS.map((s, idx) => {
           const isDone = idx < currentIndex

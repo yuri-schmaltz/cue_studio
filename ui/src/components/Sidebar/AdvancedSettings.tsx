@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- the advanced badge hooks share this settings contract */
 import { useState, useEffect, useRef } from 'react'
-import { X, Save, Trash2, FolderOpen, SlidersHorizontal } from 'lucide-react'
+import { X, Save, Trash2, FolderOpen, SlidersHorizontal, ChevronDown } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { PostProcessing } from './PostProcessing'
 import { OutputCodecs } from './OutputCodecs'
@@ -384,6 +384,59 @@ export function useAdvancedCount(): number {
   return useAdvancedActiveItems().length
 }
 
+/**
+ * Collapsible group of advanced parameters.
+ *
+ * The Advanced Settings panel grew into a single 1300+ line wall of
+ * controls. Splitting it into labelled, collapsible sections keeps the
+ * scan cost proportional to what the user actually touches.
+ *
+ * The children stay mounted when the section is collapsed (they are
+ * hidden, not unmounted): several of these controls keep local state
+ * — the frames-injection flow in particular — and the panel has always
+ * been mounted for the same reason.
+ */
+function AdvancedGroup({
+  title,
+  hint,
+  defaultOpen = false,
+  children,
+}: {
+  title: string
+  hint?: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <section className="rounded-xl border border-border/70 bg-bg-tertiary/25">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-bg-hover/40"
+      >
+        <ChevronDown
+          size={14}
+          className={`shrink-0 text-text-muted transition-transform ${open ? '' : '-rotate-90'}`}
+        />
+        <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+          {title}
+        </span>
+        {hint && (
+          <span className="ml-auto truncate text-2xs text-text-muted">{hint}</span>
+        )}
+      </button>
+      <div
+        hidden={!open}
+        className="space-y-4 border-t border-border/60 px-3 py-3"
+      >
+        {children}
+      </div>
+    </section>
+  )
+}
+
 export function AdvancedSettings() {
   const [open, setOpen] = useState(false)
   const params = useStore(s => s.params)
@@ -530,6 +583,7 @@ export function AdvancedSettings() {
                 </>
               ) : (
                 <>
+              <AdvancedGroup title="Output & Resolution" defaultOpen>
               {/* Recast/Repaint own their output-quality profiles in the main
                   workflow. Their dedicated endpoints also choose adaptive
                   windows, so generic controls would be misleading here. */}
@@ -539,7 +593,9 @@ export function AdvancedSettings() {
                   {!isAvatar && <AspectRatioGrid />}
                 </>
               )}
+              </AdvancedGroup>
 
+              <AdvancedGroup title="Presets & Adapters">
               {/* Presets belong with the creative adapter controls so users can
                   save or restore a setup before adjusting its LoRAs. */}
               <PresetManager />
@@ -555,7 +611,9 @@ export function AdvancedSettings() {
               )}
 
               <LtxFramesExperimentalControls />
+              </AdvancedGroup>
 
+              <AdvancedGroup title="Model Loading">
               {/* The Qwen conditioner is shared by every H3 transformer.
                   Expose it once here instead of multiplying model entries. */}
               {modelOptions?.minimax_h3_text_encoder_choices?.length ? (
@@ -655,7 +713,9 @@ export function AdvancedSettings() {
                   </p>
                 </div>
               )}
+              </AdvancedGroup>
 
+              <AdvancedGroup title="Sampling & Guidance">
               {/* Window Settings */}
               {(isVideo || (isAvatar && !isScailEdit))
                 && (
@@ -723,6 +783,9 @@ export function AdvancedSettings() {
                   </div>
                 )}
 
+              </AdvancedGroup>
+
+              <AdvancedGroup title="Audio & Speech">
               {/* TTS Settings */}
               {isAudioOnly && (
                 <>
@@ -848,7 +911,9 @@ export function AdvancedSettings() {
                   )}
                 </>
               )}
+              </AdvancedGroup>
 
+              <AdvancedGroup title="Output & Post-processing">
               {/* Post Processing */}
               {!isAudio && !isScailEdit && <PostProcessing />}
 
@@ -897,6 +962,9 @@ export function AdvancedSettings() {
                 </div>
               )}
 
+              </AdvancedGroup>
+
+              <AdvancedGroup title="Pipeline & Sampling">
               {/* Stage 2 Steps */}
               {/* Pipeline Mode Toggle — distilled LTX models only */}
               {!isScailEdit
@@ -1200,7 +1268,9 @@ export function AdvancedSettings() {
                   </div>
                 </>
               )}
+              </AdvancedGroup>
 
+              <AdvancedGroup title="Conditioning & Prompt">
               {/* Keyframe Conditioning Mode — Start/End frames */}
               {!isScailEdit && (isVideo || isAvatar) && (hasStartImage || hasEndImage) && (
                 <div>
@@ -1248,6 +1318,9 @@ export function AdvancedSettings() {
                 </div>
               )}
 
+              </AdvancedGroup>
+
+              <AdvancedGroup title="Soundtrack & Output">
               {/* MMAudio — video models only */}
               {isVideo && (
                 <div className="space-y-2">
@@ -1368,6 +1441,7 @@ export function AdvancedSettings() {
                   </div>
                 </div>
               )}
+              </AdvancedGroup>
                 </>
               )}
             </div>

@@ -4,10 +4,13 @@ import { GeneralSettingsPanel } from './GeneralSettingsPanel'
 import { SystemSettingsPanel } from './SystemSettingsPanel'
 import { StorageSettingsPanel } from './StorageSettingsPanel'
 
+// Short tab labels (audit C-01) — the old labels ("Hardware, AI &
+// Performance") truncated on narrow screens. Each tab's own panel
+// already lists its full contents, so the tab only needs the category.
 const tabs = [
-  { id: 'appearance', label: 'General, Theme & Alerts', icon: Sliders },
-  { id: 'performance', label: 'Hardware, AI & Performance', icon: Cpu },
-  { id: 'storage', label: 'Storage & Workspaces', icon: HardDrive },
+  { id: 'appearance', label: 'General', icon: Sliders },
+  { id: 'performance', label: 'Hardware', icon: Cpu },
+  { id: 'storage', label: 'Storage', icon: HardDrive },
 ] as const
 
 export function SettingsDrawer() {

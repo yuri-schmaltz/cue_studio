@@ -44,7 +44,10 @@ import { StudioTabs } from './StudioTabs'
  */
 export function StudioPage() {
   const [biblesOpen, setBiblesOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<StudioTab>('controls')
+  // `mobileTab` only drives the ≤767px layout. On desktop both panels
+  // render side by side, so a lingering mobile selection would be a
+  // state that matches nothing on screen (audit S-01).
+  const [mobileTab, setMobileTab] = useState<StudioTab>('controls')
   const [pendingResult, setPendingResult] = useState<{ id: string; createdAt: string } | null>(null)
   // A13: tabs replace the 2-column split at ≤767px (spec breakpoint),
   // matching the `md:` utility breakpoint (768px) used by the panels.
@@ -84,7 +87,7 @@ export function StudioPage() {
       const shouldSwitch = shouldAutoSwitchToResults({
         concluded: true,
         compact: isCompact,
-        activeTab,
+        activeTab: mobileTab,
         activeElement: document.activeElement,
         lastInteractionAt: lastInteractionRef.current,
         now: Date.now(),
@@ -93,12 +96,12 @@ export function StudioPage() {
       if (shouldSwitch) {
         // Consumed: the user lands on Results right away, so no dot.
         setPendingResult(null)
-        setActiveTab('results')
+        setMobileTab('results')
         // Wait for the panel to become visible before focusing it —
         // focus() also scrolls it into view (the spec's "rola até a
         // nova saída"). The desktop layout never reaches this branch.
         window.requestAnimationFrame(() => resultsRef.current?.focus())
-      } else if (activeTab === 'controls' && fresh) {
+      } else if (mobileTab === 'controls' && fresh) {
         // Skipped (typing / recent interaction / desktop split): keep
         // the notification so the Results tab shows its "new" dot
         // until it's visited (cleared by handleTabChange).
@@ -106,10 +109,10 @@ export function StudioPage() {
       }
     })
     return unsubscribe
-  }, [isCompact, activeTab])
+  }, [isCompact, mobileTab])
 
   const handleTabChange = (tab: StudioTab) => {
-    setActiveTab(tab)
+    setMobileTab(tab)
     if (tab === 'results') setPendingResult(null)
   }
 
@@ -126,7 +129,7 @@ export function StudioPage() {
           id="studio-controls-panel"
           role={isCompact ? 'tabpanel' : undefined}
           aria-labelledby={isCompact ? 'studio-tab-controls' : undefined}
-          className={`${activeTab === 'controls' ? 'flex' : 'hidden'} md:flex h-full min-w-0 w-full md:w-auto`}
+          className={`${isCompact && mobileTab !== 'controls' ? 'hidden' : 'flex'} h-full min-w-0 w-full md:w-auto`}
         >
           <Sidebar onOpenStyleBibles={() => setBiblesOpen(true)} />
         </div>
@@ -136,7 +139,7 @@ export function StudioPage() {
           role={isCompact ? 'tabpanel' : undefined}
           aria-labelledby={isCompact ? 'studio-tab-results' : undefined}
           tabIndex={isCompact ? -1 : undefined}
-          className={`${activeTab === 'results' ? 'flex' : 'hidden'} md:flex min-w-0 flex-1`}
+          className={`${isCompact && mobileTab !== 'results' ? 'hidden' : 'flex'} min-w-0 flex-1`}
         >
           <MainContent />
         </div>

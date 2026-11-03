@@ -2,6 +2,44 @@
 
 ## Em desenvolvimento — 30/10/2026
 
+- **A auditoria de UI virou plano de ação, e o plano foi executado.** O relatório `docs/UI_AUDIT_2026-11-03.md` listava 24 achados; este ciclo fecha os 8 lotes planejados, do layout de 3 colunas do Editor à nomenclatura dos filtros da aba Medias.
+
+- **O Editor voltou a ser de 3 colunas no desktop.** A "Media bin" que existia no código era desligada: cada seleção de mídia forçava `mobilePanel:'inspector'`, e o painel esquerdo passava `compact` incondicionalmente — matando o layout de 3 colunas que já estava implementado. Agora o desktop mostra *Media bin | Preview+Timeline | Inspector*, e o painel esquerdo virou o drawer móvel (`≤767px`), onde ele de fato pertence.
+
+- **O rodapé do Director ganhou hierarquia.** "Send" continua sendo a ação primária (`bg-accent-blue`), mas "Queue" usava a mesma cor com semântica oposta — enfileirar não é executar. "Queue" virou botão neutro (`bg-bg-tertiary` + borda).
+
+- **As abas do app, do Studio e do Director compartilham um componente.** Três linguagens visuais diferentes (caps com sublinhado, pílula arredondada, pill segmentado) viraram uma primitiva só, `TabStrip`, com navegação por teclado (Arrow/Home/End) e `aria` completo — inclusive no container, sem o que o teste existente exigia.
+
+- **Os rodapés do Director têm uma altura só (54px).** Antes eram três alturas diferentes (38/44/variável). As mensagens transitórias ("script error", "draft enfileirado") deixaram de empurrar o rodapé e passaram a flutuar acima dele (`absolute bottom-full`), então a coluna não "pula" quando algo muda.
+
+- **A coluna direita do Director tem o preview sempre visível.** "Generation Options" virou uma seção com botão expansível que abre um drawer (`max-h-[42vh]`), e o preview embaixo deixou de sumir. "Basic mode active…" virou "Advanced parameters run on the model's recommended values."
+
+- **Modelo e VRAM aparecem uma vez só.** O widget de modelo e VRAM (com barra de pressão, âmbar acima de 90%) foi extraído para `DirectorStatusFooter` e compartilhado entre as colunas — a informação aparecia replicada.
+
+- **As abas do briefing renomeadas.** "References" → **Visuals**, "Description" → **Story**. O botão Send agora diz o alvo no `title`/`aria-label`, e a aba Visuals explica por que o Send está desabilitado.
+
+- **O Director fala inglês de ponta a ponta** (rótulos, mensagens, estados vazios) e o vocabulário ficou consistente: "clip" no videoclipe, "scene" no curta-metragem.
+
+- **O Advanced Settings do Studio deixou de ser uma parede.** As 1300+ linhas atrás de um único acordeão foram agrupadas em 8 seções colapsáveis (Output & Resolution, Presets & Adapters, Model Loading, Sampling & Guidance, Audio & Speech, Output & Post-processing, Pipeline & Sampling, Conditioning & Prompt, Soundtrack & Output) — o custo de leitura acompanha o que a pessoa realmente toca.
+
+- **A barra de status e as abas do Studio não mentem mais.** O mesmo estado (`activeTab`) controlava duas telas no mobile e duas colunas no desktop, e no desktop o clique na aba não mudava nada na tela. Agora o estado é do mobile (`mobileTab`) e o desktop decide pelo próprio layout.
+
+- **Os filtros da aba Medias têm nomes coerentes.** "Edits" (para `avatars`, que também traz avatares) virou "Avatars & Edits", e "MC" (para "Multi-clip") virou "Multi".
+
+- **A aba Queue não muda de layout quando o primeiro item chega.** A barra de ações (Start all / Start Director) agora é sempre renderizada — desabilitada quando não há nada para iniciar — em vez de sumir e deixar os botões saltarem de posição.
+
+- **As ações de cada item da fila foram agrupadas.** As setas de reordenar compartilham um grupo, e a ação destrutiva ("Remove from queue") fica separada por um divisor — as duas não leem mais como o mesmo tipo de controle.
+
+- **Os rótulos das abas de Configurations cabem.** "General, Theme & Alerts" / "Hardware, AI & Performance" / "Storage & Workspaces" viraram "General" / "Hardware" / "Storage"; o conteúdo de cada painel já lista o que tem dentro.
+
+- **O contador de clipes tem um formato só.** "25 clips", "1 / 25", "Clip #1", "3/25 approved" eram quatro formatos para o mesmo número. Agora o total usa "N clips" (ou "N scenes") e a posição usa "Clip 3 of 25" — com um módulo único (`director/clipNoun.ts`) como fonte da terminologia.
+
+- **No Studio, o tile "Control video" duplicado foi desambiguado.** O segundo tile (motion source) agora se chama **"Guide video"**, e os presets de posição de frame ficaram explícitos ("0%" / "25%" / "50%" / "75%" / "100%") em vez de "Start / Mid / End", que pareciam duração.
+
+- **Os cards do Director respiram dentro do bubble.** As margens negativas (`-mb-5`) que compensavam um rodapé que não existe mais foram removidas — o card não encosta mais na borda do bubble.
+
+- **Os cards de projeto têm um menu de ações.** Com Open/Edit/Browse visíveis e o resto (Duplicate, Pin, Settings, Delete) num menu "⋯", a ação destrutiva deixou de dividir a mesma fileira das ações inócuas.
+
 - **A barra de status do Director virou um card.** Ela era uma tira crua colada na borda inferior do stage (`border-top` + fundo translúcido), e lia como sobras das colunas. Agora usa a mesma casca da faixa de abas da aplicação — mesma borda, mesmo raio de 12px, mesmo fundo — para que a barra e a navegação do topo se leiam como peças do mesmo sistema.
 
 - **A revisão das cenas voltou a ter barra de rolagem.** O card "Review scene plan" não tinha área rolável própria e a coluna do stage corta o que passa da altura dela (`overflow:hidden`): com 25 cenas o card crescia para fora e as cenas do fim ficavam inalcançáveis — sem scrollbar para chegar lá. Agora o card é a área rolável (o mesmo padrão da coluna de cenas) e as ações de aprovação — "Approve all scenes" e o botão de continuar — ficam fixas no rodapé, porque são necessárias enquanto se lê a última cena também.

@@ -208,47 +208,48 @@ export function QueuePage() {
   return (
     <div className="section-scroll">
       <div className="section-container">
-        {(studioHeldCount > 0 || directorQueue?.running || startableDirectorCount > 0) && (
-          <div className="section-heading queue-page-heading">
-            <div className="queue-page-actions">
-              {studioHeldCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => void startAllQueues()}
-                  disabled={startingAll}
-                  className="shell-secondary-button"
-                  title="Start all held Studio jobs, then any held Director projects"
-                >
-                  {startingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                  Start all
-                </button>
-              )}
-              {directorQueue?.running && !directorQueue.paused ? (
-                <button
-                  type="button"
-                  onClick={() => void pauseDirectorQueue()}
-                  disabled={directorQueueLoading}
-                  className="shell-secondary-button"
-                  title="Finish the active Director project, then stop dispatching"
-                >
-                  <Pause size={14} /> Pause Director
-                </button>
-              ) : (
-                startableDirectorCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => void startDirectorQueue()}
-                    disabled={directorQueueLoading || startingAll}
-                    className="shell-secondary-button"
-                    title="Resume Director dispatching"
-                  >
-                    <Play size={14} /> Start Director
-                  </button>
-                )
-              )}
-            </div>
+        {/* The action bar is always rendered (audit Q-01): when nothing is
+            queued the buttons stay in place but disabled, so the layout
+            doesn't jump as soon as the first item arrives. */}
+        <div className="section-heading queue-page-heading">
+          <div className="queue-page-actions">
+            <button
+              type="button"
+              onClick={() => void startAllQueues()}
+              disabled={startingAll || (studioHeldCount === 0 && startableDirectorCount === 0)}
+              className="shell-secondary-button disabled:opacity-40 disabled:cursor-not-allowed"
+              title={studioHeldCount === 0 && startableDirectorCount === 0
+                ? 'Nothing is waiting to start'
+                : 'Start all held Studio jobs, then any held Director projects'}
+            >
+              {startingAll ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+              Start all
+            </button>
+            {directorQueue?.running && !directorQueue.paused ? (
+              <button
+                type="button"
+                onClick={() => void pauseDirectorQueue()}
+                disabled={directorQueueLoading}
+                className="shell-secondary-button"
+                title="Finish the active Director project, then stop dispatching"
+              >
+                <Pause size={14} /> Pause Director
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void startDirectorQueue()}
+                disabled={directorQueueLoading || startingAll || startableDirectorCount === 0}
+                className="shell-secondary-button disabled:opacity-40 disabled:cursor-not-allowed"
+                title={startableDirectorCount === 0
+                  ? 'No Director project is waiting to start'
+                  : 'Resume Director dispatching'}
+              >
+                <Play size={14} /> Start Director
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {!activePipeline && studioJobs.length === 0 && directorEntries.length === 0 && visiblePersisted.length === 0 && (
           <div className="shell-empty">
@@ -472,26 +473,32 @@ export function QueuePage() {
                   )}
                   {entry.status !== 'running' && entry.status !== 'awaiting_review' && (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => void moveDirectorQueueEntry(entry.id, -1)}
-                        disabled={index === 0 || directorQueueLoading}
-                        className="shell-icon-button"
-                        title="Move up"
-                        aria-label="Move up"
-                      >
-                        <ArrowUp size={12} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void moveDirectorQueueEntry(entry.id, 1)}
-                        disabled={index === directorEntries.length - 1 || directorQueueLoading}
-                        className="shell-icon-button"
-                        title="Move down"
-                        aria-label="Move down"
-                      >
-                        <ArrowDown size={12} />
-                      </button>
+                      {/* Reordering and the destructive action are grouped
+                          apart (audit Q-01): the arrows move the item, the
+                          trash removes it — they must not read as the same
+                          kind of control. */}
+                      <span className="queue-item-reorder">
+                        <button
+                          type="button"
+                          onClick={() => void moveDirectorQueueEntry(entry.id, -1)}
+                          disabled={index === 0 || directorQueueLoading}
+                          className="shell-icon-button"
+                          title="Move up"
+                          aria-label="Move up"
+                        >
+                          <ArrowUp size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void moveDirectorQueueEntry(entry.id, 1)}
+                          disabled={index === directorEntries.length - 1 || directorQueueLoading}
+                          className="shell-icon-button"
+                          title="Move down"
+                          aria-label="Move down"
+                        >
+                          <ArrowDown size={12} />
+                        </button>
+                      </span>
                       <button
                         type="button"
                         onClick={() => void removeDirectorQueueEntry(entry.id)}

@@ -10,6 +10,7 @@ import {
 import { useStore } from '../../stores/useStore'
 import { getFileUrl } from '../../api/client'
 import { DirectorStatusFooter } from './DirectorStatusFooter'
+import { clipPositionLabel } from '../../director/clipNoun'
 
 export function DirectorOutputColumn() {
   const plannedClips = useStore(s => s.directorPlannedClips)
@@ -18,6 +19,7 @@ export function DirectorOutputColumn() {
   const imageGenProgress = useStore(s => s.directorImageGenProgress)
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const editClipPlan = useStore(s => s.directorEditClipPlan)
+  const isShortFilm = useStore(s => s.directorSkill === 'short_film')
 
   const selectedClipIndex = useStore(s => s.directorSelectedClipIndex)
   const setSelectedClipIndex = useStore(s => s.setDirectorSelectedClipIndex)
@@ -61,7 +63,9 @@ export function DirectorOutputColumn() {
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-text-primary flex items-center gap-1.5">
               <Film size={13} className="text-text-muted" />
-              {totalClips > 0 ? `Corte #${selectedClipIndex + 1}` : 'Monitor de Preview'}
+              {totalClips > 0
+                ? clipPositionLabel(selectedClipIndex, totalClips, isShortFilm)
+                : 'Preview Monitor'}
             </span>
           </div>
 
@@ -120,7 +124,7 @@ export function DirectorOutputColumn() {
           <div className="flex items-center justify-between gap-3 pb-1 border-b border-border/40 shrink-0">
             <span className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5 shrink-0">
               <Film size={12} className="text-accent-blue" />
-              Video Prompt {totalClips > 0 ? `(Clip #${selectedClipIndex + 1})` : ''}
+              Video Prompt {totalClips > 0 ? `(${clipPositionLabel(selectedClipIndex, totalClips, isShortFilm)})` : ''}
             </span>
             {/* The clip navigator and the time range live here, next to
                 the prompt they belong to: switching clips while reading
@@ -138,7 +142,7 @@ export function DirectorOutputColumn() {
                     <ChevronLeft size={13} />
                   </button>
                   <span className="text-2xs font-mono font-medium text-text-secondary px-1">
-                    {selectedClipIndex + 1} / {totalClips}
+                    {selectedClipIndex + 1} of {totalClips}
                   </span>
                   <button
                     type="button"

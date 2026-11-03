@@ -67,6 +67,6 @@ describe('DirectorReview scrolling', () => {
 
   it('keeps the counter visible while the scenes scroll', () => {
     render(<DirectorReview />)
-    expect(screen.getByText(`0/${SCENES} clips approved`)).toBeInTheDocument()
+    expect(screen.getByText(`0 of ${SCENES} clips approved`)).toBeInTheDocument()
   })
 })

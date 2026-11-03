@@ -150,7 +150,7 @@ function Review({ pid, status }: { pid: string; status: api.PipelineStatus }) {
       {finalReview && <details className="text-xs"><summary>Prepared render settings and effective prompts</summary><pre className="whitespace-pre-wrap break-all max-h-96 overflow-auto p-2">{JSON.stringify(status.review_render_params, null, 2)}</pre></details>}
     </section>
     <footer className="shrink-0 flex flex-wrap gap-3 items-center text-xs px-1">
-      <span>{approved.length}/{plans.length} clips approved{rejectedCount > 0 && ` · ${rejectedCount} rejected`}</span>
+      <span>{approved.length} of {plans.length} clips approved{rejectedCount > 0 && ` · ${rejectedCount} rejected`}</span>
       <button disabled={busy} className="underline" onClick={() => setApproved(plans.map((_, i) => i).filter(i => !(i in rejected)))}>Approve all clips</button>
       <button disabled={busy || !plans.length || rejectedCount > 0 || approved.length !== plans.length} onClick={() => void submit()}
         className="ml-auto rounded-lg bg-accent-blue text-white px-4 py-2 disabled:opacity-40 flex gap-2 items-center">

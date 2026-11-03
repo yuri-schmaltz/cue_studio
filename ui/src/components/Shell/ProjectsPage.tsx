@@ -9,6 +9,7 @@ import { saveWorkspaceSetup, uploadWorkspaceCover, deleteWorkspaceCover, workspa
 import { applyPreset, presetById, presetForType, trackOverrides } from '../../projects/presets'
 import { ProjectSetupForm, ProjectSetupSummary } from './ProjectSetupForm'
 import { SkeletonGrid } from '../shared/Skeleton'
+import { ActionMenu } from '../shared/ActionMenu'
 import { AppDialog } from '../shared/AppDialog'
 import { Button } from '../shared/Button'
 import { TextField } from '../shared/TextField'
@@ -397,16 +398,31 @@ export function ProjectsPage() {
                 </p>
               )}
               <div className="project-card-actions">
+                {/* Three frequent actions stay on the card; the rest
+                    moved into a labelled menu so the destructive one
+                    no longer sits in the same row as the harmless
+                    ones and every entry carries its own name. */}
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'director')} title="Open Director" aria-label={`Open ${workspace.name} in Director`} className="project-open-icon">
                   {busy === workspace.name ? <Loader2 size={15} className="animate-spin" /> : <Clapperboard size={15} />}
                 </button>
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'editor')} title={`Edit ${workspace.name}`} aria-label={`Edit ${workspace.name}`} className="shell-icon-button"><Film size={15} /></button>
                 <button disabled={busy !== null} onClick={() => void open(workspace.name, 'medias')} title={`Browse ${workspace.name}`} aria-label={`Browse ${workspace.name}`} className="shell-icon-button"><Images size={15} /></button>
-                <button disabled={busy !== null} onClick={() => openDuplicate(workspace)} title={`Duplicate ${workspace.name} setup`} aria-label={`Duplicate ${workspace.name} setup`} className="shell-icon-button"><Copy size={14} /></button>
-                <button disabled={busy !== null} onClick={() => void togglePin(workspace)} title={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} aria-label={workspace.setup?.pinned ? 'Unpin project' : 'Pin project'} className="shell-icon-button">{busy === `pin-${workspace.name}` ? <Loader2 size={14} className="animate-spin" /> : workspace.setup?.pinned ? <PinOff size={14} /> : <Pin size={14} />}</button>
-                <button disabled={busy !== null} onClick={() => openEdit(workspace.name)} title={`Edit ${workspace.name} setup`} aria-label={`Edit ${workspace.name} setup`} className="shell-icon-button"><Settings size={14} /></button>
                 <span className="relative ml-auto">
-                  <button disabled={busy !== null} onClick={() => setConfirmingDelete(current => current === workspace.name ? null : workspace.name)} title={`Delete ${workspace.name}`} aria-label={`Delete ${workspace.name}`} aria-expanded={confirmingDelete === workspace.name} className="shell-icon-button project-danger"><Trash2 size={14} /></button>
+                  <ActionMenu
+                    disabled={busy !== null}
+                    ariaLabel={`More actions for ${workspace.name}`}
+                    items={[
+                      { id: 'duplicate', label: 'Duplicate setup', icon: <Copy size={13} />, onSelect: () => openDuplicate(workspace) },
+                      {
+                        id: 'pin',
+                        label: workspace.setup?.pinned ? 'Unpin project' : 'Pin project',
+                        icon: workspace.setup?.pinned ? <PinOff size={13} /> : <Pin size={13} />,
+                        onSelect: () => void togglePin(workspace),
+                      },
+                      { id: 'settings', label: 'Project settings', icon: <Settings size={13} />, onSelect: () => openEdit(workspace.name) },
+                      { id: 'delete', label: 'Delete project', icon: <Trash2 size={13} />, danger: true, onSelect: () => setConfirmingDelete(current => current === workspace.name ? null : workspace.name) },
+                    ]}
+                  />
                   {confirmingDelete === workspace.name && (
                     <span className="project-delete-pop" role="alertdialog" aria-label={`Delete ${workspace.name}?`}>
                       <span className="project-delete-pop-text">Delete?</span>

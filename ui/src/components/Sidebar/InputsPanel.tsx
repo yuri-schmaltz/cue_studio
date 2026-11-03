@@ -38,12 +38,15 @@ interface InjectedFrame {
   file: File | null
 }
 
+// Frame offset presets — the position of an injected frame inside its
+// window. The labels are explicit percentages so they read as a
+// position, not as a duration ("Mid" -> "50%").
 const OFFSET_PRESETS = [
-  { value: 'start', label: 'Start', pct: 0 },
+  { value: 'start', label: '0%', pct: 0 },
   { value: '25%', label: '25%', pct: 0.25 },
-  { value: 'middle', label: 'Mid', pct: 0.5 },
+  { value: 'middle', label: '50%', pct: 0.5 },
   { value: '75%', label: '75%', pct: 0.75 },
-  { value: 'end', label: 'End', pct: 1.0 },
+  { value: 'end', label: '100%', pct: 1.0 },
 ] as const
 
 const WINDOW_TOKEN_RE = /^[Ww](\d+):(\d{1,3})$/
@@ -692,11 +695,11 @@ export function InputsPanel() {
 
         {/* Guide video (motion source) — guide_custom_choices models (SCAIL-2 etc.) */}
         {hasGuideVid ? (
-          <Tile role="Control video" filledIcon={<Film size={20} />} filledLabel={controlVidName ?? undefined}
+          <Tile role="Guide video" filledIcon={<Film size={20} />} filledLabel={controlVidName ?? undefined}
             imgSrc={null} selected={selected === 'guidevid'} onClear={removeGuideVid}
             onSelect={() => setSelected(selected === 'guidevid' ? null : 'guidevid')} />
         ) : supportsGuideVid && (
-          <AddTile label="Control video" icon={<Film size={18} />} onClick={() => pickFile('.mp4,.webm,.mkv,.mov', handleAddGuideVid)} onDropFile={handleAddGuideVid} dropAccept="video" />
+          <AddTile label="Guide video" icon={<Film size={18} />} onClick={() => pickFile('.mp4,.webm,.mkv,.mov', handleAddGuideVid)} onDropFile={handleAddGuideVid} dropAccept="video" />
         )}
 
         {/* Voice reference (ID-LoRA) — keeps the speaker's voice consistent. */}

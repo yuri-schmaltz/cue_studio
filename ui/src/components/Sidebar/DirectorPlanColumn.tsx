@@ -35,6 +35,7 @@ import {
   DirectorActionControls,
 } from './DirectorBriefingColumn'
 import { DirectorActivityBlock } from './DirectorActivityBar'
+import { clipCountLabel } from '../../director/clipNoun'
 
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
 type DirectorStep = typeof STEP_ORDER[number]
@@ -261,7 +262,7 @@ export function DirectorPlanColumn() {
                 )}
                 {clipPlans.length > 0 && (
                   <span className="text-2xs text-text-muted px-2 py-0.5 rounded bg-bg-tertiary border border-border">
-                    {clipPlans.length} {clipPlans.length === 1 ? (isShortFilm ? 'scene' : 'clip') : (isShortFilm ? 'scenes' : 'clips')}
+                    {clipCountLabel(clipPlans.length, isShortFilm)}
                   </span>
                 )}
               </div>
@@ -295,7 +296,7 @@ export function DirectorPlanColumn() {
                 <Sparkles size={20} />
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-semibold text-text-primary">Nenhum prompt gerado ainda</p>
+                <p className="text-xs font-semibold text-text-primary">No prompts generated yet</p>
                 <p className="text-2xs text-text-muted max-w-sm leading-relaxed">
                   Set the music, the visual references and the scene description in the column next to this one. The shot scripts and the detailed prompts for every cut are organised here.
                 </p>
