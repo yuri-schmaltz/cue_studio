@@ -107,7 +107,7 @@ Cadeia completa, do texto original até a resposta da API:
    "Generation failed"` propaga a mesma perda para o Director.
 
 O `oom_info` só é anexado no `except Exception` externo
-(`app/launch.py:27351-27364`), **inalcançável** neste caminho. E mesmo se fosse
+(`app/launch.py:27350-27365`), **inalcançável** neste caminho. E mesmo se fosse
 alcançado, `app/services/oom_detect.py:27-33` casa as assinaturas
 `"out of memory"`, `"cuda out of memory"`, `"outofmemoryerror"`,
 `"cublas_status_alloc"`, `"cudnn_status_alloc"` — nenhuma aparece nas
@@ -185,7 +185,7 @@ vazia — todos pela mesma causa.
   memory".
 - `app/launch.py:26224-26228` — no ramo `cmd == "error"`, gravar a mensagem em
   `job["error"]` (não só em `message`) e acionar `detect_oom` com o mesmo
-  padrão já usado em `27358-27362` e `23776-23780`.
+  padrão já usado em `27357-27362` e `23775-23780`.
 - `app/launch.py:27338-27346` — o `finish_job` já prefere `job.get("error")`;
   com o passo acima, o erro publicado deixa de ser o literal genérico. A
   mensagem final deve carregar o texto útil, não "Generation failed".
