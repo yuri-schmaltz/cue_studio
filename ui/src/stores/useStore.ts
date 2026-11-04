@@ -430,7 +430,7 @@ const audioSubFamilies: ModelFamily[] = [
 // them. Keep the explicit set for one-off ids that don't share a
 // prefix with their line.
 const musicModelTypes = new Set<string>([])
-const musicModelPrefixes = ['ace_step', 'heartmula', 'minimax_music3']
+const musicModelPrefixes = ['ace_step', 'heartmula', 'minimax_music3', 'yue']
 
 function isMusicModelType(modelType: string): boolean {
   if (musicModelTypes.has(modelType)) return true
@@ -498,6 +498,7 @@ const DEFAULT_ENABLED_MODELS = new Set([
   'ace_step_v1_5_xl_sft',
   'ace_step_v1_5_xl_sft_lm_4b',
   'minimax_music3',
+  'yue',
   // Audio — SFX
   'mmaudio_v2',
 ])
@@ -511,7 +512,7 @@ const DEFAULT_ENABLED_MODELS = new Set([
  * a user who then disables them stays disabled forever. (This is
  * deliberately narrower than auto-enabling every unknown model — only
  * the curated list's own additions are pushed.) */
-const DEFAULTS_VERSION = 11
+const DEFAULTS_VERSION = 12
 const DEFAULTS_ADDED_IN: Record<number, string[]> = {
   // v1.2.0: the ACE-Step XL SFT pair; LM_4B becomes the music default.
   2: ['ace_step_v1_5_xl_sft', 'ace_step_v1_5_xl_sft_lm_4b'],
@@ -533,6 +534,8 @@ const DEFAULTS_ADDED_IN: Record<number, string[]> = {
   10: ['minimax_music3'],
   // Experimental MATLOWAI fused four-step H3 Frames + References variants.
   11: ['minimax_h3_fused_turbo', 'minimax_h3_ref2va_fused_turbo'],
+  // YuE two stage music generation (lyrics + style tags).
+  12: ['yue'],
 }
 const DEFAULTS_VERSION_KEY = 'cue-studio_defaults_version'
 

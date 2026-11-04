@@ -148,7 +148,7 @@ export function PostProcessing() {
               <button
                 type="button"
                 onClick={() => applyPreset('clean')}
-                title="Sharpen 40% — Ideal para 3D, robôs e superfícies limpas"
+                title="Sharpen 40% — ideal for 3D, robots and clean surfaces"
                 className={`py-1 px-1.5 rounded border transition-colors ${
                   activePreset === 'clean'
                     ? 'bg-accent-blue/10 border-accent-blue text-text-primary font-medium'
@@ -160,7 +160,7 @@ export function PostProcessing() {
               <button
                 type="button"
                 onClick={() => applyPreset('cinematic')}
-                title="Sharpen 45% + Grain 12% — Textura orgânica de filme (Recomendado)"
+                title="Sharpen 45% + Grain 12% — organic film texture (recommended)"
                 className={`py-1 px-1.5 rounded border transition-colors ${
                   activePreset === 'cinematic'
                     ? 'bg-accent-blue/10 border-accent-blue text-text-primary font-medium'
@@ -172,7 +172,7 @@ export function PostProcessing() {
               <button
                 type="button"
                 onClick={() => applyPreset('crisp')}
-                title="Sharpen 75% + Grain 5% — Máxima definição de arestas e detalhes"
+                title="Sharpen 75% + Grain 5% — maximum edge and detail definition"
                 className={`py-1 px-1.5 rounded border transition-colors ${
                   activePreset === 'crisp'
                     ? 'bg-accent-blue/10 border-accent-blue text-text-primary font-medium'

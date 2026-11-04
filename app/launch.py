@@ -8082,6 +8082,7 @@ async def llm_write_song(request: Request):
         (selected_model or {}).get("architecture") or model_type
     )
     is_minimax_music3 = selected_architecture == "minimax_music3"
+    is_yue = selected_architecture == "yue"
 
     # Optional reference image → the vision LLM lets the visuals inform the
     # STYLE (e.g. neon cityscape → synthwave). Degrades gracefully: if the
@@ -8093,7 +8094,17 @@ async def llm_write_song(request: Request):
 
     _ensure_llm_loaded()
     from services.guide_loader import load_guide
-    if is_minimax_music3 and instrumental:
+    if is_yue and instrumental:
+        system_prompt = (
+            load_guide("music", "song_writer_yue_instrumental")
+            or _SONG_WRITER_FALLBACK_INSTRUMENTAL
+        )
+    elif is_yue:
+        system_prompt = (
+            load_guide("music", "song_writer_yue")
+            or _SONG_WRITER_FALLBACK
+        )
+    elif is_minimax_music3 and instrumental:
         system_prompt = (
             load_guide("music", "song_writer_minimax_music3_instrumental")
             or _MUSIC3_SONG_WRITER_FALLBACK_INSTRUMENTAL
@@ -8199,6 +8210,7 @@ async def director_generate_music(request: Request):
         raise HTTPException(status_code=400, detail=f"Unknown model: {model_type}")
     selected_architecture = str(selected_model.get("architecture") or model_type)
     is_minimax_music3 = selected_architecture == "minimax_music3"
+    is_yue = selected_architecture == "yue"
 
     image_paths = body.get("image_paths") or []
     if not image_paths and body.get("reference_image_path"):
@@ -8213,7 +8225,17 @@ async def director_generate_music(request: Request):
         from services import llm_service
         from services.guide_loader import load_guide
         _ensure_llm_loaded()
-        if is_minimax_music3 and instrumental:
+        if is_yue and instrumental:
+            system_prompt = (
+                load_guide("music", "song_writer_yue_instrumental")
+                or _SONG_WRITER_FALLBACK_INSTRUMENTAL
+            )
+        elif is_yue:
+            system_prompt = (
+                load_guide("music", "song_writer_yue")
+                or _SONG_WRITER_FALLBACK
+            )
+        elif is_minimax_music3 and instrumental:
             system_prompt = (
                 load_guide("music", "song_writer_minimax_music3_instrumental")
                 or _MUSIC3_SONG_WRITER_FALLBACK_INSTRUMENTAL

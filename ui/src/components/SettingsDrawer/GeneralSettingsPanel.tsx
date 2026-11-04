@@ -291,7 +291,7 @@ export function GeneralSettingsPanel() {
                           : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
                       }`}
                     >
-                      {d === 'comfortable' ? 'Confortável' : 'Compacta'}
+                      {d === 'comfortable' ? 'Comfortable' : 'Compact'}
                     </button>
                   ))}
                 </div>

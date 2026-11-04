@@ -812,7 +812,7 @@ export function StructureView({
                 <span className={`w-2 h-2 rounded-sm shrink-0 ${s.color}`} />
                 <span className="text-2xs text-text-secondary truncate" title={s.label}>{s.label}</span>
                 <span className="text-2xs text-text-muted ml-auto shrink-0 tabular-nums">
-                  {s.count} {isShortFilm ? 'cenas' : 'clipes'} · {formatSectionTime(s.duration)}
+                  {s.count} {isShortFilm ? 'scenes' : 'clips'} · {formatSectionTime(s.duration)}
                 </span>
               </div>
             ))}

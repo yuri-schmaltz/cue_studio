@@ -40,7 +40,7 @@ describe('ContinuityPanel', () => {
       json: async () => ({ production_id: 'p', shot_count: 0, inconsistencies: [], severity_counts: { info: 0, warning: 0, error: 0 } }),
     }) as unknown as typeof fetch
     render(<ContinuityPanel productionId="p" />)
-    await waitFor(() => expect(screen.getByText(/Shot IR não gerado/)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/Shot IR not generated/)).toBeInTheDocument())
   })
 
   it('triggers check endpoint on button click', async () => {

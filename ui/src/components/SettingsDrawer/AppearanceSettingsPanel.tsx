@@ -89,12 +89,12 @@ export function AppearanceSettingsPanel() {
                         : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
                     }`}
                   >
-                    {d === 'comfortable' ? 'Confortável' : 'Compacta'}
+                    {d === 'comfortable' ? 'Comfortable' : 'Compact'}
                   </button>
                 ))}
               </div>
               <p className="text-2xs text-text-muted mt-1.5">
-                Ajusta o tamanho do texto e o espaçamento dos painéis.
+                Adjusts the text size and the panel spacing.
               </p>
             </div>
           </div>

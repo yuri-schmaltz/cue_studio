@@ -60,3 +60,22 @@ Source: https://huggingface.co/Kijai/MiniMax-H3-experimental/blob/a3e7d8da4ae7ba
 Users must review the linked model license and NOTICE before downloading or
 using this optional checkpoint; its terms and geographic scope differ from
 Maestro's application license.
+
+## YuE music generation model
+
+The optional YuE music model integrates Apache-2.0-licensed source and weights
+from the **m-a-p/YuE** project (HKUST) and the **m-a-p/xcodec_mini_infer**
+neural audio codec. No model weights are redistributed in this source
+repository: the checkpoint downloader fetches them on demand.
+
+- Segment planner (Stage 1): `m-a-p/YuE-s1-7B-anneal-en-cot` (chain of
+  thought variant) and `m-a-p/YuE-s1-7B-anneal-en-icl` (in-context learning
+  variant, conditioned on a reference recording).
+  Source: https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot
+- Acoustic renderer (Stage 2): `m-a-p/YuE-s2-1B-general`.
+  Source: https://huggingface.co/m-a-p/YuE-s2-1B-general
+- Neural audio codec: `m-a-p/xcodec_mini_infer`.
+  Source: https://huggingface.co/m-a-p/xcodec_mini_infer
+- Adapted source lives in `app/models/TTS/yue/` and keeps the upstream
+  Apache-2.0 headers and attribution.
+- License: https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot/blob/main/LICENSE

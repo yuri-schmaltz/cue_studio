@@ -37,10 +37,10 @@ export interface ContinuityPanelProps {
 export const KIND_META: Record<string, { icon: typeof Eye; label: string; severity: 'info' | 'warning' | 'error' }> = {
   gaze_flip: { icon: Eye, label: 'Olhar virou 180° entre planos', severity: 'warning' },
   wardrobe_skip: { icon: Shirt, label: 'Figurino mudou sem registro', severity: 'warning' },
-  object_hand_jump: { icon: Hand, label: 'Objeto trocou de mão', severity: 'info' },
-  object_state_unsupported: { icon: DoorOpen, label: 'Estado de objeto sem ação', severity: 'warning' },
-  action_orphan: { icon: CircleDot, label: 'Ação em progresso não concluída', severity: 'warning' },
-  position_collision: { icon: Users, label: 'Colisão de posição no frame', severity: 'error' },
+  object_hand_jump: { icon: Hand, label: 'Object changed hands', severity: 'info' },
+  object_state_unsupported: { icon: DoorOpen, label: 'Object state without action', severity: 'warning' },
+  action_orphan: { icon: CircleDot, label: 'Action in progress, not completed', severity: 'warning' },
+  position_collision: { icon: Users, label: 'Position collision in frame', severity: 'error' },
 }
 
 export const SEVERITY_COLOR: Record<string, string> = {
@@ -91,7 +91,7 @@ export function ContinuityPanel({ productionId, onNavigateToShot }: ContinuityPa
   return (
     <section
       className="settings-card"
-      aria-label="Painel de continuidade"
+      aria-label="Continuity panel"
       role="region"
     >
       <header className="flex items-center justify-between gap-2 mb-2">
@@ -116,7 +116,7 @@ export function ContinuityPanel({ productionId, onNavigateToShot }: ContinuityPa
 
       {!loading && !error && data && data.shot_count === 0 && (
         <p className="text-xs text-text-muted">
-          Shot IR não gerado para esta produção — ative em Configurações → Produção.
+          Shot IR not generated for this production — enable it in Settings → Production.
         </p>
       )}
 
@@ -129,11 +129,11 @@ export function ContinuityPanel({ productionId, onNavigateToShot }: ContinuityPa
           </div>
           {hasError && (
             <div role="alert" className="mb-2 text-xs text-red-400">
-              {counts.error} inconsistência(s) crítica(s) — bloqueia export
+              {counts.error} critical inconsistency(ies) — blocks export
             </div>
           )}
           {data.inconsistencies.length === 0 ? (
-            <p className="text-xs text-text-muted">Nenhuma inconsistência detectada.</p>
+            <p className="text-xs text-text-muted">No inconsistencies detected.</p>
           ) : (
             <ul className="space-y-2">
               {data.inconsistencies.map((inc, idx) => {

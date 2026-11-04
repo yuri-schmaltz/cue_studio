@@ -284,7 +284,7 @@ describe('clip structure breakdown', () => {
     renderStructure()
     expect(screen.getByText('intro')).toBeTruthy()
     expect(screen.getByText('verse')).toBeTruthy()
-    expect(screen.getAllByText(/1 clipes/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/1 clip/).length).toBeGreaterThan(0)
     expect(screen.getByText(/0:16\.0/)).toBeTruthy()
   })
 

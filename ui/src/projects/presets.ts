@@ -38,13 +38,13 @@ export interface ProjectPreset {
 export const DEFAULT_PRESETS: ProjectPreset[] = [
   {
     id: 'mv-default',
-    label: 'Music Video — padrão',
+    label: 'Music Video — default',
     recommendedFor: ['music-video'],
     defaults: { skill: 'music_video', aspect_ratio: '16:9', resolution: '720p', seamless: false, auto_mode: false },
   },
   {
     id: 'sf-default',
-    label: 'Short Film — padrão',
+    label: 'Short Film — default',
     recommendedFor: ['short-film'],
     defaults: { skill: 'short_film', aspect_ratio: '16:9', resolution: '720p', seamless: false, auto_mode: false },
   },

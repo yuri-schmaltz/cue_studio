@@ -232,6 +232,7 @@ export function MediaInspector() {
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [copied, setCopied] = useState(false)
   const [rejoining, setRejoining] = useState(false)
+  const [openingInEditor, setOpeningInEditor] = useState(false)
   const [sentToInput, setSentToInput] = useState(false)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkConfirm, setBulkConfirm] = useState(false)
@@ -323,6 +324,11 @@ export function MediaInspector() {
     const info = params?.multi_clip_info as { total: number } | undefined
     return info?.total
   })()
+  // A Director run stamps its pipeline id on every output it writes, so
+  // the gallery can offer the Editor handoff for any of its shots.
+  const directorPipelineId = typeof meta?.director_pipeline_id === 'string'
+    ? meta.director_pipeline_id
+    : null
 
   const uploadFilenames = meta?.upload_filenames as Record<string, string | string[]> | undefined
   const rawStart = uploadFilenames?.image_start
@@ -377,6 +383,22 @@ export function MediaInspector() {
       await rejoinClipGroup(groupId)
     } finally {
       setRejoining(false)
+    }
+  }
+
+  const handleOpenInEditor = async () => {
+    if (!directorPipelineId || openingInEditor) return
+    setOpeningInEditor(true)
+    try {
+      const { useEditorStore } = await import('../../editor/useEditorStore')
+      const editor = useEditorStore.getState()
+      if (editor.workspace !== activeWorkspace) await editor.initialize(activeWorkspace)
+      await editor.openDirectorRunInEditor(directorPipelineId)
+      setSidebarMode('editor')
+    } catch (error) {
+      console.error('Could not open the Director run in the Editor:', error)
+    } finally {
+      setOpeningInEditor(false)
     }
   }
 
@@ -610,6 +632,22 @@ export function MediaInspector() {
             title="Retake a time region"
           >
             <Scissors size={13} /> Retake
+          </button>
+        )}
+        {/* The Director handoff, reachable from the gallery too: an
+            output produced by a Director run can open that run in the
+            multi-track Editor, so the shots can be trimmed and mixed
+            with the soundtrack instead of only exported as an MP4. */}
+        {directorPipelineId && (
+          <button
+            type="button"
+            onClick={() => void handleOpenInEditor()}
+            disabled={openingInEditor}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-text-secondary transition-colors hover:bg-bg-hover hover:text-accent-blue disabled:opacity-50 disabled:cursor-wait"
+            title="Open this Director run in the Editor"
+          >
+            {openingInEditor ? <Loader2 size={13} className="animate-spin" /> : <Film size={13} />}
+            Open in Editor
           </button>
         )}
         {params && file.type === 'video' && (

@@ -136,6 +136,24 @@
       "capabilities": [
         "audio_generate"
       ]
+    },
+    {
+      "model_id": "yue",
+      "runtime": "wan_gp",
+      "mode": "music",
+      "capabilities": [
+        "audio_generate",
+        "music_gen"
+      ]
+    },
+    {
+      "model_id": "yue_icl",
+      "runtime": "wan_gp",
+      "mode": "music",
+      "capabilities": [
+        "audio_generate",
+        "music_gen"
+      ]
     }
   ]
 }

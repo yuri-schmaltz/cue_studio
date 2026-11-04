@@ -21,9 +21,9 @@ from app.services.capability_matrix import (
 )
 
 
-def test_catalog_has_14_entries():
+def test_catalog_has_16_entries():
     m = CapabilityMatrix()
-    assert len(m.entries) == 14
+    assert len(m.entries) == 16
 
 
 def test_check_declared_capability():
@@ -44,8 +44,10 @@ def test_check_unknown_model():
 def test_filter_by_capability():
     m = CapabilityMatrix()
     music = m.filter_by_capability(Capability.MUSIC_GEN)
-    assert len(music) == 2
-    assert {e.model_id for e in music} == {"ace_step_15_xl_sft", "minimax_music3"}
+    assert len(music) == 4
+    assert {e.model_id for e in music} == {
+        "ace_step_15_xl_sft", "minimax_music3", "yue", "yue_icl",
+    }
 
 
 def test_capabilities_for_unknown():
@@ -82,5 +84,5 @@ def test_singleton_isolation(monkeypatch, tmp_path):
     reset_capability_matrix_singleton()
     m = get_capability_matrix()
     assert m is not None
-    assert len(m.entries) == 14
+    assert len(m.entries) == 16
     reset_capability_matrix_singleton()

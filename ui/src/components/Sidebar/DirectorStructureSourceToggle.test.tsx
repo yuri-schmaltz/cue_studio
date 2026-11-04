@@ -99,6 +99,6 @@ describe('DirectorStructureSourceToggle', () => {
 
   it('reports how many scenes carry timecodes', () => {
     render(<DirectorStructureSourceToggle />)
-    expect(screen.getByTestId('director-structure-source')).toHaveTextContent('12 cenas')
+    expect(screen.getByTestId('director-structure-source')).toHaveTextContent('12 scenes')
   })
 })

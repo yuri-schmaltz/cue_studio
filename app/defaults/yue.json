@@ -1,0 +1,26 @@
+{
+    "model": {
+        "name": "YuE 7B + 1B",
+        "architecture": "yue",
+        "description": "YuE is a two stage open music generation model. A 7B segment planner writes the song from lyrics and style tags, then a 1B model renders the vocal and instrumental tracks with the xcodec neural audio codec.",
+        "selector_help": "Long form songs from lyrics (prompt) plus genre and mood tags (alt prompt). The download is about 18 GB in two stages plus the codec. On GPUs with less than 12 GB of VRAM the 7B planner runs partially on system memory, so the first segment takes noticeably longer.",
+        "URLs": [
+            "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot/resolve/main/model.safetensors.index.json"
+        ],
+        "URLs2": [
+            "https://huggingface.co/m-a-p/YuE-s2-1B-general/resolve/main/model.safetensors"
+        ],
+        "source_repo": "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot",
+        "license_name": "Apache-2.0",
+        "license_url": "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot",
+        "model_size_gb": 18
+    },
+    "prompt": "[Verse]\nMorning light filters through the pines\nEvery quiet road is yours and mine\n[Chorus]\nSoftly the whole world starts to breathe\nStay for one more song with me\n[Outro]\nThe kettle sings, the window glows\nWe take the long way home",
+    "alt_prompt": "pop, dreamy, warm vocal, female, nostalgic",
+    "audio_prompt_type": "",
+    "temperature": 1.0,
+    "video_length": 0,
+    "num_inference_steps": 0,
+    "repeat_generation": 1,
+    "negative_prompt": ""
+}

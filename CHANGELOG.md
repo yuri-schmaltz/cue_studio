@@ -2,6 +2,8 @@
 
 ## Em desenvolvimento — 30/10/2026
 
+- **O YuE entrou como modelo de música.** O código do YuE estava no repositório desde o começo, mas nunca funcionou: o import do `LlamaForCausalLM` apontava para um módulo que não existe (`shared.llama_3_2`), não havia definição de catálogo — então o modelo não aparecia em lugar nenhum da UI — e a lista de download trazia só `config.json`, ou seja, os pesos de 18 GB nunca eram baixados. Agora há duas variantes no catálogo (`yue`, com o planejador de 7B "chain of thought", e `yue_icl`, que se condiciona a uma gravação de referência), o Stage 1 fragmentado é montado a partir dos três shards e o Stage 2 e o codec xcodec entram pelo fluxo de download padrão. O modelo também ganhou guia de songwriting próprio — o YuE pede **letra no prompt e tags de estilo no alt_prompt** (`pop, dreamy, warm vocal, female`), não uma caption como o MiniMax-Music3 —, badge na UI e entrada na matriz de capacidades. Detalhes em `docs/YUE_MUSIC_MODEL.md`.
+
 - **O campo de upload da capa do projeto agora é 16:9.** A área de arrastar-e-soltar tinha altura fixa de 96px — uma faixa 5:1 que não dizia nada sobre a proporção do resultado. Como a capa aparece no card do projeto e define a "cara" do trabalho, o campo agora respeita a proporção do vídeo (16:9 por padrão) e o preview da imagem enviada usa o mesmo formato, então o que se arrasta já aparece no formato em que vai ser exibido.
 
 - **A auditoria de UI virou plano de ação, e o plano foi executado.** O relatório `docs/UI_AUDIT_2026-11-03.md` listava 24 achados; este ciclo fecha os 8 lotes planejados, do layout de 3 colunas do Editor à nomenclatura dos filtros da aba Medias.

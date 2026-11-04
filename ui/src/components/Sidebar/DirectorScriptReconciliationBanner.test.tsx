@@ -81,13 +81,13 @@ describe('DirectorScriptReconciliationBanner', () => {
     render(<DirectorScriptReconciliationBanner />)
 
     expect(screen.getByTestId('director-script-reconciliation')).toHaveTextContent(
-      'Seu roteiro cobre 0:00–0:45',
+      'Your script covers 0:00–0:45',
     )
     expect(screen.getByTestId('director-script-reconciliation')).toHaveTextContent(
-      'de uma faixa de 4:15',
+      'of a 4:15 track',
     )
     expect(screen.getByTestId('director-script-reconciliation')).toHaveTextContent(
-      '3 cenas',
+      '3 scenes',
     )
     expect(screen.getByTestId('director-script-reconciliation')).toHaveTextContent(
       '3:30 of the audio were not scripted',
@@ -138,7 +138,7 @@ describe('DirectorScriptReconciliationBanner', () => {
     render(<DirectorScriptReconciliationBanner />)
 
     expect(screen.getByTestId('director-script-reconciliation')).toHaveTextContent(
-      '4 no total, 1 sem timecode',
+      '4 in total, 1 without a timecode',
     )
   })
 

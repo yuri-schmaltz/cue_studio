@@ -78,7 +78,7 @@ export function DirectorTimelineEditor() {
       onClick={() => setOpen(true)}
     >
       <Wand2 size={13} className="shrink-0" />
-      <span>Dividir / editar clipes ({clips.length})</span>
+      <span>Split / edit clips ({clips.length})</span>
     </button>
     {open && createPortal(<TimelineDialog close={() => setOpen(false)} />, document.body)}
   </>
@@ -239,7 +239,7 @@ function TimelineDialog({ close }: { close: () => void }) {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-2xs px-2.5 py-1 rounded-full bg-bg-tertiary border border-border">
-              <span className="font-semibold text-text-primary">{slots.length} cenas</span>
+              <span className="font-semibold text-text-primary">{slots.length} scenes</span>
               <span className="text-text-muted">·</span>
               <span className="text-text-secondary">{formatTimecode(totalDuration)} ({totalDuration.toFixed(1)}s)</span>
             </div>
@@ -258,7 +258,7 @@ function TimelineDialog({ close }: { close: () => void }) {
         <div className="px-5 pt-3 pb-2 border-b border-border/40 bg-bg-primary/50 shrink-0">
           <div className="flex items-center justify-between mb-1.5 text-2xs text-text-muted font-medium">
             <span>Timeline (visual proportion of the scenes)</span>
-            <span>{slots.length} cenas detectadas</span>
+            <span>{slots.length} scenes detected</span>
           </div>
           <div className="relative flex gap-1 h-9 rounded-xl p-1 bg-bg-secondary border border-border overflow-hidden">
             {slots.map((slot, i) => {
@@ -274,7 +274,7 @@ function TimelineDialog({ close }: { close: () => void }) {
                   onMouseLeave={() => setActiveHighlightIndex(null)}
                   onClick={() => handleTogglePlay(slot.clip.start, slot.clip.end, i)}
                   style={{ width: `${Math.max(pct, 1.5)}%` }}
-                  title={`Cena ${i + 1}: ${slot.clip.section_label} (${dur.toFixed(1)}s) - Clique para ouvir`}
+                  title={`Scene ${i + 1}: ${slot.clip.section_label} (${dur.toFixed(1)}s) - click to listen`}
                   className={`${style.bg} ${
                     isPlaying
                       ? 'ring-2 ring-white ring-inset opacity-100 animate-pulse'
@@ -361,7 +361,7 @@ function TimelineDialog({ close }: { close: () => void }) {
         {error && (
           <div role="alert" className="px-5 py-2 bg-red-500/10 border-t border-red-500/30 text-red-400 text-xs flex items-center justify-between">
             <span>{error}</span>
-            <button type="button" onClick={() => setError('')} className="text-2xs underline">Fechar</button>
+            <button type="button" onClick={() => setError('')} className="text-2xs underline">Close</button>
           </div>
         )}
 
@@ -377,7 +377,7 @@ function TimelineDialog({ close }: { close: () => void }) {
               onClick={close}
               className="px-3 py-1.5 rounded-lg border border-border text-xs text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="button"
@@ -483,7 +483,7 @@ function TimingRow({
             type="button"
             onClick={() => edit({ kind: 'split', index, time: Number(cut) })}
             className="h-7 px-2.5 rounded-lg border border-border hover:border-accent-blue/60 bg-bg-secondary hover:bg-bg-hover text-text-secondary hover:text-text-primary text-2xs font-medium flex items-center gap-1.5 transition-colors"
-            title={`Dividir cena ${index + 1} em ${cut}s`}
+            title={`Split scene ${index + 1} at ${cut}s`}
           >
             <Scissors size={11} className="text-accent-blue" />
             <span>Dividir em {cut}s</span>
@@ -510,7 +510,7 @@ function TimingRow({
               showAdjust ? 'border-accent-blue/60 bg-accent-blue/10 text-accent-blue' : 'border-border text-text-muted hover:text-text-primary'
             }`}
           >
-            {showAdjust ? 'Fechar' : 'Ajustar'}
+            {showAdjust ? 'Close' : 'Adjust'}
           </button>
         </div>
       </div>
@@ -521,7 +521,7 @@ function TimingRow({
           <div className="flex items-center gap-2">
             <span className="text-text-muted font-medium">Exact split point:</span>
             <input
-              aria-label={`Ponto de corte da cena ${index + 1}`}
+              aria-label={`Cut point of scene ${index + 1}`}
               type="number"
               min={slot.clip.start + 0.1}
               max={slot.clip.end - 0.1}
@@ -544,7 +544,7 @@ function TimingRow({
             <div className="flex items-center gap-2 pl-3 border-l border-border/60">
               <span className="text-text-muted font-medium">Mover limite final:</span>
               <input
-                aria-label={`Fim da cena ${index + 1}`}
+                aria-label={`End of scene ${index + 1}`}
                 type="number"
                 step="0.05"
                 value={end}

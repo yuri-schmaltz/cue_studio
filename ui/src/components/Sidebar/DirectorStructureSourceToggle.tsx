@@ -46,7 +46,7 @@ export function DirectorStructureSourceToggle() {
         data-testid="director-structure-source-unavailable"
       >
         The cuts follow the audio. To let the script decide the cuts, add
-        timecodes às cenas (ex.: <span className="text-text-secondary">CENA 1: Abertura (0:00 - 0:11)</span>).
+        timecodes to the scenes (e.g. <span className="text-text-secondary">SCENE 1: Opening (0:00 - 0:11)</span>).
       </p>
     )
   }
@@ -56,7 +56,7 @@ export function DirectorStructureSourceToggle() {
       className="flex flex-wrap items-center gap-1.5 shrink-0"
       data-testid="director-structure-source"
     >
-      <span className="text-2xs text-text-muted font-medium shrink-0">Cortes:</span>
+      <span className="text-2xs text-text-muted font-medium shrink-0">Cuts:</span>
 
       <div className="flex rounded border border-border overflow-hidden shrink-0">
         <button
@@ -72,7 +72,7 @@ export function DirectorStructureSourceToggle() {
           data-testid="director-structure-source-audio"
         >
           <Music4 size={10} />
-          Áudio
+          Audio
         </button>
         <button
           type="button"
@@ -83,11 +83,11 @@ export function DirectorStructureSourceToggle() {
               ? 'bg-accent-blue text-white'
               : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
           }`}
-          title="Os timecodes do roteiro decidem onde cada corte acontece"
+          title="The script timecodes decide where each cut happens"
           data-testid="director-structure-source-script"
         >
           <Film size={10} />
-          Roteiro
+          Script
         </button>
       </div>
 
@@ -102,10 +102,10 @@ export function DirectorStructureSourceToggle() {
                 ? 'bg-accent-blue text-white'
                 : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
             }`}
-            title="Um corte por cena"
+            title="One cut per scene"
             data-testid="director-script-granularity-scene"
           >
-            Cenas
+            Scenes
           </button>
           <button
             type="button"
@@ -116,19 +116,19 @@ export function DirectorStructureSourceToggle() {
                 ? 'bg-accent-blue text-white'
                 : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
             }`}
-            title="Um corte por passo (sub-segmento) — o ritmo de videoclipe"
+            title="One cut per beat (sub-segment) — the music-video rhythm"
             data-testid="director-script-granularity-beat"
           >
             <ListTree size={10} />
-            Passos
+            Beats
           </button>
         </div>
       )}
 
       <span className="text-2xs text-text-muted shrink-0">
         {source === 'script'
-          ? `${anchoredScenes} ${anchoredScenes === 1 ? 'cena' : 'cenas'} com timecode`
-          : `${anchoredScenes} ${anchoredScenes === 1 ? 'cena' : 'cenas'} no roteiro`}
+          ? `${anchoredScenes} ${anchoredScenes === 1 ? 'scene' : 'scenes'} with timecode`
+          : `${anchoredScenes} ${anchoredScenes === 1 ? 'scene' : 'scenes'} in the script`}
       </span>
     </div>
   )

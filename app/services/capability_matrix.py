@@ -82,6 +82,10 @@ def default_catalog() -> list[CapabilityEntry]:
                          frozenset({Capability.AUDIO_GENERATE, Capability.MUSIC_GEN})),
         CapabilityEntry("minimax_music3", Runtime.COMFY, "music",
                          frozenset({Capability.AUDIO_GENERATE, Capability.MUSIC_GEN})),
+        CapabilityEntry("yue", Runtime.WAN_GP, "music",
+                         frozenset({Capability.AUDIO_GENERATE, Capability.MUSIC_GEN})),
+        CapabilityEntry("yue_icl", Runtime.WAN_GP, "music",
+                         frozenset({Capability.AUDIO_GENERATE, Capability.MUSIC_GEN})),
         CapabilityEntry("mmaudio", Runtime.COMFY, "sfx",
                          frozenset({Capability.AUDIO_GENERATE})),
     ]

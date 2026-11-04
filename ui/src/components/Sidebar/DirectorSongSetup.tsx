@@ -7,6 +7,7 @@ import { formatTimecode, parseTimecode } from '../../lib/durationPlanning'
 const DIRECTOR_MUSIC_MODEL_ORDER = [
   'ace_step_v1_5_xl_sft_lm_4b',
   'minimax_music3',
+  'yue',
 ]
 
 
@@ -379,14 +380,14 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
             onClick={() => void generateTrack('now')}
             disabled={!canGenerate}
             className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium text-xs shadow transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Compor a faixa com IA e iniciar imediatamente o planejamento de cenas"
+            title="Compose the track with AI and start scene planning immediately"
           >
             {loading ? (
               <Loader2 size={14} className="animate-spin text-white" />
             ) : (
               <Play size={14} className="fill-current" />
             )}
-            <span>{loading ? 'Gerando…' : audioSrc ? 'Regerar Trilha' : 'Gerar Trilha'}</span>
+            <span>{loading ? 'Generating…' : audioSrc ? 'Regenerate Track' : 'Generate Track'}</span>
           </button>
 
           <button
@@ -394,10 +395,10 @@ export function DirectorSongSetup({ hideSongLength = false }: { hideSongLength?:
             onClick={() => void generateTrack('queue')}
             disabled={!canGenerate}
             className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-bg-secondary hover:bg-bg-hover text-text-primary border border-border font-medium text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Compor a faixa e guardar o projeto na fila"
+            title="Compose the track and save the project to the queue"
           >
             <ListPlus size={14} className="text-violet-400" />
-            <span>Adicionar à Fila</span>
+            <span>Add to Queue</span>
           </button>
         </div>
 

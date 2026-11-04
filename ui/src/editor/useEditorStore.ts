@@ -114,6 +114,18 @@ interface EditorState {
   removeLibraryAsset: (asset: EditorAsset) => Promise<void>
   addMedia: (asset: EditorAsset, at?: number, trackId?: string) => Promise<void>
   importDirectorRun: (pipelineId: string, at?: number) => Promise<void>
+  /**
+   * Open a Director run in the Editor, creating the destination project
+   * when needed, and import its shots into the timeline.
+   *
+   * This is the handoff the product was missing: the Director could
+   * render a run and export an MP4, but the only way to get that run
+   * into the multi-track Editor was to find it in the Media Bin's
+   * "Director" filter. This entry point is reachable from the Director
+   * itself, so the natural flow (plan → render → refine in a timeline)
+   * does not break.
+   */
+  openDirectorRunInEditor: (pipelineId: string, projectName?: string) => Promise<boolean>
   rerunDirectorClip: (itemId: string, prompt?: string) => Promise<void>
   addTitle: (at?: number, trackId?: string) => void
   addTrack: (type: EditorTrackType) => void
@@ -1024,6 +1036,35 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Unable to add media' })
     }
+  },
+
+  openDirectorRunInEditor: async (pipelineId, projectName) => {
+    const workspace = get().workspace || 'default'
+    // Reuse the open project when it already belongs to this workspace;
+    // otherwise create (or load) one so the import has a destination.
+    const current = get().project
+    if (!current || current.workspace !== workspace) {
+      const existing = get().projects.find(p => p.workspace === workspace)
+      if (existing) {
+        await get().loadProject(existing.id)
+      } else {
+        await get().createProject(projectName || 'Director edit')
+      }
+    }
+    if (!get().project) {
+      // `createProject` swallows its own error into the store, so the
+      // message the user sees comes from here — but keep the original
+      // cause when there is one.
+      const cause = get().error
+      set({
+        error: cause && cause !== 'Unable to create project'
+          ? cause
+          : 'The Editor project could not be opened for this Director run.',
+      })
+      return false
+    }
+    await get().importDirectorRun(pipelineId, 0)
+    return !get().error
   },
 
   importDirectorRun: async (pipelineId, at) => {

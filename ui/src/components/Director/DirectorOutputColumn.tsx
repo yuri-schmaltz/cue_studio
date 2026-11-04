@@ -103,13 +103,13 @@ export function DirectorOutputColumn() {
             ) : isSelectedGenerating ? (
               <div className="flex flex-col items-center gap-2 text-accent-blue">
                 <Loader2 size={24} className="animate-spin" />
-                <span className="text-2xs font-medium">Gerando storyboard...</span>
+                <span className="text-2xs font-medium">Generating storyboard...</span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 text-text-muted/60 p-4 text-center">
                 <Film size={26} className="text-text-muted/40 stroke-1" />
                 <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-text-secondary">Nenhum preview para este corte</p>
+                  <p className="text-xs font-medium text-text-secondary">No preview for this cut</p>
                   <p className="text-2xs max-w-xs text-text-muted/80">
                     The storyboard or the frames generated for this clip will appear here.
                   </p>

@@ -1,14 +1,28 @@
+import glob
 import os
+
+from shared.utils import files_locator as fl
 
 
 YUE_STAGE1_COT_REPO = "m-a-p/YuE-s1-7B-anneal-en-cot"
 YUE_STAGE1_ICL_REPO = "m-a-p/YuE-s1-7B-anneal-en-icl"
 YUE_STAGE2_REPO = "m-a-p/YuE-s2-1B-general"
+# Stage 1 (the 7B segment planner) ships as a sharded checkpoint: the shard
+# files live next to a shared config.json and are merged by MMGP's loader.
 YUE_STAGE1_FILES = [
     "config.json",
+    "generation_config.json",
+    "model.safetensors.index.json",
+    "model-00001-of-00003.safetensors",
+    "model-00002-of-00003.safetensors",
+    "model-00003-of-00003.safetensors",
 ]
+# Stage 2 is a single file: it is fetched through the model definition's
+# "URLs2" group (so it lands in the checkpoint root) and only the small
+# sidecar files are pulled into the per-stage folder.
 YUE_STAGE2_FILES = [
     "config.json",
+    "generation_config.json",
 ]
 
 
@@ -177,17 +191,50 @@ class family_handler:
     ):
         from .yue.pipeline import YuePipeline
 
+        use_audio_prompt = bool(model_def.get("yue_audio_prompt", False))
+        stage1_folder = os.path.basename(
+            YUE_STAGE1_ICL_REPO if use_audio_prompt else YUE_STAGE1_COT_REPO
+        )
+        stage2_folder = os.path.basename(YUE_STAGE2_REPO)
+
+        # The model definition carries one URL per stage (the shard index for
+        # stage 1, the single file for stage 2). The real weights are pulled by
+        # query_model_files into per-stage folders, so resolve the assets from
+        # those folders and only fall back to the declared URLs.
+        stage1_dir = fl.locate_folder(stage1_folder, error_if_none=False)
+        stage2_dir = fl.locate_folder(stage2_folder, error_if_none=False)
+
+        stage1_shards = []
+        if stage1_dir:
+            stage1_shards = sorted(glob.glob(os.path.join(stage1_dir, "*.safetensors")))
+        stage2_weights = ""
+        if stage2_dir:
+            candidate = os.path.join(stage2_dir, "model.safetensors")
+            if os.path.isfile(candidate):
+                stage2_weights = candidate
+
         if isinstance(model_filename, list):
-            stage1_weights = model_filename[0] if len(model_filename) > 0 else ""
-            stage2_weights = model_filename[1] if len(model_filename) > 1 else ""
+            declared_stage1 = model_filename[0] if len(model_filename) > 0 else ""
+            declared_stage2 = model_filename[1] if len(model_filename) > 1 else ""
         else:
-            stage1_weights = model_filename or ""
-            stage2_weights = ""
+            declared_stage1 = model_filename or ""
+            declared_stage2 = ""
+
+        if not stage1_shards and declared_stage1:
+            located = fl.locate_file(declared_stage1, error_if_none=False)
+            if located:
+                stage1_shards = [located]
+        if not stage2_weights and declared_stage2:
+            # Stage 2 is downloaded through the "URLs2" group, so it lives in
+            # the checkpoint root under its file name.
+            stage2_weights = (
+                fl.locate_file(declared_stage2, error_if_none=False) or declared_stage2
+            )
 
         pipeline = YuePipeline(
-            stage1_weights_path=stage1_weights,
+            stage1_weights_path=stage1_shards,
             stage2_weights_path=stage2_weights,
-            use_audio_prompt=bool(model_def.get("yue_audio_prompt", False)),
+            use_audio_prompt=use_audio_prompt,
             max_new_tokens=model_def.get("yue_max_new_tokens", 200),
             run_n_segments=model_def.get("yue_run_n_segments", 1),
             stage2_batch_size=model_def.get("yue_stage2_batch_size", 10),

@@ -21,7 +21,7 @@ from mmgp import offload
 from shared.utils import files_locator as fl
 from .codecmanipulator import CodecManipulator
 from .mmtokenizer import _MMSentencePieceTokenizer
-from shared.llama_3_2.llama_patched import LlamaForCausalLM
+from .llama_patched import LlamaForCausalLM
 
 
 def _flash_attn_available() -> bool:
@@ -227,15 +227,25 @@ class YuePipeline:
 
     @staticmethod
     def _resolve_assets(
-        stage1_weights: str,
-        stage2_weights: str,
+        stage1_weights,
+        stage2_weights,
         use_audio_prompt: bool,
     ) -> dict[str, str]:
-        stage1_weights = stage1_weights or ""
+        # Stage 1 ships as a sharded checkpoint (several *.safetensors next to
+        # a shared config.json), so it is accepted as a single path or a list.
+        if isinstance(stage1_weights, (list, tuple)):
+            stage1_list = [str(item) for item in stage1_weights if item]
+        else:
+            stage1_weights = stage1_weights or ""
+            stage1_list = [stage1_weights] if stage1_weights else []
         stage2_weights = stage2_weights or ""
 
-        if stage1_weights:
-            stage1_weights = fl.locate_file(stage1_weights, error_if_none=False) or stage1_weights
+        resolved_stage1 = []
+        for shard in stage1_list:
+            located = fl.locate_file(shard, error_if_none=False) or shard
+            resolved_stage1.append(located)
+        stage1_list = resolved_stage1
+        stage1_weights = stage1_list[0] if stage1_list else ""
         if stage2_weights:
             stage2_weights = fl.locate_file(stage2_weights, error_if_none=False) or stage2_weights
 
@@ -264,9 +274,9 @@ class YuePipeline:
             )
 
         tokenizer_path = None
-        if stage1_weights:
+        if stage1_dir:
             tokenizer_path = fl.locate_file(
-                os.path.join(os.path.dirname(stage1_weights), "tokenizer.model"),
+                os.path.join(stage1_dir, "tokenizer.model"),
                 error_if_none=False,
             )
         if tokenizer_path is None:
@@ -314,7 +324,7 @@ class YuePipeline:
 
         missing = []
         for name, value, is_dir in [
-            ("stage1_weights", stage1_weights, False),
+            ("stage1_weights", stage1_list, False),
             ("stage1_config", stage1_config, False),
             ("stage2_weights", stage2_weights, False),
             ("stage2_config", stage2_config, False),
@@ -326,6 +336,12 @@ class YuePipeline:
             ("vocoder_vocal", vocoder_vocal, False),
             ("vocoder_inst", vocoder_inst, False),
         ]:
+            if isinstance(value, list):
+                if not value:
+                    missing.append(name)
+                elif not all(os.path.isfile(item) for item in value):
+                    missing.append(name)
+                continue
             if not value:
                 missing.append(name)
             elif is_dir and not os.path.isdir(value):
@@ -336,7 +352,7 @@ class YuePipeline:
             raise FileNotFoundError(f"Missing Yue assets: {missing}")
 
         return {
-            "stage1_weights": stage1_weights,
+            "stage1_weights": stage1_list,
             "stage1_config": stage1_config,
             "stage2_weights": stage2_weights,
             "stage2_config": stage2_config,

@@ -1,0 +1,27 @@
+{
+    "model": {
+        "name": "YuE 7B + 1B (ICL)",
+        "architecture": "yue",
+        "description": "YuE in in-context learning mode. The segment planner is conditioned on a real recording, so the generated song follows the reference melody and vocal character instead of inventing a new one.",
+        "selector_help": "Same two stage pipeline as the base YuE model, but it needs a reference audio (up to 30 seconds) to condition the generation. Upload a vocal or mixed sample in the audio prompt slot and pick the matching prompt type.",
+        "URLs": [
+            "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-icl/resolve/main/model.safetensors.index.json"
+        ],
+        "URLs2": [
+            "https://huggingface.co/m-a-p/YuE-s2-1B-general/resolve/main/model.safetensors"
+        ],
+        "source_repo": "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-icl",
+        "license_name": "Apache-2.0",
+        "license_url": "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-icl",
+        "model_size_gb": 18,
+        "yue_audio_prompt": true
+    },
+    "prompt": "[Verse]\nMorning light filters through the pines\nEvery quiet road is yours and mine\n[Chorus]\nSoftly the whole world starts to breathe\nStay for one more song with me\n[Outro]\nThe kettle sings, the window glows\nWe take the long way home",
+    "alt_prompt": "pop, dreamy, warm vocal, female, nostalgic",
+    "audio_prompt_type": "",
+    "temperature": 1.0,
+    "video_length": 0,
+    "num_inference_steps": 0,
+    "repeat_generation": 1,
+    "negative_prompt": ""
+}

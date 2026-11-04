@@ -57,13 +57,13 @@ export function DirectorScriptReconciliationBanner() {
         <AlertTriangle size={14} className="text-amber-400 shrink-0 mt-0.5" />
         <div className="min-w-0 flex-1">
           <h4 className="text-xs font-semibold text-amber-200">
-            Seu roteiro cobre {formatTimecode(covered.start)}–{formatTimecode(covered.end)}
-            {' '}de uma faixa de {formatTimecode(audioDuration)}
+            Your script covers {formatTimecode(covered.start)}–{formatTimecode(covered.end)}
+            {' '}of a {formatTimecode(audioDuration)} track
           </h4>
           <p className="text-2xs text-text-secondary mt-0.5 leading-relaxed">
-            {report.anchored_scene_count} {report.anchored_scene_count === 1 ? 'cena' : 'cenas'}
+            {report.anchored_scene_count} {report.anchored_scene_count === 1 ? 'scene' : 'scenes'}
             {report.scene_count > report.anchored_scene_count
-              ? ` (${report.scene_count} no total, ${report.scene_count - report.anchored_scene_count} sem timecode)`
+              ? ` (${report.scene_count} in total, ${report.scene_count - report.anchored_scene_count} without a timecode)`
               : ''}
             {' · '}
             {formatTimecode(uncovered)} of the audio were not scripted.
@@ -81,7 +81,7 @@ export function DirectorScriptReconciliationBanner() {
               ? 'bg-amber-500/25 text-amber-200 border border-amber-500/50'
               : 'bg-accent-blue text-white hover:bg-accent-blue-hover'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
-          title="Planeja apenas o trecho que o seu roteiro descreve"
+          title="Plans only the stretch your script describes"
           data-testid="director-script-window-only"
         >
           {isWindowed ? <Check size={11} /> : <Scissors size={11} />}

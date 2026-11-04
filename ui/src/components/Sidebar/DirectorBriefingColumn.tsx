@@ -3009,7 +3009,7 @@ export function ImagePromptsReview({
                   ) : status === 'generating' || clipIsRegenerating ? (
                     <div className="flex flex-col items-center justify-center p-2 text-center space-y-1">
                       <Loader2 size={18} className="animate-spin text-accent-blue" />
-                      <span className="text-3xs text-accent-blue font-medium leading-tight">Gerando...</span>
+                      <span className="text-3xs text-accent-blue font-medium leading-tight">Generating...</span>
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center p-2 text-center text-text-muted/60 space-y-1">
@@ -3025,7 +3025,7 @@ export function ImagePromptsReview({
                     value={plan.image_prompt}
                     onChange={e => editClipPlan(i, 'image_prompt', e.target.value)}
                     disabled={!isActive}
-                    placeholder="Descreva o enquadramento e elementos visuais da cena inicial..."
+                    placeholder="Describe the framing and visual elements of the opening scene..."
                     className="w-full h-full bg-bg-secondary border border-border rounded-lg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-muted/60 resize-none focus:outline-none focus:border-accent-blue transition-colors disabled:opacity-60 leading-relaxed overflow-y-auto"
                   />
                 </div>
@@ -3206,6 +3206,8 @@ export function VideoPromptsReview({
   const queueBusy = useStore(s => s.directorQueueLoading)
   const pipelineStatus = useStore(s => s.pipelineStatus)
   const pipelineId = useStore(s => s.pipelineId)
+  const activeWorkspace = useStore(s => s.activeWorkspace)
+  const setAppSection = useStore(s => s.setAppSection)
   const rerunClipVideo = useStore(s => s.rerunClipVideo)
   const rejoinPipelineClips = useStore(s => s.rejoinPipelineClips)
   const clearDirectorError = useStore(s => s.clearDirectorError)
@@ -3213,6 +3215,7 @@ export function VideoPromptsReview({
   const setSelectedClipIndex = useStore(s => s.setDirectorSelectedClipIndex)
   const [queueConfirmation, setQueueConfirmation] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [isOpeningEditor, setIsOpeningEditor] = useState(false)
   const [exportMessage, setExportMessage] = useState<string | null>(null)
   // Which clip is currently being regenerated. Lets the spinner sit on
   // the correct card even when several clips have failed in sequence.
@@ -3246,6 +3249,27 @@ export function VideoPromptsReview({
       setExportMessage(`Error: ${msg}`)
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  // Carry the rendered shots into the multi-track Editor. The import
+  // itself lives in the editor store (it owns the asset probing and the
+  // provenance bookkeeping); this only wires the navigation.
+  const handleOpenInEditor = async () => {
+    if (!pipelineId || isOpeningEditor) return
+    setIsOpeningEditor(true)
+    setExportMessage(null)
+    try {
+      const { useEditorStore } = await import('../../editor/useEditorStore')
+      const editor = useEditorStore.getState()
+      if (editor.workspace !== activeWorkspace) await editor.initialize(activeWorkspace)
+      await editor.openDirectorRunInEditor(pipelineId)
+      setAppSection('editor')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'The Editor could not be opened'
+      setExportMessage(`Error: ${msg}`)
+    } finally {
+      setIsOpeningEditor(false)
     }
   }
 
@@ -3454,6 +3478,8 @@ export function VideoPromptsReview({
         handleAddToQueue={handleAddToQueue}
         handleExportFullVideo={handleExportFullVideo}
         applyToClips={applyToClips}
+        handleOpenInEditor={handleOpenInEditor}
+        isOpeningEditor={isOpeningEditor}
         loading={loading}
         isGenerating={isGenerating}
         queueBusy={queueBusy}
@@ -3472,6 +3498,8 @@ export function DirectorActionControls({
   handleAddToQueue,
   handleExportFullVideo,
   applyToClips,
+  handleOpenInEditor,
+  isOpeningEditor,
   loading,
   isGenerating,
   queueBusy,
@@ -3485,6 +3513,8 @@ export function DirectorActionControls({
   handleAddToQueue?: () => void | Promise<void>
   handleExportFullVideo?: () => void | Promise<void>
   applyToClips: () => void
+  handleOpenInEditor?: () => void | Promise<void>
+  isOpeningEditor?: boolean
   loading?: boolean
   isGenerating?: boolean
   queueBusy?: boolean
@@ -3579,6 +3609,26 @@ export function DirectorActionControls({
       >
         <ChevronRight size={12} /> Edit in Studio
       </button>
+
+      {/* The Editor handoff. "Edit in Studio" regenerates the shots
+          with the Studio's own controls; this one carries the already
+          rendered shots into the multi-track timeline, where they can be
+          trimmed, re-ordered, re-timed and mixed with the soundtrack.
+          Before this existed the only way in was the Media Bin's
+          "Director" filter — the Editor was effectively a dead end. */}
+      {handleOpenInEditor && (
+        <button
+          type="button"
+          onClick={() => void handleOpenInEditor()}
+          disabled={isOpeningEditor}
+          className="w-full py-2 rounded-lg border border-border text-text-secondary text-xs font-medium hover:bg-bg-hover hover:text-text-primary transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+        >
+          {isOpeningEditor
+            ? <Loader2 size={12} className="animate-spin" />
+            : <Film size={12} />}
+          Open in Editor
+        </button>
+      )}
     </div>
   )
 }
