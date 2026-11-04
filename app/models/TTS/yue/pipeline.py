@@ -178,6 +178,11 @@ class YuePipeline:
 
         _ensure_sys_path(xcodec_root)
         _ensure_sys_path(os.path.join(xcodec_root, "descriptaudiocodec"))
+        # O DAC embutido no codec importa a distribuição `audiotools`, que não
+        # existe no PyPI; o substituto cobre o que o import realmente usa.
+        from .audiotools_compat import ensure_audiotools
+
+        ensure_audiotools()
 
         soundstream_path = os.path.join(xcodec_root, "models", "soundstream_hubert_new.py")
         soundstream_module = _load_module_from_path(
@@ -204,6 +209,9 @@ class YuePipeline:
         )
         self.codec_model.load_state_dict(parameter_dict["codec_model"])
         self.codec_model.eval()
+        # O codec trabalha com entradas na GPU (encode/decode/get_embed), então
+        # os pesos precisam acompanhar o dispositivo.
+        self.codec_model = self.codec_model.to(self.device)
         self.codec_model._offload_hooks = ["encode", "decode", "get_embed"]
 
         self.vocoder_vocal, self.vocoder_inst = build_codec_model(
@@ -211,6 +219,8 @@ class YuePipeline:
         )
         self.vocoder_vocal.eval()
         self.vocoder_inst.eval()
+        self.vocoder_vocal = self.vocoder_vocal.to(self.device)
+        self.vocoder_inst = self.vocoder_inst.to(self.device)
 
         self.codec_fps = self.codectool.fps or 50
         self.codec_sample_rate = getattr(self.codec_model, "sample_rate", 16000)

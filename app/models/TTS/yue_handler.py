@@ -87,11 +87,16 @@ def _get_yue_download_def(model_def):
         "RepCodec",
         "descriptaudiocodec",
         "vocos",
+        # The quantizer modules import "utils.utils" from the codec root, so
+        # the package has to travel with the rest of the codec.
+        "utils",
         "semantic_ckpts/hf_1_325000",
     ]
     xcodec_files = [
         ["config.yaml", "ckpt_00360000.pth"],
         ["config.yaml", "decoder_131000.pth", "decoder_151000.pth"],
+        [],
+        [],
         [],
         [],
         [],
