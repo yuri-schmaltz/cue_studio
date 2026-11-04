@@ -46,4 +46,14 @@
 
 Detalhe em [docs/HANDOFF_YUE_MUSIC.md](HANDOFF_YUE_MUSIC.md).
 
+## Falhas do Director
+
+- [x] Diagnosticar as três falhas correlatas do print (Clip 2 "Failed", banner genérico, "Try again" com HTTP 400) contra o código e o runtime vivo: erro real descartado em `launch.py`/`wgp.py`, `oom_info` nunca populado nesse caminho e lookup do estado do pipeline raso demais em `director_pipeline.py`.
+- [ ] Preservar a mensagem real do worker em `job["error"]` e anexar `oom_info` no ramo `cmd == "error"` de `app/launch.py`; incluir a causa crua nas mensagens VRAM/RAM de `app/wgp.py`.
+- [ ] Achatar o lookup do estado do pipeline em uma única fonte de verdade, cobrindo `out_dir/<sub>/.director/<pid>/` a partir da raiz de projetos.
+- [ ] Fazer o retry por clip do `ImagePromptsReview` usar o caminho client-side (fluxo v2) e mostrar a falha no banner em vez de engolir no `console.error`.
+- [ ] Cobrir os três pontos com testes (pytest para erro/`oom_info` e para o lookup; vitest para o retry por clip) e rodar pytest, vitest, tsc e build.
+
+Detalhe em [docs/HANDOFF_DIRECTOR_FALHAS.md](HANDOFF_DIRECTOR_FALHAS.md).
+
 Histórico anterior: [history/TODO_RETOMADA_legacy.md](history/TODO_RETOMADA_legacy.md).

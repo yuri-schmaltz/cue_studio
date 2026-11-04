@@ -7,6 +7,7 @@ Estado comprovado: [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md). O objetivo at
 - Pendências: [docs/TODO_RETOMADA.md](docs/TODO_RETOMADA.md).
 - Auditoria de UI e status por frente: [docs/UI_AUDIT_2026-11-03.md](docs/UI_AUDIT_2026-11-03.md).
 - YuE (modelo de música): [docs/HANDOFF_YUE_MUSIC.md](docs/HANDOFF_YUE_MUSIC.md) — integração feita, geração de ponta a ponta ainda pendente.
+- Falhas do Director: [docs/HANDOFF_DIRECTOR_FALHAS.md](docs/HANDOFF_DIRECTOR_FALHAS.md) — diagnóstico pronto (erro real perdido, `oom_info` vazio e retry por clip quebrado); as correções ainda não foram implementadas.
 - Instalação/lock candidato: [docs/INSTALLATION_VERIFICATION.md](docs/INSTALLATION_VERIFICATION.md).
 - Produção autorizada: `app/outputs/validation-2026-10-30/`. Preservar recibos concluídos, conferir o job vivo antes de submeter novamente e não reiniciar o backend enquanto houver geração ativa.
 
