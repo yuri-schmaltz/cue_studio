@@ -6,6 +6,7 @@ Estado comprovado: [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md). O objetivo at
 - Processo, jobs e comandos: [_reversa_forward/correcoes-2026-10-30/ESTADO.md](_reversa_forward/correcoes-2026-10-30/ESTADO.md).
 - Pendências: [docs/TODO_RETOMADA.md](docs/TODO_RETOMADA.md).
 - Auditoria de UI e status por frente: [docs/UI_AUDIT_2026-11-03.md](docs/UI_AUDIT_2026-11-03.md).
+- YuE (modelo de música): [docs/HANDOFF_YUE_MUSIC.md](docs/HANDOFF_YUE_MUSIC.md) — integração feita, geração de ponta a ponta ainda pendente.
 - Instalação/lock candidato: [docs/INSTALLATION_VERIFICATION.md](docs/INSTALLATION_VERIFICATION.md).
 - Produção autorizada: `app/outputs/validation-2026-10-30/`. Preservar recibos concluídos, conferir o job vivo antes de submeter novamente e não reiniciar o backend enquanto houver geração ativa.
 

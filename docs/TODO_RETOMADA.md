@@ -36,4 +36,14 @@
 - [ ] Apresentar master para revisão artística humana e registrar contra seu SHA-256.
 - [ ] Revisar diff, documentação e testes finais antes de declarar conclusão.
 
+## YuE (modelo de música)
+
+- [x] Integrar o YuE v1 ao catálogo, à UI, aos guias de songwriting e à matriz de capacidades (`857dd5d`).
+- [ ] Fechar a geração de ponta a ponta e guardar o WAV de validação em `app/outputs/validation-2026-11-04/` (o Stage 1 levou mais de 20 min na RTX 3060 com o perfil conservador).
+- [ ] Perfil de memória específico para o YuE: hoje o app usa o perfil de áudio padrão e o planejador de 7B fica lentíssimo.
+- [ ] Expor `yue_run_n_segments` e `yue_segment_duration` na UI, e corrigir o slider de duração (o YuE não tem duração nativa).
+- [ ] Avaliar o YuE2 (upstream) quando o `mmgp` puder ir a 4.5.0 — material em `_reversa_forward/yue2-port-2026-11-04/`.
+
+Detalhe em [docs/HANDOFF_YUE_MUSIC.md](HANDOFF_YUE_MUSIC.md).
+
 Histórico anterior: [history/TODO_RETOMADA_legacy.md](history/TODO_RETOMADA_legacy.md).

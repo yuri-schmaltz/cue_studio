@@ -231,10 +231,11 @@ class family_handler:
                 stage1_shards = [located]
         if not stage2_weights and declared_stage2:
             # Stage 2 is downloaded through the "URLs2" group, so it lives in
-            # the checkpoint root under its file name.
-            stage2_weights = (
-                fl.locate_file(declared_stage2, error_if_none=False) or declared_stage2
-            )
+            # the checkpoint root under its file name. The size check keeps a
+            # same-named file from another model out of the way.
+            located = fl.locate_file(declared_stage2, error_if_none=False)
+            if located and os.path.getsize(located) > 500 * 1024 * 1024:
+                stage2_weights = located
 
         pipeline = YuePipeline(
             stage1_weights_path=stage1_shards,
