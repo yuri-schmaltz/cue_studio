@@ -72,11 +72,11 @@ function CoverDropzone({ workspaceName, coverImage, pendingFile, pendingUrl, dis
 
   if (src && !failed) {
     return (
-      <div className="relative w-full overflow-hidden rounded-lg border border-border">
+      <div className="relative mx-auto w-full max-w-[400px] overflow-hidden rounded-lg border border-border">
         <img
           src={src}
           alt="Project cover"
-          className="block h-[96px] w-full object-cover"
+          className="block aspect-[16/9] w-full object-cover"
           onError={() => setFailedSrc(src)}
         />
         <button
@@ -109,12 +109,12 @@ function CoverDropzone({ workspaceName, coverImage, pendingFile, pendingUrl, dis
         const file = e.dataTransfer.files?.[0]
         if (file) onPick(file)
       }}
-      className={`flex h-[96px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
+      className={`flex aspect-[16/9] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
         dragOver ? 'border-accent-blue bg-accent-blue/10' : 'border-border hover:border-border-light'
       } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
     >
       <ImageIcon size={26} className="text-accent-blue/60" />
-      <span className="text-xs text-text-secondary">Drop a image or click to upload</span>
+      <span className="text-xs text-text-secondary">Drop an image or click to upload</span>
       <input
         type="file"
         accept=".png,.jpg,.jpeg,.webp,.bmp"

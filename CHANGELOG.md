@@ -2,6 +2,8 @@
 
 ## Em desenvolvimento — 30/10/2026
 
+- **O campo de upload da capa do projeto agora é 16:9.** A área de arrastar-e-soltar tinha altura fixa de 96px — uma faixa 5:1 que não dizia nada sobre a proporção do resultado. Como a capa aparece no card do projeto e define a "cara" do trabalho, o campo agora respeita a proporção do vídeo (16:9 por padrão) e o preview da imagem enviada usa o mesmo formato, então o que se arrasta já aparece no formato em que vai ser exibido.
+
 - **A auditoria de UI virou plano de ação, e o plano foi executado.** O relatório `docs/UI_AUDIT_2026-11-03.md` listava 24 achados; este ciclo fecha os 8 lotes planejados, do layout de 3 colunas do Editor à nomenclatura dos filtros da aba Medias.
 
 - **O Editor voltou a ser de 3 colunas no desktop.** A "Media bin" que existia no código era desligada: cada seleção de mídia forçava `mobilePanel:'inspector'`, e o painel esquerdo passava `compact` incondicionalmente — matando o layout de 3 colunas que já estava implementado. Agora o desktop mostra *Media bin | Preview+Timeline | Inspector*, e o painel esquerdo virou o drawer móvel (`≤767px`), onde ele de fato pertence.
