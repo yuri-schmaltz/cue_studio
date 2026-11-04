@@ -10336,6 +10336,53 @@ api.include_router(build_skills_router())
 from services.director.http_script import build_script_router
 api.include_router(build_script_router())
 
+# Director pre-flight (POST /api/v1/director/preflight).
+# Prices a plan *before* it is queued: how many shots, how much GPU
+# time, and whether the longest shot fits in this machine's VRAM. The
+# endpoint only translates HTTP into services.director.preflight; the
+# engine, the hardware probe and the local timing history arrive
+# through DirectorPreflightDeps. See services/director/http_preflight.py.
+from services.director.http_preflight import (
+    DirectorPreflightDeps,
+    build_preflight_router,
+)
+
+
+def _director_preflight_model_def(model_type: str):
+    try:
+        return wgp.get_model_def(model_type) or {}
+    except Exception:
+        return {}
+
+
+def _director_preflight_model_geometry(model_type: str):
+    try:
+        minimum, step, latent = wgp.get_model_min_frames_and_step(model_type)
+    except Exception:
+        return 1, 1, 1
+    return int(minimum), int(step), int(latent)
+
+
+def _director_preflight_default_settings(model_type: str):
+    try:
+        settings = wgp.get_default_settings(model_type)
+    except Exception:
+        return {}
+    return settings if isinstance(settings, dict) else {}
+
+
+api.include_router(
+    build_preflight_router(
+        DirectorPreflightDeps(
+            hardware=lambda: _get_cached_hardware(),
+            eta_history=lambda: _get_generation_eta_history(),
+            model_def=lambda model_type: _director_preflight_model_def(model_type),
+            model_geometry=lambda model_type: _director_preflight_model_geometry(model_type),
+            default_settings=lambda model_type: _director_preflight_default_settings(model_type),
+        )
+    )
+)
+
 # Workspaces settings (GET/PUT /api/v1/settings/projects-root).
 # Extracted from the launch.py monolith to ``services/workspaces.py``
 # so tests can mount this router without dragging the entire WanGP

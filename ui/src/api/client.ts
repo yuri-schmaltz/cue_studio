@@ -166,6 +166,28 @@ export async function fetchDirectorSkills(): Promise<DirectorSkillOption[]> {
   return Array.isArray(data?.skills) ? data.skills : []
 }
 
+/**
+ * Price a Director plan before it is queued.
+ *
+ * Sends the planned shots (in seconds) plus the settings the render
+ * would use, and gets back the clip count, a wall-clock estimate and
+ * the VRAM risk of the longest shot.
+ */
+export async function fetchDirectorPreflight(
+  payload: Record<string, unknown>,
+): Promise<import('../types').DirectorPreflightReport> {
+  const res = await fetch(`${BASE}/api/v1/director/preflight`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Failed to price the project' }))
+    throw new Error(err.detail || err.error || 'Failed to price the project')
+  }
+  return res.json()
+}
+
 export async function updateModelVisibility(params: {
   enabled_models: string[]
   initialized_mature_models: string[]

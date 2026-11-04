@@ -35,6 +35,7 @@ import {
   DirectorActionControls,
 } from './DirectorBriefingColumn'
 import { DirectorActivityBlock } from './DirectorActivityBar'
+import { DirectorPreflightCard } from '../Director/DirectorPreflightCard'
 import { clipCountLabel } from '../../director/clipNoun'
 
 const STEP_ORDER = ['upload', 'analyze', 'structure', 'style', 'plan', 'review', 'generate_images', 'plan_video', 'review_video'] as const
@@ -145,6 +146,32 @@ export function DirectorPlanColumn() {
     const timer = window.setTimeout(() => setQueueConfirmation(null), 5000)
     return () => window.clearTimeout(timer)
   }, [queueConfirmation])
+
+  // Pre-flight: price the plan on the server whenever the shots, the
+  // model or the render settings change. The signature keeps the
+  // request to one per meaningful edit instead of one per keystroke.
+  const refreshPreflight = useStore(s => s.refreshDirectorPreflight)
+  const directorVideoModel = useStore(s => s.selectedModelPerMode.video || 'ltx2_22B_distilled_1_1')
+  const directorResolutionPreset = useStore(s => s.directorResolution)
+  const directorAspect = useStore(s => s.directorAspectRatio)
+  const directorVideoSteps = useStore(s => s.directorVideoInferenceStepsByModel[directorVideoModel])
+  const preflightSignature = useMemo(
+    () => [
+      plannedClips.map(clip => `${clip.start}-${clip.end}`).join(','),
+      directorVideoModel,
+      directorResolutionPreset,
+      directorAspect,
+      directorVideoSteps ?? '',
+    ].join('#'),
+    [plannedClips, directorVideoModel, directorResolutionPreset, directorAspect, directorVideoSteps],
+  )
+
+  useEffect(() => {
+    if (!atStep('review_video') && !pastStep('review_video')) return
+    if (plannedClips.length === 0) return
+    const timer = window.setTimeout(() => { void refreshPreflight() }, 400)
+    return () => window.clearTimeout(timer)
+  }, [preflightSignature, plannedClips.length, refreshPreflight])
 
   const handleAddToQueue = async () => {
     setQueueConfirmation(null)
@@ -333,20 +360,26 @@ export function DirectorPlanColumn() {
           removed as requested since video prompts and details are now inspected and edited
           in the right column upon selecting any scene card. */}
       {(atStep('review_video') || pastStep('review_video')) && (
-        <DirectorActionControls
-          directorGenerate={directorGenerate}
-          handleAddToQueue={handleAddToQueue}
-          handleExportFullVideo={handleExportFullVideo}
-          applyToClips={applyToClips}
-          loading={loading}
-          isGenerating={isGenerating || pipelineActive || Boolean(directorQueue?.running)}
-          queueBusy={directorQueueLoading}
-          queueConfirmation={queueConfirmation}
-          pipelineId={pipelineId}
-          isExporting={isExporting}
-          exportMessage={exportMessage}
-          editingQueueEntryId={directorQueueEditingEntryId}
-        />
+        <>
+          {/* The pre-flight sits immediately above the action controls:
+              it is the last thing the user reads before committing GPU
+              time to the project. */}
+          <DirectorPreflightCard />
+          <DirectorActionControls
+            directorGenerate={directorGenerate}
+            handleAddToQueue={handleAddToQueue}
+            handleExportFullVideo={handleExportFullVideo}
+            applyToClips={applyToClips}
+            loading={loading}
+            isGenerating={isGenerating || pipelineActive || Boolean(directorQueue?.running)}
+            queueBusy={directorQueueLoading}
+            queueConfirmation={queueConfirmation}
+            pipelineId={pipelineId}
+            isExporting={isExporting}
+            exportMessage={exportMessage}
+            editingQueueEntryId={directorQueueEditingEntryId}
+          />
+        </>
       )}
       </div>
       {/* Footer — the pipeline tracker moved to its own bar under the

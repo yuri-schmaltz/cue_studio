@@ -1522,6 +1522,66 @@ export interface PlannedClip extends SuggestedClip {
   dominant_speaker?: string | null
 }
 
+/**
+ * Director pre-flight — what a project will cost before it is queued.
+ *
+ * The pre-flight is produced by `POST /api/v1/director/preflight`: it
+ * prices the plan against the machine's own timing history and checks
+ * the longest shot against what this GPU can hold in one pass.
+ */
+export type DirectorPreflightConfidence = 'high' | 'medium' | 'low' | 'calibrating'
+export type DirectorPreflightRisk = 'low' | 'medium' | 'high' | 'unknown'
+export type DirectorPreflightSeverity = 'info' | 'warning' | 'error'
+
+export interface DirectorPreflightClip {
+  index: number
+  start: number
+  end: number
+  duration_seconds: number
+  frames: number
+  estimated_seconds: number | null
+  eta_match: string
+}
+
+export interface DirectorPreflightWarning {
+  code: string
+  severity: DirectorPreflightSeverity
+  message: string
+}
+
+export interface DirectorPreflightReport {
+  schema: number
+  video_model: string
+  resolution: string
+  fps: number
+  num_inference_steps: number
+  video_strategy: string
+  window_frames: number | null
+  clip_count: number
+  total_duration_seconds: number
+  total_frames: number
+  max_clip_frames: number
+  per_clip: DirectorPreflightClip[]
+  estimated_seconds: number | null
+  estimated_clip_seconds: number | null
+  eta_confidence: DirectorPreflightConfidence
+  eta_match: string
+  eta_samples: number
+  setup_seconds: number
+  join_seconds: number
+  gpu_vram_gb: number | null
+  vram_required_gb: number | null
+  max_frames_at_detected_vram: number | null
+  effective_max_frames: number | null
+  peak_frames: number | null
+  observed_window_frames: number | null
+  oom_risk: DirectorPreflightRisk
+  oom_reason: string
+  fallback_resolution: string | null
+  warnings: DirectorPreflightWarning[]
+  execution_profile_error?: string
+}
+
 /** One ``CENA N (start - end)`` block parsed out of a Director briefing. */
 /** A time-anchored sub-segment inside a scene (`0:00 - 0:05`). */
 export interface DirectorScriptBeat {

@@ -38,6 +38,10 @@ from services.director_model_compat import (
     DIRECTOR_PIPELINE_TYPES,
     assess_director_model,
 )
+from services.director.clip_schedule import (
+    quantize_clip_frame_schedule as _quantize_clip_frame_schedule_impl,
+    standard_clip_frame_count as _standard_clip_frame_count,
+)
 from services.director_video_strategy import (
     BOUNDED_START_END,
     OMNI_REFERENCE,
@@ -2650,20 +2654,15 @@ def _extract_director_continuation_frame(
 def _quantize_clip_frame_schedule(
     requested_frames: list[float], min_frames: int, latent_size: int,
 ) -> list[int]:
-    """Match Director's carried rounding for a sequence of clip lengths."""
-    latent_size = max(1, int(latent_size or 1))
-    min_frames = max(1, int(min_frames or 1))
-    carried: list[int] = []
-    carry = 0.0
-    for frame_count in requested_frames:
-        target = float(frame_count) + carry
-        quantized = max(
-            round((target - 1) / latent_size) * latent_size + 1,
-            min_frames,
-        )
-        carry = target - quantized
-        carried.append(int(quantized))
-    return carried
+    """Match Director's carried rounding for a sequence of clip lengths.
+
+    The arithmetic lives in ``services.director.clip_schedule`` so the
+    pre-flight estimator and the render pipeline cannot drift apart.
+    """
+
+    return _quantize_clip_frame_schedule_impl(
+        requested_frames, min_frames, latent_size,
+    )
 
 
 @_exclusive_pipeline_operation
@@ -7701,11 +7700,18 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
                 # 26s clip became 26x16=416 frames, rendered at LTX-2's 25
                 # fps = 16.6s — every music-video clip silently shortened
                 # by 16/25.
-                dur_sec = pc.get("duration_sec") or (pc.get("end", 0) - pc.get("start", 0))
-                clip_frames = round(dur_sec * fps) if dur_sec > 0 else pc.get("duration_frames", round(20 * fps))
+                #
+                # The rule itself lives in services.director.clip_schedule
+                # so the pre-flight estimator prices the very same shots.
+                clip_frames = _standard_clip_frame_count(
+                    pc,
+                    fps=fps,
+                    min_clip_frames=round(5 * fps),
+                    fallback_frames=pc.get("duration_frames"),
+                )
                 if clip_frames > round(32 * fps):
                     has_sliding_window = True
-                per_clip_frames.append(max(clip_frames, round(5 * fps)))
+                per_clip_frames.append(clip_frames)
 
         if is_minimax_h3 and bounded_director:
             from models.minimax_h3.minimax_h3_handler import (

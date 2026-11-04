@@ -29,6 +29,7 @@ import { createWorkspaceSlice } from './workspaceSlice'
 import { createStudioWorkflowSlice } from './studioWorkflowSlice'
 import { createLlmSlice } from './llmSlice'
 import { createDirectorQueueSlice } from './directorQueueSlice'
+import { createDirectorPreflightSlice } from './directorPreflightSlice'
 import { createRecipesSlice } from './recipesSlice'
 import { createCivitAISlice } from './civitaiSlice'
 import { createMediaOutputsSlice, computeFilteredOutputs } from './mediaOutputsSlice'
@@ -1125,6 +1126,13 @@ export interface AppState {
   removeDirectorQueueEntry: (entryId: string) => Promise<void>
   moveDirectorQueueEntry: (entryId: string, direction: -1 | 1) => Promise<void>
   queueCurrentDirectorPipeline: () => Promise<void>
+
+  // Director pre-flight — what the project will cost before it is
+  // queued (clip count, wall-clock estimate, VRAM risk).
+  directorPreflight: import('../types').DirectorPreflightReport | null
+  directorPreflightLoading: boolean
+  directorPreflightError: string | null
+  refreshDirectorPreflight: () => Promise<void>
 
   // Recipes (one-click Studio presets)
   recipesOpen: boolean
@@ -2784,6 +2792,10 @@ export const useStore = create<AppState>((set, get, store) => ({
   closeRetakeDialog: () => set({ retakeDialogOpen: false, retakeSourceFile: null }),
 
   ...createDirectorQueueSlice(set, get, store),
+  ...createDirectorPreflightSlice(set, get, store, {
+    resolveResolution,
+    directorUsesGeneratedShotImages: _directorUsesGeneratedShotImages,
+  }),
   reconnectDirectorPipelines: async () => {
     try {
       const { pipelines } = await api.fetchPipelineList()

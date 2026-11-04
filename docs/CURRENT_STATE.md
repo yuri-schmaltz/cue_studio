@@ -1,11 +1,12 @@
-# Estado atual — 30/10/2026
+# Estado atual — 04/11/2026
 
-Base: `main`, origem `d2bac33`, versão 2.5.2. Correções locais, sem commit ou push. O documento anterior está preservado em [histórico de validação](history/CURRENT_STATE_2026-10-22.md); seus PIDs, ambientes e resultados não descrevem automaticamente este checkout.
+Base: `main`, origem `56c1fbb` + o ciclo do pre-flight do Director (commitado e enviado), versão 2.5.2. O documento anterior está preservado em [histórico de validação](history/CURRENT_STATE_2026-10-22.md); seus PIDs, ambientes e resultados não descrevem automaticamente este checkout.
 
 ## Evidências desta rodada
 
-- Python padrão no runtime instalado: **1.169 testes e 33 subtestes aprovados**, 12 ignorados, 63 desmarcados. `CUDA_VISIBLE_DEVICES=''` somente para a suíte CPU.
-- UI atual: build, lint sem avisos, **217 testes Vitest** e contratos store/control aprovados.
+- Python padrão no runtime instalado: **1.414 testes e 37 subtestes aprovados**, 12 ignorados, 63 desmarcados. `CUDA_VISIBLE_DEVICES=''` somente para a suíte CPU.
+- UI atual: build, lint sem avisos novos, **341 testes Vitest (340 aprovados)** e contratos store/control aprovados. A única falha é `ui/src/components/Shell/QueuePage.test.tsx:151`, pré-existente e sem relação com este ciclo.
+- **Pre-flight do Director** (`POST /api/v1/director/preflight`): o plano é precificado antes da fila — contagem de clipes, duração, quadros totais, tempo estimado a partir do histórico local de tempos da máquina, risco de OOM contra a política de memória do modelo e avisos acionáveis. 18 testes Python e 5 testes Vitest cobrem a aritmética de duração de clipe, a síntese do ETA, o casamento grosso por modelo/resolução e o contrato do endpoint. Detalhes em [handoff](../HANDOFF.md).
 - **33 chunks JavaScript**, todos abaixo de 220.000 bytes; maior: 196.585 bytes. O limite agora reprova o build quando excedido.
 - Backend isolado em `127.0.0.1:7870`, saúde/catálogo respondendo 200. Python 3.11.18, PyTorch 2.10.0+cu130, RTX 3060 12 GB reconhecida.
 - Chromium: **4 testes aprovados** no conjunto final: shell, Director, setup e bundle de produção.
@@ -26,6 +27,7 @@ Base: `main`, origem `d2bac33`, versão 2.5.2. Correções locais, sem commit ou
 - Configurações parciais recebem defaults ausentes antes do boot, preservando valores e diretórios explícitos. Defaults e schema/parsing de parâmetros customizados e cinco funções temporais extraídos de `wgp.py` para serviços puros.
 - Rotas de documentos/mídia do editor e biblioteca de outputs extraídas para routers independentes, com contratos HTTP de CRUD, workspace, paginação, favoritos e Range.
 - Restauração de sidecars e submissão do Director extraídas e carregadas sob demanda; submissão do Studio extraída para slice síncrono para preservar o estado no clique. Store principal reduzido de 12.526 para 8.284 linhas; modularização ainda parcial.
+- Fila, planejamento, mídia, short film, receitas, civitai e o novo pre-flight (`directorPreflightSlice`) vivem em slices próprios; o bootstrap do runtime WanGP ainda não foi separado de `app/launch.py`. A aritmética de duração de clipe passou a ter fonte única (`app/services/director/clip_schedule.py`), consumida pelo pipeline e pelo pre-flight.
 - Bundles separados por responsabilidade, limite obrigatório, Node compatível declarado e CI atualizado para Node 22.
 - Rascunhos tardios invalidados por workspace/versão do setup. Resposta vazia preserva os defaults do projeto em vez de apagar parâmetros recém-salvos.
 

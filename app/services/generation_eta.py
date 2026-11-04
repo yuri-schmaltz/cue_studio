@@ -164,6 +164,20 @@ def _join_overhead_seconds(tasks: Sequence[Mapping[str, Any]]) -> float:
     return min(300.0, max(8.0, total_duration * 0.25 * pixel_factor))
 
 
+def estimate_join_overhead_seconds(
+    tasks: Sequence[Mapping[str, Any]],
+) -> float:
+    """Price the final join of a multi-shot render.
+
+    Director renders its shots separately and concatenates them at the
+    end; that ffmpeg pass is real wall-clock time that no shot's own
+    timing covers.  Exposed publicly so the Director pre-flight can
+    include it in the project total.
+    """
+
+    return _join_overhead_seconds(tasks)
+
+
 def _weighted_mean(samples: Sequence[tuple[float, int]]) -> Optional[float]:
     valid = [(value, max(1, weight)) for value, weight in samples if value > 0]
     if not valid:
@@ -606,6 +620,156 @@ class GenerationEtaHistory:
             sample_count=len(rows),
             match=match,
         )
+
+    @staticmethod
+    def _decode_profile(value: Any) -> dict[str, Any]:
+        try:
+            parsed = json.loads(value or "{}")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+
+    def estimate_model_scoped(
+        self,
+        task: Mapping[str, Any],
+        *,
+        model_type: Optional[str] = None,
+        resolution: Optional[str] = None,
+        limit: int = 600,
+    ) -> Optional[HistoricalEtaEstimate]:
+        """Estimate from samples that share only the model and resolution.
+
+        The family key also pins a shot's conditioning (start/end images,
+        audio guides) and its optimization flags.  A Director music video
+        always carries an audio guide, so its family never matches the
+        samples an ordinary single-shot render of the same model leaves
+        behind — the estimate would be lost even though the local
+        seconds-per-unit-of-work rate is identical.
+
+        This coarser match still learns that rate and reports ``match`` as
+        ``"model"``, so a caller can weigh it below an exact or family
+        match instead of mistaking it for one.
+        """
+
+        if not self._enabled:
+            return None
+        profile = _task_profile(task)
+        target_model = str(
+            model_type or profile.details.get("model_type") or ""
+        ).strip().lower()
+        target_resolution = str(
+            resolution or profile.details.get("resolution") or ""
+        ).strip().lower()
+        columns = (
+            "active_seconds, wall_seconds, non_step_seconds, workload, "
+            "profile_json"
+        )
+        try:
+            with self._lock, self._connect() as connection:
+                rows = connection.execute(
+                    f"SELECT {columns} FROM eta_samples "
+                    "WHERE hardware_key = ? ORDER BY created_at DESC LIMIT ?",
+                    (self.hardware_key, max(1, int(limit))),
+                ).fetchall()
+        except (OSError, sqlite3.Error):
+            return None
+
+        matching = []
+        for row in rows:
+            details = self._decode_profile(row[4])
+            if target_model and str(
+                details.get("model_type") or ""
+            ).strip().lower() != target_model:
+                continue
+            if target_resolution and str(
+                details.get("resolution") or ""
+            ).strip().lower() != target_resolution:
+                continue
+            matching.append(row)
+        if not matching:
+            return None
+
+        rates = [
+            float(row[0]) / float(row[3])
+            for row in matching
+            if _positive_float(row[0], 0.0) > 0
+            and _positive_float(row[3], 0.0) > 0
+        ]
+        if not rates:
+            return None
+        active = statistics.median(rates) * profile.workload
+        setup_values = [
+            max(0.0, float(row[1]) - float(row[0]))
+            for row in matching
+            if _positive_float(row[1], 0.0) > 0
+            and _positive_float(row[0], 0.0) > 0
+        ]
+        non_step_values = [
+            max(0.0, float(row[2]))
+            for row in matching
+            if row[2] is not None
+        ]
+        setup = statistics.median(setup_values) if setup_values else 0.0
+        return HistoricalEtaEstimate(
+            active_seconds=max(1.0, active),
+            wall_seconds=max(1.0, active + setup),
+            window_seconds=None,
+            non_step_seconds=(
+                statistics.median(non_step_values)
+                if non_step_values else None
+            ),
+            sample_count=len(matching),
+            match="model",
+        )
+
+    def observed_window_frames(
+        self,
+        *,
+        model_type: Optional[str] = None,
+        resolution: Optional[str] = None,
+        limit: int = 600,
+    ) -> Optional[int]:
+        """Largest single pass this machine has already rendered.
+
+        The timing history is scoped to one machine, so the widest shot it
+        has seen for a model is a *proven* memory ceiling for that model
+        here — the peak memory of a render is one window, and a window
+        this card has already produced is a window it can produce again.
+        """
+
+        if not self._enabled:
+            return None
+        target_model = str(model_type or "").strip().lower()
+        target_resolution = str(resolution or "").strip().lower()
+        try:
+            with self._lock, self._connect() as connection:
+                rows = connection.execute(
+                    "SELECT profile_json FROM eta_samples "
+                    "WHERE hardware_key = ? ORDER BY created_at DESC LIMIT ?",
+                    (self.hardware_key, max(1, int(limit))),
+                ).fetchall()
+        except (OSError, sqlite3.Error):
+            return None
+
+        widest: Optional[int] = None
+        for row in rows:
+            details = self._decode_profile(row[0])
+            if target_model and str(
+                details.get("model_type") or ""
+            ).strip().lower() != target_model:
+                continue
+            if target_resolution and str(
+                details.get("resolution") or ""
+            ).strip().lower() != target_resolution:
+                continue
+            for key in ("total_frames", "window_frames"):
+                try:
+                    frames = int(details.get(key) or 0)
+                except (TypeError, ValueError):
+                    frames = 0
+                if frames > 0 and (widest is None or frames > widest):
+                    widest = frames
+        return widest
 
     def bootstrap_from_sidecars(
         self,

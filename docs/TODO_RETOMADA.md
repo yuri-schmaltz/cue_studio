@@ -20,6 +20,7 @@
 - [x] Concluir fronteiras do store: geração, catálogo, mídias (`mediaOutputsSlice`), fila (`directorQueueSlice`), short film (`shortFilmSlice`), planning/storyboard do Director (`directorPlanningSlice`), presets/receitas (`recipesSlice`), civitai (`civitaiSlice`); preservando API pública, cancelamento e proteção de respostas tardias.
 - [x] Concluir fronteiras do launcher: catálogo/LoRAs (`loras.py`), mídia/áudio (`audio.py`), civitai (`civitai.py`), tools de acabamento (`tools.py`); mantendo composição e lifecycle no ponto de entrada e validando 100% dos contratos via `tests/test_route_contract.py`.
 - [ ] Separar bootstrap/configuração/registro e execução do runtime WanGP onde houver fronteiras coesas. Reduzir linhas não prova modularização concluída.
+- [ ] Fechar as fronteiras restantes do gauntlet: `g4-undo-director` (histórico de edição do briefing), `g5-a11y`, `g6-modularizacao`, `g7-ci-browser` (os testes de navegador existem, mas `pyproject.toml` os desmarca com `-m 'not browser'`), `g8-docs`. O pre-flight do Director (`g3`) está entregue.
 
 ## Instalação e produção
 
