@@ -13,6 +13,8 @@ let polling = true
 async function refresh() {
   try {
     const runtime = await invoke<RuntimeStatus>('desktop_status')
+    document.body.dataset.phase = runtime.phase
+    document.querySelector('main')?.setAttribute('aria-busy', String(['starting', 'installing'].includes(runtime.phase)))
     status.textContent = runtime.message
     const failed = ['failed', 'setup-required', 'stopped'].includes(runtime.phase)
     retry.hidden = !failed
@@ -20,6 +22,8 @@ async function refresh() {
     choose.hidden = !failed
     log.textContent = failed ? `Diagnostic log: ${runtime.log_path}` : ''
   } catch (cause) {
+    document.body.dataset.phase = 'failed'
+    document.querySelector('main')?.setAttribute('aria-busy', 'false')
     error.textContent = `Unable to contact the desktop host: ${String(cause)}`
   }
   if (polling) window.setTimeout(() => { void refresh() }, 500)

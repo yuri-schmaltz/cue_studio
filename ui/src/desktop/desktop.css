@@ -1,7 +1,45 @@
-:root {font-family:system-ui,sans-serif;color:#f3eee8;background:#151411;color-scheme:dark}
-body {margin:0;min-height:100vh;display:grid;place-items:center}
-main {max-width:42rem;text-align:center;padding:3rem}
-img {height:6rem;width:6rem}h1 {font-weight:550;letter-spacing:-.04em;font-size:2.8rem}
-p {line-height:1.6;color:#c2bcb2;overflow-wrap:anywhere}#error {color:#ffa49d}
-button {font:inherit;background:#e8bc82;color:#211b13;border:0;border-radius:.6rem;padding:.8rem 1rem;margin:.3rem;cursor:pointer}
-button:focus-visible {outline:3px solid #fff;outline-offset:3px}[hidden] {display:none}
+:root {font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#f4eee3;background:#101116;color-scheme:dark;font-synthesis:none}
+* {box-sizing:border-box}
+body {margin:0;min-height:100svh;display:grid;place-items:center;overflow-x:hidden;background:radial-gradient(ellipse at 50% 35%,#20202a 0,transparent 58%)}
+.ambient-light {position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 35%,#dba9430c 0,transparent 45%);animation:ambient-in 2s ease-out both}
+main {position:relative;width:min(100%,42rem);text-align:center;padding:4rem 2rem 6rem}
+.brand-stage {position:relative;width:220px;height:220px;margin:0 auto 2.3rem;display:grid;place-items:center;isolation:isolate;animation:stage-in 1s cubic-bezier(.2,.7,.2,1) both}
+.brand-halo {position:absolute;inset:12%;border-radius:50%;background:#efb23414;box-shadow:0 0 80px 30px #efb2340c;animation:halo-breathe 4s 1.3s ease-in-out infinite}
+.clapper {width:144px;height:144px;overflow:visible;filter:drop-shadow(0 16px 24px #0005)}
+.brand-outline {fill:#12131ae6;stroke-opacity:.6}
+.clap-top {transform-origin:36px 78px;animation:clap-close 1.25s cubic-bezier(.22,.68,.2,1) both}
+.play-mark {transform-origin:99px 115px;animation:play-in .65s .75s cubic-bezier(.16,1,.3,1) both}
+.frame-corner {position:absolute;width:17px;height:17px;border:solid #b99a583d;animation:corners-in 1.2s .1s ease-out both}
+.top-left {top:0;left:0;border-width:1px 0 0 1px}.top-right {top:0;right:0;border-width:1px 1px 0 0}
+.bottom-left {bottom:0;left:0;border-width:0 0 1px 1px}.bottom-right {bottom:0;right:0;border-width:0 1px 1px 0}
+.light-sweep {position:absolute;inset:0;pointer-events:none;background:linear-gradient(110deg,transparent 35%,#ffe0a01c 49%,transparent 63%);clip-path:inset(17% round 30px);animation:light-pass 1.5s .65s ease-out both}
+.brand-copy {animation:copy-in .8s .3s ease-out both}
+.eyebrow {font-size:.61rem;font-weight:500;letter-spacing:.29em;color:#bba77d;margin:0 0 .7rem}.eyebrow span {margin:0 .4rem;color:#6c5c3c}
+h1 {font-weight:550;letter-spacing:-.065em;font-size:clamp(2.5rem,6vw,3.6rem);line-height:1.1;margin:0}.title-dot {color:#efb642}
+.runtime-state {margin:2rem auto 0;max-width:27rem;animation:copy-in .8s .6s ease-out both}
+.loading-track {width:112px;height:2px;margin:0 auto 1.1rem;overflow:hidden;border-radius:2px;background:#b6a17a20}
+.loading-track span {display:block;width:40%;height:100%;background:linear-gradient(90deg,transparent,#e6b65c,transparent);animation:loading-pass 1.8s ease-in-out infinite}
+p {line-height:1.6;overflow-wrap:anywhere}#status {font-size:.82rem;color:#b6b2a8;margin:0;min-height:2.6em}#log {font-size:.7rem;color:#817e77;margin:1rem 0}#error {color:#f4a49b;font-size:.8rem;margin:1rem 0 0}
+#log:empty,#error:empty {display:none}
+.actions {display:flex;justify-content:center;flex-wrap:wrap;gap:.6rem;margin-top:1.4rem;animation:copy-in .8s .75s ease-out both}
+button {font:inherit;font-size:.76rem;background:#ffffff05;color:#ddd3c1;border:1px solid #d7bd8529;border-radius:.6rem;padding:.8rem 1rem;cursor:pointer;transition:background .2s,border-color .2s,transform .2s}
+button:hover {background:#ffffff0c;border-color:#d7bd8566;transform:translateY(-1px)}
+#install {background:#e9b64d;color:#211b13;border-color:#e9b64d;font-weight:600}#install:hover {background:#f5c66b}
+#import-workspace {color:#99958c;background:transparent;border-color:transparent}#import-workspace:hover {color:#f0dfbe}
+button:focus-visible {outline:2px solid #ffd681;outline-offset:4px}[hidden] {display:none!important}
+.opening-caption {position:fixed;bottom:1.8rem;left:1rem;right:1rem;text-align:center;font-size:.53rem;letter-spacing:.24em;color:#78756a;pointer-events:none;animation:copy-in 1s 1s both}
+body:not([data-phase="starting"]):not([data-phase="installing"]) .loading-track {visibility:hidden}
+body:not([data-phase="starting"]):not([data-phase="installing"]) .loading-track span,
+body:not([data-phase="starting"]):not([data-phase="installing"]) .brand-halo {animation-play-state:paused}
+body[data-phase="failed"] .frame-corner {border-color:#a763504d}
+@keyframes stage-in {from {opacity:0;transform:translateY(12px) scale(.93)}to {opacity:1;transform:none}}
+@keyframes clap-close {0%,15% {transform:rotate(-24deg)}65% {transform:rotate(2deg)}82% {transform:rotate(-1.5deg)}100% {transform:rotate(0)}}
+@keyframes play-in {from {opacity:0;transform:scale(.65)}to {opacity:1;transform:scale(1)}}
+@keyframes corners-in {from {opacity:0;transform:scale(1.12)}to {opacity:1;transform:scale(1)}}
+@keyframes copy-in {from {opacity:0;transform:translateY(8px)}to {opacity:1;transform:none}}
+@keyframes ambient-in {from {opacity:0}to {opacity:1}}
+@keyframes halo-breathe {0%,100% {opacity:.5;transform:scale(.95)}50% {opacity:1;transform:scale(1.06)}}
+@keyframes light-pass {from {opacity:0;transform:translateX(-35%)}35% {opacity:1}to {opacity:0;transform:translateX(35%)}}
+@keyframes loading-pass {from {transform:translateX(-110%)}to {transform:translateX(360%)}}
+@media (max-width:480px) {main {padding:2.5rem 1.25rem 5rem}.brand-stage {width:180px;height:180px;margin-bottom:1.8rem}.clapper {width:125px;height:125px}.actions {max-width:22rem;margin-inline:auto}.opening-caption {font-size:.48rem}}
+@media (prefers-reduced-motion:reduce) {*,*::before,*::after {animation:none!important;transition:none!important}.loading-track span {width:100%;opacity:.65}button:hover {transform:none}}

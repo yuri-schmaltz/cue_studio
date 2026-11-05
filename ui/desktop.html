@@ -1,3 +1,37 @@
 <!doctype html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cue Studio</title></head>
-<body><main><img src="/cue-studio-icon-192.png" alt=""><h1>Cue Studio</h1><p id="status" role="status">Starting the local AI engine…</p><p id="log"></p><div><button id="retry" hidden>Try again</button><button id="install" hidden>Install AI runtime</button><button id="choose" hidden>Choose existing runtime</button><button id="import-workspace">Import existing workspace</button></div><p id="error" role="alert"></p></main><script type="module" src="/src/desktop/bootstrap.ts"></script></body></html>
+<body data-phase="starting">
+  <div class="ambient-light" aria-hidden="true"></div>
+  <main aria-busy="true">
+    <div class="brand-stage" aria-hidden="true">
+      <span class="frame-corner top-left"></span><span class="frame-corner top-right"></span>
+      <span class="frame-corner bottom-left"></span><span class="frame-corner bottom-right"></span>
+      <div class="brand-halo"></div>
+      <svg class="clapper" viewBox="0 0 192 192" fill="none">
+        <defs>
+          <linearGradient id="gold" x1="40" y1="40" x2="155" y2="155" gradientUnits="userSpaceOnUse"><stop stop-color="#ffd56a"/><stop offset="1" stop-color="#eea000"/></linearGradient>
+          <clipPath id="clap-mask"><path d="M36 48L156 30V60L36 78Z"/></clipPath>
+        </defs>
+        <rect class="brand-outline" x="3" y="3" width="186" height="186" rx="38" stroke="#b78427" stroke-width="2"/>
+        <g class="clap-top">
+          <path d="M36 48L156 30V60L36 78Z" fill="url(#gold)"/>
+          <g clip-path="url(#clap-mask)" stroke="#674a1d" stroke-width="7"><path d="M61 30L48 86M86 26L73 82M111 22L98 78M136 18L123 74"/></g>
+        </g>
+        <rect x="36" y="79" width="120" height="71" rx="12" fill="url(#gold)"/>
+        <path d="M48 96H144M48 111H144M48 126H96" stroke="#795519" stroke-width="4" opacity=".48"/>
+        <path class="play-mark" d="M79 91L120 115L79 139Z" fill="#4c3515"/>
+      </svg>
+      <span class="light-sweep"></span>
+    </div>
+    <div class="brand-copy"><p class="eyebrow">VIDEO <span>·</span> IMAGE <span>·</span> SOUND</p><h1>Cue Studio<span class="title-dot">.</span></h1></div>
+    <div class="runtime-state">
+      <div class="loading-track" aria-hidden="true"><span></span></div>
+      <p id="status" role="status">Starting the local AI engine…</p>
+    </div>
+    <p id="log"></p>
+    <div class="actions"><button id="retry" hidden>Try again</button><button id="install" hidden>Install AI runtime</button><button id="choose" hidden>Choose existing runtime</button><button id="import-workspace">Import existing workspace</button></div>
+    <p id="error" role="alert"></p>
+  </main>
+  <span class="opening-caption" aria-hidden="true">READY WHEN INSPIRATION STRIKES</span>
+  <script type="module" src="/src/desktop/bootstrap.ts"></script>
+</body></html>
