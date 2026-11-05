@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from 'react'
-import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo } from 'lucide-react'
+import { FolderOpen, Clapperboard, Film, Images, SlidersHorizontal, Lock, ListVideo, Wand2 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useActiveProject } from '../../navigation/useUrlNavigation'
 import { PROMPT_ENHANCEMENT_ACTIVITY } from '../../lib/promptEnhancementActivity'
@@ -13,6 +13,7 @@ const sections: ReadonlyArray<{
   showCount?: boolean
 }> = [
   { id: 'projects', label: 'Projects', icon: FolderOpen },
+  { id: 'wizard', label: 'Wizard', icon: Wand2 },
   { id: 'director', label: 'Director', icon: Clapperboard },
   { id: 'studio', label: 'Studio', icon: SlidersHorizontal },
   { id: 'editor', label: 'Editor', icon: Film },
@@ -24,7 +25,7 @@ const sections: ReadonlyArray<{
 // Project-scoped sections are gated behind having a real (non-default)
 // workspace selected. Configurations and Queue stay accessible — model/
 // theme/storage tuning is global, and the queue tracks global jobs.
-const projectGated = new Set<AppSection>(['director', 'editor', 'medias'])
+const projectGated = new Set<AppSection>(['wizard', 'director', 'editor', 'medias'])
 
 const ACTIVE_JOB_STATUSES = new Set(['held', 'queued', 'running', 'awaiting_review'])
 const ACTIVE_DIRECTOR_STATUSES = new Set(['held', 'queued', 'running', 'awaiting_review'])

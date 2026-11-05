@@ -697,7 +697,7 @@ export const createDirectorPlanningSlice = (
 
   directorAddCharacterRef: (file) => set(s => ({
     directorCharacterRefs: [...s.directorCharacterRefs, file],
-    directorCharacterRefLabels: [...s.directorCharacterRefLabels, ''],
+    directorCharacterRefLabels: [...s.directorCharacterRefLabels, file.name.replace(/\.[^.]+$/, '')],
   })),
 
   directorRemoveCharacterRef: (index) => set(s => ({
@@ -1493,6 +1493,8 @@ export const createDirectorPlanningSlice = (
     set({
       directorAnalyzeProgress: null,
       appSection: 'director' as const, workspaceStage: 'director' as const, sidebarMode: 'workspace' as const,
+      wizardStep: 0,
+      directorDraftLoadFailed: false,
       directorStep: 'upload',
       directorActivityLabel: 'Idle',
       directorActivityFraction: NaN,

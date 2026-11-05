@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, Clapperboard, Copy, Film, FolderOpen, Image as ImageIcon, Images, Loader2, Music, Pin, PinOff, Plus, Search, Settings, Trash2, X } from 'lucide-react'
+import { Check, Clapperboard, Copy, Film, FolderOpen, Image as ImageIcon, Images, Loader2, Music, Pin, Plus, Search, Settings, Trash2, X } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { useWorkspaceSlice } from '../../stores/workspaceSelectors'
 import type { AppSection, ProjectSetupDefaults } from '../../types'
@@ -304,18 +304,7 @@ export function ProjectsPage() {
     setInitialCover(card?.setup?.cover_image || '')
     setEditing(workspace)
   }
-  const togglePin = async (workspace: Workspace) => {
-    const busyKey = `pin-${workspace.name}`
-    setBusy(busyKey); setError(null)
-    try {
-      const next = { ...(workspace.setup || {}), pinned: !workspace.setup?.pinned }
-      if (workspace.name === active) await saveSetupAction(next as ProjectSetupDefaults)
-      else await saveWorkspaceSetup(workspace.name, next)
-      await useStore.getState().loadWorkspaces()
-    }
-    catch (e) { setError(e instanceof Error ? e.message : 'Could not update pin.') }
-    finally { setBusy(null) }
-  }
+
   const openCreate = () => {
     setError(null)
     const type: ProjectType = 'music-video'
@@ -413,12 +402,7 @@ export function ProjectsPage() {
                     ariaLabel={`More actions for ${workspace.name}`}
                     items={[
                       { id: 'duplicate', label: 'Duplicate setup', icon: <Copy size={13} />, onSelect: () => openDuplicate(workspace) },
-                      {
-                        id: 'pin',
-                        label: workspace.setup?.pinned ? 'Unpin project' : 'Pin project',
-                        icon: workspace.setup?.pinned ? <PinOff size={13} /> : <Pin size={13} />,
-                        onSelect: () => void togglePin(workspace),
-                      },
+
                       { id: 'settings', label: 'Project settings', icon: <Settings size={13} />, onSelect: () => openEdit(workspace.name) },
                       { id: 'delete', label: 'Delete project', icon: <Trash2 size={13} />, danger: true, onSelect: () => setConfirmingDelete(current => current === workspace.name ? null : workspace.name) },
                     ]}
@@ -511,9 +495,10 @@ export function ProjectsPage() {
                   ))}
                 </div>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-1.5">
-                <span className="text-xs text-text-secondary col-span-3">Open in</span>
+              <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <span className="text-xs text-text-secondary col-span-full">Open in</span>
                 {([
+                  { value: 'wizard', label: 'Wizard' },
                   { value: 'director', label: 'Director' },
                   { value: 'editor', label: 'Editor' },
                   { value: 'medias', label: 'Media' },

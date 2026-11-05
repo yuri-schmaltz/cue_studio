@@ -3,6 +3,7 @@ import { ApplicationHeader } from './components/Shell/ApplicationHeader'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import {
   DirectorPage,
+  WizardPage,
   MainContent,
   RetakeDialog,
   OomRecoveryBanner,
@@ -76,6 +77,7 @@ function App() {
               routes. */}
           {section === 'projects' && <ErrorBoundary section="Projects"><ProjectsPage /></ErrorBoundary>}
           {section === 'queue' && <ErrorBoundary section="Queue"><QueuePage /></ErrorBoundary>}
+          {section === 'wizard' && <ErrorBoundary section="Wizard"><WizardPage /></ErrorBoundary>}
           {section === 'director' && <ErrorBoundary section="Director"><DirectorPage /></ErrorBoundary>}
           {section === 'studio' && <ErrorBoundary section="Studio"><StudioPage /></ErrorBoundary>}
           {section === 'editor' && <ErrorBoundary section="Editor"><EditorWorkspace /></ErrorBoundary>}

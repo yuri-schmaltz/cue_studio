@@ -242,3 +242,7 @@ export const NotificationToastHost = lazyAny(
 export const EditorRoundTripBanner = lazyAny(
   () => import('../editor/EditorRoundTripBanner'),
 )
+
+export const WizardPage = lazyWithCache(
+  () => import('../components/Shell/WizardPage'),
+)

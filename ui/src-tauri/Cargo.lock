@@ -628,6 +628,7 @@ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
 name = "cue-studio-desktop"
 version = "2.5.2"
 dependencies = [
+ "gtk",
  "libc",
  "opener",
  "reqwest 0.12.28",
@@ -639,6 +640,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tempfile",
  "uuid",
+ "webkit2gtk",
 ]
 
 [[package]]

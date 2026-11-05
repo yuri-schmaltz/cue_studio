@@ -28822,6 +28822,24 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
     return result
 
 
+@api.delete("/api/v1/uploads/{filename}")
+def delete_upload(filename: str):
+    """Delete only an explicitly selected file inside the uploads directory."""
+    from services.win_safe_files import safe_delete
+    base = os.path.join(os.getcwd(), "uploads")
+    filepath = _safe_join(base, filename)
+    if not filename or "/" in filename or "\\" in filename or filepath is None:
+        raise HTTPException(status_code=400, detail="Invalid upload filename")
+    if os.path.isdir(filepath):
+        raise HTTPException(status_code=400, detail="Only upload files can be deleted")
+    if not os.path.exists(filepath):
+        return {"deleted": filename}
+    result = safe_delete(filepath)
+    if not result.get("deleted") and not result.get("deferred"):
+        raise HTTPException(status_code=409, detail="The upload is in use and could not be deleted. Stop playback and try again.")
+    return {"deleted": filename}
+
+
 @api.get("/api/v1/uploads/{filename}")
 def serve_upload(filename: str):
     """Serve an uploaded image.

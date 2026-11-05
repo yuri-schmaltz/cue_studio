@@ -107,8 +107,8 @@ export function DraggableRefRow({ file, label, index, onRemove, onLabelChange, o
       <div className="relative aspect-square bg-bg-tertiary rounded border border-border overflow-hidden">
         <img src={URL.createObjectURL(file)} alt={`Ref ${index+1}`}
           className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
-        <button onClick={() => onRemove(index)}
-          className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <button type="button" aria-label="Remove reference image" onClick={() => onRemove(index)}
+          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500 rounded-full opacity-80 hover:opacity-100 focus-visible:opacity-100 transition-opacity z-10">
           <X size={8} className="text-white" />
         </button>
         <span className="absolute bottom-0 left-0 bg-black/60 text-white text-2xs px-1 rounded-br rounded-tl pointer-events-none">
@@ -173,7 +173,7 @@ export function SpeakerRefCard({
             <button
               type="button"
               onClick={onRemoveImage}
-              className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-red-500 rounded-full opacity-80 hover:opacity-100 focus-visible:opacity-100 transition-opacity z-10"
               title="Remove image"
             >
               <X size={8} className="text-white" />
@@ -266,18 +266,23 @@ function RefAddCard({
     <label
       htmlFor={inputId}
       data-testid={testid}
-      className={`aspect-square w-full rounded-lg border border-dashed flex flex-col items-center justify-center gap-1.5 p-3 text-center transition-colors ${
+      className={`relative isolate overflow-hidden aspect-square w-full rounded-lg border border-dashed flex flex-col items-center justify-center gap-1.5 p-3 text-center transition-colors ${
         disabled
           ? 'border-border bg-bg-tertiary/30 text-text-muted/60 cursor-not-allowed'
           : 'border-accent-blue/50 bg-accent-blue/5 hover:bg-accent-blue/10 hover:border-accent-blue text-text-secondary hover:text-text-primary cursor-pointer'
       }`}
     >
+      {(title === 'Add Character' || title === 'Add Location') && <svg aria-hidden="true" viewBox="0 0 148 148" className="absolute inset-0 w-full h-full pointer-events-none -z-10" preserveAspectRatio="xMidYMid slice">
+        <rect width="148" height="148" fill={title === 'Add Character' ? '#35383c' : '#24363c'} />
+        {title === 'Add Character' ? <g fill="#777f87"><ellipse cx="74" cy="58" rx="29" ry="31" /><path d="M16 148C18 108 42 94 74 94S130 108 132 148Z" /></g> : <><circle cx="113" cy="35" r="15" fill="#b7a476" /><path d="M0 113L45 42L98 116Z" fill="#6d8585" /><path d="M52 148L107 65L162 148Z" fill="#536f6c" /><path d="M0 123Q50 94 96 126T160 122V148H0Z" fill="#344f4b" /></>}
+        <rect width="148" height="148" fill="black" opacity=".3" />
+      </svg>}
       <div className={`flex items-center justify-center h-7 w-7 rounded-full ${
-        disabled ? 'bg-bg-tertiary' : 'bg-accent-blue/15 text-accent-blue'
+        disabled ? 'bg-bg-tertiary' : 'bg-black/70 text-accent-blue'
       }`}>
         {disabled ? <Mic size={14} className="text-text-muted/60" /> : <Plus size={16} className="text-accent-blue" />}
       </div>
-      <span className="text-2xs font-medium leading-tight">{title}</span>
+      <span className="text-2xs font-medium leading-tight rounded bg-black/70 px-2 py-1 text-white">{title}</span>
       {hint && (
         <span className="text-[10px] text-text-muted/80 leading-tight line-clamp-3 px-1">
           {hint}
@@ -425,7 +430,7 @@ export function AdditionalRefsSection() {
           scrolls vertically when cards exceed available vertical space. */}
       <div role="tabpanel" className="flex-1 min-h-0 overflow-y-auto scrollbar-visible pr-1 space-y-1.5">
         {activeRefTab === 'char' ? (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {speakerMappings.map(m => (
               <SpeakerRefCard
                 key={m.speakerId}
@@ -452,7 +457,7 @@ export function AdditionalRefsSection() {
             />
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {locRefs.map((f, i) => (
               <DraggableRefRow key={`l${i}-${f.name}`} file={f} label={locLabels[i] || ''} index={i}
                 onRemove={removeLocRef} onLabelChange={setLocLabel} onReorder={reorderLocRefs}

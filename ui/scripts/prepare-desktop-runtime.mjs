@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto'
 // Stage code and built assets, never GPU weights, user data or virtualenvs.
-import { cp, mkdir, readdir, rm } from 'node:fs/promises'
+import { cp, mkdir, readdir, rm, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 const ui = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -23,3 +24,18 @@ await cp(resolve(ui, '../LICENSE'), join(ui, 'src-tauri/runtime/LICENSE'))
 await rm(join(ui, 'src-tauri/web'), { recursive: true, force: true })
 await cp(join(ui, 'dist'), join(ui, 'src-tauri/web'), { recursive: true })
 console.log('Desktop code and UI staged. Python runtime installation is managed separately.')
+
+// Code revisions are independent of the dependency lock. Never include models
+// or per-user state in this allow-list of files copied during upgrades.
+const sourceFiles = {}
+async function inventory(directory, prefix = '') {
+  for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a,b) => a.name.localeCompare(b.name))) {
+    const relative = prefix + entry.name
+    if (entry.isDirectory()) await inventory(join(directory, entry.name), relative + '/')
+    else if (entry.isFile() && entry.name !== 'runtime-code-manifest.json') {
+      sourceFiles[relative] = createHash('sha256').update(await readFile(join(directory, entry.name))).digest('hex')
+    }
+  }
+}
+await inventory(destination)
+await writeFile(join(destination, 'runtime-code-manifest.json'), JSON.stringify({ schema: 1, files: sourceFiles }))

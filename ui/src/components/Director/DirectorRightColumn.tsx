@@ -46,7 +46,6 @@ export function DirectorRightColumn() {
         >
           <SlidersHorizontal size={13} className={optionsOpen ? 'text-accent-blue' : 'text-text-muted'} />
           <span className="flex-1 text-left">Generation Options</span>
-          <span className="text-2xs text-text-muted">LoRAs · advanced parameters · negative prompt</span>
           <ChevronDown
             size={13}
             className={`text-text-muted transition-transform ${optionsOpen ? 'rotate-180' : ''}`}

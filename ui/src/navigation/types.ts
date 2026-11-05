@@ -25,7 +25,7 @@
 
 import type { AppSection } from '../types'
 
-export type Section = 'director' | 'studio' | 'medias'
+export type Section = 'wizard' | 'director' | 'studio' | 'medias'
 
 export type AppRoute =
   | { kind: 'projects' }
@@ -34,7 +34,7 @@ export type AppRoute =
   | { kind: 'editor'; projectId: string }
   | { kind: 'configurations' }
 
-export const PROJECT_SECTIONS: readonly Section[] = ['director', 'studio', 'medias']
+export const PROJECT_SECTIONS: readonly Section[] = ['wizard', 'director', 'studio', 'medias']
 
 function isProjectSection(value: string): value is Section {
   return (PROJECT_SECTIONS as readonly string[]).includes(value)
@@ -80,6 +80,7 @@ export function serializeRoute(route: AppRoute): string {
 export function routeFromState(section: AppSection, workspace: string): AppRoute {
   const hasProject = workspace !== 'default'
   switch (section) {
+    case 'wizard':
     case 'director':
     case 'studio':
     case 'medias':

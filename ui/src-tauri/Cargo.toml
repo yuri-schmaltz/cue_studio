@@ -15,9 +15,13 @@ name = "cue-studio-desktop"
 path = "src/main.rs"
 required-features = ["desktop"]
 
+[[example]]
+name = "file_dialog_smoke"
+required-features = ["desktop"]
+
 [features]
 default = ["desktop"]
-desktop = ["dep:tauri", "dep:tauri-build", "dep:tauri-plugin-dialog", "dep:tauri-plugin-single-instance", "dep:opener"]
+desktop = ["dep:tauri", "dep:tauri-build", "dep:tauri-plugin-dialog", "dep:tauri-plugin-single-instance", "dep:opener", "dep:gtk", "dep:webkit2gtk"]
 
 [build-dependencies]
 tauri-build = { version = "2", optional = true , features = [] }
@@ -32,6 +36,10 @@ tauri = { version = "2", optional = true , features = [] }
 tauri-plugin-dialog = { version = "2", optional = true }
 tauri-plugin-single-instance = { version = "2", optional = true }
 opener = { version = "0.8", optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = { version = "0.18", optional = true }
+webkit2gtk = { version = "2.0", optional = true }
 
 [dev-dependencies]
 tempfile = "3"

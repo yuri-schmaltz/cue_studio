@@ -1462,6 +1462,9 @@ export interface AppState {
   loadDirectorDraft: (name: string) => Promise<void>
   saveDirectorDraftNow: () => Promise<void>
   clearDirectorDraft: () => Promise<void>
+  wizardStep: number
+  directorDraftLoading: boolean
+  directorDraftLoadFailed: boolean
   directorDraftSnapshots: Array<{
     timestamp: number
     label?: string
@@ -4844,7 +4847,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     // outputs/ folder, defeating the per-project organization. Settings
     // stays accessible — model/theme/storage tuning is global.
     const current = get()
-    const gated: AppSection[] = ['director', 'editor', 'medias']
+    const gated: AppSection[] = ['wizard', 'director', 'editor', 'medias']
     if (gated.includes(section) && current.activeWorkspace === 'default') {
       section = 'projects'
     }
@@ -4857,7 +4860,7 @@ export const useStore = create<AppState>((set, get, store) => ({
       // workspaceStage continue to behave correctly when the user
       // enters Studio via the new shell tab.
       workspaceStage: section === 'studio' ? 'studio' as const
-        : section === 'director' ? 'director' as const
+        : (section === 'director' || section === 'wizard') ? 'director' as const
         : get().workspaceStage,
       settingsOpen: section === 'configurations',
       sidebarOpen: false,
@@ -5238,7 +5241,7 @@ export const useStore = create<AppState>((set, get, store) => ({
     set(s => ({
       directorSpeakerMappings: s.directorSpeakerMappings.map(m =>
         m.speakerId === speakerId
-          ? { ...m, image: file, imagePreview: preview, imagePath: null }
+          ? { ...m, name: m.name.trim() || file.name.replace(/\.[^.]+$/, ''), image: file, imagePreview: preview, imagePath: null }
           : m
       ),
     }))

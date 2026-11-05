@@ -1179,9 +1179,10 @@ export function DirectorBriefingColumn() {
                                 needs far more shots than the audio's
                                 sections suggest, so a time-anchored
                                 briefing must be able to place them. */}
-                            {!isShortFilm && <DirectorStructureSourceToggle />}
                           </div>
-                          <DirectorTimelineEditor />
+                          {isShortFilm ? <DirectorTimelineEditor /> : (
+                            <DirectorStructureSourceToggle><DirectorTimelineEditor /></DirectorStructureSourceToggle>
+                          )}
                         </section>
                       )}
 

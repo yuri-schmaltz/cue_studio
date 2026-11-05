@@ -31,7 +31,7 @@ describe('workspaceSlice - Director draft snapshots', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useStore.setState({
-      activeWorkspace: 'proj-1',
+      activeWorkspace: 'proj-1', directorDraftLoading: false, directorDraftLoadFailed: false,
       activeWorkspaceSetup: null,
       pipelineId: null,
       pipelineStatus: null,
@@ -45,6 +45,27 @@ describe('workspaceSlice - Director draft snapshots', () => {
       directorSceneDescription: '',
       directorDraftSnapshots: [],
     })
+  })
+
+  it('restores Wizard progress and format from the server after local storage is cleared', async () => {
+    useStore.setState({ directorSceneDescription: 'A quiet landscape', wizardStep: 3, directorAspectRatio: '9:16', directorResolution: '480p' })
+    await useStore.getState().saveDirectorDraftNow()
+    const saved = vi.mocked(api.saveDirectorDraft).mock.calls.at(-1)![1]
+    expect(saved.wizardStep).toBe(3)
+    localStorage.clear()
+    useStore.setState({ wizardStep: 0, directorSceneDescription: '', directorAspectRatio: '16:9' })
+    vi.mocked(api.fetchDirectorDraft).mockResolvedValueOnce(saved)
+    await useStore.getState().loadDirectorDraft('proj-1')
+    expect(useStore.getState().wizardStep).toBe(3)
+    expect(useStore.getState().directorSceneDescription).toBe('A quiet landscape')
+    expect(useStore.getState().directorAspectRatio).toBe('9:16')
+  })
+
+  it('keeps a fresh project in Wizard when its draft is empty', async () => {
+    useStore.setState({ appSection: 'wizard' })
+    await useStore.getState().loadDirectorDraft('proj-1')
+    expect(useStore.getState().appSection).toBe('wizard')
+    expect(useStore.getState().wizardStep).toBe(0)
   })
 
   it('starts with empty snapshots array', () => {

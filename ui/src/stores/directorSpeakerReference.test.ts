@@ -102,6 +102,14 @@ describe('director speaker reference upload', () => {
     }
   })
 
+  it('uses the original filename as the editable character name', () => {
+    const slice = createDirectorPlanningSlice(set, get, {} as any, mockDeps)
+    slice.directorAddCharacterRef(new File(['image'], 'Gary.stage.png', { type: 'image/png' }))
+    expect(state.directorCharacterRefLabels).toEqual(['Gary.stage'])
+    slice.directorSetCharacterRefLabel(0, 'Gary')
+    expect(state.directorCharacterRefLabels).toEqual(['Gary'])
+  })
+
   it('reuses the known server path instead of re-uploading the photo', async () => {
     state.directorSpeakerMappings = [
       { speakerId: 'SPEAKER_00', name: 'gary', role: 'singing', imagePath: '/uploads/gary.jpeg' },

@@ -72,13 +72,13 @@ export function DirectorTimelineEditor() {
   return <>
     <button
       type="button"
-      className="w-full h-8 rounded-lg border border-accent-blue/50 text-accent-blue hover:bg-accent-blue/10 flex items-center justify-center gap-2 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-xs"
+      className="w-full min-w-0 h-8 rounded-lg border border-accent-blue/50 text-accent-blue hover:bg-accent-blue/10 flex items-center justify-center gap-2 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-xs"
       disabled={disabled}
       title={disabledReason}
       onClick={() => setOpen(true)}
     >
       <Wand2 size={13} className="shrink-0" />
-      <span>Split / edit clips ({clips.length})</span>
+      <span className="truncate">Split / edit clips ({clips.length})</span>
     </button>
     {open && createPortal(<TimelineDialog close={() => setOpen(false)} />, document.body)}
   </>

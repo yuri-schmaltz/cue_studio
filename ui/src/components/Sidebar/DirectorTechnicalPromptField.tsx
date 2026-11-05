@@ -56,7 +56,7 @@ export function DirectorTechnicalPromptField() {
         <textarea
           value={value}
           onChange={e => setValue(e.target.value)}
-          placeholder={'A cinematic 12-15 fps stop-motion claymation video, hand-crafted plasticine aesthetic with visible fingerprints, warm studio lighting with dramatic chiaroscuro, natural camera shake, cinematic fade-out to black at the end.'}
+          placeholder="Optional: describe the visual style, lighting and camera direction."
           rows={4}
           aria-label="Technical prompt"
           data-testid="director-technical-prompt-input"

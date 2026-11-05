@@ -44,6 +44,12 @@ _RANGE_RE = re.compile(
     r"(?P<end>\d{1,2}(?::\d{1,2}){0,2}(?:\.\d+)?)\s*[)\]]",
     re.IGNORECASE,
 )
+_HEADER_CLOCK_RANGE_RE = re.compile(
+    r"(?<![\d:])(?P<start>\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*"
+    r"(?:-|–|—|to|a|até)\s*(?P<end>\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)(?![\d:])",
+    re.IGNORECASE,
+)
+_ACT_HEADER_RE = re.compile(r"^\s*(?:#{1,6}\s*)?[*_]{0,3}(?:ato|act)\s+(?:[IVXLCDM]+|\d+)\b", re.IGNORECASE)
 
 # A sub-beat inside a scene body: "- **0:00 - 0:05:** A mão se posiciona".
 # These are the fine-grained anchors that let a shot line up with the
@@ -244,7 +250,7 @@ def _strip_quotes(text: str) -> tuple[str, list[str]]:
 
 def _clean_title(text: str) -> str:
     title = text.strip()
-    title = re.sub(r"^[\s:.\-–—]+", "", title)
+    title = re.sub(r"^[\s:|.\-–—]+", "", title)
     title = re.sub(r"[\s:.\-–—]+$", "", title)
     # Markdown emphasis left over from "**CENA 1: Title (0:00 - 0:11)**".
     title = title.strip("*_ ").strip()
@@ -381,6 +387,13 @@ def parse_scene_script(text: str) -> SceneScript:
         current = None
 
     for raw_line in lines:
+        if _ACT_HEADER_RE.match(raw_line):
+            # Act headings and their following overview ranges are metadata,
+            # never sub-beats of the scene that precedes the act.
+            _flush()
+            in_technical = False
+            preamble.append(raw_line)
+            continue
         if _is_technical_section(raw_line) and not _HEADER_RE.match(raw_line):
             # The technical block describes the whole film: flush the
             # scene in progress and collect the rest as a global block.
@@ -400,7 +413,7 @@ def parse_scene_script(text: str) -> SceneScript:
             continue
 
         rest = header.group("rest") or ""
-        range_match = _RANGE_RE.search(rest)
+        range_match = _RANGE_RE.search(rest) or _HEADER_CLOCK_RANGE_RE.search(rest)
         start: Optional[float] = None
         end: Optional[float] = None
         title_text = rest

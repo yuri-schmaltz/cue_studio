@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Film, ListTree, Music4 } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 
@@ -27,7 +28,7 @@ import { useStore } from '../../stores/useStore'
  * The control is only offered when the briefing actually carries
  * timecodes; without them the script cannot place a cut.
  */
-export function DirectorStructureSourceToggle() {
+export function DirectorStructureSourceToggle({ children }: { children?: ReactNode }) {
   const source = useStore(s => s.directorStructureSource)
   const granularity = useStore(s => s.directorScriptGranularity)
   const setSource = useStore(s => s.directorSetStructureSource)
@@ -41,6 +42,7 @@ export function DirectorStructureSourceToggle() {
 
   if (!hasScript) {
     return (
+      <div className="flex flex-col gap-2">
       <p
         className="text-2xs text-text-muted leading-relaxed shrink-0"
         data-testid="director-structure-source-unavailable"
@@ -48,17 +50,19 @@ export function DirectorStructureSourceToggle() {
         The cuts follow the audio. To let the script decide the cuts, add
         timecodes to the scenes (e.g. <span className="text-text-secondary">SCENE 1: Opening (0:00 - 0:11)</span>).
       </p>
+      {children}
+      </div>
     )
   }
 
   return (
     <div
-      className="flex flex-wrap items-center gap-1.5 shrink-0"
+      className="flex w-full items-center gap-1.5 shrink-0 min-w-0"
       data-testid="director-structure-source"
     >
-      <span className="text-2xs text-text-muted font-medium shrink-0">Cuts:</span>
+      {!children && <span className="text-2xs text-text-muted font-medium shrink-0">Cuts:</span>}
 
-      <div className="flex rounded border border-border overflow-hidden shrink-0">
+      <div className={`flex rounded border border-border overflow-hidden shrink-0 ${children ? 'h-8' : ''}`}>
         <button
           type="button"
           disabled={loading}
@@ -91,8 +95,10 @@ export function DirectorStructureSourceToggle() {
         </button>
       </div>
 
+      {children && <div className="flex-1 min-w-0">{children}</div>}
+
       {source === 'script' && (
-        <div className="flex rounded border border-border overflow-hidden shrink-0">
+        <div className={`order-last ml-auto flex rounded border border-border overflow-hidden shrink-0 ${children ? 'h-8' : ''}`}>
           <button
             type="button"
             disabled={loading}
@@ -125,7 +131,7 @@ export function DirectorStructureSourceToggle() {
         </div>
       )}
 
-      <span className="text-2xs text-text-muted shrink-0">
+      <span className={children ? 'sr-only' : 'text-2xs text-text-muted flex-1 min-w-0 truncate'}>
         {source === 'script'
           ? `${anchoredScenes} ${anchoredScenes === 1 ? 'scene' : 'scenes'} with timecode`
           : `${anchoredScenes} ${anchoredScenes === 1 ? 'scene' : 'scenes'} in the script`}

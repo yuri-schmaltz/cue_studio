@@ -43,6 +43,15 @@ fn start(app: tauri::AppHandle, state: State) {
                 .clone()
                 .unwrap_or_else(|| desktop.resources.join("runtime"));
             let managed_ready = crate::runtime::managed_ready(&desktop.data, &root.join("app"));
+            if managed_ready {
+                if let Err(message) =
+                    crate::runtime::sync_managed_source(&desktop.data, &root.join("app"))
+                {
+                    desktop.status.phase = "failed".into();
+                    desktop.status.message = message;
+                    return;
+                }
+            }
             let app_dir = if managed_ready {
                 desktop.data.join("runtime/app")
             } else {
@@ -373,13 +382,14 @@ pub fn run() {
                 status: RuntimeStatus { phase: "starting".into(), message: "Preparing Cue Studio…".into(), pid: None, port: None,
                     log_path: data.join("desktop-worker.log").to_string_lossy().into() } })));
             app.manage(state.clone());
-            tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
+            let window = tauri::WebviewWindowBuilder::from_config(app, &app.config().app.windows[0])?
                 .on_new_window(|url, _| {
                     if crate::navigation::classify(&url, None, false) == crate::navigation::Navigation::External {
                         std::thread::spawn(move || { let _ = opener::open_browser(url.to_string()); });
                     }
                     tauri::webview::NewWindowResponse::Deny
                 }).build()?;
+            crate::file_dialog::install(&window, data)?;
             start(app.handle().clone(), state);
             Ok(())
         })

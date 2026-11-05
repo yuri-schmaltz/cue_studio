@@ -18,7 +18,7 @@ export type WorkspaceSlice = Pick<AppState,
   'loadWorkspaces' | 'switchWorkspace' | 'createWorkspace' | 'deleteWorkspace' |
   'projectsRoot' | 'loadProjectsRoot' | 'setProjectsRoot' |
   'loadDirectorDraft' | 'saveDirectorDraftNow' | 'clearDirectorDraft' |
-  'directorDraftSnapshots' | 'restoreDraftSnapshot'
+  'directorDraftLoading' | 'directorDraftLoadFailed' | 'wizardStep' | 'directorDraftSnapshots' | 'restoreDraftSnapshot'
 >
 
 /** Workspace state and actions composed into the root store. */
@@ -237,20 +237,27 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     if (current.pipelineId && current.pipelineStatus && !['completed', 'failed', 'cancelled'].includes(current.pipelineStatus.status)) {
       return
     }
+    set({ directorDraftLoading: true, directorDraftLoadFailed: false })
     try {
       const draft = await api.fetchDirectorDraft(name)
       // A late draft belongs to the workspace/setup that requested it.
       // In particular an empty response must not reset a newly saved setup.
       if (request !== draftRequest || setupVersion !== setupRequest || get().activeWorkspace !== name) return
       if (!draft) {
-        // Fresh project or project without a saved draft: clear leftover Director state
+        // Fresh project or project without a saved draft: clear leftover Director state.
+        const previousSection = get().appSection
         get().directorReset()
+        if (previousSection === 'wizard') get().setAppSection('wizard')
         const setup = get().activeWorkspaceSetup
         if (setup) get().applyWorkspaceSetup(setup)
         return
       }
 
-      const patch: Partial<AppState> = {}
+      const patch: Partial<AppState> = { wizardStep: Number.isInteger(draft.wizardStep) && Number(draft.wizardStep) >= 0 && Number(draft.wizardStep) <= 5 ? Number(draft.wizardStep) : 0 }
+      if (draft.directorAspectRatio) patch.directorAspectRatio = draft.directorAspectRatio
+      if (draft.directorResolution) patch.directorResolution = draft.directorResolution
+      if (draft.shortFilmPath) patch.shortFilmPath = draft.shortFilmPath
+      if (draft.shortFilmTargetDuration) patch.shortFilmTargetDuration = draft.shortFilmTargetDuration
       if (draft.directorSkill && draft.directorSkill !== current.directorSkill) {
         patch.directorSkill = draft.directorSkill as DirectorSkill
       }
@@ -331,10 +338,16 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
         void get().directorReconcileScript()
       }
     } catch (e) {
+      if (request === draftRequest) set({ directorDraftLoadFailed: true })
       console.warn('Failed to load director draft:', e)
+    } finally {
+      if (request === draftRequest) set({ directorDraftLoading: false })
     }
   },
 
+  directorDraftLoading: false,
+  directorDraftLoadFailed: false,
+  wizardStep: 0,
   directorDraftSnapshots: [],
 
   restoreDraftSnapshot: async (index: number) => {
@@ -353,6 +366,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
   saveDirectorDraftNow: async () => {
     const s = get()
     const workspace = s.activeWorkspace
+    if (s.directorDraftLoading || s.directorDraftLoadFailed) return
     if (!workspace || workspace === '__uploads__') return
     // While a production is running, the pipeline owns the scene state
     // and the draft must not be written underneath it. A pipeline that
@@ -374,6 +388,7 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
       || s.directorAnalysis
       || s.directorPlannedClips.length > 0
       || s.directorClipPlans.length > 0
+      || s.directorTechnicalPrompt.trim()
       || s.directorSceneDescription.trim()
       || s.directorSongDescription.trim()
     )
@@ -400,6 +415,11 @@ export const createWorkspaceSlice: StateCreator<AppState, [], [], WorkspaceSlice
     }
 
     const draft: api.DirectorDraft = {
+      wizardStep: s.wizardStep,
+      directorAspectRatio: s.directorAspectRatio,
+      directorResolution: s.directorResolution,
+      shortFilmPath: s.shortFilmPath,
+      shortFilmTargetDuration: s.shortFilmTargetDuration,
       directorSkill: s.directorSkill,
       directorStep: s.directorStep,
       directorAudioPath: s.directorAudioPath,

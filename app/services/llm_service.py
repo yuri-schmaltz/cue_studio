@@ -1575,6 +1575,30 @@ def _write_llama_runtime_receipt(bin_dir: str, *, tag: str, build) -> None:
                 pass
 
 
+def _repair_linux_library_links(bin_dir: str) -> None:
+    """Restore local SONAME aliases omitted by older flattened tar extraction.
+
+    Only unambiguous versioned libraries are used; existing links/files are
+    never replaced and every new link targets a sibling in this directory.
+    """
+    import re
+    from pathlib import Path
+    directory = Path(bin_dir)
+    candidates = {}
+    for library in directory.glob("lib*.so.*"):
+        match = re.fullmatch(r"(lib[^/]+\.so)\.(\d+)(?:\.\d+)+", library.name)
+        if match and library.is_file() and not library.is_symlink():
+            for alias in (match[1], f"{match[1]}.{match[2]}"):
+                candidates.setdefault(alias, []).append(library.name)
+    for alias, targets in candidates.items():
+        if len(targets) != 1:
+            continue
+        try:
+            (directory / alias).symlink_to(targets[0])
+        except FileExistsError:
+            pass
+
+
 def _llama_server_build(exe_path: str):
     """Return the installed llama-server's llama.cpp build number, or None if
     it can't be determined (e.g. unexpected --version format)."""
@@ -1624,6 +1648,8 @@ def _ensure_llama_server(bin_dir: str) -> None:
     is_linux = sys.platform.startswith("linux")
     exe_name = "llama-server.exe" if is_windows else "llama-server"
     exe_path = os.path.join(bin_dir, exe_name)
+    if is_linux:
+        _repair_linux_library_links(bin_dir)
     exe_exists = os.path.isfile(exe_path)
     reported_build = _llama_server_build(exe_path) if exe_exists else None
     receipt = _read_llama_runtime_receipt(bin_dir)
@@ -1871,6 +1897,8 @@ def _ensure_llama_server(bin_dir: str) -> None:
             except OSError:
                 pass
 
+    if is_linux:
+        _repair_linux_library_links(bin_dir)
     if not os.path.isfile(exe_path):
         raise FileNotFoundError(
             f"Downloaded llama.cpp release but {exe_name} not found in {bin_dir} "

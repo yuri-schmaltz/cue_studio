@@ -34,9 +34,64 @@ pub fn managed_ready(data: &Path, packaged_app: &Path) -> bool {
         && data.join("runtime/app/desktop_worker.py").is_file()
 }
 
+/// A dependency-ready environment can still contain source from an older app.
+pub fn sync_managed_source(data: &Path, packaged_app: &Path) -> Result<(), String> {
+    let python = data.join("runtime/env/bin/python");
+    let mut command = Command::new(python);
+    isolate_python(&mut command);
+    let output = command
+        .arg(packaged_app.join("runtime_source.py"))
+        .arg("--source")
+        .arg(packaged_app)
+        .arg("--destination")
+        .arg(data.join("runtime/app"))
+        .output()
+        .map_err(|e| format!("Cannot update runtime source: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "Cannot update runtime source: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn source_upgrade_runs_before_worker_and_preserves_private_files() {
+        let root = tempfile::tempdir().unwrap();
+        let source = root.path().join("package");
+        let data = root.path().join("private");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::create_dir_all(data.join("runtime/env/bin")).unwrap();
+        std::fs::create_dir_all(data.join("runtime/app/models")).unwrap();
+        std::os::unix::fs::symlink("/usr/bin/python3", data.join("runtime/env/bin/python"))
+            .unwrap();
+        std::fs::write(
+            source.join("runtime_source.py"),
+            include_str!("../../../app/runtime_source.py"),
+        )
+        .unwrap();
+        std::fs::write(source.join("launch.py"), "new code").unwrap();
+        let manifest = Command::new("python3").args(["-c", "import hashlib,json;print(json.dumps({'schema':1,'files':{'launch.py':hashlib.sha256(b'new code').hexdigest()}}))"]).output().unwrap();
+        assert!(manifest.status.success());
+        std::fs::write(source.join("runtime-code-manifest.json"), manifest.stdout).unwrap();
+        std::fs::write(data.join("runtime/app/launch.py"), "old code").unwrap();
+        std::fs::write(data.join("runtime/app/models/user.gguf"), "preserve").unwrap();
+        sync_managed_source(&data, &source).unwrap();
+        sync_managed_source(&data, &source).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(data.join("runtime/app/launch.py")).unwrap(),
+            "new code"
+        );
+        assert_eq!(
+            std::fs::read_to_string(data.join("runtime/app/models/user.gguf")).unwrap(),
+            "preserve"
+        );
+    }
     #[test]
     fn packaged_launcher_paths_do_not_replace_python_standard_library() {
         let mut command = Command::new("python3");

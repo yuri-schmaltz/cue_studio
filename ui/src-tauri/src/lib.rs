@@ -1,3 +1,5 @@
+#[cfg(feature = "desktop")]
+mod file_dialog;
 mod folder_history;
 pub mod navigation;
 pub mod runtime;

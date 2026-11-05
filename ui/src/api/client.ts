@@ -690,6 +690,11 @@ export function workspaceCoverUrl(name: string, coverImage: string): string {
 // --- Director Drafts (in-progress unsubmitted planning) ---
 
 export interface DirectorDraft {
+  wizardStep?: number
+  directorAspectRatio?: import('../types').AspectRatio
+  directorResolution?: import('../types').ResolutionPreset
+  shortFilmPath?: import('../types').ShortFilmPath | null
+  shortFilmTargetDuration?: number
   directorSkill?: string | null
   directorStep?: string | null
   directorAudioPath?: string | null
@@ -1040,7 +1045,10 @@ export async function deleteOutput(name: string, workspace?: string): Promise<vo
 
 export async function deleteUpload(name: string): Promise<void> {
   const res = await fetch(`${BASE}/api/v1/uploads/${encodeURIComponent(name)}`, { method: 'DELETE' })
-  if (!res.ok) throw new Error('Failed to delete upload')
+  if (!res.ok) {
+    const error = await res.json().catch(() => null)
+    throw new Error(typeof error?.detail === 'string' ? error.detail : `Failed to delete upload (${res.status})`)
+  }
 }
 
 export async function rejoinClips(groupId: string, audioFile?: string): Promise<{ filename: string; clip_count: number }> {
