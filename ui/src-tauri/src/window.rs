@@ -140,17 +140,21 @@ fn import_existing_workspace(app: tauri::AppHandle, state: State) {
         let running = state.0.lock().unwrap().backend.is_some();
         if running && !app.dialog().message("Import settings and reuse projects and models from an existing workspace? The local engine will restart and active generations will be interrupted. A backup of current settings will be saved.")
             .title("Import existing workspace").buttons(tauri_plugin_dialog::MessageDialogButtons::OkCancel).blocking_show() { return; }
-        let Some(selected) = app
+        let data = state.0.lock().unwrap().data.clone();
+        let mut dialog = app
             .dialog()
             .file()
-            .set_title("Select the existing Cue Studio workspace folder")
-            .blocking_pick_folder()
-        else {
+            .set_title("Select the existing Cue Studio workspace folder");
+        if let Some(folder) = crate::folder_history::load(&data) {
+            dialog = dialog.set_directory(folder);
+        }
+        let Some(selected) = dialog.blocking_pick_folder() else {
             return;
         };
         let Ok(source) = selected.into_path() else {
             return;
         };
+        crate::folder_history::remember(&data, &source);
         let (script, data) = {
             let mut desktop = state.0.lock().unwrap();
             if desktop.installing {
@@ -304,13 +308,18 @@ async fn desktop_choose_runtime(
     app: tauri::AppHandle,
     state: tauri::State<'_, State>,
 ) -> Result<(), String> {
-    let selected = app
+    let data = state.0.lock().unwrap().data.clone();
+    let mut dialog = app
         .dialog()
         .file()
-        .set_title("Select the Cue Studio runtime folder")
-        .blocking_pick_folder();
+        .set_title("Select the Cue Studio runtime folder");
+    if let Some(folder) = crate::folder_history::load(&data) {
+        dialog = dialog.set_directory(folder);
+    }
+    let selected = dialog.blocking_pick_folder();
     if let Some(path) = selected {
         let path = path.into_path().map_err(|e| e.to_string())?;
+        crate::folder_history::remember(&data, &path);
         if !path.join("app/desktop_worker.py").is_file() {
             return Err("This folder does not contain the Cue Studio runtime".into());
         }
@@ -354,19 +363,12 @@ pub fn run() {
             }).build())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![desktop_status, desktop_retry, desktop_choose_runtime, desktop_install_runtime, desktop_import_workspace])
-        .on_menu_event(|app, event| {
-            if event.id().as_ref() == "import-workspace" {
-                import_existing_workspace(app.clone(), app.state::<State>().inner().clone());
-            }
-        })
         .setup(|app| {
             let data = std::env::var_os("CUE_DESKTOP_DATA_DIR").map(PathBuf::from).unwrap_or(app.path().app_data_dir()?);
             std::fs::create_dir_all(&data)?;
             let root = std::env::var_os("CUE_DESKTOP_RUNTIME_ROOT").map(PathBuf::from)
                 .or_else(|| std::fs::read(data.join("runtime-location.json")).ok().and_then(|bytes| serde_json::from_slice(&bytes).ok()))
                 .or_else(|| if cfg!(debug_assertions) { Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")) } else { None });
-            let menu = tauri::menu::MenuBuilder::new(app).text("import-workspace", "Import existing workspace…").build()?;
-            app.set_menu(menu)?;
             let state = State(Arc::new(Mutex::new(Desktop { backend: None, root, data: data.clone(), resources: app.path().resource_dir()?, installing: false, generation: 0,
                 status: RuntimeStatus { phase: "starting".into(), message: "Preparing Cue Studio…".into(), pid: None, port: None,
                     log_path: data.join("desktop-worker.log").to_string_lossy().into() } })));
