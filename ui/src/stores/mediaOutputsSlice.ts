@@ -12,7 +12,7 @@
 
 import type { StateCreator } from 'zustand'
 import * as api from '../api/client'
-import type { AppState } from './useStore'
+import type { AppState, StudioModelDependencies } from './useStore'
 import type { OutputFile, MediaFilter, OutputMetadata } from '../types'
 
 export type MediaOutputsSlice = {
@@ -50,10 +50,10 @@ export type MediaOutputsSliceDeps = {
   getModelMode: (modelType: string, familyId: string) => any
   normalizeStudioImageWorkflow: (value: unknown) => any
   normalizeStudioVideoWorkflow: (value: unknown, model?: any) => any
-  isOmniVideoModel: (modelType?: string | null) => boolean
+  isOmniVideoModel: StudioModelDependencies['_isOmniVideoModel']
   captureVideoSubModeStash: (state: any) => any
-  sfxModelTypes: readonly string[]
-  isMusicModelType: (modelType?: string | null) => boolean
+  sfxModelTypes: StudioModelDependencies['sfxModelTypes']
+  isMusicModelType: (modelType: string) => boolean
   findResolutionSelection: (model: any, res: any, currentAspect?: any, currentFps?: any) => any
   defaultRecastMapping: any
 }

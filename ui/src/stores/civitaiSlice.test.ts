@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createCivitAISlice } from './civitaiSlice'
 import * as api from '../api/client'
+import type { AppState } from './useStore'
 
 vi.mock('../api/client', () => ({
   searchCivitAI: vi.fn(),
@@ -19,7 +20,7 @@ describe('civitaiSlice', () => {
       state = { ...state, ...patch }
     }
   })
-  const get = vi.fn(() => state)
+  const get = vi.fn(() => state as unknown as AppState)
 
   beforeEach(() => {
     state = {

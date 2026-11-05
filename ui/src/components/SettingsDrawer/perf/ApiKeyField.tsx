@@ -9,13 +9,13 @@ import { useState } from 'react'
  *  pure controlled field. */
 export function ApiKeyField({
   label,
-  maskedValue,
-  isSet,
+  maskedValue = '',
+  isSet = false,
   onSave,
 }: {
   label: string
-  maskedValue: string
-  isSet: boolean
+  maskedValue?: string
+  isSet?: boolean
   onSave: (value: string) => void
 }) {
   const [editing, setEditing] = useState(false)

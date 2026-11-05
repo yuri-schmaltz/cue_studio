@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createDirectorPlanningSlice, DIRECTOR_NEGATIVE_PROMPT_DEBOUNCE_MS } from './directorPlanningSlice'
+import { createDirectorPlanningSlice } from './directorPlanningSlice'
 import * as api from '../api/client'
 
 describe('directorPlanningSlice', () => {

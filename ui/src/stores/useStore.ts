@@ -4,7 +4,6 @@ import { createStudioModelSlice } from './studioModelSlice'
 import { studioModelRuntime } from './studioModelRuntime'
 import { createStudioModeSlice } from './studioModeSlice'
 import { createDirectorFinishingSlice } from './directorFinishingSlice'
-import { trackAnalysisProgress } from './analysisProgress'
 import type { SceneSlot } from '../lib/directorTimeline'
 import { create } from 'zustand'
 import { reorderWindowPrompts } from '../lib/reorderWindowPrompts'
@@ -32,9 +31,9 @@ import { createDirectorQueueSlice } from './directorQueueSlice'
 import { createDirectorPreflightSlice } from './directorPreflightSlice'
 import { createRecipesSlice } from './recipesSlice'
 import { createCivitAISlice } from './civitaiSlice'
-import { createMediaOutputsSlice, computeFilteredOutputs } from './mediaOutputsSlice'
+import { createMediaOutputsSlice } from './mediaOutputsSlice'
 import { createShortFilmSlice } from './shortFilmSlice'
-import { createDirectorPlanningSlice, DIRECTOR_NEGATIVE_PROMPT_DEBOUNCE_MS, DIRECTOR_PIPELINE_ACTIVE } from './directorPlanningSlice'
+import { createDirectorPlanningSlice, DIRECTOR_PIPELINE_ACTIVE } from './directorPlanningSlice'
 import {
   loadModeSettings as _loadSettings,
   persistStickyStudioPreferences,
@@ -46,13 +45,11 @@ import {
   directorAssetItem as _directorAssetItem,
   directorLoraState as _directorLoraState,
   directorServePath as _directorServePath,
-  downloadNeedsPolling as _downloadNeedsPolling,
   normalizeSlidingWindowOverlap as _normalizeSlidingWindowOverlap,
   record as _record,
   restoreModeParams as _restoreModeParams,
   snapshotModeParams as _snapshotModeParams,
   stringArray as _stringArray,
-  waitForDownloadPoll as _waitForDownloadPoll,
 } from './utils'
 
 let _directorAnalysisSequence = 0
@@ -3073,7 +3070,7 @@ export const useStore = create<AppState>((set, get, store) => ({
   },
 
   // ── Recipes (one-click Studio presets) ────────────────────────────
-  ...createRecipesSlice(set, get, store),
+  ...createRecipesSlice(set, get, store, { getModelMode }),
   loadDirectorFromPipeline: async (pid) => {
     // An explicit Open & Edit owns the Director UI. Prevent a slower startup
     // reconnection from replacing this project after its fetch completes.
@@ -4948,7 +4945,6 @@ export const useStore = create<AppState>((set, get, store) => ({
   // Project-scoped "things to avoid" derived once per project from the
   // scene description. Empty until directorGenerateNegativePrompt runs
   // (auto-fired when the scene description is committed).
-  directorNegativePrompt: '',
   directorLoading: false,
   directorLoadingMessage: null,
   directorError: null,
@@ -5007,28 +5003,6 @@ export const useStore = create<AppState>((set, get, store) => ({
   directorShotImageGuidance: 'auto' as DirectorShotImageGuidance,
   directorLlmLog: [],
   directorSkill: null,
-  directorMusicSource: null,
-  directorMusicModel: 'ace_step_v1_5_xl_sft_lm_4b',
-  directorAdvancedDefaults: {},
-  directorSongDescription: '',
-  directorSongInstrumental: false,
-  directorSongStyle: '',
-  directorSongLyrics: '',
-  directorSongDuration: 120,
-  directorTrackGenerating: false,
-  setDirectorMusicSource: (s) => set({ directorMusicSource: s }),
-  setDirectorMusicModel: (modelType) => set({
-    directorMusicModel: modelType,
-    // The two model families use different caption contracts. Never retain a
-    // hidden song plan written for the previously selected generator.
-    directorSongStyle: '',
-    directorSongLyrics: '',
-  }),
-  setDirectorSongDescription: (v) => set({ directorSongDescription: v }),
-  setDirectorSongInstrumental: (v) => set({ directorSongInstrumental: v }),
-  setDirectorSongStyle: (v) => set({ directorSongStyle: v }),
-  setDirectorSongLyrics: (v) => set({ directorSongLyrics: v }),
-  setDirectorSongDuration: (v) => set({ directorSongDuration: v }),
   directorResolution: '720p' as ResolutionPreset,
   directorAspectRatio: '16:9' as AspectRatio,
   directorVideoInferenceStepsByModel: {},
@@ -5039,10 +5013,6 @@ export const useStore = create<AppState>((set, get, store) => ({
   directorH3FirstBlockCacheByModel: {},
   directorH3FirstBlockCacheMultiplierByModel: {},
   directorH3FirstBlockCacheWarmupByModel: {},
-  shortFilmCharacters: [],
-  shortFilmPath: null,
-  shortFilmTargetDuration: 30,
-  shortFilmNarrative: false,
   llmStreamText: '',
   llmStreamDone: true,
   directorActivityLabel: 'Idle',

@@ -76,13 +76,14 @@ function structureSourceArgs(state: {
 async function planStructure(state: {
   directorAnalysis: import('../types').AudioAnalysisResult | null
   directorEnergyBias: number
-  modelOptions?: { fps?: number; frames_steps?: number; frames_minimum?: number }
+  modelOptions?: { fps?: number; frames_steps?: number; frames_minimum?: number } | null
   selectedModelPerMode: { video?: string }
   directorStructureSource: 'audio' | 'script'
   directorScriptGranularity: 'scene' | 'beat'
   directorSceneDescription: string
   directorScriptWindow: { start: number; end: number } | null
 }): Promise<{ clips: import('../types').PlannedClip[]; source?: 'audio' | 'script' }> {
+  if (!state.directorAnalysis) throw new Error('Audio analysis is required before planning clips')
   return api.planClipStructure({
     analysis: state.directorAnalysis,
     energy_bias: state.directorEnergyBias,
@@ -175,7 +176,7 @@ export type DirectorPlanningSlice = {
 export type DirectorPlanningDeps = {
   startDirectLlmStreamPolling: (set: any, get: any) => () => void
   directorUsesGeneratedShotImages: (state: AppState) => boolean
-  resolveResolution: (options: any, preset: string, aspectRatio: string) => string
+  resolveResolution: (options: import('../types').ModelOptions | null, preset: import('../types').ResolutionPreset, aspectRatio: import('../types').AspectRatio) => string
   normalizeH3ClipFrameSchedule: (frames: number[], min: number, max: number, step: number) => number[]
   getAnalysisSequence: () => number
   bumpAnalysisSequence: () => number
@@ -909,7 +910,7 @@ export const createDirectorPlanningSlice = (
           },
         }, { signal: planController.signal })
         if (result.pipeline_id) {
-          const attachToken = deps.bumpPipelineAttachToken()
+          deps.bumpPipelineAttachToken()
           void api.fetchPipelineStatus(result.pipeline_id).then(status => {
             const active = DIRECTOR_PIPELINE_ACTIVE.has(status.status)
             set(state => ({

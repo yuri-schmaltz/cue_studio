@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createRecipesSlice } from './recipesSlice'
 import * as api from '../api/client'
+import type { AppState } from './useStore'
 
 vi.mock('../api/client', () => ({
   fetchRecipes: vi.fn(),
@@ -19,9 +20,9 @@ describe('recipesSlice', () => {
       state = { ...state, ...patch }
     }
   })
-  const get = vi.fn(() => state)
+  const get = vi.fn(() => state as unknown as AppState)
   const deps = {
-    getModelMode: vi.fn((modelType, family) => 'video' as const),
+    getModelMode: vi.fn(() => 'video' as const),
   }
 
   beforeEach(() => {

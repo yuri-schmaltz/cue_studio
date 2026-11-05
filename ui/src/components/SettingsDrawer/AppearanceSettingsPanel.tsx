@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Palette } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { FAMILIES, resolveVariant, onOsThemeChange, type FamilyId, type ThemeMode } from '../../lib/theme'
 

@@ -28,7 +28,7 @@ function createTestStore() {
     normalizeStudioVideoWorkflow: vi.fn(),
     isOmniVideoModel: vi.fn(),
     captureVideoSubModeStash: vi.fn(),
-    sfxModelTypes: [],
+    sfxModelTypes: new Set<string>(),
     isMusicModelType: vi.fn(),
     findResolutionSelection: vi.fn(),
     defaultRecastMapping: {},
@@ -93,7 +93,7 @@ describe('mediaOutputsSlice', () => {
   })
 
   it('toggles favorite on an item', async () => {
-    vi.mocked(api.toggleFavorite).mockResolvedValue({ favorite: true })
+    vi.mocked(api.toggleFavorite).mockResolvedValue({ name: 'video1.mp4', favorite: true })
     const store = createTestStore()
     store.setState({ outputs: mockOutputs })
 

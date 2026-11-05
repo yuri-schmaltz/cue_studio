@@ -17,7 +17,6 @@ import * as api from '../api/client'
 function createTestStore() {
   let sequence = 0
   let controller: AbortController | null = null
-  let stopPoll: (() => void) | null = null
 
   const deps = {
     startDirectLlmStreamPolling: vi.fn(() => vi.fn()),
@@ -26,7 +25,7 @@ function createTestStore() {
     bumpAnalysisSequence: () => ++sequence,
     setAnalyzeController: (ctrl: AbortController | null) => { controller = ctrl },
     getAnalyzeController: () => controller,
-    setAnalyzeStopPoll: (fn: (() => void) | null) => { stopPoll = fn },
+    setAnalyzeStopPoll: vi.fn(),
   }
 
   return create<ShortFilmSlice & {

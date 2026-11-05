@@ -968,8 +968,8 @@ export function AdvancedSettings() {
               {/* Stage 2 Steps */}
               {/* Pipeline Mode Toggle — distilled LTX models only */}
               {!isScailEdit
-                && modelOptions?.lock_inference_steps
-                && String(modelOptions.architecture || '').toLowerCase().startsWith('ltx2')
+                && Boolean(modelOptions?.lock_inference_steps)
+                && String(modelOptions?.architecture || '').toLowerCase().startsWith('ltx2')
                 && (
                 <div className="space-y-3">
                   {/* Single / 2-Stage / 3-Stage segmented control — mutually exclusive */}
@@ -1124,7 +1124,7 @@ export function AdvancedSettings() {
                   2.0/1.5 then off, STG on blocks 14+19 for the first 4
                   steps, RF euler_ancestral). Shown only for models whose
                   def declares reference_pipeline support. */}
-              {!isScailEdit && (modelOptions as Record<string, unknown> | null)?.reference_pipeline && (
+              {!isScailEdit && Boolean((modelOptions as Record<string, unknown> | null)?.reference_pipeline) && (
                 <div className="space-y-1">
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input type="checkbox"
@@ -1211,7 +1211,7 @@ export function AdvancedSettings() {
               )}
 
               {/* LTX-2 Dev Pipeline Controls — only for models with perturbation/CFG-Star support */}
-              {!isScailEdit && (modelOptions as Record<string, unknown> | null)?.perturbation && (
+              {!isScailEdit && Boolean((modelOptions as Record<string, unknown> | null)?.perturbation) && (
                 <>
                   {/* STG Scale */}
                   <div>

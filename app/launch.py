@@ -29234,7 +29234,7 @@ if os.path.isfile(_cue_studio_web_icon):
             headers=_icon_cache_headers,
         )
 
-_ui_dist = os.path.normpath(os.path.join(_app_dir, "..", "ui", "dist"))
+_ui_dist = os.path.normpath(os.environ.get("CUE_UI_DIST") or os.path.join(_app_dir, "..", "ui", "dist"))
 if os.path.isdir(_ui_dist):
     from starlette.exceptions import HTTPException as _StarletteHTTPException
 

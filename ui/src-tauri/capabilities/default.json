@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop-bootstrap",
+  "description": "Local bootstrap window only. The HTTP AI interface receives no native IPC privileges.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

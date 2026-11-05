@@ -1,4 +1,3 @@
-import { Cable } from 'lucide-react'
 import { useStore } from '../../stores/useStore'
 import { ApiKeyField } from './perf/ApiKeyField'
 import { ModelVisibilitySection } from './models/ModelVisibilitySection'

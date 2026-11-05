@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
+import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -14,6 +15,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     server: {
       port: 3000,
+      strictPort: true,
       proxy: {
         '/api': `http://127.0.0.1:${backendPort}`,
       },
@@ -28,6 +30,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       emptyOutDir: true,
       rollupOptions: {
+        input: { main: resolve(process.cwd(), 'index.html'), desktop: resolve(process.cwd(), 'desktop.html') },
         onwarn(warning, warn) {
           if (warning.code === 'CIRCULAR_CHUNK' || warning.code === 'CYCLIC_CROSS_CHUNK_REEXPORT') {
             throw new Error(warning.message)

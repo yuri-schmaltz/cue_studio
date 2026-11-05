@@ -119,9 +119,9 @@ export function StudioPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <StudioTabs
-        activeTab={activeTab}
+        activeTab={mobileTab}
         onTabChange={handleTabChange}
-        hasPendingResult={Boolean(pendingResult && activeTab === 'controls')}
+        hasPendingResult={Boolean(pendingResult && mobileTab === 'controls')}
       />
 
       <div className="flex min-h-0 flex-1">

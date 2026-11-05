@@ -19,7 +19,7 @@ vi.mock('../api/client', () => ({
   fetchOutputs: vi.fn(async () => ({ outputs: [], total: 0 })),
   fetchSavedPipeline: vi.fn(),
   probeEditorMedia: vi.fn(),
-  listEditorProjects: vi.fn(async () => ({ projects: [] })),
+  fetchEditorProjects: vi.fn(async () => ({ projects: [] })),
 }))
 
 import { useEditorStore } from './useEditorStore'
@@ -81,7 +81,7 @@ describe('openDirectorRunInEditor', () => {
 
   it('reports the error instead of failing silently', async () => {
     ;(api.createEditorProject as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('disk full'))
-    ;(api.listEditorProjects as ReturnType<typeof vi.fn>).mockResolvedValue({ projects: [] })
+    ;(api.fetchEditorProjects as ReturnType<typeof vi.fn>).mockResolvedValue({ projects: [] })
 
     const ok = await useEditorStore.getState().openDirectorRunInEditor('pipe-3')
 
