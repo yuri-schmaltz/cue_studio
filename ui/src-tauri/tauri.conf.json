@@ -13,5 +13,5 @@
     "windows": [{"label":"main","create":false,"title":"Cue Studio","width":1440,"height":960,"minWidth":900,"minHeight":640,"url":"desktop.html"}],
     "security": {"csp":"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data:"}
   },
-  "bundle": {"active":true,"targets":["deb","appimage"],"icon":["icons/icon.png"],"linux":{"deb":{"depends":["python3","python3-venv","build-essential","git","libportaudio2","libsndfile1","ffmpeg","libgl1"]}},"resources":{"runtime/":"runtime/","web/":"web/"}}
+  "bundle": {"active":true,"targets":["deb","appimage"],"icon":["icons/icon.png"],"linux":{"appimage":{"bundleMediaFramework":true},"deb":{"depends":["python3","python3-venv","build-essential","git","libportaudio2","libsndfile1","ffmpeg","libgl1","gstreamer1.0-plugins-good","gstreamer1.0-libav"]}},"resources":{"runtime/":"runtime/","web/":"web/"}}
 }

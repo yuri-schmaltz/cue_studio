@@ -1,4 +1,13 @@
 use std::path::Path;
+use std::process::Command;
+
+/// GTK AppRun hooks export paths for their own tools, not our AI interpreter.
+pub fn isolate_python(command: &mut Command) {
+    command
+        .env_remove("PYTHONHOME")
+        .env_remove("PYTHONPATH")
+        .env("PYTHONNOUSERSITE", "1");
+}
 
 /// Never boot a partial environment or one installed for an older packaged lock.
 pub fn managed_ready(data: &Path, packaged_app: &Path) -> bool {
@@ -28,6 +37,24 @@ pub fn managed_ready(data: &Path, packaged_app: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn packaged_launcher_paths_do_not_replace_python_standard_library() {
+        let mut command = Command::new("python3");
+        command
+            .env("PYTHONHOME", "/missing-appimage-python")
+            .env("PYTHONPATH", "/missing-appimage-pyshared");
+        isolate_python(&mut command);
+        let output = command
+            .args(["-c", "import encodings; print('stdlib-ok')"])
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "stdlib-ok");
+    }
     #[test]
     fn upgraded_locks_and_partial_installations_require_setup() {
         let root = tempfile::tempdir().unwrap();

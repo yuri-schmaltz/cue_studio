@@ -1,0 +1,274 @@
+{
+  "date": "2026-11-05",
+  "scope": "Linux desktop; item 5 limited to AppImage; Windows/macOS excluded",
+  "artifacts": [
+    {
+      "path": "ui/src-tauri/target/release/bundle/deb/Cue Studio_2.5.2_amd64.deb",
+      "bytes": 14670842,
+      "sha256": "3b0827c8dcfc67525a676721570a33c6ad9bc34318279e83844023cc34ac79cc"
+    },
+    {
+      "path": "ui/src-tauri/target/release/bundle/appimage/Cue Studio_2.5.2_amd64.AppImage",
+      "bytes": 179628536,
+      "sha256": "46027582de011ba69bba7e48b80f2ef371955a3843069cb006f7c9062e4c16c5"
+    }
+  ],
+  "sourceSha256": {
+    "app/runtime_bootstrap.py": "3cf8c656310988d1b9998fbdfaf30cc1b11595da6098664cea97863265a0143b",
+    "app/runtime_manifest.json": "8812ae361f69831d5dd813b47024d2e5c579dedaa468f487c7af5df206be39af",
+    "app/desktop_worker.py": "4075615ae648e3191df3bf584964aafb858ffcea22c582a88b538925828d4f07",
+    "app/desktop_import.py": "7d9a990206dd8016a8f61cfbc3f7a62ff2e5bf8ff47db5d3a464b3184262889d",
+    "ui/src-tauri/src/main.rs": "7c799aa4e949c69968d7f9e2fda4d7faa462d01f3cf6b900e86540155f9e14c2",
+    "ui/src-tauri/src/runtime.rs": "6ac09271cd5e2bb6e7b4c7c0d4464a0e5caf7f3ae6bbc242f7ad8bd5fa97a5cb",
+    "ui/src-tauri/src/supervisor.rs": "cee46ff047a6d0e01304c802ce61495dd7f2ab6203ee1889fa6752fe368b6e77",
+    "ui/src-tauri/src/window.rs": "695e227124f3ffabd6702e6005dad91b70128edf6c1772c14d0af0c9881999db",
+    "ui/src-tauri/Cargo.lock": "2fd83f8732ba74c8ac2f6f704be103262ae92733f3dacec7e26c4763a586af91",
+    "ui/src-tauri/tauri.conf.json": "b7edda27f71530c96f590778e35aed7c00a058bf7b00cba7f33c76225b3a5b57",
+    "ui/scripts/prepare-desktop-runtime.mjs": "9b6f8d7c1cda891b53b566ddbfd1d967e11ca53ee11c96d0a8ff34dcb6b3fc6d"
+  },
+  "cleanDebianInstall": {
+    "binary": "/usr/bin/cue-studio-desktop",
+    "dataDir": "/home/ubuntu/cue-media-final",
+    "runtimeInstalledFromUI": {
+      "runtimeVersion": "2.5.2",
+      "profile": "E0",
+      "python": "/home/ubuntu/cue-media-final/runtime/env/bin/python",
+      "requirementsSha256": "fe81353856cac42dbf5dd5b28902f96f0a76310fd47399224e28965a140d094f",
+      "lockSha256": "b1cce849d7bbdc181bd48a3447497c7e47518f4e48821499cd07b5eb88a11af5"
+    },
+    "studioVisible": true,
+    "controlsVisible": true,
+    "unauthenticatedStatus": 401,
+    "foreignOriginStatus": 403,
+    "workerPid": 1869,
+    "externalNavigationVerified": true,
+    "singleInstanceVerified": true,
+    "videoPlayback": {
+      "height": 512,
+      "error": null,
+      "width": 512,
+      "ready": 2
+    },
+    "shutdownMode": "terminate owned WebDriver/host process group after session deletion",
+    "workerStoppedAfterExit": true
+  },
+  "appImageGpuNativeFuse": {
+    "binary": "/home/yurix/Documentos/cue_studio/ui/src-tauri/target/release/bundle/appimage/Cue Studio_2.5.2_amd64.AppImage",
+    "dataDir": "/home/yurix/Documentos/cue_studio/app/.cache/desktop-validation05",
+    "importedProjectVisible": "desktop-import-check",
+    "studioVisible": true,
+    "controlsVisible": true,
+    "unauthenticatedStatus": 401,
+    "foreignOriginStatus": 403,
+    "workerPid": 3557894,
+    "externalNavigationVerified": true,
+    "singleInstanceVerified": true,
+    "generation": {
+      "client_submission_id": null,
+      "eta_confidence": "medium",
+      "step": 0,
+      "eta_history_match": "exact",
+      "h3_window_plan": null,
+      "current_window": 1,
+      "message": "Done",
+      "eta_basis": "historical",
+      "progress": 100,
+      "eta_updated_at": 1793897385.6689935,
+      "status": "completed",
+      "project_eta_seconds": 0,
+      "kind": "generation",
+      "clip_completion_at": 1793897385.6689935,
+      "ltx_window_plan": null,
+      "phase": "",
+      "window_completion_at": 1793897394.6689935,
+      "window_eta_seconds": 7,
+      "show_in_gallery": true,
+      "clip_estimates": [
+        {
+          "status": "completed",
+          "seconds": 11,
+          "clip": 1
+        }
+      ],
+      "generation_eta_seconds": 0,
+      "generation_completion_at": 1793897385.6689935,
+      "project_completion_at": 1793897385.6689935,
+      "current_clip": 1,
+      "job_id": "5b4ee9f4",
+      "output_files": [
+        "2026-11-05-13h49m44s_seed42_A small terracotta cup on a wooden table, soft daylight, still life photograph.mp4"
+      ],
+      "total_clips": 1,
+      "eta_history_samples": 3,
+      "clip_eta_seconds": 0,
+      "total_windows": 1,
+      "error": null,
+      "oom_info": null,
+      "total_steps": 0
+    },
+    "videoPlayback": {
+      "height": 512,
+      "error": null,
+      "width": 512,
+      "ready": 3
+    },
+    "shutdownMode": "terminate owned WebDriver/host process group after session deletion",
+    "workerStoppedAfterExit": true
+  },
+  "appImageCpuExtractAndRun": {
+    "binary": "/validation/CueStudio.AppImage",
+    "dataDir": "/home/ubuntu/cue-appimage-complete",
+    "studioVisible": true,
+    "controlsVisible": true,
+    "unauthenticatedStatus": 401,
+    "foreignOriginStatus": 403,
+    "workerPid": 2368,
+    "externalNavigationVerified": true,
+    "singleInstanceVerified": true,
+    "videoPlayback": {
+      "height": 512,
+      "error": null,
+      "width": 512,
+      "ready": 2
+    },
+    "shutdownMode": "terminate owned WebDriver/host process group after session deletion",
+    "workerStoppedAfterExit": true
+  },
+  "appImageFirstUse": {
+    "binary": "/validation/CueStudio.AppImage",
+    "dataDir": "/validation/app/.cache/cue-desktop-smoke-exd7kt33",
+    "setupScreenVisible": true,
+    "shutdownMode": "terminate owned WebDriver/host process group after session deletion"
+  },
+  "gpuRuntime": {
+    "runtimeVersion": "2.5.2",
+    "profile": "E3",
+    "python": "/home/yurix/Documentos/cue_studio/app/.cache/desktop-clean-runtime05/env/bin/python",
+    "requirementsSha256": "fe81353856cac42dbf5dd5b28902f96f0a76310fd47399224e28965a140d094f",
+    "lockSha256": "d4ede8eda85b74d22caee4ca96e1e9a1f613fe40f835629f9d1a92ddbf657b7a"
+  },
+  "generationRequest": {
+    "model_type": "flux2_klein_9b",
+    "prompt": "A small terracotta cup on a wooden table, soft daylight, still life photograph",
+    "resolution": "512x512",
+    "num_inference_steps": 4,
+    "guidance_scale": 1,
+    "seed": 42,
+    "video_length": 1,
+    "batch_size": 1
+  },
+  "generatedMedia": {
+    "path": "app/.cache/desktop-legacy-fixture/projects/2026-11-05-13h49m44s_seed42_A small terracotta cup on a wooden table, soft daylight, still life photograph.mp4",
+    "sha256": "f00b277dffddc55de19bafcc8f004891c689c6fa3a618798f006ba22abe6b57c",
+    "width": 512,
+    "height": 512,
+    "pixelStandardDeviation": 53.47
+  },
+  "lockInstallations": {
+    "E0": {
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "versions": {
+        "torch": "2.10.0+cpu",
+        "packages": 289
+      },
+      "lock": "app/locks/E0.cpu-only.txt"
+    },
+    "E1": {
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "versions": {
+        "torch": "2.10.0+cu130",
+        "packages": 307
+      },
+      "lock": "app/locks/E1.4gb-3050.txt"
+    },
+    "E2": {
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "versions": {
+        "torch": "2.10.0+cu130",
+        "packages": 307
+      },
+      "lock": "app/locks/E2.6-8gb.txt"
+    },
+    "E3": {
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "versions": {
+        "torch": "2.10.0+cu130",
+        "packages": 307
+      },
+      "lock": "app/locks/E3.cuda130-py311.txt"
+    },
+    "E4": {
+      "strict_hash_install": "passed",
+      "dependency_check": "passed",
+      "runtime_imports": "passed",
+      "versions": {
+        "torch": "2.10.0+cu130",
+        "packages": 307
+      },
+      "lock": "app/locks/E4.16-24gb.txt"
+    }
+  },
+  "gates": {
+    "uiTests": 343,
+    "uiTestFiles": 52,
+    "desktopPythonTests": 10,
+    "rustTests": 6,
+    "lint": "passed",
+    "storeGauntlet": "passed",
+    "controlGauntlet": "passed",
+    "bundleBudget": "35 chunks; largest 192276 / 220000 bytes",
+    "runtimeLocks": "E0-E4 passed"
+  },
+  "environment": {
+    "cleanOS": "Ubuntu 24.04 isolated container, no host checkout mounts, PID 1 init enabled",
+    "gpu": "NVIDIA RTX 3060 12 GB; PyTorch 2.10.0+cu130; managed private E3 environment",
+    "appImageMediaFramework": true,
+    "gstreamerPlugins": 274
+  },
+  "limitations": [
+    "GitHub Actions workflow is implemented and checked locally; no remote run or push was performed.",
+    "License review is recorded in docs/desktop-license-review.md; existing non-commercial terms and third-party terms remain applicable.",
+    "Shutdown smoke terminates the owned host process group; orderly supervisor cleanup is separately covered by Rust tests."
+  ],
+  "debianPayloadVerification": {
+    "installedArchiveSha256": "5edbe264f992d4460f22cf40c552a415f98417d2acb3c2939337431ff8b77a39",
+    "finalArchiveSha256": "3b0827c8dcfc67525a676721570a33c6ad9bc34318279e83844023cc34ac79cc",
+    "regularFilesAndLinks": 2043,
+    "allPayloadContentAndControlFieldsIdentical": true,
+    "note": "Archive metadata may differ between repeated builds; installed payload and package control are byte-identical."
+  },
+  "ciMediaFixturePlayback": {
+    "receipt": {
+      "binary": "/validation/CueStudio.AppImage",
+      "dataDir": "/home/ubuntu/cue-appimage-complete",
+      "studioVisible": true,
+      "controlsVisible": true,
+      "unauthenticatedStatus": 401,
+      "foreignOriginStatus": 403,
+      "workerPid": 3743,
+      "externalNavigationVerified": true,
+      "singleInstanceVerified": true,
+      "videoPlayback": {
+        "height": 64,
+        "error": null,
+        "width": 64,
+        "ready": 4
+      },
+      "shutdownMode": "terminate owned WebDriver/host process group after session deletion",
+      "workerStoppedAfterExit": true
+    },
+    "codecs": [
+      "h264",
+      "aac"
+    ],
+    "scope": "Synthetic FFmpeg fixture validates media playback only; real GPU inference has its own separate receipt."
+  }
+}

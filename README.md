@@ -89,6 +89,12 @@ what the automated checks prove and how to run real-model acceptance.
 For the verified installation, required Node version, strict hashed runtime lock,
 and remaining validation limits, see [installation verification](docs/INSTALLATION_VERIFICATION.md).
 
+The Linux desktop edition uses Rust/Tauri with a managed Python/PyTorch engine.
+See [desktop installation and verification](docs/desktop.md) for Debian and
+AppImage packages, first-use runtime installation, and workspace import.
+The [Linux release verification receipt](docs/desktop-release-verification-2026-11-05.json)
+records package hashes, clean installation, real GPU generation and video playback.
+
 The version you are running is shown next to the Cue Studio title in the UI. For standalone update commands, see [Updating](#updating).
 
 ### v2.0.1 (2026-09-04)

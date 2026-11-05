@@ -15,6 +15,9 @@ esses termos. Ambos os avisos são preservados nos recursos do pacote.
   subpastas; não inclui checkpoints ou ambientes Python preexistentes.
 - O AppImage usa a coleta de copyright do linuxdeploy habilitada. Essa
   coleta consulta dpkg para bibliotecas do sistema e pode levar minutos.
+- O framework GStreamer e os plugins presentes no build são incluídos para
+  reprodução de mídia. Seus avisos de copyright acompanham o pacote; libav e
+  plugins adicionais podem ter termos LGPL/GPL diferentes dos do host Rust.
 - Os wheels instalados no primeiro uso mantêm seus próprios arquivos de
   licença no ambiente privado. O rebuild Decord preserva os arquivos
   originais, inclusive licença, alterando apenas metadados de empacotamento.

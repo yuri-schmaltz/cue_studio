@@ -65,6 +65,7 @@ impl Backend {
         }
         let log = options.open(&log_path).map_err(|e| e.to_string())?;
         let mut command = Command::new(&config.python);
+        crate::runtime::isolate_python(&mut command);
         command
             .arg("-u")
             .arg(&worker)

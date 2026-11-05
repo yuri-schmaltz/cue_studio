@@ -164,15 +164,17 @@ fn import_existing_workspace(app: tauri::AppHandle, state: State) {
                 .unwrap_or_else(|| desktop.resources.join("runtime"));
             (root.join("app/desktop_import.py"), desktop.data.clone())
         };
-        let result = Command::new(
+        let mut importer = Command::new(
             std::env::var_os("CUE_DESKTOP_BOOTSTRAP_PYTHON").unwrap_or_else(|| "python3".into()),
-        )
-        .arg(script)
-        .arg("--source")
-        .arg(source)
-        .arg("--data")
-        .arg(data)
-        .output();
+        );
+        crate::runtime::isolate_python(&mut importer);
+        let result = importer
+            .arg(script)
+            .arg("--source")
+            .arg(source)
+            .arg("--data")
+            .arg(data)
+            .output();
         let message = match result {
             Ok(output) if output.status.success() => "Workspace imported. Existing model and media files remain in their original locations.".to_string(),
             Ok(output) => format!("Import failed: {}", String::from_utf8_lossy(&output.stderr).lines().last().unwrap_or("unknown error")),
@@ -246,6 +248,7 @@ fn desktop_install_runtime(
             .and_then(|log| {
                 let stderr = log.try_clone().map_err(|e| e.to_string())?;
                 let mut installer = Command::new(&python);
+                crate::runtime::isolate_python(&mut installer);
                 #[cfg(unix)]
                 {
                     use std::os::unix::process::CommandExt;

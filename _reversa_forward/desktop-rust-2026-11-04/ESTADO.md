@@ -1,4 +1,4 @@
-# Cue Studio Desktop/Rust — objetivo ativo, 04/11/2026
+# Cue Studio Desktop/Rust — fechamento Linux, 05/11/2026
 
 ## Escopo autorizado e critérios de conclusão
 
@@ -17,7 +17,7 @@ Base main/8fa2a98. Sem mudanças de código no início; só relatório de reaná
 - app/desktop_worker.py: inicialização isolada, diretórios OS/app data, cookie HttpOnly/SameSiteStrict após bootstrap privado, rejeição de Origin externo, token do supervisor e logs sem URL com segredo. Mantém API/mídia no mesmo origin; nenhuma permissão IPC nativa é concedida à UI HTTP.
 - launch.py aceita CUE_UI_DIST mantendo o caminho web existente como default. Não reiniciar/encerrar o backend preexistente7860/PID130818 nem outros modelos do usuário.
 - Correções dos71diagnósticos TypeScript: variáveis Studio, defaults de props, valores unknown usados como condições JSX, contratos dos slices, construtor recipes, inicializadores duplicados, fixtures/tipos Node. Sem desabilitar strict/typecheck/budget. Manter os testes anteriores do aplicativo.
-- Staging em ui/scripts/prepare-desktop-runtime.mjs copia código e assets, sem pesos, virtualenvs ou dados do usuário. **Instalação Python gerenciada e pacote final ainda pendentes**; o seletor de runtime existente é transição, não conclusão do objetivo.
+- Staging em ui/scripts/prepare-desktop-runtime.mjs copia código e assets, sem pesos, virtualenvs ou dados do usuário. A instalação gerenciada foi acrescentada em `app/runtime_bootstrap.py`; a homologação atual consta no fechamento abaixo.
 
 ## Evidência já concluída
 
@@ -25,7 +25,7 @@ Base main/8fa2a98. Sem mudanças de código no início; só relatório de reaná
 - `/tmp/cue-desktop-worker-tests.log`:5pytest aprovados; autenticação, cookie, Origin, status, Range.
 - `/tmp/cue-desktop-rust-tests.log`:3testes Rust aprovados (handshake real com worker HTTP de fixture, identidade incorreta e saída antecipada), mais doctests vazios.
 - `/tmp/cue-desktop-rust-native.log`:cargo check nativo GTK/WebKit concluído. Não prova janela aberta.
-- `/tmp/cue-desktop-native-build.log`:build do binário real em andamento; conferir sessão/processo atual. Primeira chamada compilava com frontend ainda em staging; após frontend preparado refazer incrementalmente para garantir assets atuais.
+- O build do binário nativo foi concluído e validado com janela real; a primeira compilação ocorreu antes do staging definitivo e foi substituída pelos builds release posteriores.
 
 ## Ferramentas e verificação nativa
 
@@ -42,9 +42,12 @@ Base main/8fa2a98. Sem mudanças de código no início; só relatório de reaná
 - O `.deb` foi extraído em diretório temporário sem checkout/runtime de desenvolvimento; o binário release abriu a tela de primeiro uso e mostrou `Install AI runtime` (`CUE_DESKTOP_EXPECT_SETUP=1`). A listagem do pacote não contém pesos (`.safetensors`, `.pth`, `.pt`, `.gguf`, `.bin`) nem `env/`.
 - O smoke limpo do `.deb` abriu a tela de primeiro uso sem checkout, `app/env` ou runtime injetado (`setupScreenVisible: true`). A suíte UI completa passou com 52 arquivos e 343 testes; pytest do worker passou com 5 testes; Rust passou com 3 testes. `docs/desktop.md` documenta desenvolvimento, instalação e gates. O smoke não toca o backend web pré-existente nem carrega modelos.
 
-## Próximos passos
+## Fechamento da continuação — 05/11/2026
 
-1. Validar o `.deb` em uma máquina Linux limpa, sem checkout ou `app/env`, incluindo a instalação do runtime e a primeira inicialização.
-2. Acrescentar integração de configurações/projetos existentes, single instance, política de navegação externa e job objects equivalentes no Windows antes de declarar suporte multiplataforma.
-3. Resolver a execução do AppImage neste ambiente ou restringir explicitamente o release Linux ao `.deb`; não afirmar AppImage homologado.
-4. Regenerar os locks de dependências com um resolvedor disponível (a verificação atual detecta drift de hash em `app/requirements.txt`; não foi mascarado regravando hashes manualmente), além de revisar licenças e CI.
+Escopo solicitado: prosseguir com os cinco itens restantes, tratando apenas AppImage no item 5. Windows/macOS não fazem parte desta entrega.
+
+1. **Instalação limpa:** `.deb` instalado em Ubuntu 24.04 isolado, sem mounts do checkout ou `app/env`. Instalação acionada pela interface, 289 pacotes CPU com hashes, Studio visível, 401/403, instância única, links externos, vídeo 512×512 decodificado e encerramento aprovados. O contêiner usa init para recolher filhos encerrados pelo WebDriver. O payload e os campos de controle do `.deb` final são idênticos aos do pacote instalado e testado; recibo em `docs/desktop-release-verification-2026-11-05.json`.
+2. **Locks:** E0–E4 regenerados com uv 0.13.6, incluindo tensorboard/argbind e transitivas; cinco instalações independentes, checagem de dependências e imports aprovados. E0: 289 pacotes; E1–E4: 307. `verify_runtime_locks.py` aprovado; recibo em `app/locks/installation-evidence-2026-11-05.json`.
+3. **Experiência desktop:** instância única, política de navegação e popups externos, importação de configurações com backup e referência a projetos/modelos existentes. Projeto importado visível na janela real; modelos reutilizados na geração sem copiar pesos. O host verifica o marcador contra o lock do pacote e não inicia instalações incompletas ou de locks antigos. Instalador e motor possuem limpeza de processos; dez testes Python e seis Rust aprovados. O smoke encerra seu grupo de processos e verifica a parada do worker; a coleta ordenada pelo supervisor tem testes Rust separados.
+4. **Entrega:** workflow Linux com build dos dois pacotes, testes e smoke do runtime CPU/AppImage, incluindo fixture H264/AAC; inventários de licenças Python/Rust/JavaScript e revisão em `docs/desktop-license-review.md`. A execução remota do CI depende de push e não foi declarada aprovada. Implementação principal registrada em `24ec58a`; o commit de fechamento contém as correções e o recibo final com hashes de artefatos e fontes. UI: 343 testes, lint, gauntlets e orçamento de bundle aprovados.
+5. **AppImage:** homologado por FUSE no host com NVIDIA e por extração no Ubuntu isolado. AppRun injeta caminhos Python, agora isolados; a distribuição inclui o framework multimídia GStreamer e mantém a coleta de copyright. Instância única, 401/403, links/popups externos, importação, geração Flux 2 Klein 9B de quatro passos, decodificação do resultado 512×512 e encerramento aprovados. O teste com mídia existente na galeria também passou após incluir os plugins. AppImage final: aproximadamente 171 MiB; `.deb`: aproximadamente 14 MiB. Hashes e recibos completos: `docs/desktop-release-verification-2026-11-05.json`.

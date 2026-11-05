@@ -24,7 +24,7 @@ jobs:
       - name: Native desktop dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb ffmpeg libportaudio2 libsndfile1 libgl1
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb dbus-x11 ffmpeg libportaudio2 libsndfile1 libgl1 gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
       - name: Rust toolchain
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Desktop build and unit tests
@@ -45,11 +45,13 @@ jobs:
           WEBKIT_WEBDRIVER: /usr/bin/WebKitWebDriver
         run: |
           sudo apt-get install -y ./ui/src-tauri/target/release/bundle/deb/*.deb
-          xvfb-run -a python scripts/desktop-smoke.py
+          xvfb-run -a dbus-run-session -- python scripts/desktop-smoke.py
       - name: Locked CPU runtime installation
         run: |
           python app/runtime_bootstrap.py --app-dir /usr/lib/Cue\ Studio/runtime/app --runtime-dir "$RUNNER_TEMP/cue-data/runtime" --profile E0
-          python scripts/verify_runtime_locks.py
+          "$RUNNER_TEMP/cue-data/runtime/env/bin/python" scripts/verify_runtime_locks.py
+          mkdir -p "$RUNNER_TEMP/cue-data/projects"
+          ffmpeg -v error -f lavfi -i testsrc2=size=64x64:rate=24 -f lavfi -i sine=frequency=440:sample_rate=44100 -t 1 -pix_fmt yuv420p -c:v libx264 -c:a aac -shortest "$RUNNER_TEMP/cue-data/projects/desktop-smoke.mp4"
       - name: Installed runtime desktop smoke
         env:
           CUE_DESKTOP_BINARY: /usr/bin/cue-studio-desktop
@@ -58,7 +60,8 @@ jobs:
           CUE_DESKTOP_MANAGED_DATA: ${{ runner.temp }}/cue-data
           CUE_DESKTOP_TEST_SINGLE_INSTANCE: '1'
           CUE_DESKTOP_TEST_NAVIGATION: '1'
-        run: xvfb-run -a python scripts/desktop-smoke.py
+          CUE_DESKTOP_MEDIA_FILENAME: desktop-smoke.mp4
+        run: xvfb-run -a dbus-run-session -- python scripts/desktop-smoke.py
       - name: AppImage first-use smoke
         env:
           CUE_DESKTOP_EXPECT_SETUP: '1'
@@ -66,7 +69,18 @@ jobs:
           TAURI_DRIVER: /home/runner/.cargo/bin/tauri-driver
           WEBKIT_WEBDRIVER: /usr/bin/WebKitWebDriver
         run: |
-          CUE_DESKTOP_BINARY="$(find "$PWD/ui/src-tauri/target/release/bundle/appimage" -maxdepth 1 -name '*.AppImage' -print -quit)" xvfb-run -a python scripts/desktop-smoke.py
+          CUE_DESKTOP_BINARY="$(find "$PWD/ui/src-tauri/target/release/bundle/appimage" -maxdepth 1 -name '*.AppImage' -print -quit)" xvfb-run -a dbus-run-session -- python scripts/desktop-smoke.py
+      - name: AppImage installed runtime smoke
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          TAURI_DRIVER: /home/runner/.cargo/bin/tauri-driver
+          WEBKIT_WEBDRIVER: /usr/bin/WebKitWebDriver
+          CUE_DESKTOP_MANAGED_DATA: ${{ runner.temp }}/cue-data
+          CUE_DESKTOP_TEST_SINGLE_INSTANCE: '1'
+          CUE_DESKTOP_TEST_NAVIGATION: '1'
+          CUE_DESKTOP_MEDIA_FILENAME: desktop-smoke.mp4
+        run: |
+          CUE_DESKTOP_BINARY="$(find "$PWD/ui/src-tauri/target/release/bundle/appimage" -maxdepth 1 -name '*.AppImage' -print -quit)" xvfb-run -a dbus-run-session -- python scripts/desktop-smoke.py
       - uses: actions/upload-artifact@v4
         with:
           name: cue-studio-linux

@@ -12,6 +12,21 @@ As dependências incluem Python 3, venv, compilador C/C++, Git, FFmpeg, GTK e We
 O AppImage também precisa de Python 3/venv, Git e das bibliotecas de áudio/FFmpeg
 do sistema; ele não contém um ambiente Python pré-instalado.
 
+```bash
+chmod +x "Cue Studio_2.5.2_amd64.AppImage"
+"./Cue Studio_2.5.2_amd64.AppImage"
+```
+
+O lançador usa FUSE 2. Em ambientes sem FUSE, execute com
+`APPIMAGE_EXTRACT_AND_RUN=1`. O host remove os caminhos Python injetados pelo
+AppRun para que o motor, o instalador e utilitários externos usem suas próprias
+bibliotecas. A homologação desta entrega cobre Ubuntu 24.04 x86_64.
+
+O AppImage inclui o framework multimídia GStreamer (`bundleMediaFramework`),
+necessário para reproduzir os resultados na galeria. O `.deb` instala os
+plugins de reprodução e libav como dependências. Esse empacotamento segue a
+[orientação oficial do Tauri para áudio/vídeo](https://v2.tauri.app/distribute/appimage/#multimedia-support-via-gstreamer).
+
 Clique **Install AI runtime** no primeiro uso. O instalador:
 
 1. Cria ferramentas privadas com `uv==0.13.6` e obtém Python 3.11.
@@ -53,6 +68,13 @@ worker, sem encerrar outros servidores locais.
 
 Use Node 22.12+ e a toolchain de `ui/rust-toolchain.toml`:
 
+No ambiente de build Ubuntu, instale também `patchelf`,
+`libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`,
+`librsvg2-dev`, `gstreamer1.0-tools`, `gstreamer1.0-plugins-base`,
+`gstreamer1.0-plugins-good` e `gstreamer1.0-libav`. O plugin de empacotamento
+multimídia requer `patchelf` no PATH; a versão interna do linuxdeploy não
+substitui esse pré-requisito. O workflow contém a instalação completa.
+
 ```bash
 cd ui
 npm ci
@@ -81,9 +103,14 @@ defina `CUE_DESKTOP_BINARY` e `CUE_DESKTOP_MANAGED_DATA`. Com
 `CUE_DESKTOP_EXPECT_SETUP=1` verifica apenas a tela inicial;
 `CUE_DESKTOP_TEST_SINGLE_INSTANCE=1` verifica segunda abertura;
 `CUE_DESKTOP_TEST_NAVIGATION=1` verifica links usando um navegador de teste.
+`CUE_DESKTOP_EXPECT_PROJECT` verifica que um projeto importado aparece na tela;
 `CUE_DESKTOP_GENERATION_JSON` habilita uma inferência real com a requisição
-desse arquivo. Os testes usam dados isolados e verificam 401/403 e limpeza
-do worker ao sair.
+desse arquivo. `CUE_DESKTOP_MEDIA_FILENAME` verifica a decodificação de um vídeo
+servido pelo motor; uma geração real também verifica seu resultado produzido.
+Os testes usam dados isolados e verificam 401/403. Ao final,
+removem a sessão WebDriver e encerram seu grupo de processos, verificando que
+o worker para quando o host termina. Esse teste de queda do host complementa
+os testes Rust de encerramento e coleta do processo pelo supervisor.
 
 O workflow `.github/workflows/desktop.yml` prepara Ubuntu 24.04, executa gates,
 gera os pacotes, instala o `.deb`, testa o runtime CPU e a abertura do AppImage,

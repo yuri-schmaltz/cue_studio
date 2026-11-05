@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a no-inference smoke test against the packaged Tauri desktop binary.
+"""Exercise the packaged Tauri desktop; inference is optional and explicit.
 
 Requires tauri-driver and WebKitWebDriver on Linux. It creates its own data
 directory, never touches the user's backend, and removes its WebDriver session
@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import os
+import signal
+import socket
 import subprocess
 import tempfile
 import time
@@ -26,7 +28,7 @@ def request(base: str, method: str, path: str, body: object | None = None, extra
     data = None if body is None else json.dumps(body).encode()
     req = urllib.request.Request(base + path, data=data, method=method, headers={"Content-Type": "application/json", **(extra_headers or {})})
     try:
-        with urllib.request.urlopen(req, timeout=10) as response:
+        with urllib.request.urlopen(req, timeout=30) as response:
             payload = response.read()
             return response.status, json.loads(payload or b"{}")
     except urllib.error.HTTPError as exc:
@@ -55,7 +57,14 @@ def main() -> int:
     if not expect_setup and not managed and not install_runtime:
         runtime_env.setdefault("CUE_DESKTOP_RUNTIME_ROOT", str(ROOT))
         runtime_env.setdefault("CUE_DESKTOP_PYTHON", str(ROOT / "app/env/bin/python"))
-    driver = subprocess.Popen([str(DRIVER), "--port", "4444", "--native-port", "4445", "--native-driver", str(WEBKIT)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=runtime_env)
+    with socket.socket() as first, socket.socket() as second:
+        first.bind(('127.0.0.1', 0))
+        second.bind(('127.0.0.1', 0))
+        driver_port, native_port = first.getsockname()[1], second.getsockname()[1]
+    driver_base = f'http://127.0.0.1:{driver_port}'
+    data_dir.mkdir(parents=True, exist_ok=True)
+    driver_log = os.fdopen(os.open(data_dir / 'desktop-webdriver.log', os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), 'w')
+    driver = subprocess.Popen([str(DRIVER), "--port", str(driver_port), "--native-port", str(native_port), "--native-driver", str(WEBKIT)], stdout=driver_log, stderr=subprocess.STDOUT, env=runtime_env, start_new_session=True)
     session = None
     worker_pid: int | None = None
     report: dict[str, object] = {"binary": str(BINARY), "dataDir": str(data_dir)}
@@ -63,7 +72,7 @@ def main() -> int:
         deadline = time.time() + 30
         while time.time() < deadline:
             try:
-                code, payload = request("http://127.0.0.1:4444", "POST", "/session", {"capabilities": {"alwaysMatch": {"browserName": "wry", "tauri:options": {"application": str(BINARY)}}}})
+                code, payload = request(driver_base, "POST", "/session", {"capabilities": {"alwaysMatch": {"browserName": "wry", "tauri:options": {"application": str(BINARY)}}}})
                 if code < 300:
                     session = payload["value"]["sessionId"]
                     break
@@ -72,8 +81,19 @@ def main() -> int:
             time.sleep(.5)
         if not session:
             raise SystemExit("WebDriver session did not start")
-        base = f"http://127.0.0.1:4444/session/{session}"
-        script = lambda source: request(base, "POST", "/execute/sync", {"script": source, "args": []})[1].get("value")
+        base = f"{driver_base}/session/{session}"
+        def script(source):
+            for attempt in range(4):
+                code, payload = request(base, 'POST', '/execute/sync', {'script': source, 'args': []})
+                if code < 300:
+                    return payload.get('value')
+                # WebKit can discard a script result during the first SPA
+                # route transition. Retry only this known transient error.
+                message = payload.get('value', {}).get('message', '')
+                if message == 'Could not parse script result' and attempt < 3:
+                    time.sleep(.25)
+                    continue
+                raise RuntimeError(f'WebDriver script failed: {payload}')
         if install_runtime:
             for _ in range(60):
                 if script("return !!document.querySelector('#install:not([hidden])')"):
@@ -119,6 +139,14 @@ def main() -> int:
             if script("return !!document.querySelector('[data-testid=application-header]')"):
                 break
             time.sleep(.5)
+        expected_project = os.environ.get('CUE_DESKTOP_EXPECT_PROJECT')
+        if expected_project:
+            for _ in range(60):
+                if expected_project in (script('return document.body.innerText') or ''):
+                    report['importedProjectVisible'] = expected_project
+                    break
+                time.sleep(.5)
+            assert report.get('importedProjectVisible') == expected_project, 'Imported project did not appear'
         script("for (const b of document.querySelectorAll('button')) { if (b.textContent.trim()==='Get started') b.click(); } document.querySelector('#tab-studio')?.click(); return true")
         for _ in range(60):
             body = script("return document.body ? document.body.innerText : ''") or ""
@@ -133,8 +161,8 @@ def main() -> int:
             raise SystemExit("desktop window did not reach the application UI")
         ready = json.loads(ready_files[-1].read_text())
         port = int(ready["port"])
-        report["unauthenticatedStatus"] = request(f"http://127.0.0.1:{port}", "GET", "/api/models")[0]
-        report["foreignOriginStatus"] = request(f"http://127.0.0.1:{port}", "GET", "/api/models", extra_headers={"Origin": "http://evil.invalid"})[0]
+        report["unauthenticatedStatus"] = request(f"http://127.0.0.1:{port}", "GET", "/api/v1/models")[0]
+        report["foreignOriginStatus"] = request(f"http://127.0.0.1:{port}", "GET", "/api/v1/models", extra_headers={"Origin": "http://evil.invalid"})[0]
         assert report['unauthenticatedStatus'] == 401, report
         assert report['foreignOriginStatus'] == 403, report
         worker_pid = int(ready["pid"])
@@ -186,24 +214,49 @@ def main() -> int:
             assert job['status'] in ('completed', 'done'), job
             assert job.get('output_files'), job
             report['generation'] = job
+        media = os.environ.get('CUE_DESKTOP_MEDIA_FILENAME')
+        if not media and generation:
+            media = report['generation']['output_files'][0]
+        if media:
+            script("const v=document.createElement('video');v.id='cue-smoke-video';v.muted=true;v.preload='auto';v.src='/api/v1/file/'+encodeURIComponent(" + json.dumps(media) + ");document.body.append(v);v.load();v.play().catch(()=>{});return true")
+            for _ in range(60):
+                playback = script("const v=document.querySelector('#cue-smoke-video');return {ready:v.readyState,width:v.videoWidth,height:v.videoHeight,error:v.error?.code||null}")
+                assert not playback['error'], playback
+                if playback['ready'] >= 2 and playback['width'] > 0:
+                    report['videoPlayback'] = playback
+                    break
+                time.sleep(.5)
+            assert 'videoPlayback' in report, 'WebKit did not decode the video fixture/output'
         return 0
     finally:
         if session:
-            request("http://127.0.0.1:4444", "DELETE", f"/session/{session}")
+            try:
+                request(driver_base, "DELETE", f"/session/{session}")
+            except Exception as error:
+                report['sessionCleanupError'] = str(error)
+        # Session deletion may request a normal close and leave the native
+        # confirmation dialog open. End our host process group before testing
+        # its parent-death cleanup; never signal the worker directly.
+        report['shutdownMode'] = 'terminate owned WebDriver/host process group after session deletion'
+        try:
+            os.killpg(driver.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            driver.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            driver.kill()
+        driver_log.close()
         if worker_pid is not None:
             for _ in range(20):
                 if not Path(f"/proc/{worker_pid}").exists():
                     break
                 time.sleep(.5)
             report["workerStoppedAfterExit"] = not Path(f"/proc/{worker_pid}").exists()
-            assert report['workerStoppedAfterExit'], report
-        driver.terminate()
-        try:
-            driver.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            driver.kill()
         (data_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps(report, indent=2))
+        if worker_pid is not None:
+            assert report['workerStoppedAfterExit'], report
 
 
 if __name__ == "__main__":
