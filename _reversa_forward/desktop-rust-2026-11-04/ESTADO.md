@@ -31,10 +31,18 @@ Base main/8fa2a98. Sem mudanças de código no início; só relatório de reaná
 
 `tauri-driver`2.1.0 instalado em ~/.cargo/bin. WebKitWebDriver2.52.6 baixado e extraído sem instalar pacote de sistema em app/.cache/desktop-tools/unpacked/usr/bin/WebKitWebDriver. Display existente: :0. Xvfb não instalado. Fonte oficial do fluxo: https://v2.tauri.app/develop/tests/webdriver/example/selenium/ . Usar WebDriver para verificar o executável real, não uma simulação do renderer.
 
+## Atualização de verificação — 04/11/2026
+
+- `app/runtime_bootstrap.py` cria o venv privado em `app-data/runtime/env`, valida o manifesto e o hash de `requirements.txt`; a tela inicial do Tauri expõe a instalação assíncrona e o seletor de runtime.
+- `python3 app/runtime_bootstrap.py --app-dir app --runtime-dir /tmp/cue-runtime-check --check` passou; `cargo fmt`, `cargo test --no-default-features` (3 testes) e `cargo check` nativo passaram.
+- `python3 scripts/desktop-smoke.py` passou com janela real: Studio visível, `401` sem autenticação, `403` com Origin externo e `workerStoppedAfterExit: true`.
+- `npm run desktop:prepare` passou com 35 chunks e orçamento de 220 kB. O build release Tauri gerou o `.deb` em `ui/src-tauri/target/release/bundle/deb/Cue Studio_2.5.2_amd64.deb` (13 MB). O linuxdeploy do AppImage ficou preso na coleta de bibliotecas neste ambiente e foi encerrado; o AppImage não foi homologado.
+- O `.deb` foi extraído em diretório temporário sem checkout/runtime de desenvolvimento; o binário release abriu a tela de primeiro uso e mostrou `Install AI runtime` (`CUE_DESKTOP_EXPECT_SETUP=1`). A listagem do pacote não contém pesos (`.safetensors`, `.pth`, `.pt`, `.gguf`, `.bin`) nem `env/`.
+- `docs/desktop.md` documenta desenvolvimento, instalação e gates. O smoke não toca o backend web pré-existente nem carrega modelos.
+
 ## Próximos passos
 
-1. Conferir build nativo e testes após proteção de morte do pai. Compilar com PATH moderno e `--features tauri/custom-protocol`. Reexecutar staging após fonte Python alterada e garantir assets atuais.
-2. Acrescentar teste de render Studio (desktop/mobile) para a falha activeTab; executar Vitest/contratos relevantes. Falhas anteriores QueuePage(6items), store(defaultmusic),74lint e locks desatualizados foram diagnosticadas antes; não mascarar nem afirmar que já estão resolvidas.
-3. WebDriver com binário real: escolher runtime via env CUE_DESKTOP_RUNTIME_ROOT=raiz e CUE_DESKTOP_PYTHON=app/env/bin/python, dados temporários via CUE_DESKTOP_DATA_DIR, CUE_OFFLINE_STRICT=1. Submeter sessão browserName=wry, tauri:options.application=binário. Conferir UI do backend, autenticação, navegação Studio e saída sem worker órfão. Não carregar modelos nem gerar mídia só para testar a janela.
-4. Completar instalação/runtime Python gerenciados, integração de configurações/projetos existentes, single instance, navegação externa, empacotamento e instalação Linux. Validar em ambiente sem checkout/venv de desenvolvimento antes de declarar desktop distribuível.
-5. Revisar segurança/ciclo de vida, recursos copiados, licenças, CI e docs; atualizar requisitos com provas reais. Objetivo permanece ativo.
+1. Validar o `.deb` em uma máquina Linux limpa, sem checkout ou `app/env`, incluindo a instalação do runtime e a primeira inicialização.
+2. Acrescentar integração de configurações/projetos existentes, single instance, política de navegação externa e job objects equivalentes no Windows antes de declarar suporte multiplataforma.
+3. Resolver a execução do AppImage neste ambiente ou restringir explicitamente o release Linux ao `.deb`; não afirmar AppImage homologado.
+4. Revisar locks de dependências, licenças, CI e as falhas baseline QueuePage/store/lint já diagnosticadas.

@@ -13,5 +13,5 @@
     "windows": [{"label":"main","title":"Cue Studio","width":1440,"height":960,"minWidth":900,"minHeight":640,"url":"desktop.html"}],
     "security": {"csp":"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost; img-src 'self' data:"}
   },
-  "bundle": {"active":true,"targets":["deb","appimage"],"resources":{"runtime/":"runtime/","web/":"web/"}}
+  "bundle": {"active":true,"targets":["deb","appimage"],"icon":["icons/icon.png"],"resources":{"runtime/":"runtime/","web/":"web/"}}
 }

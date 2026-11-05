@@ -1,0 +1,7 @@
+{
+  "runtimeVersion": "2.5.2",
+  "python": ">=3.11,<3.13",
+  "requirements": "requirements.txt",
+  "requirementsSha256": "fe81353856cac42dbf5dd5b28902f96f0a76310fd47399224e28965a140d094f",
+  "install": "The desktop host creates a private virtual environment in its application-data directory. Model checkpoints and generated media remain user-managed."
+}

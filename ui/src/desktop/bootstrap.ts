@@ -6,6 +6,7 @@ const status = document.querySelector<HTMLParagraphElement>('#status')!
 const log = document.querySelector<HTMLParagraphElement>('#log')!
 const error = document.querySelector<HTMLParagraphElement>('#error')!
 const retry = document.querySelector<HTMLButtonElement>('#retry')!
+const install = document.querySelector<HTMLButtonElement>('#install')!
 const choose = document.querySelector<HTMLButtonElement>('#choose')!
 let polling = true
 async function refresh() {
@@ -14,6 +15,7 @@ async function refresh() {
     status.textContent = runtime.message
     const failed = ['failed', 'setup-required', 'stopped'].includes(runtime.phase)
     retry.hidden = !failed
+    install.hidden = !['setup-required', 'failed'].includes(runtime.phase)
     choose.hidden = !failed
     log.textContent = failed ? `Diagnostic log: ${runtime.log_path}` : ''
   } catch (cause) {
@@ -27,5 +29,6 @@ async function action(command: string) {
 }
 retry.addEventListener('click', () => { void action('desktop_retry') })
 choose.addEventListener('click', () => { void action('desktop_choose_runtime') })
+install.addEventListener('click', () => { void action('desktop_install_runtime') })
 window.addEventListener('pagehide', () => { polling = false })
 void refresh()
