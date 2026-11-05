@@ -6,7 +6,13 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    'node_modules',
+    'src-tauri/target',
+    'src-tauri/runtime',
+    'src-tauri/web',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -24,5 +30,11 @@ export default defineConfig([
     // Standalone browser harness mounts its own root; it is not an HMR module.
     files: ['tests/control-harness.tsx'],
     rules: { 'react-refresh/only-export-components': 'off' },
+  },
+  {
+    // Store tests intentionally use compact partial fixtures to exercise
+    // slice composition; production code remains typechecked strictly.
+    files: ['**/*.test.{ts,tsx}'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
 ])

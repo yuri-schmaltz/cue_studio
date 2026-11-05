@@ -1,7 +1,17 @@
 {
   "runtimeVersion": "2.5.2",
-  "python": ">=3.11,<3.13",
+  "python": "==3.11.*",
   "requirements": "requirements.txt",
   "requirementsSha256": "fe81353856cac42dbf5dd5b28902f96f0a76310fd47399224e28965a140d094f",
-  "install": "The desktop host creates a private virtual environment in its application-data directory. Model checkpoints and generated media remain user-managed."
+  "install": "The desktop host creates a private virtual environment in its application-data directory. Model checkpoints and generated media remain user-managed.",
+  "locks": {
+    "E0": {
+      "path": "locks/E0.cpu-only.txt",
+      "sha256": "b1cce849d7bbdc181bd48a3447497c7e47518f4e48821499cd07b5eb88a11af5"
+    },
+    "E3": {
+      "path": "locks/E3.cuda130-py311.txt",
+      "sha256": "d4ede8eda85b74d22caee4ca96e1e9a1f613fe40f835629f9d1a92ddbf657b7a"
+    }
+  }
 }

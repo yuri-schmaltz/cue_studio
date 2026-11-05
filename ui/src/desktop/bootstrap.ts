@@ -8,6 +8,7 @@ const error = document.querySelector<HTMLParagraphElement>('#error')!
 const retry = document.querySelector<HTMLButtonElement>('#retry')!
 const install = document.querySelector<HTMLButtonElement>('#install')!
 const choose = document.querySelector<HTMLButtonElement>('#choose')!
+const importWorkspace = document.querySelector<HTMLButtonElement>('#import-workspace')!
 let polling = true
 async function refresh() {
   try {
@@ -29,6 +30,7 @@ async function action(command: string) {
 }
 retry.addEventListener('click', () => { void action('desktop_retry') })
 choose.addEventListener('click', () => { void action('desktop_choose_runtime') })
+importWorkspace.addEventListener('click', () => { void action('desktop_import_workspace') })
 install.addEventListener('click', () => { void action('desktop_install_runtime') })
 window.addEventListener('pagehide', () => { polling = false })
 void refresh()

@@ -1,0 +1,76 @@
+name: Linux desktop release checks
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  desktop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Native desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf webkit2gtk-driver xvfb ffmpeg libportaudio2 libsndfile1 libgl1
+      - name: Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Desktop build and unit tests
+        working-directory: ui
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
+          npm run desktop:build
+      - name: WebDriver
+        run: cargo +1.99.1 install tauri-driver --version 2.1.0 --locked
+      - name: Check installed Debian first-use screen
+        env:
+          CUE_DESKTOP_BINARY: /usr/bin/cue-studio-desktop
+          CUE_DESKTOP_EXPECT_SETUP: '1'
+          TAURI_DRIVER: /home/runner/.cargo/bin/tauri-driver
+          WEBKIT_WEBDRIVER: /usr/bin/WebKitWebDriver
+        run: |
+          sudo apt-get install -y ./ui/src-tauri/target/release/bundle/deb/*.deb
+          xvfb-run -a python scripts/desktop-smoke.py
+      - name: Locked CPU runtime installation
+        run: |
+          python app/runtime_bootstrap.py --app-dir /usr/lib/Cue\ Studio/runtime/app --runtime-dir "$RUNNER_TEMP/cue-data/runtime" --profile E0
+          python scripts/verify_runtime_locks.py
+      - name: Installed runtime desktop smoke
+        env:
+          CUE_DESKTOP_BINARY: /usr/bin/cue-studio-desktop
+          TAURI_DRIVER: /home/runner/.cargo/bin/tauri-driver
+          WEBKIT_WEBDRIVER: /usr/bin/WebKitWebDriver
+          CUE_DESKTOP_MANAGED_DATA: ${{ runner.temp }}/cue-data
+          CUE_DESKTOP_TEST_SINGLE_INSTANCE: '1'
+          CUE_DESKTOP_TEST_NAVIGATION: '1'
+        run: xvfb-run -a python scripts/desktop-smoke.py
+      - name: AppImage first-use smoke
+        env:
+          CUE_DESKTOP_EXPECT_SETUP: '1'
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+          TAURI_DRIVER: /home/runner/.cargo/bin/tauri-driver
+          WEBKIT_WEBDRIVER: /usr/bin/WebKitWebDriver
+        run: |
+          CUE_DESKTOP_BINARY="$(find "$PWD/ui/src-tauri/target/release/bundle/appimage" -maxdepth 1 -name '*.AppImage' -print -quit)" xvfb-run -a python scripts/desktop-smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cue-studio-linux
+          path: |
+            ui/src-tauri/target/release/bundle/deb/*.deb
+            ui/src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error

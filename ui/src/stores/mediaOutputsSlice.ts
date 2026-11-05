@@ -13,6 +13,7 @@
 import type { StateCreator } from 'zustand'
 import * as api from '../api/client'
 import type { AppState, StudioModelDependencies } from './useStore'
+import type { restoreOutputSettings } from './outputRestoration'
 import type { OutputFile, MediaFilter, OutputMetadata } from '../types'
 
 export type MediaOutputsSlice = {
@@ -47,15 +48,15 @@ export type MediaOutputsSlice = {
 }
 
 export type MediaOutputsSliceDeps = {
-  getModelMode: (modelType: string, familyId: string) => any
-  normalizeStudioImageWorkflow: (value: unknown) => any
-  normalizeStudioVideoWorkflow: (value: unknown, model?: any) => any
+  getModelMode: Parameters<typeof restoreOutputSettings>[2]['getModelMode']
+  normalizeStudioImageWorkflow: Parameters<typeof restoreOutputSettings>[2]['_normalizeStudioImageWorkflow']
+  normalizeStudioVideoWorkflow: Parameters<typeof restoreOutputSettings>[2]['_normalizeStudioVideoWorkflow']
   isOmniVideoModel: StudioModelDependencies['_isOmniVideoModel']
-  captureVideoSubModeStash: (state: any) => any
+  captureVideoSubModeStash: Parameters<typeof restoreOutputSettings>[2]['captureVideoSubModeStash']
   sfxModelTypes: StudioModelDependencies['sfxModelTypes']
   isMusicModelType: (modelType: string) => boolean
-  findResolutionSelection: (model: any, res: any, currentAspect?: any, currentFps?: any) => any
-  defaultRecastMapping: any
+  findResolutionSelection: Parameters<typeof restoreOutputSettings>[2]['findResolutionSelection']
+  defaultRecastMapping: Parameters<typeof restoreOutputSettings>[2]['DEFAULT_RECAST_MAPPING']
 }
 
 // Memoization cache for filteredOutputs — ensures stable references

@@ -1,0 +1,52 @@
+{
+  "E0": {
+    "strict_hash_install": "passed",
+    "dependency_check": "passed",
+    "runtime_imports": "passed",
+    "versions": {
+      "torch": "2.10.0+cpu",
+      "packages": 289
+    },
+    "lock": "app/locks/E0.cpu-only.txt"
+  },
+  "E1": {
+    "strict_hash_install": "passed",
+    "dependency_check": "passed",
+    "runtime_imports": "passed",
+    "versions": {
+      "torch": "2.10.0+cu130",
+      "packages": 307
+    },
+    "lock": "app/locks/E1.4gb-3050.txt"
+  },
+  "E2": {
+    "strict_hash_install": "passed",
+    "dependency_check": "passed",
+    "runtime_imports": "passed",
+    "versions": {
+      "torch": "2.10.0+cu130",
+      "packages": 307
+    },
+    "lock": "app/locks/E2.6-8gb.txt"
+  },
+  "E3": {
+    "strict_hash_install": "passed",
+    "dependency_check": "passed",
+    "runtime_imports": "passed",
+    "versions": {
+      "torch": "2.10.0+cu130",
+      "packages": 307
+    },
+    "lock": "app/locks/E3.cuda130-py311.txt"
+  },
+  "E4": {
+    "strict_hash_install": "passed",
+    "dependency_check": "passed",
+    "runtime_imports": "passed",
+    "versions": {
+      "torch": "2.10.0+cu130",
+      "packages": 307
+    },
+    "lock": "app/locks/E4.16-24gb.txt"
+  }
+}

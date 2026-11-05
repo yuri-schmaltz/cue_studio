@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { create } from 'zustand'
 import { createMediaOutputsSlice, computeFilteredOutputs, type MediaOutputsSlice } from './mediaOutputsSlice'
-import type { OutputFile } from '../types'
+import type { OutputFile, RecastCharacterMapping } from '../types'
 
 vi.mock('../api/client', () => ({
   fetchOutputs: vi.fn(),
@@ -31,7 +31,7 @@ function createTestStore() {
     sfxModelTypes: new Set<string>(),
     isMusicModelType: vi.fn(),
     findResolutionSelection: vi.fn(),
-    defaultRecastMapping: {},
+    defaultRecastMapping: {} as RecastCharacterMapping,
   }
   return create<MediaOutputsSlice>()((set, get, store) =>
     createMediaOutputsSlice(set as never, get as never, store as never, deps),

@@ -17,6 +17,9 @@ for (const entry of await readdir(source, { withFileTypes: true })) {
   await cp(join(source, entry.name), join(destination, entry.name), { recursive: true,
     filter: path => !path.split(/[\\/]/).some(part => part === '__pycache__' || part === '.cache' || part === '.git') && !/\.(pyc|pth|pt|safetensors|gguf|bin|sqlite3?)$/.test(path) })
 }
+await mkdir(join(destination, 'runtime_tools'), { recursive: true })
+await cp(resolve(ui, '../scripts/build_decord_wheel.py'), join(destination, 'runtime_tools/build_decord_wheel.py'))
+await cp(resolve(ui, '../LICENSE'), join(ui, 'src-tauri/runtime/LICENSE'))
 await rm(join(ui, 'src-tauri/web'), { recursive: true, force: true })
 await cp(join(ui, 'dist'), join(ui, 'src-tauri/web'), { recursive: true })
 console.log('Desktop code and UI staged. Python runtime installation is managed separately.')

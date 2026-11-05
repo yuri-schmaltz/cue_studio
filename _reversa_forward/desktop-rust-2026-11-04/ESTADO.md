@@ -34,15 +34,17 @@ Base main/8fa2a98. Sem mudanças de código no início; só relatório de reaná
 ## Atualização de verificação — 04/11/2026
 
 - `app/runtime_bootstrap.py` cria o venv privado em `app-data/runtime/env`, valida o manifesto e o hash de `requirements.txt`; a tela inicial do Tauri expõe a instalação assíncrona e o seletor de runtime.
+- A fila agora calcula a contagem incluindo jobs ativos, entradas do Director e itens persistidos ainda visíveis; o default do modelo musical está alinhado ao identificador canônico `ace_step_v1_5_xl_sft_lm_4b`.
+- A suíte de store foi atualizada para o contrato de persistência v12. ESLint termina com 0 erros e 0 warnings, e os tipos de polling/restauração foram estreitados sem `any` em produção.
 - `python3 app/runtime_bootstrap.py --app-dir app --runtime-dir /tmp/cue-runtime-check --check` passou; `cargo fmt`, `cargo test --no-default-features` (3 testes) e `cargo check` nativo passaram.
 - `python3 scripts/desktop-smoke.py` passou com janela real: Studio visível, `401` sem autenticação, `403` com Origin externo e `workerStoppedAfterExit: true`.
-- `npm run desktop:prepare` passou com 35 chunks e orçamento de 220 kB. O build release Tauri gerou o `.deb` em `ui/src-tauri/target/release/bundle/deb/Cue Studio_2.5.2_amd64.deb` (13 MB). O linuxdeploy do AppImage ficou preso na coleta de bibliotecas neste ambiente e foi encerrado; o AppImage não foi homologado.
+- `npm run desktop:prepare` passou com 35 chunks e orçamento de 220 kB. O build release Tauri gerou o `.deb` em `ui/src-tauri/target/release/bundle/deb/Cue Studio_2.5.2_amd64.deb` (13 MB). O linuxdeploy do AppImage foi tentado novamente após corrigir o ícone PNG e ficou preso na coleta do plugin GTK; os processos pertencentes ao build foram encerrados após o timeout. O AppImage não foi homologado neste ambiente; o `.deb` continua sendo o artefato Linux validado.
 - O `.deb` foi extraído em diretório temporário sem checkout/runtime de desenvolvimento; o binário release abriu a tela de primeiro uso e mostrou `Install AI runtime` (`CUE_DESKTOP_EXPECT_SETUP=1`). A listagem do pacote não contém pesos (`.safetensors`, `.pth`, `.pt`, `.gguf`, `.bin`) nem `env/`.
-- `docs/desktop.md` documenta desenvolvimento, instalação e gates. O smoke não toca o backend web pré-existente nem carrega modelos.
+- O smoke limpo do `.deb` abriu a tela de primeiro uso sem checkout, `app/env` ou runtime injetado (`setupScreenVisible: true`). A suíte UI completa passou com 52 arquivos e 343 testes; pytest do worker passou com 5 testes; Rust passou com 3 testes. `docs/desktop.md` documenta desenvolvimento, instalação e gates. O smoke não toca o backend web pré-existente nem carrega modelos.
 
 ## Próximos passos
 
 1. Validar o `.deb` em uma máquina Linux limpa, sem checkout ou `app/env`, incluindo a instalação do runtime e a primeira inicialização.
 2. Acrescentar integração de configurações/projetos existentes, single instance, política de navegação externa e job objects equivalentes no Windows antes de declarar suporte multiplataforma.
 3. Resolver a execução do AppImage neste ambiente ou restringir explicitamente o release Linux ao `.deb`; não afirmar AppImage homologado.
-4. Revisar locks de dependências, licenças, CI e as falhas baseline QueuePage/store/lint já diagnosticadas.
+4. Regenerar os locks de dependências com um resolvedor disponível (a verificação atual detecta drift de hash em `app/requirements.txt`; não foi mascarado regravando hashes manualmente), além de revisar licenças e CI.

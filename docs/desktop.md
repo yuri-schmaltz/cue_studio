@@ -1,48 +1,97 @@
-# Cue Studio Desktop
+# Cue Studio Desktop — Linux x86_64
 
-Cue Studio can run as a Tauri desktop application. Rust owns the window and
-the lifecycle of exactly one local Python worker; Python/PyTorch remains the
-AI engine. The worker binds only to loopback and requires a private token plus
-the first-party session cookie before serving the UI or media.
+Rust/Tauri gerencia a janela e um único worker Python/PyTorch privado.
+O worker atende apenas em loopback, com token do supervisor e cookie de
+sessão HttpOnly. A interface HTTP não recebe permissões IPC nativas.
 
-## Development
+## Instalação e primeiro uso
 
-Use the Rust toolchain selected by `rustup` and run:
+O build gera `.deb` e `.AppImage` em `ui/src-tauri/target/release/bundle/`.
+No Debian/Ubuntu, instale o `.deb` com `sudo apt install ./arquivo.deb`.
+As dependências incluem Python 3, venv, compilador C/C++, Git, FFmpeg, GTK e WebKit.
+O AppImage também precisa de Python 3/venv, Git e das bibliotecas de áudio/FFmpeg
+do sistema; ele não contém um ambiente Python pré-instalado.
+
+Clique **Install AI runtime** no primeiro uso. O instalador:
+
+1. Cria ferramentas privadas com `uv==0.13.6` e obtém Python 3.11.
+2. Seleciona E3/CUDA 13 quando detecta NVIDIA com driver >=580; nos demais
+   casos usa E0/CPU para interface e ferramentas de mídia. Geração IA deste
+   aplicativo exige a GPU suportada.
+3. Verifica o SHA-256 do lock e instala todas as dependências com
+   `--require-hashes`, incluindo o rebuild determinístico de Decord.
+4. Executa checagem de dependências e imports reais. Só então grava
+   `runtime-ready.json` e inicia o motor.
+
+Tudo fica em `$XDG_DATA_HOME/studio.cue.desktop` (normalmente
+`~/.local/share/studio.cue.desktop`): `runtime/env`, uma cópia privada do código
+em `runtime/app`, configurações, projetos, modelos e logs. Os recursos de
+`/usr/lib` ou do AppImage permanecem somente leitura. Uma instalação interrompida
+pode ser repetida; ambientes incompletos não são marcados como prontos.
+O instalador não baixa checkpoints nem inicia inferência.
+
+O diagnóstico da instalação fica em `desktop-install.log`; o do motor em
+`desktop-worker.log`. **Choose existing runtime** aceita uma instalação
+existente com `app/desktop_worker.py` e `app/env/bin/python`.
+
+## Workspace e comportamento nativo
+
+**Import existing workspace** está na tela inicial e no menu nativo. Se o
+motor estiver ativo, o aplicativo confirma a interrupção das gerações antes
+de reiniciá-lo. A importação copia configurações, salva backup datado e
+converte caminhos relativos em absolutos. Projetos, mídia e modelos são
+reutilizados nos locais originais. Ela não move pesos nem importa a base
+SQLite/fila de um processo em execução. Um recibo `workspace-import-*.json`
+registra a origem e os caminhos importados.
+
+Uma segunda abertura foca a janela existente. Links HTTP/HTTPS externos abrem
+no navegador do sistema, inclusive popups; endereços locais não pertencentes
+ao worker e esquemas como `file:` são recusados. Fechar a janela encerra seu
+worker, sem encerrar outros servidores locais.
+
+## Desenvolvimento e gates
+
+Use Node 22.12+ e a toolchain de `ui/rust-toolchain.toml`:
 
 ```bash
 cd ui
+npm ci
 npm run desktop:dev
 ```
 
-The normal web build remains available with `npm run build`. The desktop
-bundle stages source code and the compiled UI under `ui/src-tauri/runtime/`
-and `ui/src-tauri/web/`; model checkpoints, virtual environments, generated
-outputs and user configuration are excluded.
-
-## Runtime installation
-
-On first launch the splash screen can install the Python runtime. It creates
-`runtime/env` below the operating-system application-data directory, verifies
-the SHA-256 requirements manifest, and installs the pinned `app/requirements.txt`
-there. The packaged source tree stays read-only. Existing environments can be
-selected with **Choose existing runtime** when a managed environment is
-already available.
-
-The desktop host keeps outputs, projects, models, SQLite state and logs in the
-same application-data directory. It never downloads checkpoints or starts an
-inference job during installation.
-
-## Release verification
-
 ```bash
 cd ui
-npm run desktop:prepare
-PATH="$HOME/.cargo/bin:$PATH" cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
-python3 ../scripts/desktop-smoke.py
-PATH="$HOME/.cargo/bin:$PATH" npm run desktop:build
+npm run lint
+npm test
+npm run test:store
+npm run test:control
+cargo test --manifest-path src-tauri/Cargo.toml --no-default-features
+npm run desktop:build
 ```
 
-The smoke test uses a private data directory, opens the real Tauri window via
-`tauri-driver`, checks the authenticated boundary (`401` without credentials
-and `403` for a foreign origin), and verifies that closing the window reaps
-the worker. It does not load a model or contact the existing web backend.
+O AppImage pode levar vários minutos na coleta de copyright das bibliotecas
+GTK: o linuxdeploy consulta dpkg para cada dependência. Não desative essa
+coleta para acelerar o build. O staging preserva licenças e exclui pesos,
+ambientes, dados e configurações pessoais.
+
+`scripts/desktop-smoke.py` usa janela real via tauri-driver/WebKitWebDriver.
+Por padrão usa runtime de desenvolvimento. Para testar um pacote sem injetá-lo,
+defina `CUE_DESKTOP_BINARY` e `CUE_DESKTOP_MANAGED_DATA`. Com
+`CUE_DESKTOP_INSTALL=1`, o teste clica no instalador e aguarda a instalação real.
+`CUE_DESKTOP_EXPECT_SETUP=1` verifica apenas a tela inicial;
+`CUE_DESKTOP_TEST_SINGLE_INSTANCE=1` verifica segunda abertura;
+`CUE_DESKTOP_TEST_NAVIGATION=1` verifica links usando um navegador de teste.
+`CUE_DESKTOP_GENERATION_JSON` habilita uma inferência real com a requisição
+desse arquivo. Os testes usam dados isolados e verificam 401/403 e limpeza
+do worker ao sair.
+
+O workflow `.github/workflows/desktop.yml` prepara Ubuntu 24.04, executa gates,
+gera os pacotes, instala o `.deb`, testa o runtime CPU e a abertura do AppImage,
+e guarda os artefatos. A execução remota depende de push; testes locais não
+equivalem a um resultado do GitHub Actions.
+
+Para regenerar locks: `python scripts/build_decord_wheel.py`, depois
+`app/env/bin/python scripts/refresh_runtime_locks.py --uv CAMINHO_DO_UV`.
+Execute `python scripts/verify_runtime_locks.py` e revalide os ambientes.
+O script registra a evidência anterior como histórica até a nova instalação.
+Veja também `desktop-license-review.md` e `desktop-python-licenses.json`.

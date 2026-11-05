@@ -174,7 +174,10 @@ export type DirectorPlanningSlice = {
 }
 
 export type DirectorPlanningDeps = {
-  startDirectLlmStreamPolling: (set: any, get: any) => () => void
+  startDirectLlmStreamPolling: (
+    set: Parameters<StateCreator<AppState, [], [], DirectorPlanningSlice>>[0],
+    get: Parameters<StateCreator<AppState, [], [], DirectorPlanningSlice>>[1],
+  ) => () => void
   directorUsesGeneratedShotImages: (state: AppState) => boolean
   resolveResolution: (options: import('../types').ModelOptions | null, preset: import('../types').ResolutionPreset, aspectRatio: import('../types').AspectRatio) => string
   normalizeH3ClipFrameSchedule: (frames: number[], min: number, max: number, step: number) => number[]
@@ -210,7 +213,9 @@ export const createDirectorPlanningSlice = (
   deps: DirectorPlanningDeps,
 ): DirectorPlanningSlice => ({
   directorMusicSource: null,
-  directorMusicModel: 'ace_step',
+  // Keep the Director default aligned with workspace restoration and the
+  // audio-mode selector's quality default.
+  directorMusicModel: 'ace_step_v1_5_xl_sft_lm_4b',
   directorAdvancedDefaults: {},
   directorSongDescription: '',
   directorSongInstrumental: false,

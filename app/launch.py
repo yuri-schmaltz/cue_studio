@@ -185,7 +185,7 @@ from models.minimax_h3.turbo import (
 print(f"[Cue Studio] WanGP loaded: {len(wgp.displayed_model_types)} models available")
 
 # Closed-app notification state remains local under app/settings.
-_cue_studio_settings_dir = os.path.join(_app_dir, "settings")
+_cue_studio_settings_dir = os.path.join(os.environ.get('CUE_DESKTOP_DATA', _app_dir), "settings")
 _web_push = WebPushService(_cue_studio_settings_dir)
 
 # WanGP's legacy notifier fires at low-level output boundaries, which means a

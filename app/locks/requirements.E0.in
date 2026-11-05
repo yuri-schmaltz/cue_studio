@@ -1,5 +1,4 @@
-# CPU tools/runtime profile: derived from app/requirements.txt.
-# GPU ONNX distribution/index excluded; rembg uses its CPU extra.
+# CPU profile derived by scripts/refresh_runtime_locks.py
 # All versions below are pinned to the set that was tested against the
 # Maestro release. If you need to upgrade, do it one package at a time and
 # re-test Studio + Director end-to-end before committing. Do NOT loosen
@@ -81,6 +80,8 @@ omegaconf==2.3.0
 hydra-core==1.3.2
 easydict==1.13
 pydantic==2.10.6
+tensorboard==2.21.0  # Required by the YuE xcodec quantizer (torch.utils.tensorboard import)
+argbind==0.3.9      # Required by the DAC codec bundled with the YuE xcodec
 
 # Math & modeling
 torchdiffeq==0.2.5

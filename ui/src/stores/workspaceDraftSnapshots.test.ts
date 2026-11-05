@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useStore } from './useStore'

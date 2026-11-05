@@ -1,5 +1,12 @@
 # Instalação verificada e limites — 30/10/2026
 
+> Atualização de 05/11/2026: os locks foram regenerados para incluir
+> `tensorboard==2.21.0` e `argbind==0.3.9` e suas dependências. A nova instalação
+> estrita passou em cinco ambientes: E0 tem 289 pacotes; E1–E4 têm 307.
+> Evidência atual: `app/locks/installation-evidence-2026-11-05.json`.
+> As contagens e recibos de 30/10 abaixo são históricos. Para o instalador
+> desktop e os testes dos pacotes Linux, consulte `docs/desktop.md`.
+
 ## UI
 
 Use Node admitido em `ui/package.json`: série 22 a partir de 22.12, série 24, ou >=26. Node 18 não atende às dependências atuais. O CI usa Node 22.

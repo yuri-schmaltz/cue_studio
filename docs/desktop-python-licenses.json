@@ -1,0 +1,2499 @@
+[
+  {
+    "name": "absl-py",
+    "version": "2.5.1",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "absl_py-2.5.1.dist-info/licenses/AUTHORS",
+      "absl_py-2.5.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "accelerate",
+    "version": "1.12.0",
+    "license": "Apache",
+    "licenseFiles": [
+      "accelerate-1.12.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "addict",
+    "version": "2.4.0",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "addict-2.4.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "aiofiles",
+    "version": "24.1.0",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "aiofiles-24.1.0.dist-info/licenses/LICENSE",
+      "aiofiles-24.1.0.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "name": "aiohappyeyeballs",
+    "version": "2.7.1",
+    "license": "PSF-2.0",
+    "licenseFiles": [
+      "aiohappyeyeballs-2.7.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "aiohttp",
+    "version": "3.14.5",
+    "license": "Apache-2.0 AND MIT",
+    "licenseFiles": [
+      "aiohttp-3.14.5.dist-info/licenses/LICENSE.txt",
+      "aiohttp-3.14.5.dist-info/licenses/vendor/llhttp/LICENSE"
+    ]
+  },
+  {
+    "name": "aiosignal",
+    "version": "1.4.0",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "aiosignal-1.4.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "albucore",
+    "version": "0.0.24",
+    "license": "MIT License\n\nCopyright (c) 2024 Vladimir Iglovikov\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copy",
+    "licenseFiles": [
+      "albucore-0.0.24.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "albumentations",
+    "version": "2.0.8",
+    "license": "MIT License\n\nCopyright (c) 2017 Vladimir Iglovikov, Alexander Buslaev, Alexander Parinov,\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to th",
+    "licenseFiles": [
+      "albumentations-2.0.8.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "alembic",
+    "version": "1.20.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "alembic-1.20.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "annotated-doc",
+    "version": "0.0.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "annotated_doc-0.0.5.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "annotated-types",
+    "version": "0.8.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "annotated_types-0.8.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "antlr4-python3-runtime",
+    "version": "4.9.3",
+    "license": "BSD",
+    "licenseFiles": []
+  },
+  {
+    "name": "anyascii",
+    "version": "0.3.3",
+    "license": "OSI Approved :: ISC License (ISCL)",
+    "licenseFiles": [
+      "anyascii-0.3.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "anyio",
+    "version": "4.15.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "anyio-4.15.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "argbind",
+    "version": "0.3.9",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "argbind-0.3.9.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "asteroid-filterbanks",
+    "version": "0.4.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "asteroid_filterbanks-0.4.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "attrs",
+    "version": "26.1.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "attrs-26.1.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "audio-separator",
+    "version": "0.36.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "audio_separator-0.36.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "audioread",
+    "version": "3.1.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "audioread-3.1.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "av",
+    "version": "16.1.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "av-16.1.0.dist-info/licenses/AUTHORS.py",
+      "av-16.1.0.dist-info/licenses/AUTHORS.rst",
+      "av-16.1.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "babel",
+    "version": "2.18.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "babel-2.18.0.dist-info/licenses/LICENSE",
+      "babel/locale-data/LICENSE.unicode"
+    ]
+  },
+  {
+    "name": "beartype",
+    "version": "0.18.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "beartype-0.18.5.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "blis",
+    "version": "1.3.4",
+    "license": "BSD",
+    "licenseFiles": [
+      "blis-1.3.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "catalogue",
+    "version": "2.0.10",
+    "license": "MIT",
+    "licenseFiles": [
+      "catalogue-2.0.10.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "certifi",
+    "version": "2026.10.23",
+    "license": "MPL-2.0",
+    "licenseFiles": [
+      "certifi-2026.10.23.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "cffi",
+    "version": "2.1.1",
+    "license": "MIT-0",
+    "licenseFiles": [
+      "cffi-2.1.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "cfgv",
+    "version": "3.5.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "cfgv-3.5.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "charset-normalizer",
+    "version": "3.5.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "charset_normalizer-3.5.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "chumpy",
+    "version": "0.71",
+    "license": "MIT",
+    "licenseFiles": [
+      "chumpy-0.71.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "click",
+    "version": "8.5.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "click-8.5.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "cloudpathlib",
+    "version": "0.26.0",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "cloudpathlib-0.26.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "cloudpickle",
+    "version": "3.1.2",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "cloudpickle-3.1.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "colorama",
+    "version": "0.4.6",
+    "license": "OSI Approved :: BSD License",
+    "licenseFiles": [
+      "colorama-0.4.6.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "colorlog",
+    "version": "6.12.0",
+    "license": "MIT License",
+    "licenseFiles": [
+      "colorlog-6.12.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "confection",
+    "version": "1.3.4",
+    "license": "MIT",
+    "licenseFiles": [
+      "confection-1.3.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "conformer",
+    "version": "0.3.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "conformer-0.3.2.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "contourpy",
+    "version": "1.3.3",
+    "license": "BSD 3-Clause License\n\n Copyright (c) 2021-2025, ContourPy Developers.\n All rights reserved.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permitted provided that the following conditions are met:\n\n 1. Redistributions of source code must retain the above copyright notice, this\n    list of conditions and the following disclaimer.\n\n 2. Redistributions in binary form must reproduce the above copyright notice,\n    this list of conditions and the following dis",
+    "licenseFiles": [
+      "contourpy-1.3.3.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "contractions",
+    "version": "0.1.73",
+    "license": "MIT",
+    "licenseFiles": [
+      "contractions-0.1.73.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "cryptography",
+    "version": "50.0.2",
+    "license": "Apache-2.0 OR BSD-3-Clause",
+    "licenseFiles": [
+      "cryptography-50.0.2.dist-info/licenses/LICENSE",
+      "cryptography-50.0.2.dist-info/licenses/LICENSE.APACHE",
+      "cryptography-50.0.2.dist-info/licenses/LICENSE.BSD"
+    ]
+  },
+  {
+    "name": "csvw",
+    "version": "4.1.1",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "csvw-4.1.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "ctranslate2",
+    "version": "4.8.4",
+    "license": "MIT",
+    "licenseFiles": []
+  },
+  {
+    "name": "cuda-bindings",
+    "version": "13.0.3",
+    "license": "LicenseRef-NVIDIA-SOFTWARE-LICENSE",
+    "licenseFiles": [
+      "cuda_bindings-13.0.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "cuda-pathfinder",
+    "version": "1.8.4",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "cuda_pathfinder-1.8.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "cycler",
+    "version": "0.12.1",
+    "license": "Copyright (c) 2015, matplotlib project\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or othe",
+    "licenseFiles": [
+      "cycler-0.12.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "cymem",
+    "version": "2.0.16",
+    "license": "MIT",
+    "licenseFiles": [
+      "cymem-2.0.16.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "Cython",
+    "version": "3.3.0",
+    "license": "Apache-2.0",
+    "licenseFiles": []
+  },
+  {
+    "name": "dashscope",
+    "version": "1.25.12",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "dashscope-1.25.12.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "decorator",
+    "version": "4.4.2",
+    "license": "new BSD License",
+    "licenseFiles": [
+      "decorator-4.4.2.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "decord",
+    "version": "0.6.0+cue1",
+    "license": "APACHE",
+    "licenseFiles": []
+  },
+  {
+    "name": "diffq",
+    "version": "0.2.4",
+    "license": "Creative Commons Attribution-NonCommercial 4.0 International",
+    "licenseFiles": [
+      "diffq-0.2.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "diffusers",
+    "version": "0.36.0",
+    "license": "Apache 2.0 License",
+    "licenseFiles": [
+      "diffusers-0.36.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "dill",
+    "version": "0.4.1",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "dill-0.4.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "distlib",
+    "version": "0.4.4",
+    "license": "PSF-2.0",
+    "licenseFiles": [
+      "distlib-0.4.4.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "dlinfo",
+    "version": "2.0.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "dlinfo-2.0.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "docopt",
+    "version": "0.6.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "docopt-0.6.2.dist-info/licenses/LICENSE-MIT"
+    ]
+  },
+  {
+    "name": "docstring_parser",
+    "version": "0.18.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "docstring_parser-0.18.0.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "easydict",
+    "version": "1.13",
+    "license": "LGPL-3.0",
+    "licenseFiles": [
+      "easydict-1.13.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "einops",
+    "version": "0.8.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "einops-0.8.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "einx",
+    "version": "0.4.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "einx-0.4.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "espeakng-loader",
+    "version": "0.2.4",
+    "license": "UNKNOWN",
+    "licenseFiles": []
+  },
+  {
+    "name": "facexlib",
+    "version": "0.3.0",
+    "license": "Apache License 2.0",
+    "licenseFiles": [
+      "facexlib-0.3.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "fastapi",
+    "version": "0.162.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "fastapi-0.162.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "faster-whisper",
+    "version": "1.2.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "faster_whisper-1.2.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "ffmpeg-python",
+    "version": "0.2.0",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "ffmpeg_python-0.2.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "ffmpy",
+    "version": "1.0.0",
+    "license": "MIT",
+    "licenseFiles": []
+  },
+  {
+    "name": "filelock",
+    "version": "4.2.4",
+    "license": "MIT",
+    "licenseFiles": [
+      "filelock-4.2.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "filterpy",
+    "version": "2.0.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "filterpy-2.0.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "fla-core",
+    "version": "0.4.1",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "fla_core-0.4.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "flash-linear-attention",
+    "version": "0.4.1",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "flash_linear_attention-0.4.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "flatbuffers",
+    "version": "25.12.19",
+    "license": "Apache 2.0",
+    "licenseFiles": []
+  },
+  {
+    "name": "fonttools",
+    "version": "4.68.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "fonttools-4.68.0.dist-info/licenses/LICENSE",
+      "fonttools-4.68.0.dist-info/licenses/LICENSE.external"
+    ]
+  },
+  {
+    "name": "frozendict",
+    "version": "2.5.0",
+    "license": "LGPL-3.0-only",
+    "licenseFiles": [
+      "frozendict-2.5.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "frozenlist",
+    "version": "1.8.0",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "frozenlist-1.8.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "fsspec",
+    "version": "2026.9.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "fsspec-2026.9.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "ftfy",
+    "version": "6.3.1",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "ftfy-6.3.1.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "future",
+    "version": "1.0.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "future-1.0.0.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "gguf",
+    "version": "0.17.1",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "gguf-0.17.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "gitdb",
+    "version": "4.0.12",
+    "license": "BSD License",
+    "licenseFiles": [
+      "gitdb-4.0.12.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "GitPython",
+    "version": "3.1.45",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "gitpython-3.1.45.dist-info/licenses/AUTHORS",
+      "gitpython-3.1.45.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "gradio",
+    "version": "5.29.0",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "gradio-5.29.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "gradio_client",
+    "version": "1.10.0",
+    "license": "Apache-2.0",
+    "licenseFiles": []
+  },
+  {
+    "name": "gradio_rangeslider",
+    "version": "0.0.8",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "gradio_rangeslider-0.0.8.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "groovy",
+    "version": "0.1.2",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "groovy-0.1.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "grpcio",
+    "version": "1.85.1",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "grpcio-1.85.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "h11",
+    "version": "0.16.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "h11-0.16.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "hf-xet",
+    "version": "1.7.1",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "hf_xet-1.7.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "http_ece",
+    "version": "1.2.1",
+    "license": "MIT",
+    "licenseFiles": []
+  },
+  {
+    "name": "httpcore",
+    "version": "1.0.9",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "httpcore-1.0.9.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "httpx",
+    "version": "0.28.1",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "httpx-0.28.1.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "huggingface_hub",
+    "version": "0.36.2",
+    "license": "Apache",
+    "licenseFiles": [
+      "huggingface_hub-0.36.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "hydra-core",
+    "version": "1.3.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "hydra_core-1.3.2.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "HyperPyYAML",
+    "version": "1.2.3",
+    "license": "OSI Approved :: Apache Software License",
+    "licenseFiles": [
+      "hyperpyyaml-1.2.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "identify",
+    "version": "2.6.20",
+    "license": "MIT",
+    "licenseFiles": [
+      "identify-2.6.20.dist-info/licenses/LICENSE",
+      "identify/vendor/licenses.py"
+    ]
+  },
+  {
+    "name": "idna",
+    "version": "3.20",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "idna-3.20.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "ImageIO",
+    "version": "2.37.2",
+    "license": "BSD-2-Clause",
+    "licenseFiles": [
+      "imageio-2.37.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "imageio-ffmpeg",
+    "version": "0.6.0",
+    "license": "BSD-2-Clause",
+    "licenseFiles": [
+      "imageio_ffmpeg-0.6.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "importlib_metadata",
+    "version": "10.1.0",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "importlib_metadata-10.1.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "insightface",
+    "version": "0.7.3",
+    "license": "MIT",
+    "licenseFiles": []
+  },
+  {
+    "name": "iopath",
+    "version": "0.1.10",
+    "license": "MIT licensed, as found in the LICENSE file",
+    "licenseFiles": [
+      "iopath-0.1.10.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "isodate",
+    "version": "0.7.2",
+    "license": "Copyright (c) 2021, Hugo van Kemenade and contributors\nCopyright (c) 2009-2018, Gerhard Weis and contributors\nCopyright (c) 2009, Gerhard Weis\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n    * Redistributions of source code must retain the above copyright\n      notice, this list of conditions and the following disclaimer.\n    * Redistributions in binary form must reproduce the",
+    "licenseFiles": [
+      "isodate-0.7.2.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "Jinja2",
+    "version": "3.1.6",
+    "license": "OSI Approved :: BSD License",
+    "licenseFiles": [
+      "jinja2-3.1.6.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "joblib",
+    "version": "1.6.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "joblib-1.6.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "json_repair",
+    "version": "0.59.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "json_repair-0.59.5.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "jsonschema",
+    "version": "4.26.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "jsonschema-4.26.0.dist-info/licenses/COPYING"
+    ]
+  },
+  {
+    "name": "jsonschema-specifications",
+    "version": "2025.9.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "jsonschema_specifications-2025.9.1.dist-info/licenses/COPYING"
+    ]
+  },
+  {
+    "name": "julius",
+    "version": "0.2.8",
+    "license": "MIT License",
+    "licenseFiles": [
+      "julius-0.2.8.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "kaldifst",
+    "version": "1.8.3",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "kaldifst-1.8.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "kiwisolver",
+    "version": "1.5.1",
+    "license": "=========================\n The Kiwi licensing terms\n=========================\nKiwi is licensed under the terms of the Modified BSD License (also known as\nNew or Revised BSD), as follows:\n\nCopyright (c) 2013-2026, Nucleic Development Team\n\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\nRedistributions of source code must retain the above copyright notice, this\nlist of conditions ",
+    "licenseFiles": [
+      "kiwisolver-1.5.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "language-tags",
+    "version": "1.3.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "language_tags-1.3.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "lazy-loader",
+    "version": "0.6",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "lazy_loader-0.6.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "librosa",
+    "version": "0.11.0",
+    "license": "ISC",
+    "licenseFiles": [
+      "librosa-0.11.0.dist-info/LICENSE.md"
+    ]
+  },
+  {
+    "name": "lightning",
+    "version": "2.6.6",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "lightning-2.6.6.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "lightning-utilities",
+    "version": "0.15.3",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "lightning_utilities-0.15.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "llvmlite",
+    "version": "0.50.0",
+    "license": "BSD-2-Clause AND Apache-2.0 WITH LLVM-exception",
+    "licenseFiles": [
+      "llvmlite-0.50.0.dist-info/licenses/LICENSE",
+      "llvmlite-0.50.0.dist-info/licenses/LICENSE.thirdparty"
+    ]
+  },
+  {
+    "name": "loguru",
+    "version": "0.7.3",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": []
+  },
+  {
+    "name": "Mako",
+    "version": "1.4.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "mako-1.4.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "Markdown",
+    "version": "3.11.2",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "markdown-3.11.2.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "markdown-it-py",
+    "version": "4.2.0",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "markdown_it_py-4.2.0.dist-info/licenses/LICENSE",
+      "markdown_it_py-4.2.0.dist-info/licenses/LICENSE.markdown-it"
+    ]
+  },
+  {
+    "name": "MarkupSafe",
+    "version": "3.0.3",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "markupsafe-3.0.3.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "matplotlib",
+    "version": "3.10.8",
+    "license": "License agreement for matplotlib versions 1.3.0 and later\n =========================================================\n\n 1. This LICENSE AGREEMENT is between the Matplotlib Development Team\n (\"MDT\"), and the Individual or Organization (\"Licensee\") accessing and\n otherwise using matplotlib software in source or binary form and its\n associated documentation.\n\n 2. Subject to the terms and conditions of this License Agreement, MDT\n hereby grants Licensee a nonexclusive, royalty-free, world-wide licens",
+    "licenseFiles": [
+      "matplotlib-3.10.8.dist-info/LICENSE",
+      "matplotlib/mpl-data/fonts/ttf/LICENSE_DEJAVU",
+      "matplotlib/mpl-data/fonts/ttf/LICENSE_STIX"
+    ]
+  },
+  {
+    "name": "mdurl",
+    "version": "0.1.2",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "mdurl-0.1.2.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "misaki",
+    "version": "0.9.4",
+    "license": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Le",
+    "licenseFiles": [
+      "misaki-0.9.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "ml_collections",
+    "version": "1.1.0",
+    "license": "OSI Approved :: Apache Software License",
+    "licenseFiles": [
+      "ml_collections-1.1.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "ml_dtypes",
+    "version": "0.6.0",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "ml_dtypes-0.6.0.dist-info/licenses/LICENSE",
+      "ml_dtypes-0.6.0.dist-info/licenses/LICENSE.eigen"
+    ]
+  },
+  {
+    "name": "mmgp",
+    "version": "3.7.12",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "mmgp-3.7.12.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "more-itertools",
+    "version": "11.2.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "more_itertools-11.2.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "moviepy",
+    "version": "1.0.3",
+    "license": "MIT License",
+    "licenseFiles": [
+      "moviepy-1.0.3.dist-info/licenses/LICENCE.txt"
+    ]
+  },
+  {
+    "name": "mpmath",
+    "version": "1.3.0",
+    "license": "BSD",
+    "licenseFiles": [
+      "mpmath-1.3.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "msgpack",
+    "version": "1.2.4",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "msgpack-1.2.4.dist-info/licenses/COPYING"
+    ]
+  },
+  {
+    "name": "multidict",
+    "version": "7.2.1",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "multidict-7.2.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "munch",
+    "version": "4.0.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "munch-4.0.0.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "murmurhash",
+    "version": "1.0.16",
+    "license": "MIT",
+    "licenseFiles": [
+      "murmurhash-1.0.16.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "mutagen",
+    "version": "1.47.0",
+    "license": "GPL-2.0-or-later",
+    "licenseFiles": [
+      "mutagen-1.47.0.dist-info/COPYING"
+    ]
+  },
+  {
+    "name": "narwhals",
+    "version": "2.28.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "narwhals-2.28.0.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "networkx",
+    "version": "3.6.1",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "networkx-3.6.1.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "ninja",
+    "version": "1.13.2",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "ninja-1.13.2.dist-info/licenses/LICENSE_Apache_20"
+    ]
+  },
+  {
+    "name": "nodeenv",
+    "version": "1.11.1",
+    "license": "BSD",
+    "licenseFiles": [
+      "nodeenv-1.11.1.dist-info/licenses/AUTHORS",
+      "nodeenv-1.11.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "num2words",
+    "version": "0.5.14",
+    "license": "LGPL",
+    "licenseFiles": [
+      "num2words-0.5.14.dist-info/COPYING"
+    ]
+  },
+  {
+    "name": "numba",
+    "version": "0.68.1",
+    "license": "BSD",
+    "licenseFiles": [
+      "numba-0.68.1.dist-info/licenses/LICENSE",
+      "numba-0.68.1.dist-info/licenses/LICENSES.third-party"
+    ]
+  },
+  {
+    "name": "numpy",
+    "version": "2.1.2",
+    "license": "Copyright (c) 2005-2024, NumPy Developers.\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are\nmet:\n\n    * Redistributions of source code must retain the above copyright\n       notice, this list of conditions and the following disclaimer.\n\n    * Redistributions in binary form must reproduce the above\n       copyright notice, this list of conditions and the following\n       disclaimer in th",
+    "licenseFiles": [
+      "numpy-2.1.2.dist-info/LICENSE.txt",
+      "numpy/_core/include/numpy/random/LICENSE.txt",
+      "numpy/ma/LICENSE",
+      "numpy/random/LICENSE.md"
+    ]
+  },
+  {
+    "name": "nvidia-cublas",
+    "version": "13.1.0.3",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cublas-13.1.0.3.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cuda-cupti",
+    "version": "13.0.85",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cuda_cupti-13.0.85.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cuda-nvrtc",
+    "version": "13.0.88",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cuda_nvrtc-13.0.88.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cuda-runtime",
+    "version": "13.0.96",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cuda_runtime-13.0.96.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cudnn-cu13",
+    "version": "9.15.1.9",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cudnn_cu13-9.15.1.9.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cufft",
+    "version": "12.0.0.61",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cufft-12.0.0.61.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cufile",
+    "version": "1.15.1.6",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cufile-1.15.1.6.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-curand",
+    "version": "10.4.0.35",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_curand-10.4.0.35.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cusolver",
+    "version": "12.0.4.66",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cusolver-12.0.4.66.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cusparse",
+    "version": "12.6.3.3",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_cusparse-12.6.3.3.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-cusparselt-cu13",
+    "version": "0.8.0",
+    "license": "NVIDIA Proprietary Software",
+    "licenseFiles": [
+      "nvidia/cusparselt/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "nvidia-ml-py",
+    "version": "13.590.48",
+    "license": "BSD",
+    "licenseFiles": []
+  },
+  {
+    "name": "nvidia-nccl-cu13",
+    "version": "2.28.9",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_nccl_cu13-2.28.9.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-nvjitlink",
+    "version": "13.0.88",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_nvjitlink-13.0.88.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-nvshmem-cu13",
+    "version": "3.4.5",
+    "license": "LicenseRef-NVIDIA-Proprietary",
+    "licenseFiles": [
+      "nvidia_nvshmem_cu13-3.4.5.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "nvidia-nvtx",
+    "version": "13.0.85",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "nvidia_nvtx-13.0.85.dist-info/licenses/License.txt"
+    ]
+  },
+  {
+    "name": "omegaconf",
+    "version": "2.3.0",
+    "license": "OSI Approved :: BSD License",
+    "licenseFiles": [
+      "omegaconf-2.3.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "onnx",
+    "version": "1.23.2",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "onnx-1.23.2.dist-info/licenses/LICENSE",
+      "onnx-1.23.2.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "name": "onnx-weekly",
+    "version": "1.24.0.dev20261026",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "onnx_weekly-1.24.0.dev20261026.dist-info/licenses/LICENSE",
+      "onnx_weekly-1.24.0.dev20261026.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "name": "onnx2torch-py313",
+    "version": "1.6.0",
+    "license": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Le",
+    "licenseFiles": [
+      "onnx2torch_py313-1.6.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "onnxruntime",
+    "version": "1.31.1",
+    "license": "MIT License",
+    "licenseFiles": [
+      "onnxruntime/LICENSE",
+      "onnxruntime/ThirdPartyNotices.txt"
+    ]
+  },
+  {
+    "name": "onnxruntime-gpu",
+    "version": "1.25.0.dev20260210001",
+    "license": "MIT License",
+    "licenseFiles": [
+      "onnxruntime/LICENSE",
+      "onnxruntime/ThirdPartyNotices.txt"
+    ]
+  },
+  {
+    "name": "open_clip_torch",
+    "version": "3.2.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "open_clip_torch-3.2.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "openai-whisper",
+    "version": "20250625",
+    "license": "MIT",
+    "licenseFiles": [
+      "openai_whisper-20250625.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "opencv-python",
+    "version": "4.13.0.92",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "cv2/LICENSE-3RD-PARTY.txt",
+      "cv2/LICENSE.txt",
+      "cv2/data/haarcascade_license_plate_rus_16stages.xml",
+      "opencv_python-4.13.0.92.dist-info/LICENSE-3RD-PARTY.txt",
+      "opencv_python-4.13.0.92.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "opencv-python-headless",
+    "version": "5.0.0.93",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "cv2/LICENSE-3RD-PARTY.txt",
+      "cv2/LICENSE.txt",
+      "opencv_python_headless-5.0.0.93.dist-info/LICENSE-3RD-PARTY.txt",
+      "opencv_python_headless-5.0.0.93.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "opentelemetry-api",
+    "version": "1.45.2",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "opentelemetry_api-1.45.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "optimum-quanto",
+    "version": "0.2.7",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "optimum_quanto-0.2.7.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "optuna",
+    "version": "5.0.0",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "optuna-5.0.0.dist-info/licenses/LICENSE",
+      "optuna-5.0.0.dist-info/licenses/LICENSE_THIRD_PARTY"
+    ]
+  },
+  {
+    "name": "orjson",
+    "version": "3.13.0",
+    "license": "MPL-2.0 AND (Apache-2.0 OR MIT)",
+    "licenseFiles": [
+      "orjson-3.13.0.dist-info/licenses/LICENSE-APACHE",
+      "orjson-3.13.0.dist-info/licenses/LICENSE-MIT",
+      "orjson-3.13.0.dist-info/licenses/LICENSE-MPL-2.0"
+    ]
+  },
+  {
+    "name": "packaging",
+    "version": "26.3",
+    "license": "Apache-2.0 OR BSD-2-Clause",
+    "licenseFiles": [
+      "packaging-26.3.dist-info/licenses/LICENSE",
+      "packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+      "packaging-26.3.dist-info/licenses/LICENSE.BSD",
+      "packaging/licenses/__init__.py",
+      "packaging/licenses/_spdx.py"
+    ]
+  },
+  {
+    "name": "pandas",
+    "version": "2.3.3",
+    "license": "BSD 3-Clause License\n\n Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team\n All rights reserved.\n\n Copyright (c) 2011-2023, Open source contributors.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permitted provided that the following conditions are met:\n\n * Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n * Redistributions i",
+    "licenseFiles": [
+      "pandas-2.3.3.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "peft",
+    "version": "0.17.0",
+    "license": "Apache",
+    "licenseFiles": [
+      "peft-0.17.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "phonemizer-fork",
+    "version": "3.3.2",
+    "license": "GNU GENERAL PUBLIC LICENSE\n                       Version 3, 29 June 2007\n\n Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>\n Everyone is permitted to copy and distribute verbatim copies\n of this license document, but changing it is not allowed.\n\n                            Preamble\n\n  The GNU General Public License is a free, copyleft license for\nsoftware and other kinds of works.\n\n  The licenses for most software and other practical works are designed\nto take away your freed",
+    "licenseFiles": [
+      "phonemizer_fork-3.3.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "piexif",
+    "version": "1.1.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "piexif-1.1.3.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "pillow",
+    "version": "11.3.0",
+    "license": "MIT-CMU",
+    "licenseFiles": [
+      "pillow-11.3.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "platformdirs",
+    "version": "4.14.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "platformdirs-4.14.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pooch",
+    "version": "1.9.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "pooch-1.9.0.dist-info/licenses/AUTHORS.md",
+      "pooch-1.9.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "portalocker",
+    "version": "4.4.2",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "portalocker-4.4.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pre_commit",
+    "version": "4.7.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "pre_commit-4.7.0.dist-info/licenses/LICENSE",
+      "pre_commit/resources/empty_template_LICENSE.renv"
+    ]
+  },
+  {
+    "name": "preshed",
+    "version": "3.0.15",
+    "license": "MIT",
+    "licenseFiles": [
+      "preshed-3.0.15.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "prettytable",
+    "version": "3.18.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "prettytable-3.18.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "primePy",
+    "version": "1.3",
+    "license": "UNKNOWN",
+    "licenseFiles": []
+  },
+  {
+    "name": "proglog",
+    "version": "0.1.12",
+    "license": "MIT",
+    "licenseFiles": [
+      "proglog-0.1.12.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "propcache",
+    "version": "0.5.4",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "propcache-0.5.4.dist-info/licenses/LICENSE",
+      "propcache-0.5.4.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "name": "protobuf",
+    "version": "7.36.2",
+    "license": "3-Clause BSD License",
+    "licenseFiles": [
+      "protobuf-7.36.2.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "psutil",
+    "version": "7.2.2",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "psutil-7.2.2.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "py-vapid",
+    "version": "1.9.6",
+    "license": "MPL-2.0",
+    "licenseFiles": [
+      "py_vapid-1.9.6.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pyahocorasick",
+    "version": "2.3.1",
+    "license": "BSD-3-Clause and Public-Domain",
+    "licenseFiles": [
+      "pyahocorasick-2.3.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pyannote-core",
+    "version": "6.1.0",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "pyannote_core-6.1.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pyannote-database",
+    "version": "6.1.1",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "pyannote_database-6.1.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pyannote-pipeline",
+    "version": "4.1.0",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "pyannote_pipeline-4.1.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pyannote.audio",
+    "version": "3.3.2",
+    "license": "mit",
+    "licenseFiles": [
+      "pyannote.audio-3.3.2.dist-info/LICENSE",
+      "pyannote/audio/models/embedding/wespeaker/LICENSE.WeSpeaker"
+    ]
+  },
+  {
+    "name": "pyannote.metrics",
+    "version": "3.2.1",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "pyannote.metrics-3.2.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "pycocotools",
+    "version": "2.0.11",
+    "license": "FreeBSD",
+    "licenseFiles": []
+  },
+  {
+    "name": "pycparser",
+    "version": "3.12",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "pycparser-3.12.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic",
+    "version": "2.10.6",
+    "license": "MIT",
+    "licenseFiles": [
+      "pydantic-2.10.6.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic_core",
+    "version": "2.27.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "pydantic_core-2.27.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pydub",
+    "version": "0.25.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "pydub-0.25.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "pygame",
+    "version": "2.6.1",
+    "license": "LGPL",
+    "licenseFiles": []
+  },
+  {
+    "name": "Pygments",
+    "version": "2.21.0",
+    "license": "BSD-2-Clause",
+    "licenseFiles": [
+      "pygments-2.21.0.dist-info/licenses/AUTHORS",
+      "pygments-2.21.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pyloudnorm",
+    "version": "0.2.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "pyloudnorm-0.2.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "PyMatting",
+    "version": "1.1.16",
+    "license": "MIT",
+    "licenseFiles": [
+      "pymatting-1.1.16.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "pyparsing",
+    "version": "3.3.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "pyparsing-3.3.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pypdf",
+    "version": "6.18.1",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "pypdf-6.18.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "python-dateutil",
+    "version": "3.0.0",
+    "license": "Dual License",
+    "licenseFiles": [
+      "python_dateutil-3.0.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "python-discovery",
+    "version": "1.6.7",
+    "license": "MIT",
+    "licenseFiles": [
+      "python_discovery-1.6.7.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "python-multipart",
+    "version": "0.0.32",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "python_multipart-0.0.32.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "pytorch-lightning",
+    "version": "2.6.6",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "pytorch_lightning-2.6.6.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pytorch-metric-learning",
+    "version": "2.9.0",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "pytorch_metric_learning-2.9.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "pytz",
+    "version": "2026.6",
+    "license": "MIT",
+    "licenseFiles": [
+      "pytz-2026.6.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "pyvers",
+    "version": "0.2.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "pyvers-0.2.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pywebpush",
+    "version": "2.3.0",
+    "license": "MPL-2.0",
+    "licenseFiles": [
+      "pywebpush-2.3.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "PyYAML",
+    "version": "6.0.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "pyyaml-6.0.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "rdflib",
+    "version": "7.6.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "rdflib-7.6.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "referencing",
+    "version": "0.37.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "referencing-0.37.0.dist-info/licenses/COPYING"
+    ]
+  },
+  {
+    "name": "regex",
+    "version": "2026.9.29",
+    "license": "Apache-2.0 AND CNRI-Python",
+    "licenseFiles": [
+      "regex-2026.9.29.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "rembg",
+    "version": "2.0.65",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "rembg-2.0.65.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "requests",
+    "version": "2.34.2",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "requests-2.34.2.dist-info/licenses/LICENSE",
+      "requests-2.34.2.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "name": "resampy",
+    "version": "0.4.3",
+    "license": "ISC",
+    "licenseFiles": [
+      "resampy-0.4.3.dist-info/LICENSE.md"
+    ]
+  },
+  {
+    "name": "rfc3986",
+    "version": "1.5.0",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "rfc3986-1.5.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "rich",
+    "version": "15.0.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "rich-15.0.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "rotary-embedding-torch",
+    "version": "0.6.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "rotary_embedding_torch-0.6.5.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "rpds-py",
+    "version": "2026.9.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "rpds_py-2026.9.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "ruamel.yaml",
+    "version": "0.18.17",
+    "license": "MIT",
+    "licenseFiles": [
+      "ruamel_yaml-0.18.17.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "ruamel.yaml.clib",
+    "version": "0.2.15",
+    "license": "MIT",
+    "licenseFiles": [
+      "ruamel_yaml_clib-0.2.15.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "ruff",
+    "version": "0.17.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "ruff-0.17.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "s3tokenizer",
+    "version": "0.3.0",
+    "license": "Apache2.0",
+    "licenseFiles": [
+      "s3tokenizer-0.3.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "safehttpx",
+    "version": "0.1.7",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "safehttpx-0.1.7.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "safetensors",
+    "version": "0.8.0",
+    "license": "OSI Approved :: Apache Software License",
+    "licenseFiles": [
+      "safetensors-0.8.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "samplerate",
+    "version": "0.1.0",
+    "license": "MIT",
+    "licenseFiles": []
+  },
+  {
+    "name": "scikit-image",
+    "version": "0.26.0",
+    "license": "Files: *\n Copyright: 2009-2022 the scikit-image team\n License: BSD-3-Clause\n\n Files: doc/source/themes/scikit-image/layout.html\n Copyright: 2007-2010 the Sphinx team\n License: BSD-3-Clause\n\n Files: skimage/feature/_canny.py\n        skimage/filters/edges.py\n        skimage/filters/_rank_order.py\n        skimage/morphology/_skeletonize.py\n        skimage/morphology/tests/test_watershed.py\n        skimage/morphology/watershed.py\n        skimage/segmentation/heap_general.pxi\n        skimage/segmenta",
+    "licenseFiles": [
+      "scikit_image-0.26.0.dist-info/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "scikit-learn",
+    "version": "1.9.1",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "scikit_learn-1.9.1.dist-info/licenses/COPYING",
+      "sklearn/externals/array_api_compat/LICENSE",
+      "sklearn/externals/array_api_extra/LICENSE"
+    ]
+  },
+  {
+    "name": "scipy",
+    "version": "1.17.1",
+    "license": "Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.\n All rights reserved.\n\n Redistribution and use in source and binary forms, with or without\n modification, are permitted provided that the following conditions\n are met:\n\n 1. Redistributions of source code must retain the above copyright\n    notice, this list of conditions and the following disclaimer.\n\n 2. Redistributions in binary form must reproduce the above\n    copyright notice, this list of conditions and the following\n    disc",
+    "licenseFiles": [
+      "scipy-1.17.1.dist-info/LICENSE.txt",
+      "scipy/_lib/_uarray/LICENSE",
+      "scipy/fft/_pocketfft/LICENSE.md",
+      "scipy/integrate/LICENSE_DOP",
+      "scipy/spatial/qhull_src/COPYING_QHULL.txt"
+    ]
+  },
+  {
+    "name": "segment-anything",
+    "version": "1.0",
+    "license": "UNKNOWN",
+    "licenseFiles": [
+      "segment_anything-1.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "segments",
+    "version": "2.4.0",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "segments-2.4.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "semantic-version",
+    "version": "2.10.0",
+    "license": "BSD",
+    "licenseFiles": [
+      "semantic_version-2.10.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "semver",
+    "version": "3.1.0",
+    "license": "Copyright (c) 2013, Konstantine Rybnikov\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\n  Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n  Redistributions in binary form must reproduce the above copyright notice, this\n  list of conditions and the following disclaimer in the documentation and/or\n  ot",
+    "licenseFiles": [
+      "semver-3.1.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "sentencepiece",
+    "version": "0.2.1",
+    "license": "UNKNOWN",
+    "licenseFiles": []
+  },
+  {
+    "name": "setuptools",
+    "version": "84.2.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "setuptools-84.2.1.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/autocommand-2.2.2.dist-info/LICENSE",
+      "setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE",
+      "setuptools/_vendor/importlib_metadata-8.7.1.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/jaraco.text-4.0.0.dist-info/LICENSE",
+      "setuptools/_vendor/jaraco_context-6.1.0.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/jaraco_functools-4.4.0.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/more_itertools-10.8.0.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/packaging-26.3.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/packaging-26.3.dist-info/licenses/LICENSE.APACHE",
+      "setuptools/_vendor/packaging-26.3.dist-info/licenses/LICENSE.BSD",
+      "setuptools/_vendor/packaging/licenses/__init__.py",
+      "setuptools/_vendor/packaging/licenses/_spdx.py",
+      "setuptools/_vendor/platformdirs-4.4.0.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/tomli-2.4.0.dist-info/licenses/LICENSE",
+      "setuptools/_vendor/wheel-0.46.3.dist-info/licenses/LICENSE.txt",
+      "setuptools/_vendor/zipp-3.23.0.dist-info/licenses/LICENSE",
+      "setuptools/config/NOTICE",
+      "setuptools/config/_validate_pyproject/NOTICE"
+    ]
+  },
+  {
+    "name": "shellingham",
+    "version": "1.5.4",
+    "license": "ISC License",
+    "licenseFiles": [
+      "shellingham-1.5.4.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "simsimd",
+    "version": "6.5.16",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "simsimd-6.5.16.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "six",
+    "version": "1.17.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "six-1.17.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "smart_open",
+    "version": "9.0.1",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "smart_open-9.0.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "smmap",
+    "version": "5.0.3",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "smmap-5.0.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "smplfitter",
+    "version": "0.2.10",
+    "license": "MIT License\n\nCopyright (c) 2024 Istv\u00e1n S\u00e1r\u00e1ndi\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyrigh",
+    "licenseFiles": []
+  },
+  {
+    "name": "sortedcontainers",
+    "version": "2.4.0",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "sortedcontainers-2.4.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "sounddevice",
+    "version": "0.5.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "sounddevice-0.5.5.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "soundfile",
+    "version": "0.13.1",
+    "license": "BSD 3-Clause License",
+    "licenseFiles": [
+      "_soundfile_data/COPYING",
+      "soundfile-0.13.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "soxr",
+    "version": "1.1.0",
+    "license": "LGPL-2.1-or-later",
+    "licenseFiles": [
+      "soxr-1.1.0.dist-info/licenses/COPYING.LGPL",
+      "soxr-1.1.0.dist-info/licenses/LICENSE-PFFFT.txt",
+      "soxr-1.1.0.dist-info/licenses/LICENSE-libsoxr.txt",
+      "soxr-1.1.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "spacy",
+    "version": "3.8.18",
+    "license": "MIT",
+    "licenseFiles": [
+      "spacy-3.8.18.dist-info/licenses/LICENSE",
+      "spacy/lang/hr/lemma_lookup_license.txt"
+    ]
+  },
+  {
+    "name": "spacy-legacy",
+    "version": "3.0.12",
+    "license": "MIT",
+    "licenseFiles": [
+      "spacy_legacy-3.0.12.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "spacy-loggers",
+    "version": "1.0.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "spacy_loggers-1.0.5.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "spacy_pkuseg",
+    "version": "1.0.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "spacy_pkuseg-1.0.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "speechbrain",
+    "version": "1.0.3",
+    "license": "OSI Approved :: Apache Software License",
+    "licenseFiles": [
+      "speechbrain-1.0.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "SQLAlchemy",
+    "version": "2.1.6",
+    "license": "MIT",
+    "licenseFiles": [
+      "sqlalchemy-2.1.6.dist-info/licenses/AUTHORS",
+      "sqlalchemy-2.1.6.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "srsly",
+    "version": "2.5.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "srsly-2.5.5.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "starlette",
+    "version": "0.52.1",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "starlette-0.52.1.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "stringzilla",
+    "version": "4.0.14",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "stringzilla-4.0.14.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "sympy",
+    "version": "1.14.0",
+    "license": "BSD",
+    "licenseFiles": [
+      "sympy-1.14.0.dist-info/licenses/AUTHORS",
+      "sympy-1.14.0.dist-info/licenses/LICENSE",
+      "sympy/parsing/latex/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "tabulate",
+    "version": "0.10.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "tabulate-0.10.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "taichi",
+    "version": "1.7.4",
+    "license": "Apache Software License (http://www.apache.org/licenses/LICENSE-2.0)",
+    "licenseFiles": [
+      "taichi-1.7.4.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "tensorboard",
+    "version": "2.21.0",
+    "license": "Apache 2.0",
+    "licenseFiles": [
+      "tensorboard-2.21.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "tensorboard-data-server",
+    "version": "0.7.2",
+    "license": "Apache 2.0",
+    "licenseFiles": []
+  },
+  {
+    "name": "tensorboardX",
+    "version": "2.6.5",
+    "license": "MIT",
+    "licenseFiles": [
+      "tensorboardx-2.6.5.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "tensordict",
+    "version": "0.11.0",
+    "license": "BSD",
+    "licenseFiles": [
+      "tensordict-0.11.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "termcolor",
+    "version": "3.3.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "termcolor-3.3.0.dist-info/licenses/COPYING.txt"
+    ]
+  },
+  {
+    "name": "textsearch",
+    "version": "0.0.24",
+    "license": "MIT",
+    "licenseFiles": []
+  },
+  {
+    "name": "thinc",
+    "version": "8.3.14",
+    "license": "MIT",
+    "licenseFiles": [
+      "thinc-8.3.14.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "threadpoolctl",
+    "version": "3.7.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "threadpoolctl-3.7.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "tifffile",
+    "version": "2026.3.3",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "tifffile-2026.3.3.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "tiktoken",
+    "version": "0.14.0",
+    "license": "MIT License\n\nCopyright (c) 2022 OpenAI, Shantanu Jain\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above c",
+    "licenseFiles": [
+      "tiktoken-0.14.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "timm",
+    "version": "1.0.24",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "timm-1.0.24.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "tokenizers",
+    "version": "0.22.1",
+    "license": "OSI Approved :: Apache Software License",
+    "licenseFiles": []
+  },
+  {
+    "name": "tomlkit",
+    "version": "0.13.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "tomlkit-0.13.3.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "torch",
+    "version": "2.10.0+cu130",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "torch-2.10.0+cu130.dist-info/licenses/LICENSE",
+      "torch-2.10.0+cu130.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "name": "torch-audiomentations",
+    "version": "0.12.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "torch_audiomentations-0.12.0.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "torch_pitch_shift",
+    "version": "1.2.5",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "torch_pitch_shift-1.2.5.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "torchaudio",
+    "version": "2.10.0+cu130",
+    "license": "OSI Approved :: BSD License",
+    "licenseFiles": [
+      "torchaudio-2.10.0+cu130.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "torchcodec",
+    "version": "0.10.0+cu130",
+    "license": "BSD 3-Clause License\n\nCopyright 2024 Meta\n\nRedistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice,this list\nof conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice, this\nlist of conditions and the following disclaimer in the documentation\nand/or other materials provided wi",
+    "licenseFiles": [
+      "torchcodec-0.10.0+cu130.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "torchdiffeq",
+    "version": "0.2.5",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "torchdiffeq-0.2.5.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "torchmetrics",
+    "version": "1.9.0",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "torchmetrics-1.9.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "torchvision",
+    "version": "0.25.0+cu130",
+    "license": "BSD",
+    "licenseFiles": [
+      "torchvision-0.25.0+cu130.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "tqdm",
+    "version": "4.67.3",
+    "license": "MPL-2.0 AND MIT",
+    "licenseFiles": [
+      "tqdm-4.67.3.dist-info/licenses/LICENCE"
+    ]
+  },
+  {
+    "name": "transformers",
+    "version": "4.57.1",
+    "license": "Apache 2.0 License",
+    "licenseFiles": [
+      "transformers-4.57.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "triton",
+    "version": "3.6.0",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "triton-3.6.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "typer",
+    "version": "0.27.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "typer-0.27.3.dist-info/licenses/LICENSE",
+      "typer/_click/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "typing-inspection",
+    "version": "0.4.4",
+    "license": "MIT",
+    "licenseFiles": [
+      "typing_inspection-0.4.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "typing_extensions",
+    "version": "4.16.0",
+    "license": "PSF-2.0",
+    "licenseFiles": [
+      "typing_extensions-4.16.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "tzdata",
+    "version": "2026.6",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "tzdata-2026.6.dist-info/licenses/LICENSE",
+      "tzdata-2026.6.dist-info/licenses/licenses/LICENSE_APACHE"
+    ]
+  },
+  {
+    "name": "uritemplate",
+    "version": "4.2.0",
+    "license": "BSD 3-Clause OR Apache-2.0",
+    "licenseFiles": [
+      "uritemplate-4.2.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "urllib3",
+    "version": "2.8.0",
+    "license": "MIT",
+    "licenseFiles": [
+      "urllib3-2.8.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "uvicorn",
+    "version": "0.54.0",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "uvicorn-0.54.0.dist-info/licenses/LICENSE.md"
+    ]
+  },
+  {
+    "name": "vector-quantize-pytorch",
+    "version": "1.27.19",
+    "license": "MIT License\n\nCopyright (c) 2020 Phil Wang\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright not",
+    "licenseFiles": [
+      "vector_quantize_pytorch-1.27.19.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "virtualenv",
+    "version": "21.15.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "virtualenv-21.15.1.dist-info/licenses/LICENSE",
+      "virtualenv-21.15.1.dist-info/licenses/THIRD-PARTY-NOTICES.md"
+    ]
+  },
+  {
+    "name": "wasabi",
+    "version": "1.1.3",
+    "license": "MIT",
+    "licenseFiles": [
+      "wasabi-1.1.3.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "wcwidth",
+    "version": "0.9.4",
+    "license": "OSI Approved :: MIT License",
+    "licenseFiles": [
+      "wcwidth-0.9.4.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "weasel",
+    "version": "1.0.1",
+    "license": "MIT",
+    "licenseFiles": [
+      "weasel-1.0.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "websocket-client",
+    "version": "1.9.2",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "websocket_client-1.9.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "websockets",
+    "version": "15.0.1",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "websockets-15.0.1.dist-info/LICENSE"
+    ]
+  },
+  {
+    "name": "Werkzeug",
+    "version": "3.1.9",
+    "license": "BSD-3-Clause",
+    "licenseFiles": [
+      "werkzeug-3.1.9.dist-info/licenses/LICENSE.txt",
+      "werkzeug/debug/shared/ICON_LICENSE.md"
+    ]
+  },
+  {
+    "name": "wetext",
+    "version": "0.1.2",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "wetext-0.1.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "wrapt",
+    "version": "2.5.2",
+    "license": "BSD-2-Clause",
+    "licenseFiles": [
+      "wrapt-2.5.2.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "xxhash",
+    "version": "3.6.0",
+    "license": "BSD",
+    "licenseFiles": [
+      "xxhash-3.6.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "yarl",
+    "version": "1.25.1",
+    "license": "Apache-2.0",
+    "licenseFiles": [
+      "yarl-1.25.1.dist-info/licenses/LICENSE",
+      "yarl-1.25.1.dist-info/licenses/NOTICE"
+    ]
+  },
+  {
+    "name": "zipp",
+    "version": "4.1.2",
+    "license": "MIT",
+    "licenseFiles": [
+      "zipp-4.1.2.dist-info/licenses/LICENSE"
+    ]
+  }
+]

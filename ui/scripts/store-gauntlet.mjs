@@ -487,7 +487,7 @@ console.log('Persistence contracts passed: ephemeral strip, legacy/lora_id shape
 
 // --- Slice contracts: studioModelSlice + studioModeSlice (composed store) ---
 // Deterministic catalog. The ids deliberately overlap DEFAULTS_ADDED_IN so
-// the curated-defaults upgrade path is exercised (storedVer 1 -> v11).
+// the curated-defaults upgrade path is exercised (storedVer 1 -> v12).
 const SLICE_CATALOG = [
   { model_type: 'ltx2_22B_distilled_1_1', name: 'LTX', family: 'ltx2', architecture: 'ltx2_22B', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 24 },
   { model_type: 'minimax_h3', name: 'H3', family: 'minimax_h3', architecture: 'minimax_h3', is_i2v: true, is_t2v: true, guidance_max_phases: 1, fps: 16 },
@@ -537,7 +537,7 @@ let st = useStore.getState()
 assert.equal(st.modelsLoaded, true, 'models load marks loaded')
 assert.equal(st.params.model_type, 'ltx2_22B_distilled_1_1', 'boot defaults to the curated video model')
 assert.equal(st.selectedModelPerMode.video, 'ltx2_22B_distilled_1_1')
-assert.equal(memory.get('cue-studio_defaults_version'), '11', 'curated defaults upgrade stamps the version')
+assert.equal(memory.get('cue-studio_defaults_version'), '12', 'curated defaults upgrade stamps the version')
 for (const id of ['scail2_14B_recast_fast', 'minimax_h3_ref2va', 'ltx2_25', 'minimax_music3']) {
   assert.equal(st.enabledModels.has(id), true, `${id} enabled by the curated defaults upgrade`)
 }
@@ -545,7 +545,7 @@ for (const id of ['scail2_14B_recast_fast', 'minimax_h3_ref2va', 'ltx2_25', 'min
 // visibility must not re-apply over the (migrated) local explicit set.
 visibilityFixture = {
   configured: true, enabled_models: ['minimax_music3'],
-  initialized_mature_models: [], defaults_version: 11,
+  initialized_mature_models: [], defaults_version: 12,
 }
 await useStore.getState().loadModels()
 st = useStore.getState()

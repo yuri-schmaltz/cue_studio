@@ -129,6 +129,12 @@ export function QueuePage() {
       && (!entry.pipeline_id || entry.pipeline_id === pipelineId)
     )),
   )
+  // Completed restart-recovery rows remain available for review but are no
+  // longer pending queue work, so the page count represents actionable items.
+  const queueItemCount = studioJobs.length
+    + directorEntries.length
+    + visiblePersisted.filter(({ state }) => state !== 'done').length
+    + (activePipeline && !activePipelineIsQueued ? 1 : 0)
   useEffect(() => {
     void loadDirectorQueue()
   }, [loadDirectorQueue])
@@ -249,6 +255,9 @@ export function QueuePage() {
               </button>
             )}
           </div>
+          <span className="queue-section-meta" aria-label={`${queueItemCount} ${queueItemCount === 1 ? 'item' : 'items'}`}>
+            {queueItemCount} {queueItemCount === 1 ? 'item' : 'items'}
+          </span>
         </div>
 
         {!activePipeline && studioJobs.length === 0 && directorEntries.length === 0 && visiblePersisted.length === 0 && (

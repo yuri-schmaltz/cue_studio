@@ -101,7 +101,7 @@ def main():
     if not config.exists():
         with config.open('x') as handle:
             json.dump({'save_path': str(data / 'outputs'), 'image_save_path': str(data / 'outputs'),
-                       'audio_save_path': str(data / 'outputs'), 'projects_root_path': str(data / 'projects'),
+                       'audio_save_path': str(data / 'outputs'), 'services': {'projects_root_path': str(data / 'projects')},
                        'checkpoints_paths': [str(data / 'models')], 'loras_root': str(data / 'loras')}, handle)
     # Bind before importing the large runtime. No close/rebind race and no
     # attachment to a pre-existing web instance on a guessed port.

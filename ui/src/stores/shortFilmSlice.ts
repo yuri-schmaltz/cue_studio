@@ -32,7 +32,10 @@ export type ShortFilmSlice = {
 }
 
 export type ShortFilmSliceDeps = {
-  startDirectLlmStreamPolling: (set: any, get: any) => () => void
+  startDirectLlmStreamPolling: (
+    set: Parameters<StateCreator<AppState, [], [], ShortFilmSlice>>[0],
+    get: Parameters<StateCreator<AppState, [], [], ShortFilmSlice>>[1],
+  ) => () => void
   directorUsesGeneratedShotImages: (state: AppState) => boolean
   getAnalysisSequence: () => number
   bumpAnalysisSequence: () => number

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Regression tests for the speaker photo in the Director submission.
  *

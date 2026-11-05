@@ -165,13 +165,14 @@ export function DirectorPlanColumn() {
     ].join('#'),
     [plannedClips, directorVideoModel, directorResolutionPreset, directorAspect, directorVideoSteps],
   )
+  const reviewStepVisible = atStep('review_video') || pastStep('review_video')
 
   useEffect(() => {
-    if (!atStep('review_video') && !pastStep('review_video')) return
+    if (!reviewStepVisible) return
     if (plannedClips.length === 0) return
     const timer = window.setTimeout(() => { void refreshPreflight() }, 400)
     return () => window.clearTimeout(timer)
-  }, [preflightSignature, plannedClips.length, refreshPreflight])
+  }, [preflightSignature, plannedClips.length, refreshPreflight, reviewStepVisible])
 
   const handleAddToQueue = async () => {
     setQueueConfirmation(null)
