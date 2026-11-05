@@ -3924,8 +3924,25 @@ def get_default_profile(output_type):
         return default_profile_audio
     return default_profile_video
 
-def compute_profile(override_profile, output_type="video"):
-    return override_profile if override_profile != -1 else get_default_profile(output_type)
+def compute_profile(override_profile, output_type="video", model_type=None):
+    """Resolve the memory profile for a request.
+
+    An explicit profile chosen by the user always wins. Otherwise the
+    default for the output type applies — unless the model definition
+    declares its own "memory_profile". Some families need it: the YuE
+    planner is a 7B LLM that only streams its weights in usable speed when
+    it keeps as much as possible in VRAM, so the generic audio profile
+    (conservative by design) turns a two minute song into a half hour
+    wait.
+    """
+    if override_profile != -1:
+        return override_profile
+    if model_type:
+        model_def = get_model_def(model_type) or {}
+        declared = model_def.get("memory_profile", None)
+        if declared is not None:
+            return declared
+    return get_default_profile(output_type)
 
 def get_output_type_for_model(model_type, image_mode=0):
     model_def = get_model_def(model_type)
@@ -3935,19 +3952,35 @@ def get_output_type_for_model(model_type, image_mode=0):
         return "image"
     return "video"
 
-def init_pipe(pipe, kwargs, profile):
+def init_pipe(pipe, kwargs, profile, model_type=None):
     preload =int(args.preload)
     if preload == 0:
         preload = server_config.get("preload_in_VRAM", 0)
 
     kwargs["extraModelsToQuantize"]=  None
-    source_budgets = kwargs.get("budgets", None)
+    handler_budgets = kwargs.get("budgets", None)
+    source_budgets = handler_budgets
     if source_budgets is None:  kwargs["budgets"] = source_budgets = {}
     if profile in (2, 4, 5):
         default_transformer_budget = default_transformer2_budget= kwargs.get("budgets", 100) 
         if isinstance(default_transformer_budget, dict):
             default_transformer_budget = default_transformer_budget.get("transformer", 100) 
             default_transformer2_budget = default_transformer2_budget.get("transformer2", 100) 
+
+        # Per-model VRAM budget hint (MB, or a percentage of the VRAM).
+        # The generic default keeps only 100 MB of the transformer resident,
+        # which is right for video diffusion (the transformer is huge and the
+        # VRAM is needed for the latents) but crippling for a model whose
+        # "transformer" is a 7B LLM: the YuE planner has to stream its
+        # weights on every single generated token.
+        # The user's own choice (the preload slider) always wins, and so does
+        # a budget explicitly requested by the handler.
+        if preload == 0 and not handler_budgets and model_type:
+            model_def = get_model_def(model_type) or {}
+            hint = model_def.get("vram_budgets", None)
+            if isinstance(hint, dict):
+                default_transformer_budget = hint.get("transformer", default_transformer_budget)
+                default_transformer2_budget = hint.get("transformer2", default_transformer2_budget)
 
         budgets = { "transformer" : default_transformer_budget if preload  == 0 else preload, "text_encoder" : 100 if preload  == 0 else preload, "*" : max(1000 if profile==5 else 3000 , preload) }
         if "transformer2" in pipe:
@@ -4173,7 +4206,7 @@ def load_models(model_type, override_profile = -1, output_type="video", **model_
             print(f"Loading Text Encoder '{text_encoder_filename}' ...")
 
 
-    profile = compute_profile(override_profile, output_type)
+    profile = compute_profile(override_profile, output_type, model_type=model_type)
     lm_decoder_engine_obtained = resolve_lm_decoder_engine(lm_decoder_engine, model_def.get("lm_engines", []) )
     if lm_decoder_engine_obtained in ("cg", "vllm") and int(profile) not in [ 1, 3]:
         print(f"Unable to use LM Engine '{lm_decoder_engine_obtained}' as it requires a Memory Profile such as 1,3 or 3+ that loads entirely the Main Models in VRAM. Switching to Legacy LM Engine...")
@@ -4207,7 +4240,7 @@ def load_models(model_type, override_profile = -1, output_type="video", **model_
         kwargs = pipe
         pipe = kwargs.pop("pipe")
     if "coTenantsMap" not in kwargs: kwargs["coTenantsMap"] = {}
-    mmgp_profile = init_pipe(pipe, kwargs, profile)
+    mmgp_profile = init_pipe(pipe, kwargs, profile, model_type=model_type)
     if server_config.get("enhancer_mode", 1) == 0:
         setup_prompt_enhancer(pipe, kwargs)
     loras_transformer = kwargs.pop("loras", [])
@@ -7453,7 +7486,7 @@ def generate_video(
         reload_needed = reload_needed or old_vae_upsampling != new_vae_upsampling
         if new_vae_upsampling: model_kwargs = {"VAE_upsampling": new_vae_upsampling}
     output_type = get_output_type_for_model(model_type, image_mode)
-    profile = compute_profile(override_profile, output_type)
+    profile = compute_profile(override_profile, output_type, model_type=model_type)
     enhancer_mode = server_config.get("enhancer_mode", 1)
     if model_type != transformer_type or reload_needed or profile != loaded_profile:
         release_model()

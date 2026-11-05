@@ -10,6 +10,12 @@
         "URLs2": [
             "https://huggingface.co/m-a-p/YuE-s2-1B-general/resolve/main/model.safetensors"
         ],
+        "memory_profile": 2,
+        "vram_budgets": { "transformer": "70%", "transformer2": "10%" },
+        "yue_max_new_tokens": 700,
+        "yue_run_n_segments": 1,
+        "yue_segment_duration": 6,
+        "yue_stage2_batch_size": 1,
         "source_repo": "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-icl",
         "license_name": "Apache-2.0",
         "license_url": "https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-icl",

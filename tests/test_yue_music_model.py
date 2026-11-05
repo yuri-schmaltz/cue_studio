@@ -282,3 +282,96 @@ def test_launch_wires_the_yue_guides():
     source = (APP_ROOT / "launch.py").read_text(encoding="utf-8")
     assert 'load_guide("music", "song_writer_yue")' in source
     assert 'load_guide("music", "song_writer_yue_instrumental")' in source
+
+
+# --- Perfil de memória ------------------------------------------------------
+
+
+def test_yue_defs_declare_their_own_memory_profile():
+    """O planner de 7B do YuE precisa de RAM reservada para não arrastar.
+
+    O perfil padrão de áudio do app (4.5) recarrega os pesos do disco a
+    cada token e transforma um trecho de dois minutos em meia hora de
+    espera. Os defs do YuE declaram o perfil 2 (HighRAM_LowVRAM), que
+    mantém uma cópia em RAM e carrega só o que cabe na VRAM.
+    """
+    for name in ("yue.json", "yue_icl.json"):
+        model = _read_json(DEFAULTS_DIR / name)["model"]
+        assert model.get("memory_profile") == 2
+
+
+def _import_wgp():
+    """Importa o wgp com o mesmo bootstrap que o launch.py usa.
+
+    O wgp faz parse de sys.argv e lê "defaults/*.json" relativo ao cwd,
+    então o import direto dentro do pytest quebraria.
+    """
+    import os
+    import sys
+
+    previous_cwd = os.getcwd()
+    previous_argv = sys.argv
+    os.chdir(APP_ROOT)
+    sys.argv = ["wgp.py", "--multiple-images"]
+    try:
+        import wgp  # importado aqui: o wgp puxa torch e leva alguns segundos
+    finally:
+        os.chdir(previous_cwd)
+        sys.argv = previous_argv
+    return wgp
+
+
+def test_compute_profile_honours_the_model_declared_profile():
+    wgp = _import_wgp()
+
+    assert wgp.compute_profile(-1, "audio", model_type="yue") == 2
+    assert wgp.compute_profile(-1, "audio", model_type="yue_icl") == 2
+    # A escolha explícita do usuário sempre vence a declaração do modelo.
+    assert wgp.compute_profile(4, "audio", model_type="yue") == 4
+    # Modelos sem declaração seguem o padrão genérico do tipo de saída.
+    assert wgp.compute_profile(-1, "audio") == wgp.get_default_profile("audio")
+
+
+def test_yue_defs_declare_their_own_vram_budgets():
+    """O planner de 7B só pode ser rápido com uma fatia dele na VRAM.
+
+    O padrão do app deixa 100 MB do "transformer" residentes, o que serve
+    para difusão de vídeo (o VRAM é para os latentes) mas obriga o LLM
+    do YuE a transferring 12 GB a cada token gerado.
+    """
+    for name in ("yue.json", "yue_icl.json"):
+        model = _read_json(DEFAULTS_DIR / name)["model"]
+        budgets = model.get("vram_budgets", {})
+        assert budgets.get("transformer") == "70%"
+        assert budgets.get("transformer2") == "10%"
+
+
+def test_yue_defs_request_enough_tokens_for_one_segment():
+    """Um segmento de 6 s do YuE custa ~600 tokens no Stage 1.
+
+    O Stage 1 emite dois tokens (um por codebook) por quadro de 50 fps.
+    Abaixo disso o Stage 2 recebe uma matriz vazia e a geração quebra.
+    """
+    for name in ("yue.json", "yue_icl.json"):
+        model = _read_json(DEFAULTS_DIR / name)["model"]
+        assert model["yue_max_new_tokens"] >= 600
+        assert model["yue_run_n_segments"] == 1
+        assert model["yue_segment_duration"] == 6
+
+
+def test_init_pipe_applies_the_model_vram_budgets():
+    wgp = _import_wgp()
+
+    pipe = {"transformer": object(), "transformer2": object()}
+    kwargs = {"coTenantsMap": {}}
+    profile = wgp.compute_profile(-1, "audio", model_type="yue")
+    wgp.init_pipe(pipe, kwargs, profile, model_type="yue")
+
+    budgets = kwargs["budgets"]
+    assert budgets["transformer"] == "70%"
+    assert budgets["transformer2"] == "10%"
+
+    # Um modelo sem declaração mantém o orçamento genérico do app.
+    plain_kwargs = {"coTenantsMap": {}}
+    wgp.init_pipe(pipe, plain_kwargs, profile, model_type="wan_video")
+    assert plain_kwargs["budgets"]["transformer"] == 100

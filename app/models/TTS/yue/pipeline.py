@@ -702,6 +702,19 @@ class YuePipeline:
             num_batch = output_duration // segment_duration
             any_trail = output_duration * self.codec_fps != prompt.shape[-1]
 
+            if output_duration <= 0:
+                # O Stage 1 precisa de segment_duration * codec_fps * 2 tokens
+                # (dois codebooks por quadro) para encher um segmento. Com menos
+                # tokens que isso nao existe nenhum trecho de musica para
+                # renderizar, e o Stage 2 receberia uma matriz vazia.
+                needed = segment_duration * self.codec_fps * 2
+                raise ValueError(
+                    f"YuE stage 1 produced {prompt.shape[-1]} tokens, which is not enough for a "
+                    f"{segment_duration}s segment (needs at least {needed} tokens: "
+                    f"{segment_duration}s x {self.codec_fps} fps x 2 codebooks). "
+                    f"Increase yue_max_new_tokens."
+                )
+
             if num_batch <= batch_size:
                 if set_header_text is not None:
                     if any_trail:

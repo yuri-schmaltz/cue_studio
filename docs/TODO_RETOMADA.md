@@ -40,7 +40,7 @@
 
 - [x] Integrar o YuE v1 ao catálogo, à UI, aos guias de songwriting e à matriz de capacidades (`857dd5d`).
 - [ ] Fechar a geração de ponta a ponta e guardar o WAV de validação em `app/outputs/validation-2026-11-04/` (o Stage 1 levou mais de 20 min na RTX 3060 com o perfil conservador).
-- [ ] Perfil de memória específico para o YuE: hoje o app usa o perfil de áudio padrão e o planejador de 7B fica lentíssimo.
+- [x] Perfil de memória e orçamento de VRAM específicos para o YuE: o def declara `"memory_profile": 2` e `"vram_budgets"` (transformer 50% / transformer2 20%), honrados por `wgp.compute_profile` e `wgp.init_pipe`.
 - [ ] Expor `yue_run_n_segments` e `yue_segment_duration` na UI, e corrigir o slider de duração (o YuE não tem duração nativa).
 - [ ] Avaliar o YuE2 (upstream) quando o `mmgp` puder ir a 4.5.0 — material em `_reversa_forward/yue2-port-2026-11-04/`.
 

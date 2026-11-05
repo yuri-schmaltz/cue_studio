@@ -85,6 +85,23 @@ download do handler.
 - Cards de 16 GB+ ou mais rodam o Stage 1 inteiro em VRAM.
 - O `flash_attn` é opcional: sem ele, o modelo usa SDPA.
 
+### Tempo de geração
+
+O Stage 1 emite **dois tokens por quadro** (um por codebook) a 50 fps: um
+segmento de 6 s custa ~600 tokens. Cada token retransfere a parte do planner
+que não cabe na VRAM, então o custo é proporcional ao que sobra de VRAM para
+o modelo. Medido na RTX 3060 (12 GB):
+
+| Orçamento de VRAM do planner | Tempo por token | Segmento de 6 s |
+|---|---|---|
+| 100 MB (padrão genérico do app) | > 8 s | > 80 min |
+| 50% da VRAM | ~1,9 s | ~19 min |
+| 70% da VRAM (padrão do YuE) | ~1,3 s | ~13 min |
+
+Por isso os defs do YuE declaram `memory_profile` e `vram_budgets`: o
+padrão genérico do app foi feito para difusão de vídeo, onde o VRAM é para
+os latentes, e deixa o LLM do YuE retransferindo 12 GB a cada token.
+
 ## Limitações conhecidas
 
 - O YuE escreve **um segmento por vez**; letras muito longas ou com muitas

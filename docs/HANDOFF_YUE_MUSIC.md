@@ -77,11 +77,21 @@ está guardado em
 com o procedimento de retomada.
 
 **O YuE v1 é pesado por natureza.** O planejador de 7B não cabe nos 12 GB da
-RTX 3060: ele roda com streaming de pesos via MMGP. Medido nesta máquina, o
-Stage 1 leva **mais de 20 minutos** para um segmento com o perfil conservador
-(`LowRAM_LowVRAM`, o padrão do app). Com perfil agressivo
-(`HighRAM_HighVRAM`) o modelo quase cabe inteiro na VRAM e o tempo cai
-muito. Isso é characteristic do YuE v1, não um bug da integração.
+RTX 3060: ele roda com streaming de pesos via MMGP. Com o perfil conservador
+(`LowRAM_LowVRAM`, o padrão do app para áudio) e o orçamento genérico de VRAM
+(100 MB do "transformer" residentes) o Stage 1 leva **mais de 20 minutos** para um
+segmento: o LLM precisa retransferir 12 GB de pesos a cada token gerado. Isso
+é característica do YuE v1, não bug da integração — mas o app passou a dar
+dois levers para não pagar esse preço:
+
+| Chave no def | Efeito | Onde é honrada |
+|---|---|---|
+| `"memory_profile": 2` | escolhe `HighRAM_LowVRAM` (cópia em RAM reservada + transferências assíncronas) em vez do perfil de áudio padrão (4.5) | `wgp.compute_profile` |
+| `"vram_budgets": {"transformer": "50%", "transformer2": "20%"}` | mantém ~6 GB do planner e ~2,5 GB do renderer residentes na VRAM, em vez de 100 MB | `wgp.init_pipe` |
+
+A escolha explícita do usuário (o slider "VRAM (MB) for Preloaded Models" e o
+perfil no painel) sempre vence as declarações do def — os levers do catálogo
+só entram quando o usuário não escolheu nada.
 
 ## Estado da validação
 
@@ -126,10 +136,14 @@ Prioridade alta:
    o fim, confirmar o WAV (44,1 kHz estéreo) e anexar o recibo em
    `app/outputs/validation-2026-11-04/`. Sem isso a integração está "provada por
    partes".
-2. **Escolher o perfil de memória do YuE no app.** Hoje o app usa o perfil de
-   áudio padrão (conservador) e o Stage 1 fica lentíssimo. Um perfil
-   específico para o YuE (`HighRAM_HighVRAM` quando a VRAM permite) muda a
-   experiência de "não funciona" para "lento, mas funciona".
+2. **Escolher o perfil de memória do YuE no app.** ~~Hoje o app usa o perfil de
+   áudio padrão (conservador) e o Stage 1 fica lentíssimo.~~ **Feito:**
+   `wgp.compute_profile` agora aceita `model_type` e honra a chave
+   `memory_profile` declarada no def do modelo; `yue.json` e `yue_icl.json`
+   declaram `"memory_profile": 2` (`HighRAM_LowVRAM`, que mantém uma cópia do
+   planner em RAM reservada e carrega na VRAM só o que cabe). A escolha
+   explícita do usuário na UI continua prevalecendo sobre a declaração.
+   Coberto por `tests/test_yue_music_model.py`.
 3. **Expor o `yue_run_n_segments` e `yue_segment_duration` na UI.** Hoje são
    constantes do `model_def`; com a letra em seções, controlar quantos
    segmentos são gerados é o ajuste mais útil para o tempo e o tamanho da
