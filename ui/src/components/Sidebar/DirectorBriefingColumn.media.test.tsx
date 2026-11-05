@@ -217,7 +217,7 @@ describe('speaker reference photos', () => {
         insertSpeakerMention={() => {}}
       />,
     )
-    const card = screen.getByText('SPEAKER_01').closest('.bg-bg-secondary')
+    const card = screen.getByText('SPEAKER 01').closest('.bg-bg-secondary')
     // The card must reserve room for the photo + the lyric excerpts
     // instead of collapsing to a single 78px row.
     expect(card?.className).toContain('min-h-[156px]')

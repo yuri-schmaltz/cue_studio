@@ -2772,27 +2772,27 @@ export function StyleForm({
       {/* Speaker Mapping — hidden for story path (no audio = no detected speakers) */}
       {!isStoryPath && speakers.length >= 1 && (
         <div className="space-y-2">
-          {speakerMappings.map((mapping) => (
+          {speakerMappings.map((mapping, index) => (
             /* The card is twice as tall as it needs to be for the
                row alone: the reference photo and the lyric excerpts
                are the parts the author actually reads, and they were
                squeezed into a 28px thumbnail next to the name field. */
             <div key={mapping.speakerId} className="bg-bg-secondary border border-border/50 rounded-lg p-3 space-y-2 min-h-[156px] flex flex-col">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-stretch gap-1.5 min-h-12">
                 <button
                   type="button"
                   onClick={() => insertSpeakerMention(mapping.speakerId)}
-                  className="text-2xs px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
-                  title={`Insert @${mapping.speakerId} into description`}
+                  className="text-2xs px-1.5 py-0.5 rounded-md bg-accent-blue/20 text-accent-blue hover:bg-accent-blue/30 shrink-0 transition-colors"
+                  title={`Insert SPEAKER ${String(index + 1).padStart(2, '0')} into description`}
                 >
-                  {mapping.speakerId}
+                  SPEAKER {String(index + 1).padStart(2, '0')}
                 </button>
                 <input
                   type="text"
                   value={mapping.name}
                   onChange={e => setSpeakerMapping(mapping.speakerId, e.target.value, mapping.role, mapping.image, mapping.imagePreview)}
                   placeholder="e.g. man in green hoodie"
-                  className="flex-1 bg-bg-tertiary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
+                  className="flex-1 min-w-0 bg-bg-tertiary border border-border rounded px-2 py-1 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-blue transition-colors"
                 />
                 <select
                   value={mapping.role}

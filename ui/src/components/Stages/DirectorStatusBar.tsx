@@ -72,7 +72,7 @@ export function DirectorStatusBar() {
       aria-label={`Pipeline progress: ${displayLabel}, step ${currentIndex + 1} of ${totalSteps}`}
     >
       {/* Left: pipeline state */}
-      <div className="flex items-center gap-2 min-w-0 shrink-0">
+      <div className="flex items-center gap-2 min-w-0 shrink-0 text-2xs">
         <span className="flex items-center gap-1.5 shrink-0">
           {loading ? (
             <Loader2 size={12} className="animate-spin text-accent-blue shrink-0" aria-hidden="true" />
