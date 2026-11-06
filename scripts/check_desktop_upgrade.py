@@ -55,6 +55,7 @@ with tempfile.TemporaryDirectory(prefix='source-upgrade-',dir=ROOT/'app/.cache')
             assert json.loads((data/'last-folder.json').read_text())==str(data)
             print(json.dumps({'status':'passed','binary':str(BINARY),'source_revision':expected,'http_ready':True,'old_worker_replaced':True,'weights_settings_history_preserved':True}))
         finally:
-            os.killpg(app.pid,signal.SIGTERM)
+            try:os.killpg(app.pid,signal.SIGTERM)
+            except ProcessLookupError:pass
             try:app.wait(timeout=15)
             except subprocess.TimeoutExpired:os.killpg(app.pid,signal.SIGKILL);app.wait()

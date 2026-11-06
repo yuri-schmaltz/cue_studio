@@ -7673,7 +7673,7 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
                 shot_duration = pc.get("duration_sec", pc.get("end", 0) - pc.get("start", 0))
                 if shot_duration <= 0:
                     shot_duration = 20 * max(window_count, num_keyframes + 1)
-                clip_frames = max(round(shot_duration * fps), round(5 * fps))
+                clip_frames = max(round(shot_duration * fps), _min_f)
                 per_clip_frames.append(clip_frames)
                 has_sliding_window = True
             else:
@@ -7693,7 +7693,7 @@ def _run_video_generation(pid: str, params: dict, clip_plans: list[dict],
                 clip_frames = _standard_clip_frame_count(
                     pc,
                     fps=fps,
-                    min_clip_frames=round(5 * fps),
+                    min_clip_frames=_min_f,
                     fallback_frames=pc.get("duration_frames"),
                 )
                 if clip_frames > round(32 * fps):

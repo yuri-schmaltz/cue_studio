@@ -501,7 +501,7 @@ def build_preflight_report(
     frame_counts = standard_clip_frame_schedule(
         clips,
         fps=fps_value,
-        min_clip_frames=max(minimum_frames, round(5 * fps_value)),
+        min_clip_frames=minimum_frames,
     )
     if quantize_frames:
         frame_counts = quantize_clip_frame_schedule(

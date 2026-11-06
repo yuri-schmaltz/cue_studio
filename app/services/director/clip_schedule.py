@@ -67,8 +67,8 @@ def standard_clip_frame_count(
 ) -> int:
     """Frames needed to render one planned shot.
 
-    ``min_clip_frames`` is the floor the runtime imposes (Director uses
-    five seconds).  ``fallback_frames`` mirrors the pipeline's habit of
+    ``min_clip_frames`` is the model's native minimum, not an artificial
+    duration floor. ``fallback_frames`` mirrors the pipeline's habit of
     reusing a planner-provided frame count when the shot has no duration
     at all; it is only consulted for degenerate zero-length shots.
     """

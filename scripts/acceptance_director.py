@@ -14,6 +14,7 @@ import time
 import urllib.request
 import urllib.error
 import uuid
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / 'app/.cache' / ('release-acceptance-' + time.strftime('%Y%m%d-%H%M%S'))
@@ -53,6 +54,15 @@ try:
     else:raise RuntimeError('Engine did not start')
     request('/api/v1/workspaces',{'name':'release-smoke'})
     params={'workspace':'release-smoke','pipeline_type':'short_film_story','skill_type':'short_film','auto_mode':False,'use_director_v2':True,'scene_description':'A single continuous three-second shot of a small red clay cube on a plain wooden table. Warm steady light, locked camera. The cube gently rotates a few degrees. No people, no text, no dialogue, no cuts. Exactly one scene.','target_duration':3,'narrative_mode':False,'characters':[],'seamless':False,'shot_image_guidance':'generate','fps':24,'frames_steps':8,'frames_minimum':9,'image_model':'flux2_klein_9b','image_params':{'resolution':'512x288','num_inference_steps':4,'guidance_scale':1},'video_model':'ltx2_22B_distilled_1_1','video_params':{'resolution':'512x288','num_inference_steps':8,'guidance_scale':1,'input_video_strength':0.7},'director_resolution_preset':'480p','director_aspect_ratio':'16:9','llm_provider':'local','llm_device':'cuda','llm_model_id':config['services']['llm_model_id']}
+    if len(sys.argv) > 1:
+        prior = Path(sys.argv[1]).resolve()
+        saved = json.loads((prior/'status.json').read_text())
+        previous_pid = saved['id']
+        previous_root = prior/'projects/release-smoke/.director'/previous_pid
+        params.update(prepared_clip_plans=saved['clip_plans'],
+                      prepared_planned_clips=saved['planned_clips'],
+                      prepared_clip_image_paths=[str(previous_root/name) for name in saved['clip_images']])
+        report['reused_approved_plan_from'] = str(prior)
     (DATA/'request.json').write_text(json.dumps(params,indent=2))
     pid=request('/api/v1/director/pipeline/start',params)['pipeline_id'];report['pipeline_id']=pid
     print('Pipeline '+pid,flush=True)
@@ -73,11 +83,35 @@ try:
         (DATA/'receipt.json').write_text(json.dumps(report,indent=2))
         time.sleep(3)
     else:raise TimeoutError('Production exceeded 45 minutes')
-    report['joined']=request('/api/v1/director/pipelines/'+pid+'/rejoin',{})
+    if len(state.get('clip_plans', [])) > 1:
+        report['joined']=request('/api/v1/director/pipelines/'+pid+'/rejoin',{})
+    planned = sum(clip.get('_director_duration_sec', 0) for clip in state.get('clip_plans', []))
+    report['timing'] = {'requested_seconds': params['target_duration'], 'planned_seconds': planned}
+    if len(state.get('clip_plans', [])) != 1 or abs(planned - params['target_duration']) > 0.2:
+        raise AssertionError(f'Plan does not respect requested duration: {report["timing"]}')
+    videos = sorted((DATA/'projects').rglob('*.mp4'))
+    durations = []
+    for video in videos:
+        probe = subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries', 'format=duration:stream=codec_type,duration,nb_frames',
+                                         '-of', 'json', str(video)], text=True)
+        metadata = json.loads(probe)
+        stream = next(item for item in metadata['streams'] if item.get('codec_type') == 'video')
+        durations.append({'path': str(video.relative_to(DATA)),
+                          'seconds': float(metadata['format']['duration']),
+                          'video_seconds': float(stream['duration']),
+                          'video_frames': int(stream['nb_frames'])})
+    if not durations or any(abs(item[key] - params['target_duration']) > 0.25
+                            for item in durations for key in ('seconds', 'video_seconds')):
+        raise AssertionError(f'Render does not respect requested duration: {durations}')
+    report['timing']['rendered'] = durations
+    report['timing']['status'] = 'passed'
 except BaseException as e:
     report['status']='failed';report['error']=str(e);raise
 finally:
     (DATA/'receipt.json').write_text(json.dumps(report,indent=2))
+    if base:
+        try: request('/api/v1/llm/unload', {})
+        except Exception: pass
     worker.terminate()
     try:worker.wait(timeout=15)
     except subprocess.TimeoutExpired:worker.kill();worker.wait()
