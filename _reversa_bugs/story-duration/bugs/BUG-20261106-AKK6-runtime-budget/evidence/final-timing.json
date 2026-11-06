@@ -1,0 +1,56 @@
+{
+  "date": "2026-11-06",
+  "code_commit": "99f3360b1bb0b6d7daf67ee1652db8c020396b72",
+  "source_manifest_sha256": "1e253c967e8981dbc41eac33c96b84a4ec03e36d4ffefabdf3dd444be9f676e9",
+  "planning_run": "ab9f3285",
+  "render_run": "78f8244c",
+  "reused_plan_images_from": "/home/yurix/Documentos/cue_studio/app/.cache/release-acceptance-20261106-005720",
+  "timing": {
+    "requested_seconds": 3,
+    "planned_seconds": 3.0416666666666665,
+    "rendered": [
+      {
+        "path": "projects/release-smoke/.director/78f8244c/2026-11-06-01h10m57s_seed848924477_A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady lig.mp4",
+        "seconds": 2.89,
+        "video_seconds": 2.76,
+        "video_frames": 69
+      }
+    ],
+    "status": "passed"
+  },
+  "measured_tolerance_seconds": 0.25,
+  "tests": {
+    "specific": 16,
+    "specific_and_preflight": 34,
+    "full_suite_passed": 1456,
+    "subtests": 37,
+    "skipped": 12,
+    "deselected": 63,
+    "full_suite_process_returncode": 0
+  },
+  "appimage_upgrade": {
+    "status": "passed",
+    "binary": "/home/yurix/Documentos/cue_studio/ui/src-tauri/target/release/bundle/appimage/Cue Studio_2.5.2_amd64.AppImage",
+    "source_revision": "1e253c967e8981dbc41eac33c96b84a4ec03e36d4ffefabdf3dd444be9f676e9",
+    "http_ready": true,
+    "old_worker_replaced": true,
+    "weights_settings_history_preserved": true
+  },
+  "artifacts": [
+    {
+      "path": "ui/src-tauri/target/release/bundle/deb/Cue Studio_2.5.2_amd64.deb",
+      "bytes": 14770074,
+      "sha256": "3b416ccd3762ad2a0efe8da3191263008633ba08161fbe54212bb4d35458093f"
+    },
+    {
+      "path": "ui/src-tauri/target/release/bundle/appimage/Cue Studio_2.5.2_amd64.AppImage",
+      "bytes": 179735032,
+      "sha256": "b7acc63f5c397612c8733fc19eb20997b31e74dcb204d7307fb81c2b3b33bc68"
+    }
+  ],
+  "installed_session": "Previous build retained: an active Director run was detected. Updated packages are ready for installation.",
+  "limitations": [
+    "Approximate duration certified within +/-0.25 seconds; frame-exact duration and audiovisual/artistic fidelity are not certified.",
+    "Decoded video contains 69 frames although the request submitted 73; container duration is longer than video stream duration."
+  ]
+}

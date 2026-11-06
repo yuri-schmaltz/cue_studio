@@ -14,3 +14,7 @@ Hashes e metadados: [recibo JSON](RELEASE_VALIDATION_2026-11-06.json). Evidênci
 ## Pendência descoberta
 
 O planejador expandiu o pedido de 3 segundos para três tomadas totalizando 59,125 segundos. A cadeia técnica está validada; duração exata e fidelidade artística não estão homologadas. Próximo trabalho: aplicar o orçamento de duração antes da aprovação e comparar pedido, plano e saída em teste de integração. YuE e a qualidade artística de outras produções não foram revalidados nesta rodada.
+
+## Atualização posterior da mesma data
+
+O desvio de 59s e o piso artificial de 5s foram corrigidos. A duração aproximada foi validada em produção real, com limites de precisão explícitos: [recibo de duração](DURATION_BUDGET_2026-11-06.md).

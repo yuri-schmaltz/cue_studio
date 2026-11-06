@@ -1,0 +1,1 @@
+Base: main/fa1049c, Linux, Python gerenciado local. Produção anterior 61c6ebe8: pedido 3s, plano 59,125s. Testes novos antes da correção: falhas nos casos de 3, 8 e 19s, rejeição de duração inválida e plano excessivo. Log: tests-red.log.

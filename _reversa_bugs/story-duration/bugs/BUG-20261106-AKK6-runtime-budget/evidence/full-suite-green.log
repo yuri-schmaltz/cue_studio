@@ -1,0 +1,68 @@
+........................................................................ [  4%]
+........................................................................ [  9%]
+.................ss..................................................... [ 14%]
+........................................................................ [ 19%]
+........................................................................ [ 24%]
+.................................................................... [ 29%]
+........................................................................ [ 34%]
+........................................................................ [ 38%]
+........................................................................ [ 43%]
+...................................................ssssss............... [ 48%]
+........................................................................ [ 53%]
+............................................................... [ 57%]
+....ss.................................................................. [ 62%]
+........................................................................ [ 67%]
+........................................................................ [ 72%]
+........................................................................ [ 77%]
+........................................................ [ 81%]
+..................s.....s....................................... [ 85%]
+........................................................................ [ 90%]
+........................................................................ [ 95%]
+.................................................................        [100%]
+=============================== warnings summary ===============================
+app/env/lib/python3.11/site-packages/websockets/legacy/__init__.py:6
+  /home/yurix/Documentos/cue_studio/app/env/lib/python3.11/site-packages/websockets/legacy/__init__.py:6: DeprecationWarning: websockets.legacy is deprecated; see https://websockets.readthedocs.io/en/stable/howto/upgrade.html for upgrade instructions
+    warnings.warn(  # deprecated in 14.0 - 2024-11-09
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+app/env/lib/python3.11/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168
+  /home/yurix/Documentos/cue_studio/app/env/lib/python3.11/site-packages/diffusers/models/transformers/transformer_kandinsky.py:168: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+app/env/lib/python3.11/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272
+  /home/yurix/Documentos/cue_studio/app/env/lib/python3.11/site-packages/diffusers/models/transformers/transformer_kandinsky.py:272: UserWarning: CUDA is not available or torch_xla is imported. Disabling autocast.
+    @torch.autocast(device_type="cuda", dtype=torch.float32)
+
+app/env/lib/python3.11/site-packages/fla/utils.py:356
+  /home/yurix/Documentos/cue_studio/app/env/lib/python3.11/site-packages/fla/utils.py:356: UserWarning: Triton is not supported on current platform, roll back to CPU.
+    warnings.warn(('Triton is not supported on current platform, roll back to CPU.'), stacklevel=1)
+
+app/env/lib/python3.11/site-packages/torch/jit/_script.py:362: 14 warnings
+  /home/yurix/Documentos/cue_studio/app/env/lib/python3.11/site-packages/torch/jit/_script.py:362: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.
+    warnings.warn(
+
+app/env/lib/python3.11/site-packages/torch/jit/_script.py:1480
+  /home/yurix/Documentos/cue_studio/app/env/lib/python3.11/site-packages/torch/jit/_script.py:1480: DeprecationWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_cue_reference_film_f2_real_models.py:169: Real-model inference is opt-in: set CUE_RUN_REAL_MODELS=1
+SKIPPED [1] tests/test_cue_reference_film_f2_real_models.py:512: Real-model inference is opt-in: set CUE_RUN_REAL_MODELS=1
+SKIPPED [1] tests/test_media_library_fixtures.py:127: Media library not found at /home/yuri/Google/midias
+SKIPPED [1] tests/test_media_library_fixtures.py:148: Media library not found at /home/yuri/Google/midias
+SKIPPED [1] tests/test_media_library_fixtures.py:157: Media library not found at /home/yuri/Google/midias
+SKIPPED [1] tests/test_media_library_fixtures.py:164: Media library not found at /home/yuri/Google/midias
+SKIPPED [1] tests/test_media_library_fixtures.py:141: Media library not found at /home/yuri/Google/midias
+SKIPPED [1] tests/test_media_library_fixtures.py:169: Media library not found at /home/yuri/Google/midias
+SKIPPED [1] tests/test_project_setup_browser_deps.py:50: Playwright is opt-in; set MAESTRO_REQUIRE_PLAYWRIGHT=1 to enforce
+SKIPPED [1] tests/test_project_setup_browser_deps.py:67: Playwright is opt-in; set MAESTRO_REQUIRE_PLAYWRIGHT=1 to enforce
+SKIPPED [1] tests/test_style_bible.py:405: PyYAML is installed — cannot exercise the missing-PyYAML branch
+SKIPPED [1] tests/test_style_bible.py:397: PyYAML is installed — cannot exercise the missing-PyYAML branch
+1456 passed, 12 skipped, 63 deselected, 21 warnings, 37 subtests passed in 131.75s (0:02:11)
+sys:1: DeprecationWarning: builtin type swigvarlink has no __module__ attribute

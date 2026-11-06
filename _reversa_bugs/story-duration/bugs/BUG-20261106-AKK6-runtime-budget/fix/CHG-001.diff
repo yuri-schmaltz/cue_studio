@@ -1,0 +1,121 @@
+diff --git a/app/services/director/planners/short_film.py b/app/services/director/planners/short_film.py
+index ad4ef11..9ab33e8 100644
+--- a/app/services/director/planners/short_film.py
++++ b/app/services/director/planners/short_film.py
+@@ -4844,6 +4844,13 @@ class ShortFilmPlanner(BasePlanner):
+         """
+         has_reference = bool(reference_image_path)
+         is_audio_mode = bool(clips)
++        if not is_audio_mode:
++            target_duration = float(target_duration)
++            if not math.isfinite(target_duration) or target_duration <= 0:
++                raise ValueError("Story duration must be a positive finite number of seconds.")
++            # Existing long-form chapter allocation uses integer seconds.
++            if target_duration.is_integer():
++                target_duration = int(target_duration)
+         # Store extra ref info for use in private methods
+         self._num_character_refs = len(kwargs.get("character_ref_paths", []) or [])
+         self._num_location_refs = len(kwargs.get("location_ref_paths", []) or [])
+@@ -4962,6 +4969,12 @@ class ShortFilmPlanner(BasePlanner):
+                 nsfw=nsfw,
+                 polish_block=polish_block,
+             )
++        elif target_duration < 20 and not self._video_model.lower().startswith("minimax_h3"):
++            shots, title = self._plan_brief_story(
++                story_description, reference_image_path, char_profiles,
++                has_reference, target_duration, target_scenes, fps,
++                frames_steps, frames_minimum, nsfw, polish_block,
++            )
+         elif target_duration > _DIRECTOR_LONG_FORM_CHAPTER_SECONDS:
+             shots, title = self._plan_long_story_driven(
+                 story_description=story_description,
+@@ -4998,6 +5011,14 @@ class ShortFilmPlanner(BasePlanner):
+             )
+ 
+         total_duration = sum(s.duration_sec for s in shots) if shots else target_duration
++        if not is_audio_mode and not self._video_model.lower().startswith("minimax_h3"):
++            tolerance = max(target_duration * 0.05, len(shots) * frames_steps / max(1, fps))
++            if not shots or not math.isfinite(total_duration) or abs(total_duration - target_duration) > tolerance:
++                raise ValueError(
++                    f"Story plan exceeds its duration budget: requested {target_duration:g}s, "
++                    f"planned {total_duration:g}s. Simplify the story or choose a longer "
++                    "duration; no video jobs were queued."
++                )
+ 
+         return ProductionPlan(
+             skill_type="short_film",
+@@ -5014,6 +5035,74 @@ class ShortFilmPlanner(BasePlanner):
+             ],
+         )
+ 
++    def _plan_brief_story(
++        self, story_description, reference_image_path, char_profiles,
++        has_reference, target_duration, target_scenes, fps,
++        frames_steps, frames_minimum, nsfw, polish_block,
++    ) -> tuple[list[ShotPlan], Optional[str]]:
++        """Plan one short native shot without the long-form 20s bucket floor."""
++        from ..nsfw_guidance import inject_nsfw_if_enabled
++        from ..safety_scan import assert_no_minor_content, assert_no_minor_content_in_pass2
++
++        if target_scenes not in (None, 1):
++            raise ValueError("Stories below 20 seconds require exactly one shot.")
++        fps = max(1, fps)
++        if target_duration * fps < frames_minimum:
++            raise ValueError(
++                f"Requested duration is below the model minimum of {frames_minimum / fps:g}s."
++            )
++        frame_count = frames_minimum + max(0, round(
++            (target_duration * fps - frames_minimum) / max(1, frames_steps)
++        )) * max(1, frames_steps)
++        duration = frame_count / fps
++        uses_images = bool(getattr(self, '_uses_generated_shot_images', True))
++        assert_no_minor_content(story_description, source="user concept")
++        system = f"""Create exactly ONE continuous {duration:g}-second video shot.
++Output only a JSON array containing one shot. This is a brief clip, not a multi-act screenplay.
++Ignore any preference for 20-second shots. No cuts, windows, time jumps or added story beats.
++Fit the user's action and any dialogue naturally into {duration:g} seconds. Do not add dialogue.
++Set duration_sec={duration:g}, window_prompts=[], multishot=false.
++video_prompt describes the complete visible action, camera and sound within this duration.
++{'image_prompt describes only the static first frame before action.' if uses_images else 'Omit still-image fields.'}
++{build_character_rules_block(has_reference or bool(self._num_character_refs), char_profiles or None)}
++{polish_block}"""
++        required = ['title', 'duration_sec', 'scene_goal', 'video_prompt', 'window_prompts']
++        if uses_images:
++            required.append('image_prompt')
++        schema = _shot_list_schema(min_items=1, max_items=1, required=required,
++                                   include_image_fields=uses_images)
++        properties = schema['items']['properties']
++        properties['duration_sec'] = {'type': 'number', 'const': duration}
++        properties['window_prompts'] = {'type': 'array', 'items': {'type': 'string'}, 'maxItems': 0}
++        properties['multishot'] = {'type': 'boolean', 'const': False}
++        properties['video_prompt'] = {'type': 'string', 'minLength': 1}
++        rows = self._call_llm_json(
++            user_prompt=story_description,
++            system_prompt=inject_nsfw_if_enabled(system, nsfw, 'both' if uses_images else 'video'),
++            max_tokens=4096, thinking_budget=0,
++            image_paths=self._build_all_image_paths(reference_image_path, has_reference),
++            json_schema=schema,
++        )
++        if len(rows) != 1 or not isinstance(rows[0], dict):
++            raise ValueError("Brief story planning must return exactly one shot.")
++        raw = rows[0]
++        if raw.get('window_prompts') or not str(raw.get('video_prompt') or '').strip():
++            raise ValueError("Brief story requires one self-contained video prompt without windows.")
++        # Reject unperformable speech before the generic converter can truncate it.
++        words = sum(len(str(beat.get('spoken_text') or '').split())
++                    for beat in (raw.get('dialogue_beats') or []) if isinstance(beat, dict))
++        if words > duration * 2.5:
++            raise ValueError("Brief story dialogue exceeds the duration budget. Shorten the dialogue.")
++        raw['duration_sec'] = duration
++        raw['multishot'] = False
++        if not uses_images:
++            _discard_unused_image_fields(rows)
++        assert_no_minor_content_in_pass2(rows, source="brief story shot")
++        shots = self._convert_story_shots(rows, char_profiles, has_reference, fps,
++                                          frames_steps, frames_minimum, frame_count)
++        self._last_title = raw.get('title')
++        return shots, self._last_title
++
+     def _plan_long_story_driven(
+         self,
+         *,

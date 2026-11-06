@@ -1,0 +1,179 @@
+{
+  "data": "/home/yurix/Documentos/cue_studio/app/.cache/release-acceptance-20261106-005720",
+  "worker_pid": 4186689,
+  "source_manifest_sha256": "e0ff51c0cd18a5a450d7d54851f4ef940dfef0349e038f16b347ee5404025195",
+  "approvals": [
+    {
+      "reason": "review_prompts",
+      "digest": "f194767a5ea3fce849c25590267f4d670f01d51b48baaecd620d0e747b207307",
+      "clip_count": 1
+    },
+    {
+      "reason": "review_images",
+      "digest": "d5653b94bd3a0629768b6fd2c106388fad6717d2a11afb259def98fd0a092fff",
+      "clip_count": 1
+    },
+    {
+      "reason": "review_render",
+      "digest": "42dd8b4cc692ed3383ccb4f8ba27ba273222a8d32d5fad2c1131510ddc90806c",
+      "clip_count": 1
+    }
+  ],
+  "pipeline_id": "ab9f3285",
+  "status": "failed",
+  "result": {
+    "id": "ab9f3285",
+    "status": "completed",
+    "phase": "completed",
+    "auto_mode": false,
+    "progress": {
+      "current": 3,
+      "total": 3,
+      "message": "Done!",
+      "step": 0,
+      "total_steps": 0
+    },
+    "clip_plans": [
+      {
+        "video_prompt": "A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady light. The camera is locked in a medium close-up perspective. The cube begins a slow, gentle rotation, shifting maybe five to ten degrees over the course of the clip, maintaining its perfect cubic shape. The wood grain of the table is clearly visible beneath it.",
+        "image_prompt": "A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady light. The camera is locked in a medium close-up perspective.",
+        "_director_continuity_strategy": "independent",
+        "_director_continuity_group": "",
+        "_director_opening_blocking": "",
+        "_director_closing_blocking": "",
+        "_director_dialogue_beats": [],
+        "_director_subjects_on_screen": [],
+        "_director_duration_sec": 3.0416666666666665
+      }
+    ],
+    "clip_images": [
+      "2026-11-06-01h00m28s_seed443626978_A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady lig.jpg"
+    ],
+    "output_files": [
+      "2026-11-06-01h03m44s_seed1299400437_A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady lig.mp4"
+    ],
+    "error": null,
+    "created_at": 1793937466.042222,
+    "pause_reason": null,
+    "workspace": "release-smoke",
+    "llm_streaming": false,
+    "production_plan": {
+      "skill_type": "short_film",
+      "shots": [
+        {
+          "shot_id": "sf_000",
+          "index": 0,
+          "duration_sec": 3.0416666666666665,
+          "skill_type": "short_film",
+          "scene_goal": "A small red clay cube gently rotates on a plain wooden table under warm, steady light. Locked camera.",
+          "subjects_on_screen": [],
+          "spatial_setup": "",
+          "environment": "",
+          "visual_style": "",
+          "lighting": "",
+          "mood": "",
+          "action_beats": [],
+          "camera_plan": {
+            "framing": "medium shot",
+            "movement_intensity": "subtle"
+          },
+          "audio_plan": {
+            "mode": "ambient_only",
+            "timing_anchor": "video",
+            "lip_sync_critical": false
+          },
+          "ending_beat": "",
+          "continuity_strategy": "independent",
+          "scene_type": "action",
+          "source_mode_preference": "t2v",
+          "image_strategy": "fresh_generation",
+          "metadata": {
+            "title": "Rotating Clay Cube",
+            "duration_frames": 73,
+            "continuity_group": "",
+            "story_scene_number": null,
+            "causal_handoff": "",
+            "persistent_story_state": "",
+            "closing_blocking": "",
+            "vocal_contract": "",
+            "long_form_quality_warnings": []
+          },
+          "video_prompt": "A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady light. The camera is locked in a medium close-up perspective. The cube begins a slow, gentle rotation, shifting maybe five to ten degrees over the course of the clip, maintaining its perfect cubic shape. The wood grain of the table is clearly visible beneath it.",
+          "image_prompt": "A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady light. The camera is locked in a medium close-up perspective."
+        }
+      ],
+      "title": "Rotating Clay Cube",
+      "global_style": "A single continuous three-second shot of a small red clay cube on a plain wooden table. Warm steady light, locked camera. The cube gently rotates a few degrees. No people, no text, no dialogue, no cuts. Exactly one scene.",
+      "total_duration_sec": 3.0416666666666665,
+      "reference_assets": {},
+      "continuity_notes": [
+        "Short film \u2014 preserve the causal story blueprint across shots and locations",
+        "Match camera complexity to emotional content",
+        "Dialogue must appear in video prompts with speaker cues"
+      ]
+    },
+    "creative_locks": {},
+    "review_approvals": {
+      "review_prompts": "f194767a5ea3fce849c25590267f4d670f01d51b48baaecd620d0e747b207307",
+      "review_images": "d5653b94bd3a0629768b6fd2c106388fad6717d2a11afb259def98fd0a092fff",
+      "review_render": "42dd8b4cc692ed3383ccb4f8ba27ba273222a8d32d5fad2c1131510ddc90806c"
+    },
+    "generated_reference_image_filename": "2026-11-06-01h00m10s_seed362329291_Create a definitive cinematic character anchor for visual continuity. Clearly establish the recurrin.jpg",
+    "review_render_params": {
+      "model_type": "ltx2_22B_distilled_1_1",
+      "prompt": "A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady light. The camera is locked in a medium close-up perspective. The cube begins a slow, gentle rotation, shifting maybe five to ten degrees over the course of the clip, maintaining its perfect cubic shape. The wood grain of the table is clearly visible beneath it.",
+      "image_mode": 0,
+      "multi_prompts_gen_type": 3,
+      "image_prompt_type": "S",
+      "num_inference_steps": 8,
+      "guidance_scale": 1,
+      "resolution": "512x288",
+      "video_length": 129,
+      "sliding_window_size": 138,
+      "per_clip_frames": [
+        129
+      ],
+      "per_clip_prompt_modes": [
+        0
+      ],
+      "multi_clip_audio_start_sec": 0.0,
+      "seed": 1299400437,
+      "settings_version": 2.52,
+      "generation_mode": "video",
+      "repeat_generation": 1,
+      "negative_prompt": "",
+      "self_refiner_setting": 0,
+      "_director_pipeline_id": "ab9f3285",
+      "activated_loras": [],
+      "loras_multipliers": "",
+      "audio_prompt_type": "",
+      "image_start": [
+        "/home/yurix/Documentos/cue_studio/app/.cache/release-acceptance-20261106-005720/projects/release-smoke/.director/ab9f3285/2026-11-06-01h00m28s_seed443626978_A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady lig.jpg"
+      ],
+      "input_video_strength": 0.7,
+      "prompt_enhancer": ""
+    },
+    "planned_clips": [
+      {
+        "start": 0.0,
+        "end": 3.0416666666666665,
+        "duration_sec": 3.0416666666666665,
+        "duration_frames": 73,
+        "label": "action",
+        "beat_count": 0,
+        "_director_continuity_strategy": "independent",
+        "_director_continuity_group": "",
+        "_director_opening_blocking": "",
+        "_director_closing_blocking": "",
+        "_director_dialogue_beats": [],
+        "_director_subjects_on_screen": [],
+        "_director_duration_sec": 3.0416666666666665
+      }
+    ]
+  },
+  "timing": {
+    "requested_seconds": 3,
+    "planned_seconds": 3.0416666666666665
+  },
+  "error": "Render does not respect requested duration: [{'path': 'projects/release-smoke/.director/ab9f3285/2026-11-06-01h03m44s_seed1299400437_A small red clay cube sits centered on a plain wooden table. The scene is bathed in warm, steady lig.mp4', 'seconds': 5.13}]"
+}

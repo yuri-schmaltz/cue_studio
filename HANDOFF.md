@@ -1,3 +1,7 @@
+## Atualização de duração, 06/11
+
+[Correção e medição real](docs/DURATION_BUDGET_2026-11-06.md): planejamento breve e piso de geração corrigidos. Pedido 3s: vídeo 2,76s, contêiner 2,89s, margem ±0,25s. Pacotes atualizados disponíveis; sessão instalada preservada por haver produção ativa.
+
 # Estado validado — 06/11/2026
 
 [Validação vigente](docs/RELEASE_READINESS_2026-11-06.md). App 2.5.2 instalado e aberto; motor atualizado. Python 1.440 + 37 subtestes, UI 351 e Rust 8 aprovados. Produção e exportação reais concluídas. Pendência: orçamento de duração do planejamento.

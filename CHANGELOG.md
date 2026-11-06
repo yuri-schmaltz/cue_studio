@@ -1,5 +1,7 @@
 # Cue Studio Changelog
 
+- 06/11: planejamento de vídeos breves e geração respeitam a duração aproximada solicitada; removido piso artificial de cinco segundos. Evidências em `docs/DURATION_BUDGET_2026-11-06.md`.
+
 ## Em desenvolvimento, 05/11/2026
 
 - Wizard com seis etapas, revisões de produção, retomada pelo rascunho do projeto e interface em inglês.
