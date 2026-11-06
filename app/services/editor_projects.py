@@ -717,6 +717,18 @@ def resolve_editor_asset(
             )
         candidates.append(os.path.join(workspace_directory(save_root, workspace), name))
         candidates.append(os.path.join(save_root, name))
+        # Director runs own their media in workspace/.director/<run>/.
+        # Keep lookup inside the selected workspace instead of searching
+        # arbitrary user directories or silently resolving another project.
+        project_roots = [workspace_directory(save_root, str(asset.get("workspace") or workspace))]
+        for project_root in project_roots:
+            runs = os.path.join(project_root, ".director")
+            if not os.path.isdir(runs) or os.path.islink(runs):
+                continue
+            for run in sorted(os.listdir(runs)):
+                run_dir = os.path.join(runs, run)
+                if os.path.isdir(run_dir) and not os.path.islink(run_dir):
+                    candidates.append(os.path.join(run_dir, name))
     for candidate in candidates:
         if not os.path.isabs(candidate):
             candidate = os.path.abspath(candidate)

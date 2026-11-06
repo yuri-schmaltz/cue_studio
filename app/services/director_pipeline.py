@@ -1411,6 +1411,28 @@ def _normalize_interrupted_repair(state: dict, pid: str) -> bool:
     return True
 
 
+def _pipeline_directories(out_dir: str):
+    """Supported legacy roots and workspace/.director/<run> folders only."""
+    if not os.path.isdir(out_dir):
+        return []
+    roots = [out_dir]
+    for name in sorted(os.listdir(out_dir)):
+        child = os.path.join(out_dir, name)
+        if not name.startswith('.') and os.path.isdir(child) and not os.path.islink(child):
+            roots.append(child)
+    directories = []
+    for root in roots:
+        directories.append(root)
+        runs = os.path.join(root, '.director')
+        if not os.path.isdir(runs) or os.path.islink(runs):
+            continue
+        for name in sorted(os.listdir(runs)):
+            run = os.path.join(runs, name)
+            if os.path.isdir(run) and not os.path.islink(run):
+                directories.append(run)
+    return directories
+
+
 def list_pipeline_states(out_dir: str) -> list[dict]:
     """Scan directory for saved pipeline state files. Returns summary list.
 
@@ -1423,26 +1445,15 @@ def list_pipeline_states(out_dir: str) -> list[dict]:
     results = []
     if not os.path.isdir(out_dir):
         return results
-    # Scan top-level, workspace subdirectories, and any .director/<pid>/
-    # subtree (one level deeper) where register-only pipelines live.
-    dirs_to_scan = [out_dir]
-    for name in os.listdir(out_dir):
-        sub = os.path.join(out_dir, name)
-        if not os.path.isdir(sub):
-            continue
-        dirs_to_scan.append(sub)
-        # Walk one extra level into .director/<pid>/ to pick up pipelines
-        # whose state.json was written by register_only=True.
-        for pid_name in os.listdir(sub):
-            pid_dir = os.path.join(sub, pid_name)
-            if os.path.isdir(pid_dir):
-                dirs_to_scan.append(pid_dir)
+    dirs_to_scan = _pipeline_directories(out_dir)
 
     for scan_dir in dirs_to_scan:
         for fname in os.listdir(scan_dir):
             if fname.startswith(_PIPELINE_FILE_PREFIX) and fname.endswith(".json"):
                 try:
                     filepath = os.path.join(scan_dir, fname)
+                    if os.path.islink(filepath):
+                        continue
                     with _pipeline_file_lock:
                         with open(filepath, "r", encoding="utf-8") as f:
                             data = json.load(f)
@@ -1475,7 +1486,7 @@ def list_pipeline_states(out_dir: str) -> list[dict]:
                         "clip_count": len(data.get("clips", [])),
                         "output_count": len(data.get("output_files", [])),
                         "scene_description": (data.get("scene_description", "") or "")[:100],
-                        "workspace": os.path.basename(scan_dir) if scan_dir != out_dir else "default",
+                        "workspace": data.get("workspace") or (os.path.basename(scan_dir) if scan_dir != out_dir else "default"),
                         "repair_status": (data.get("repair") or {}).get("status"),
                         "_filepath": filepath,
                     })
@@ -1805,40 +1816,18 @@ def load_pipeline_state(out_dir: str, pid: str) -> Optional[dict]:
 
 def _load_pipeline_state_locked(out_dir: str, pid: str) -> Optional[dict]:
     """Load a saved pipeline state by ID. Searches out_dir and subdirectories."""
-    target = f"{_PIPELINE_FILE_PREFIX}{pid}.json"
-    # Search top-level
-    filepath = os.path.join(out_dir, target)
-    if os.path.isfile(filepath):
-        with _pipeline_file_lock:
-            with open(filepath, "r", encoding="utf-8") as f:
-                loaded_state = json.load(f)
-            state = repair_payload(loaded_state)
-            state_changed = state != loaded_state
-            state_changed = _normalize_interrupted_repair(state, pid) or state_changed
-            state_changed = _repair_saved_h3_frame_lattice(state) or state_changed
-            if state_changed:
-                _write_pipeline_json_unlocked(filepath, state)
-            return _backfill_clip_video_filenames(state, out_dir)
-    # Search subdirectories (workspaces)
-    if os.path.isdir(out_dir):
-        for name in os.listdir(out_dir):
-            sub = os.path.join(out_dir, name, target)
-            if os.path.isfile(sub):
-                with _pipeline_file_lock:
-                    with open(sub, "r", encoding="utf-8") as f:
-                        loaded_state = json.load(f)
-                    state = repair_payload(loaded_state)
-                    state_changed = state != loaded_state
-                    state_changed = _normalize_interrupted_repair(state, pid) or state_changed
-                    state_changed = (
-                        _repair_saved_h3_frame_lattice(state) or state_changed
-                    )
-                    if state_changed:
-                        _write_pipeline_json_unlocked(sub, state)
-                    return _backfill_clip_video_filenames(
-                        state, os.path.join(out_dir, name),
-                    )
-    return None
+    filepath = _find_pipeline_file(out_dir, pid)
+    if filepath is None:
+        return None
+    with open(filepath, "r", encoding="utf-8") as f:
+        loaded_state = json.load(f)
+    state = repair_payload(loaded_state)
+    state_changed = state != loaded_state
+    state_changed = _normalize_interrupted_repair(state, pid) or state_changed
+    state_changed = _repair_saved_h3_frame_lattice(state) or state_changed
+    if state_changed:
+        _write_pipeline_json_unlocked(filepath, state)
+    return _backfill_clip_video_filenames(state, os.path.dirname(filepath))
 
 
 def update_clip_tag(out_dir: str, pid: str, clip_index: int, tag: Optional[str]) -> bool:
@@ -1873,15 +1862,13 @@ def _update_clip_tag_locked(out_dir: str, pid: str, clip_index: int, tag: Option
 
 def _find_pipeline_file(out_dir: str, pid: str) -> Optional[str]:
     """Find the JSON file path for a saved pipeline."""
+    if not isinstance(pid, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", pid):
+        return None
     target = f"{_PIPELINE_FILE_PREFIX}{pid}.json"
-    filepath = os.path.join(out_dir, target)
-    if os.path.isfile(filepath):
-        return filepath
-    if os.path.isdir(out_dir):
-        for name in os.listdir(out_dir):
-            sub = os.path.join(out_dir, name, target)
-            if os.path.isfile(sub):
-                return sub
+    for directory in _pipeline_directories(out_dir):
+        candidate = os.path.join(directory, target)
+        if os.path.isfile(candidate) and not os.path.islink(candidate):
+            return candidate
     return None
 
 

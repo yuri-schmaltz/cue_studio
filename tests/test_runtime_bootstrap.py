@@ -60,7 +60,10 @@ time.sleep(60)
     installer_pid = int(parent.stdout.readline())
     def running(pid):
         stat = Path(f'/proc/{pid}/stat')
-        return stat.exists() and stat.read_text().split()[2] != 'Z'
+        try:
+            return stat.read_text().split()[2] != 'Z'
+        except FileNotFoundError:
+            return False
     try:
         deadline = time.monotonic() + 10
         while not uv.with_suffix('.pid').is_file() and time.monotonic() < deadline:

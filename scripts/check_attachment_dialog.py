@@ -20,6 +20,8 @@ def window(title):
 
 
 def main():
+    if subprocess.run(['pgrep', '-x', 'pkexec'], stdout=subprocess.DEVNULL).returncode == 0:
+        raise SystemExit('Finish pending administrator authentication before running desktop keyboard tests.')
     with tempfile.TemporaryDirectory(prefix='attachment-smoke-', dir=ROOT/'app/.cache') as tmp:
         root=Path(tmp); folder=root/'selected folder';folder.mkdir();data=root/'preferences';data.mkdir()
         for name in ['first.png','second.png']:(folder/name).write_bytes(b'fixture file, never uploaded')
@@ -40,9 +42,16 @@ def main():
                     subprocess.run(['xdotool','key','--clearmodifiers','Return'],check=True)
                     window('^Selected: '+name.replace('.','\\.')+'$')
                     assert json.loads((data/'last-folder.json').read_text()) == str(folder)
+                    if not restart and i == 0:
+                        # Cancel must not clear the previous successful choice.
+                        subprocess.run(['xdotool','windowactivate','--sync',parent,'key','--clearmodifiers','space'],check=True)
+                        cancelled = window('^Select files$')
+                        subprocess.run(['xdotool','windowactivate','--sync',cancelled,'key','--clearmodifiers','Escape'],check=True)
+                        time.sleep(.2)
+                        assert json.loads((data/'last-folder.json').read_text()) == str(folder)
             finally:
                 app.terminate();app.wait(timeout=10)
-        print('PASS: file input receives selection, next selection reuses folder, restart restores folder')
+        print('PASS: file input receives selection, next selection reuses folder, cancel preserves it, restart restores folder')
 
 
 if __name__=='__main__':main()
