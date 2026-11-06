@@ -8,6 +8,9 @@ A one-click local AI **creative studio, director, and video editor** for creator
 
 ## What it does
 
+### Guided Wizard
+Choose **Wizard** under **Open in** when creating a project, or use the Wizard tab for an existing project. The six steps cover source audio or story, scene description, visual references, output format, reviewed production, and results with Editor handoff. Progress is stored with the project draft, so it survives desktop restarts and changes to the local server port.
+
 ### 🎬 Director Mode — automatic music videos and short films
 The flagship feature. Drop in an audio track or write a story; a local LLM plans every shot, writes screenplays/lyrics, generates start frames & keyframes with character consistency, polishes prompts per model & LoRA-specific prompting guides, and runs the full multi-clip generation. Two skills:
 

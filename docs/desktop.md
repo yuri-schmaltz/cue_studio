@@ -122,3 +122,24 @@ Para regenerar locks: `python scripts/build_decord_wheel.py`, depois
 Execute `python scripts/verify_runtime_locks.py` e revalide os ambientes.
 O script registra a evidência anterior como histórica até a nova instalação.
 Veja também `desktop-license-review.md` e `desktop-python-licenses.json`.
+
+## Atualização do código do motor
+
+O build gera `runtime-code-manifest.json`, contendo hashes dos arquivos de código empacotados. Antes de iniciar um ambiente Python já pronto, o host executa `runtime_source.py` para conferir e sincronizar esses arquivos. A revisão do código é independente do lock de dependências. Cada arquivo é substituído por rename atômico; a revisão só é gravada após a sincronização completa. Um pacote com checksum incorreto interrompe a atualização antes de substituir arquivos.
+
+O manifesto não inclui modelos, ambiente virtual, saídas, projetos ou configuração pessoal. A atualização não exige reinstalar dependências quando apenas o código muda.
+
+## Memória de pasta dos anexos
+
+No Linux, o manipulador WebKit de `input type=file` usa o seletor GTK com a última pasta confirmada, salva no diretório de dados do desktop. O seletor mantém os filtros MIME e a seleção múltipla informados pelo campo. Cancelar não altera a preferência. Uma pasta removida é ignorada e o seletor volta ao local padrão.
+
+Regressão nativa, com arquivos temporários e sem uploads:
+
+```bash
+cd ui
+cargo build --example file_dialog_smoke
+cd ..
+app/env/bin/python scripts/check_attachment_dialog.py
+```
+
+O teste verifica entrega do arquivo ao campo HTML, restauração no próximo anexo e restauração após reiniciar o processo. O ambiente precisa de uma sessão X11 e `xdotool`.

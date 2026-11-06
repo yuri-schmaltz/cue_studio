@@ -1,3 +1,11 @@
+# Estado validado — 06/11/2026
+
+[Validação vigente](RELEASE_READINESS_2026-11-06.md). App 2.5.2 instalado e aberto; motor atualizado. Python 1.440 + 37 subtestes, UI 351 e Rust 8 aprovados. Produção e exportação reais concluídas. Pendência: orçamento de duração do planejamento.
+
+---
+
+## Registro histórico de 04/11
+
 # Estado atual — 04/11/2026
 
 Base: `main`, origem `56c1fbb` + o ciclo do pre-flight do Director (commitado e enviado), versão 2.5.2. O documento anterior está preservado em [histórico de validação](history/CURRENT_STATE_2026-10-22.md); seus PIDs, ambientes e resultados não descrevem automaticamente este checkout.

@@ -1,5 +1,14 @@
 # Cue Studio Changelog
 
+## Em desenvolvimento, 05/11/2026
+
+- Wizard com seis etapas, revisões de produção, retomada pelo rascunho do projeto e interface em inglês.
+- Leitura de cenas no formato `Cena 01 | 00:00–00:10`, com limites de atos independentes das cenas.
+- Atualização automática do código Python por manifesto de hashes, independente do lock, preservando arquivos pessoais e modelos.
+- Seletores HTML de anexos no Linux restauram a última pasta confirmada; regressão em GTK/WebKit real.
+- Exclusão de uploads no Editor, correção dos aliases Linux de bibliotecas do llama-server e melhorias dos controles/referências do Director.
+- Novos pacotes .deb e AppImage sujeitos aos recibos da rodada em `docs/RELEASE_VALIDATION_2026-11-06.json`.
+
 ## Em desenvolvimento — 04/11/2026
 
 - **O Director agora diz o preço do projeto antes de gastar GPU.** Uma faixa de 4:15 vira uma dúzia de renders — e, numa GPU modesta, isso são horas de computação ou uma queda por falta de memória no meio do caminho, com a conta já cobrada. O novo cartão *Pre-flight*, encaixado logo acima dos controles de ação, responde três perguntas antes do botão *Generate Videos*: quantos clipes o plano virou, quanto tempo o render vai levar **nesta máquina** e se o clip mais longo cabe na VRAM deste GPU. A estimativa sai do histórico local de tempos da própria máquina (mediana de segundos por unidade de trabalho), não de uma constante genérica; e o aviso de memória usa a mesma política de VRAM e o mesmo perfil de execução que o pipeline vai usar. Sem histórico para o modelo, o cartão diz *"Not available yet"* em vez de inventar um número. Detalhes em `docs/HANDOFF.md`.

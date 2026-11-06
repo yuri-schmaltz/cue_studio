@@ -1,0 +1,54 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+___________ test_deletes_only_selected_upload_and_tolerates_missing ____________
+
+endpoint = (<starlette.testclient.TestClient object at 0x7eda865aecd0>, PosixPath('/tmp/pytest-of-yurix/pytest-42/test_deletes_on...f that name is also needed.", '__package__': '', '__loader__': <class '_frozen_importlib.BuiltinImporter'>, ...}, ...})
+
+    def test_deletes_only_selected_upload_and_tolerates_missing(endpoint):
+        client, uploads, _ = endpoint
+        (uploads / 'old.png').write_bytes(b'old')
+        (uploads / 'keep.png').write_bytes(b'keep')
+>       assert client.delete('/api/v1/uploads/old.png').status_code == 200
+E       AssertionError: assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+E        +    where <Response [404 Not Found]> = delete('/api/v1/uploads/old.png')
+E        +      where delete = <starlette.testclient.TestClient object at 0x7eda865aecd0>.delete
+
+/home/yurix/Documentos/cue_studio/tests/test_delete_upload.py:30: AssertionError
+____________________ test_rejects_path_escape_and_directory ____________________
+
+endpoint = (<starlette.testclient.TestClient object at 0x7eda89938a90>, PosixPath('/tmp/pytest-of-yurix/pytest-42/test_rejects_pa...f that name is also needed.", '__package__': '', '__loader__': <class '_frozen_importlib.BuiltinImporter'>, ...}, ...})
+
+    def test_rejects_path_escape_and_directory(endpoint):
+        client, uploads, scope = endpoint
+        outside = uploads.parent / 'outside.png'
+        outside.write_bytes(b'keep')
+        (uploads / 'escape.png').symlink_to(outside)
+>       assert client.delete('/api/v1/uploads/escape.png').status_code == 400
+E       AssertionError: assert 404 == 400
+E        +  where 404 = <Response [404 Not Found]>.status_code
+E        +    where <Response [404 Not Found]> = delete('/api/v1/uploads/escape.png')
+E        +      where delete = <starlette.testclient.TestClient object at 0x7eda89938a90>.delete
+
+/home/yurix/Documentos/cue_studio/tests/test_delete_upload.py:41: AssertionError
+__________________________ test_reports_locked_files ___________________________
+
+endpoint = (<starlette.testclient.TestClient object at 0x7eda820b1450>, PosixPath('/tmp/pytest-of-yurix/pytest-42/test_reports_lo...f that name is also needed.", '__package__': '', '__loader__': <class '_frozen_importlib.BuiltinImporter'>, ...}, ...})
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7eda9812b6d0>
+
+    def test_reports_locked_files(endpoint, monkeypatch):
+        import services.win_safe_files as safe_files
+        client, uploads, _ = endpoint
+        (uploads / 'locked.png').write_bytes(b'keep')
+        monkeypatch.setattr(safe_files, 'safe_delete', Mock(return_value={'deleted': False, 'reason': 'locked'}))
+        response = client.delete('/api/v1/uploads/locked.png')
+>       assert response.status_code == 409
+E       assert 404 == 409
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+/home/yurix/Documentos/cue_studio/tests/test_delete_upload.py:56: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_delete_upload.py::test_deletes_only_selected_upload_and_tolerates_missing
+FAILED tests/test_delete_upload.py::test_rejects_path_escape_and_directory - ...
+FAILED tests/test_delete_upload.py::test_reports_locked_files - assert 404 ==...
+3 failed in 2.66s

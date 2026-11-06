@@ -1,0 +1,45 @@
+diff --git a/app/launch.py b/app/launch.py
+index bdc3a5c..5169410 100644
+--- a/app/launch.py
++++ b/app/launch.py
+@@ -28822,6 +28822,24 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
+     return result
+ 
+ 
++@api.delete("/api/v1/uploads/{filename}")
++def delete_upload(filename: str):
++    """Delete only an explicitly selected file inside the uploads directory."""
++    from services.win_safe_files import safe_delete
++    base = os.path.join(os.getcwd(), "uploads")
++    filepath = _safe_join(base, filename)
++    if not filename or "/" in filename or "\\" in filename or filepath is None:
++        raise HTTPException(status_code=400, detail="Invalid upload filename")
++    if os.path.isdir(filepath):
++        raise HTTPException(status_code=400, detail="Only upload files can be deleted")
++    if not os.path.exists(filepath):
++        return {"deleted": filename}
++    result = safe_delete(filepath)
++    if not result.get("deleted") and not result.get("deferred"):
++        raise HTTPException(status_code=409, detail="The upload is in use and could not be deleted. Stop playback and try again.")
++    return {"deleted": filename}
++
++
+ @api.get("/api/v1/uploads/{filename}")
+ def serve_upload(filename: str):
+     """Serve an uploaded image.
+diff --git a/ui/src/api/client.ts b/ui/src/api/client.ts
+index 15944b8..ccc69e4 100644
+--- a/ui/src/api/client.ts
++++ b/ui/src/api/client.ts
+@@ -1040,7 +1040,10 @@ export async function deleteOutput(name: string, workspace?: string): Promise<vo
+ 
+ export async function deleteUpload(name: string): Promise<void> {
+   const res = await fetch(`${BASE}/api/v1/uploads/${encodeURIComponent(name)}`, { method: 'DELETE' })
+-  if (!res.ok) throw new Error('Failed to delete upload')
++  if (!res.ok) {
++    const error = await res.json().catch(() => null)
++    throw new Error(typeof error?.detail === 'string' ? error.detail : `Failed to delete upload (${res.status})`)
++  }
+ }
+ 
+ export async function rejoinClips(groupId: string, audioFile?: string): Promise<{ filename: string; clip_count: number }> {

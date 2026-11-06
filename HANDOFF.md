@@ -1,3 +1,11 @@
+# Estado validado — 06/11/2026
+
+[Validação vigente](docs/RELEASE_READINESS_2026-11-06.md). App 2.5.2 instalado e aberto; motor atualizado. Python 1.440 + 37 subtestes, UI 351 e Rust 8 aprovados. Produção e exportação reais concluídas. Pendência: orçamento de duração do planejamento.
+
+---
+
+## Registro histórico de 04/11
+
 # Handoff — 04/11/2026
 
 Estado comprovado: [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md). O objetivo ativo continua sendo atacar todos os pontos de atenção, sem reduzir o escopo às correções já entregues.

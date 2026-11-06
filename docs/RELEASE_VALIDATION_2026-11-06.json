@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-06",
+  "version": "2.5.2",
+  "tests": {
+    "python": 1440,
+    "subtests": 37,
+    "skipped": 12,
+    "deselected": 63,
+    "ui": 351,
+    "rust": 8,
+    "build_lint": "passed",
+    "native_folder": "selection, reuse, cancellation, restart passed",
+    "appimage_upgrade": "passed; preserves weights, settings, history"
+  },
+  "installed_http_status": 200,
+  "source_revision": "89c9082e2cfe921abdd4a5909b115f742954b3849c71ba538052e153ff088bda",
+  "artifacts": [
+    {
+      "path": "ui/src-tauri/target/release/bundle/deb/Cue Studio_2.5.2_amd64.deb",
+      "bytes": 14767372,
+      "sha256": "14a3be4303b2f5052d57ef1d4e635784fea0b91ef668b1e6d0f2ec36b09aaab1"
+    },
+    {
+      "path": "ui/src-tauri/target/release/bundle/appimage/Cue Studio_2.5.2_amd64.AppImage",
+      "bytes": 179735032,
+      "sha256": "e4a48a4ab48b57a67c1e2897e26fea4ba22c572746ae10d16a69329269f998ee"
+    }
+  ],
+  "editor": {
+    "project_id": "b3a93ef3cf9b4998",
+    "tracks": 4,
+    "items": 3,
+    "assets": 3,
+    "export_job_id": "b25bf29c",
+    "export": {
+      "job_id": "b25bf29c",
+      "client_submission_id": null,
+      "show_in_gallery": false,
+      "kind": "editor_export",
+      "status": "completed",
+      "progress": 100,
+      "step": 0,
+      "total_steps": 0,
+      "phase": "",
+      "message": "Editor export complete",
+      "output_files": [
+        "2026-11-05-19h42m09s_Release final acceptance edit_edit.mp4"
+      ],
+      "error": null,
+      "oom_info": null,
+      "h3_window_plan": null,
+      "ltx_window_plan": null
+    },
+    "joined": {
+      "filename": "2026-11-05-19h41m59s_rejoin_multiclip.mp4"
+    },
+    "status": "passed"
+  },
+  "evidence": "/home/yurix/Documentos/cue_studio/app/.cache/release-acceptance-20261105-191725",
+  "limitation": "Requested 3 seconds expanded to 3 shots totaling 59.125 seconds. Exact timing and artistic fidelity not certified.",
+  "appimage_provenance": "Full Tauri build, then manifest-validated Python source overlay into same AppDir and appimagetool repack for nested pipeline recovery fix."
+}
